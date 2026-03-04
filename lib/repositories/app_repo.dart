@@ -1,0 +1,80 @@
+import 'dart:convert';
+import 'dart:developer' as developer;
+
+import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/player.dart';
+import 'package:dominican_casino/services/firestore_service.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
+
+enum AppStatus { notReady, appReady, inGame, appError }
+
+class AppRepo extends ChangeNotifier {
+  AppStatus appStatus = AppStatus.notReady;
+  Player? player;
+  String? currentGameId;
+  final List<GameState> games = [];
+  final FirestoreService fs;
+  final Uuid _uuid = const Uuid();
+  AppRepo({required this.fs});
+
+  Future<void> loadApp() async {
+    developer.log("Loading player");
+    player = await _loadPlayer();
+    developer.log("player ${player?.id}");
+    if (player != null) appStatus = AppStatus.appReady;
+  }
+
+  Future<void> leaveGame() async {
+    currentGameId = null;
+    appStatus = AppStatus.appReady;
+  }
+  Future<void> deleteGame(String gameId) async {
+    fs.deleteGame(gameId);
+  }
+
+  Future<void> createGame() async {
+    await fs.createGame();
+  }
+
+  Future<Player?> _loadPlayer() async {
+    //Tries to find a player Id locally..
+    final SharedPreferences sp = await SharedPreferences.getInstance();
+    try {
+      final p = sp.getString('player_id');
+      if (p != null) {
+        player = Player.fromDto(jsonDecode(p));
+        return player;
+      }
+      final id = _uuid.v4().substring(0, 8);
+      player = Player(id: id, name: "testUser");
+
+      await sp.setString("player_id", jsonEncode(player!.toJson()));
+      developer.log("Player loaded: ${sp.getString('player_id')}");
+
+      return player;
+    } catch (e) {
+      developer.log("Error: $e");
+
+      appStatus = AppStatus.appError;
+    }
+    //Save it locally.
+    return null;
+  }
+
+  Future<bool> joinGame(String gameId) async {
+    try {
+      currentGameId = gameId;
+      await fs.joinGame(gameId, player!.id);
+      appStatus = AppStatus.inGame;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      developer.log("Error Joining Game: $e");
+      return false;
+    }
+    //Save State locally.
+    //Notify stream
+  }
+}
