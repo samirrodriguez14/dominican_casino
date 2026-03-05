@@ -4,6 +4,7 @@ import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:dominican_casino/widgets/playing_area_stack.dart';
 import 'package:dominican_casino/widgets/playing_card.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -28,8 +29,39 @@ class PlayingAreaState extends State<PlayingArea> {
             opacity: vm.controlGame ? 0.5 : 1,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text("Playing Area", style: AppStyles.muted),
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("Playing Area", style: AppStyles.muted),
+                        Text(
+                          'LastTake: ${vm.lastTookCard}',
+                          style: AppStyles.caption,
+                        ),
+                      ],
+                    ),
+                    if (vm.anySelected)
+                      Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            HapticFeedback.mediumImpact();
+                            vm.cancelSelection();
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(CupertinoIcons.xmark_circle_fill, size: 15),
+                              Text("selection", style: AppStyles.muted),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 8),
 
                 Expanded(
@@ -46,7 +78,7 @@ class PlayingAreaState extends State<PlayingArea> {
           ),
         ),
         AnimatedAlign(
-          duration: const Duration(milliseconds: 500),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
           alignment: vm.controlGame ? Alignment.center : Alignment.bottomRight,
           child: Padding(padding: EdgeInsets.all(8), child: _buildDeckArea(vm)),
@@ -134,7 +166,7 @@ class PlayingAreaState extends State<PlayingArea> {
             : () => vm.redealSameRound();
       } else {
         actionIcon = CupertinoIcons.lock_circle_fill;
-        actionLabel =  "Waiting…";
+        actionLabel = "Waiting…";
         onAction = null;
       }
     }
@@ -175,7 +207,7 @@ class PlayingAreaState extends State<PlayingArea> {
       child: Opacity(
         opacity: actionEnbled ? 1 : .8,
         child: Container(
-          padding: EdgeInsets.all((isEnabled)? 12:2),
+          padding: EdgeInsets.all((isEnabled) ? 12 : 2),
           decoration: AppStyles.raisedSurfaceBox(),
           child: Row(
             mainAxisSize: MainAxisSize.min,

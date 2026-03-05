@@ -17,6 +17,8 @@ class OpponentAreaState extends State<OpponentArea> {
   String? get opp => context.select((RoomViewModel vm) => vm.opp);
   int get deckCount =>
       context.select((RoomViewModel vm) => vm.oppHandCardsTotal);
+  int get extraPoints =>
+      context.select((RoomViewModel vm) => vm.oppExtraPoints);
   List<PlayingCardModel> get collectedCards =>
       context.select((RoomViewModel vm) => vm.oppCollectedCards);
 
@@ -61,7 +63,7 @@ class OpponentAreaState extends State<OpponentArea> {
                   ),
                 ),
               ),
-              PlayersDeck(cards: collectedCards, me: false),
+              PlayersDeck(cards: collectedCards, me: false, extraPoints: extraPoints,),
             ],
           ),
         ],

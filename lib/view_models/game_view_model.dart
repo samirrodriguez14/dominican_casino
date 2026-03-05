@@ -33,6 +33,11 @@ class RoomViewModel extends ChangeNotifier {
   int oppHandCardsTotal = 0;
   List<PlayingCardModel> oppCollectedCards = [];
 
+  int _extraPoints = 0;
+  String extraPointsHolderId = '';
+
+  String _lastTookCardId = '';
+
   List<PlayingCardModel> playingAreaCards = [];
   List<PlayingAreaStackModel> playingAreaStacks = [];
 
@@ -45,14 +50,16 @@ class RoomViewModel extends ChangeNotifier {
   ///START GETTERS
   ///
   bool get canStart =>
-      (bothPlayersJoined && isController) && g?.started ==false ;
+      (bothPlayersJoined && isController) && g?.started == false;
 
   bool get canRedeal =>
       ((g?.started ?? false) && isController) &&
       (canStartNextRound || handsEmpty);
-  bool get waitingControllerDeal => ( ((g?.started ?? false) && !isController) &&
+  bool get waitingControllerDeal =>
+      (((g?.started ?? false) && !isController) &&
       (canStartNextRound || handsEmpty));
-  bool get controlGame => canStart || canRedeal || opp == "" || g==null || waitingControllerDeal;
+  bool get controlGame =>
+      canStart || canRedeal || opp == "" || g == null || waitingControllerDeal;
 
   String get controllText => "";
   bool get isController =>
@@ -65,9 +72,7 @@ class RoomViewModel extends ChangeNotifier {
       bothPlayersReady;
 
   bool get bothPlayersJoined =>
-      _gameRepo.gameState?.player1 != "" 
-      && _gameRepo.gameState?.player2 != "";
-
+      _gameRepo.gameState?.player1 != "" && _gameRepo.gameState?.player2 != "";
 
   String? get me => _appRepo.player?.id;
 
@@ -116,6 +121,11 @@ class RoomViewModel extends ChangeNotifier {
         myHand.isEmpty &&
         oppHand.isEmpty;
   }
+
+  int get myExtraPoints => (extraPointsHolderId == me) ? _extraPoints : 0;
+  int get oppExtraPoints => (extraPointsHolderId == opp) ? _extraPoints : 0;
+
+  String get lastTookCard => (_lastTookCardId == me) ? "You" : "Opponent";
 
   bool get playerLeftMidGame => (g?.player1 == null || g?.player2 == null);
 
@@ -169,6 +179,10 @@ class RoomViewModel extends ChangeNotifier {
         roundReady = Map<String, bool>.from(g.roundReady);
         roundScores = Map<String, dynamic>.from(g.roundScores);
 
+        _extraPoints = g.extraPoints;
+        extraPointsHolderId = g.extraPointsHolderId;
+
+        _lastTookCardId = g.lastTookCardId;
         iAmReadyForNextRound = roundReady[me] == true;
 
         final p1 = g.player1 ?? '';
@@ -319,6 +333,10 @@ class RoomViewModel extends ChangeNotifier {
   PlayingCardModel? selectedCard;
   List<PlayingCardModel> selectedCards = [];
   List<PlayingAreaStackModel> selectedStacks = [];
+  bool get anySelected =>
+      selectedCard != null ||
+      selectedCards.isNotEmpty ||
+      selectedStacks.isNotEmpty;
   void cancelSelection() {
     selectedCards = [];
     selectedCard = null;
@@ -341,9 +359,7 @@ class RoomViewModel extends ChangeNotifier {
     } else {
       selectedCards.add(card);
     }
-    if (selectedCards.length > 1) {
-      selectedCard = null;
-    } //Only one more card if card is selected
+
     notifyListeners();
   }
 

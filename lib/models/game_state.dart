@@ -40,7 +40,8 @@ class GameState {
   final Map<String, List<PlayingCardModel>> hands;
   final Map<String, List<PlayingCardModel>> playersDeck;
   final Map<String, dynamic> scores;
-
+  final int extraPoints;
+  final String extraPointsHolderId;
   final String lastTookCardId;
   final String? player1;
   final String? player2;
@@ -57,6 +58,8 @@ class GameState {
     required this.currentTurnPlayerId,
     required this.deck,
     required this.scores,
+    required this.extraPoints,
+    required this.extraPointsHolderId,
     required this.playingArea,
     required this.playingAreaStacks,
     required this.hands,
@@ -91,7 +94,8 @@ class GameState {
         'playersDeck': playersDeck.map(
           (k, v) => MapEntry(k, v.map((c) => c.toMap()).toList()),
         ),
-
+        'extraPoints': extraPoints,
+        'extraPointsHolderId': extraPointsHolderId,
         'lastTookCardId': lastTookCardId,
 
         'player1': player1,
@@ -164,7 +168,8 @@ class GameState {
       player1: m['player1'] as String?,
       player2: m['player2'] as String?,
       winnerId: m['winnerId'] as String?,
-
+      extraPoints: m['extraPoints'],
+      extraPointsHolderId: m['extraPointsHolderId'],
       roundIndex: roundIndex,
       roundStatus: roundStatus,
       roundReady: roundReady,

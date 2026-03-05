@@ -29,6 +29,12 @@ class _GameScreenState extends State<GameScreen> {
   bool _disposed = false;
 
   @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {

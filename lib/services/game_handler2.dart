@@ -1,5 +1,4 @@
 import 'dart:developer' as developer;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
@@ -34,6 +33,8 @@ class GameHandler2 {
       'lastTookCardId': '',
       'player1': '',
       'player2': '',
+      'extraPoints': 0,
+      'extraPointsHolderId': '',
       'winnerId': null,
       'roundIndex': 1,
       'roundStatus': 'playing',
@@ -279,10 +280,11 @@ class GameHandler2 {
         _setHand(handsRaw, playerId, hand);
 
         final playing = ctx.playingArea();
-        _removeCardMapOnce(
-          playing,
-          takingCard,
-        ); // you weren’t returning if missing
+        _removeCardMapOnce(playing, takingCard);
+
+        if (playing.isEmpty && ctx.playingAreaStacks().isEmpty) {
+          _handleExtraPoints(ctx.data);
+        }
 
         final decksRaw = ctx.playersDeckRaw();
         final deck = _deckOf(decksRaw, playerId);
@@ -298,6 +300,8 @@ class GameHandler2 {
             'playingArea': playing,
             'playersDeck': decksRaw,
             'lastTookCardId': playerId,
+            'extraPointsHolderId': ctx.data['extraPointsHolderId'],
+            'extraPoints': ctx.data['extraPoints'],
           },
           nextTurnPlayerId: next,
         );
@@ -330,6 +334,10 @@ class GameHandler2 {
           _removeCardMapOnce(playing, card);
         }
 
+        if (playing.isEmpty && ctx.playingAreaStacks().isEmpty) {
+          _handleExtraPoints(ctx.data);
+        }
+
         final decksRaw = ctx.playersDeckRaw();
         final deck = _deckOf(decksRaw, playerId);
         deck.add(card.toMap());
@@ -344,6 +352,8 @@ class GameHandler2 {
             'playingArea': playing,
             'playersDeck': decksRaw,
             'lastTookCardId': playerId,
+            'extraPointsHolderId': ctx.data['extraPointsHolderId'],
+            'extraPoints': ctx.data['extraPoints'],
           },
           nextTurnPlayerId: next,
         );
@@ -374,6 +384,10 @@ class GameHandler2 {
         final stacks = ctx.playingAreaStacks();
         stacks.removeWhere((m) => m['id'] == stack.id);
 
+        if (ctx.playingArea().isEmpty && stacks.isEmpty) {
+          _handleExtraPoints(ctx.data);
+        }
+
         final decksRaw = ctx.playersDeckRaw();
         var deck = _deckOf(decksRaw, playerId);
         deck.add(card.toMap());
@@ -389,6 +403,8 @@ class GameHandler2 {
             'playingAreaStacks': stacks,
             'playersDeck': decksRaw,
             'lastTookCardId': playerId,
+            'extraPointsHolderId': ctx.data['extraPointsHolderId'],
+            'extraPoints': ctx.data['extraPoints'],
           },
           nextTurnPlayerId: next,
         );
@@ -564,6 +580,8 @@ class GameHandler2 {
       patch['roundStatus'] = 'completed';
       patch['roundScores'] = roundScores;
       patch['scores'] = nextData['scores'];
+      patch['extraPoints'] = nextData['extraPoints'];
+      patch['extraPointsHolderId'] = nextData['extraPointsHolderId'];
       patch['roundReady'] = {
         if (p1.isNotEmpty) p1: false,
         if (p2.isNotEmpty) p2: false,
@@ -663,6 +681,28 @@ class GameHandler2 {
     return next;
   }
 
+  void _handleExtraPoints(Map<String, dynamic> data) {
+    final p1 = data['player1'];
+    final p2 = data['player2'];
+    final currPid = data['currentTurnPlayerId'];
+    final oppPid = currPid == p1 ? p2 : p1;
+    String extraPointsHolderId = data['extraPointsHolderId'];
+    int extraPoints = data['extraPoints'] ?? 0;
+
+    if (extraPointsHolderId == currPid || extraPointsHolderId == "") {
+      extraPoints += 1;
+      extraPointsHolderId = currPid;
+    }
+    if (extraPointsHolderId == oppPid) {
+      extraPoints -= 1;
+      if (extraPoints == 0) {
+        extraPointsHolderId = '';
+      }
+    }
+    data['extraPointsHolderId'] = extraPointsHolderId;
+    data['extraPoints'] = extraPoints;
+  }
+
   bool _roundEnded(Map<String, dynamic> data) {
     String p1 = data['player1'];
     String p2 = data['player2'];
@@ -696,8 +736,17 @@ class GameHandler2 {
     final p2Deck = p2DeckMap.map(PlayingCardModel.fromMap).toList();
 
     final roundScores = Map<String, dynamic>.from(data['roundScores'] ?? {});
-    roundScores[p1] = _createScoreMap(p1Deck);
-    roundScores[p2] = _createScoreMap(p2Deck);
+    final extrapointsHolderId = data['extraPointsHolderId'];
+    final extrapoints = data['extraPoints'];
+
+    roundScores[p1] = _createScoreMap(
+      p1Deck,
+      extrapointsHolderId == p1 ? extrapoints : 0,
+    );
+    roundScores[p2] = _createScoreMap(
+      p2Deck,
+      extrapointsHolderId == p2 ? extrapoints : 0,
+    );
 
     final totalScores = Map<String, dynamic>.from(data['scores'] ?? {});
     //handle wiiner before adding scores from new round
@@ -714,18 +763,24 @@ class GameHandler2 {
     developer.log(
       "winner: $winner roundScores ${roundScores[p1]} ${roundScores[p2]}\nTotalScores: ${totalScores[p1]}, ${totalScores[p2]}",
     );
+    data['extraPoints'] = 0;
+    data['extraPointsHolderId']='';
     data['roundScores'] = roundScores;
     data['scores'] = totalScores;
     data['winnerId'] = winner;
   }
 
-  Map<String, dynamic> _createScoreMap(List<PlayingCardModel> playerDeck) {
+  Map<String, dynamic> _createScoreMap(
+    List<PlayingCardModel> playerDeck,
+    int extraPoints,
+  ) {
     final scoresMap = <String, dynamic>{
       'A': 0,
       '2♠': 0,
       '10♦': 0,
       'pi': 0,
       'carta': 0,
+      'virao': extraPoints,
       'total': 0,
     };
 
@@ -758,7 +813,7 @@ class GameHandler2 {
       scoresMap['pi'] = (scoresMap['pi'] as int) + 1;
     }
 
-    scoresMap['total'] = totalScore;
+    scoresMap['total'] = totalScore + extraPoints;
     return scoresMap;
   }
 
@@ -824,8 +879,6 @@ class GameHandler2 {
       'playersDeck': playersDeckRaw,
       'playingArea': <Map<String, dynamic>>[],
       'playingAreaStacks': <Map<String, dynamic>>[],
-      // Optional: could also store who received the sweep:
-      // 'lastRoundSweepWinner': receiver,
     };
   }
 

@@ -141,15 +141,6 @@ class PlayerAreaState extends State<PlayerArea> {
                   ),
                 ],
               ),
-
-              // CupertinoButton(
-              //   padding: EdgeInsets.zero,
-              //   onPressed: () {
-              //     HapticFeedback.mediumImpact();
-              //     vm.cancelSelection();
-              //   },
-              //   child: Icon(Icons.cancel_sharp),
-              // ),
               CupertinoButton(
                 padding: EdgeInsets.zero,
                 onPressed: () {
@@ -178,7 +169,7 @@ class PlayerAreaState extends State<PlayerArea> {
                 ),
               ),
 
-              PlayersDeck(cards: vm.pCollectedCards, me: true),
+              PlayersDeck(cards: vm.pCollectedCards, me: true, extraPoints:  vm.myExtraPoints),
             ],
           ),
         ],
