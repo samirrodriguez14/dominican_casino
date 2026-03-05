@@ -24,7 +24,7 @@ class PlayingAreaState extends State<PlayingArea> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
-          decoration: AppStyles.surfaceBox(),
+          // decoration: AppStyles.premiumGameTable(),
           child: Opacity(
             opacity: vm.controlGame ? 0.5 : 1,
             child: Column(
@@ -37,10 +37,10 @@ class PlayingAreaState extends State<PlayingArea> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("Playing Area", style: AppStyles.muted),
+                        Text("Playing Area", style: AppStyles.theme.body),
                         Text(
-                          'LastTake: ${vm.lastTookCard}',
-                          style: AppStyles.caption,
+                          'Last Take: ${vm.lastTookCard}',
+                          style: AppStyles.theme.body,
                         ),
                       ],
                     ),
@@ -55,7 +55,7 @@ class PlayingAreaState extends State<PlayingArea> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(CupertinoIcons.xmark_circle_fill, size: 15),
-                              Text("selection", style: AppStyles.muted),
+                              Text("selection", style: AppStyles.theme.body),
                             ],
                           ),
                         ),
@@ -208,7 +208,7 @@ class PlayingAreaState extends State<PlayingArea> {
         opacity: actionEnbled ? 1 : .8,
         child: Container(
           padding: EdgeInsets.all((isEnabled) ? 12 : 2),
-          decoration: AppStyles.raisedSurfaceBox(),
+          decoration: AppStyles.theme.raisedSurfaceBox(),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -223,7 +223,7 @@ class PlayingAreaState extends State<PlayingArea> {
                     empty: !hasCards,
                   ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: AppStyles.muted),
+                  Text(subtitle, style: AppStyles.theme.mutedText),
                 ],
               ),
               if (isEnabled) SizedBox(width: 8),
@@ -233,7 +233,7 @@ class PlayingAreaState extends State<PlayingArea> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(actionIcon, size: cardWidth),
-                    Text(actionLabel, style: AppStyles.title),
+                    Text(actionLabel, style: AppStyles.theme.title),
                   ],
                 ),
             ],

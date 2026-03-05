@@ -1,5 +1,14 @@
+import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/casino_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
+class AppStyle {
+  static AppTheme theme = CasinoTheme();
+}
+
+
+
 
 class AppColors {
   // ---- Base (current) palette ----
@@ -15,8 +24,10 @@ class AppColors {
   static const Color accentAmber = Color(0xFFFFC857);
 
   // ---- Extra surfaces / states ----
-  static const Color surfaceRaised = Color(0xFF22324B); // slightly above surface
-  static const Color surfaceDeep = Color(0xFF0B1422);   // deeper than background
+  static const Color surfaceRaised = Color(
+    0xFF22324B,
+  ); // slightly above surface
+  static const Color surfaceDeep = Color(0xFF0B1422); // deeper than background
 
   static Color border = surfaceAlt.withOpacity(0.55);
   static Color separator = muted.withOpacity(0.25);
@@ -51,26 +62,156 @@ class AppColors {
 }
 
 class AppStyles {
+  static AppTheme get theme => AppStyle.theme;
+
   static const double radius = 12;
 
   static BoxDecoration surfaceBox({Color? color}) => BoxDecoration(
-        color: color ?? AppColors.surface,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppColors.border),
-      );
+    color: color ?? theme.surface,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: theme.border),
+  );
 
   static BoxDecoration raisedSurfaceBox({Color? color}) => BoxDecoration(
-        color: color ?? AppColors.surfaceRaised,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow.withOpacity(0.25),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      );
+    color: color ?? theme.surfaceRaised,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: theme.border),
+    boxShadow: [
+      BoxShadow(
+        color: AppColors.shadow.withOpacity(0.25),
+        blurRadius: 10,
+        offset: const Offset(0, 6),
+      ),
+    ],
+  );
+
+  static BoxDecoration woodenTable() => BoxDecoration(
+    borderRadius: BorderRadius.circular(radius),
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFF7B4B2A), Color(0xFF5A341D)],
+    ),
+    border: Border.all(color: const Color(0xFF3A2314), width: 2),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(.5),
+        blurRadius: 20,
+        offset: const Offset(0, 12),
+      ),
+    ],
+  );
+
+  static BoxDecoration casinoTable() => BoxDecoration(
+    borderRadius: BorderRadius.circular(radius),
+    gradient: const RadialGradient(
+      center: Alignment.center,
+      radius: 1.2,
+      colors: [
+        Color.fromARGB(255, 25, 89, 54), // bright felt
+        Color(0xFF134B2C), // darker edges
+      ],
+    ),
+    border: Border.all(color: theme.surfaceAlt.withOpacity(.6), width: 2),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(.45),
+        blurRadius: 18,
+        offset: const Offset(0, 10),
+      ),
+      BoxShadow(
+        color: Colors.black.withOpacity(.35),
+        blurRadius: 6,
+        spreadRadius: -4,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  );
+
+  static BoxDecoration premiumGameTable() => BoxDecoration(
+    borderRadius: BorderRadius.circular(radius),
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [theme.surfaceRaised, AppColors.surfaceDeep],
+    ),
+    border: Border.all(color: Colors.black.withOpacity(.35), width: 3),
+    boxShadow: [
+      BoxShadow(
+        color: AppColors.shadow.withOpacity(.5),
+        blurRadius: 25,
+        offset: const Offset(0, 14),
+      ),
+    ],
+  );
+
+  static BoxDecoration playerSectionBox({
+    required Color highlightColor,
+    bool highlight = false,
+    bool joined = true,
+  }) {
+    return BoxDecoration(
+      color: joined
+          ? (highlight ? AppColors.background : AppColors.surface)
+          : AppColors.charcoal.withOpacity(0.1),
+
+      borderRadius: BorderRadius.circular(radius),
+
+      border: Border.all(
+        color: highlight
+            ? highlightColor.withOpacity(.75)
+            : AppColors.surfaceAlt.withOpacity(.55),
+        width: highlight ? 2 : 1,
+      ),
+
+      boxShadow: highlight
+          ? [
+              BoxShadow(
+                color: highlightColor.withOpacity(.25),
+                blurRadius: 14,
+                spreadRadius: 1,
+                offset: const Offset(0, 4),
+              ),
+            ]
+          : [
+              BoxShadow(
+                color: AppColors.shadow.withOpacity(.25),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+    );
+  }
+
+  static BoxDecoration tableBackground() => BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [AppColors.surfaceDeep, AppColors.background],
+    ),
+  );
+  static BoxDecoration opponentAreaBox() => BoxDecoration(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: AppColors.muted.withOpacity(.45)),
+    boxShadow: [
+      BoxShadow(
+        color: AppColors.shadow.withOpacity(.25),
+        blurRadius: 8,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  );
+
+  /// Optional subtle vignette/glow where cards live (no borders)
+  static BoxDecoration tableInsetGlow() => BoxDecoration(
+    borderRadius: BorderRadius.circular(radius),
+    gradient: RadialGradient(
+      center: Alignment.center,
+      radius: 1.1,
+      colors: [AppColors.surfaceAlt.withOpacity(.12), Colors.transparent],
+    ),
+  );
 
   static TextStyle title = const TextStyle(
     color: AppColors.textPrimary,
@@ -93,44 +234,14 @@ class AppStyles {
     fontSize: 12,
   );
 }
-CupertinoThemeData buildCasinoCupertinoTheme() {
-  return const CupertinoThemeData(
+
+CupertinoThemeData buildCupertinoTheme() {
+  final t = AppStyle.theme;
+
+  return CupertinoThemeData(
     brightness: Brightness.dark,
-
-    // This controls filled buttons, switches, etc.
-    primaryColor: AppColors.surfaceAlt,
-
-    scaffoldBackgroundColor: AppColors.background,
-    barBackgroundColor: AppColors.surface,
-
-    // You can also set "primaryContrastingColor" if needed
-    // primaryContrastingColor: AppColors.textPrimary,
-
-    textTheme: CupertinoTextThemeData(
-      primaryColor: AppColors.textPrimary,
-
-      textStyle: TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 16,
-      ),
-
-      navTitleTextStyle: TextStyle(
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.w700,
-        fontSize: 20,
-      ),
-
-      navLargeTitleTextStyle: TextStyle(
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.w800,
-        fontSize: 32,
-      ),
-
-      actionTextStyle: TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
+    primaryColor: t.surfaceAlt,
+    scaffoldBackgroundColor: t.background,
+    barBackgroundColor: t.surface,
   );
 }

@@ -31,146 +31,165 @@ class PlayerAreaState extends State<PlayerArea> {
 
     if (waitingForDeal) {
       pillText = vm.isController ? "DEAL NEXT" : "WAITING DEAL";
-      pillColor = AppColors.surfaceAlt;
+      pillColor = AppStyles.theme.surfaceAlt;
     } else if (status == RoundStatus.playing) {
       pillText = isTurn ? "YOUR TURN" : "WAITING";
-      pillColor = isTurn ? AppColors.accentGreen : AppColors.surfaceAlt;
+      pillColor = isTurn ? AppColors.accentGreen : AppStyles.theme.surfaceAlt;
     } else if (status == RoundStatus.completed) {
       pillText = "ROUND COMPLETE";
       pillColor = AppColors.accentRed;
     } else if (status == RoundStatus.dealing) {
       pillText = "DEALING";
-      pillColor = AppColors.surfaceAlt;
+      pillColor = AppStyles.theme.surfaceAlt;
     } else {
       pillText = "WAITING PLAYERS";
-      pillColor = AppColors.muted;
+      pillColor = AppStyles.theme.muted;
     }
 
     final highlightTurn = vm.currentTurn;
+    bool opponentJoined = vm.opp != null && vm.opp != "";
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: highlightTurn ? AppColors.background : AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: highlightTurn
-              ? AppColors.accentGreen.withOpacity(0.75)
-              : AppColors.surfaceAlt.withOpacity(0.1),
-          width: highlightTurn ? 2 : 1,
-        ),
+      padding: const EdgeInsets.all(8),
+      decoration: AppStyle.theme.playerSectionBox(
+        highlightColor: AppColors.accentGreen,
+        highlight: highlightTurn,
+        joined: opponentJoined,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        alignment: Alignment.bottomRight,
         children: [
-          Opacity(
-            opacity: highlightTurn ? 1 : 0.5,
-            child: _buildPlayControls(context, vm),
-          ),
-          const SizedBox(height: 10),
-          Opacity(
-            opacity: highlightTurn ? 1 : 0.5,
-            child: SizedBox(
-              height: 140,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minWidth: constraints.maxWidth,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: vm.pHandCards.map((c) {
-                          final isSelected = vm.selectedCard == c;
-
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: GestureDetector(
-                              onTap: () => vm.selectCard(c),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 150),
-                                transform: isSelected
-                                    ? Matrix4.translationValues(0, -12, 0)
-                                    : Matrix4.identity(),
-                                child: PlayingCard(
-                                  playingCardModel: c,
-                                  width: 80,
-                                  isSelected: isSelected,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  // Text("Your Hand", style: AppStyles.title),
-                  // const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: pillColor.withOpacity(0.18),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: pillColor.withOpacity(0.40)),
-                    ),
-                    child: Text(
-                      pillText,
-                      style: AppStyles.muted.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
+              Opacity(
+                opacity: highlightTurn ? 1 : 0.5,
+                child: _buildPlayControls(context, vm),
               ),
-              CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () {
-                  HapticFeedback.mediumImpact();
-                  _showGameStatusPopup(context, vm);
-                },
+              const SizedBox(height: 10),
+              Opacity(
+                opacity: highlightTurn ? 1 : 0.5,
+                child: SizedBox(
+                  height: 130,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: constraints.maxWidth,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: vm.pHandCards.map((c) {
+                              final isSelected = vm.selectedCard == c;
 
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: pillColor.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: pillColor),
-                  ),
-                  child: Text(
-                    "My Score: ${vm.g?.scores[vm.me] ?? 0}",
-                    style: AppStyles.muted.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 10),
+                                child: GestureDetector(
+                                  onTap: () => vm.selectCard(c),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 150),
+                                    transform: isSelected
+                                        ? Matrix4.translationValues(0, -12, 0)
+                                        : Matrix4.identity(),
+                                    child: PlayingCard(
+                                      playingCardModel: c,
+                                      width: 80,
+                                      isSelected: isSelected,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
 
-              PlayersDeck(cards: vm.pCollectedCards, me: true, extraPoints:  vm.myExtraPoints),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: pillColor.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: pillColor.withOpacity(0.40),
+                          ),
+                        ),
+                        child: Text(
+                          pillText,
+                          style: AppStyles.theme.mutedText.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppStyles.theme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          _showGameStatusPopup(context, vm);
+                        },
+
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: pillColor.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: pillColor),
+                          ),
+                          child: Text(
+                            "My Score: ${vm.g?.scores[vm.me] ?? 0}",
+                            style: AppStyles.theme.mutedText.copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppStyles.theme.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Align(
+                      alignment: AlignmentGeometry.centerRight,
+                      child: Text(''),
+                    ),
+                  ),
+                ],
+              ),
             ],
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: PlayersDeck(
+              cards: vm.pCollectedCards,
+              me: true,
+              extraPoints: vm.myExtraPoints,
+            ),
           ),
         ],
       ),
@@ -245,7 +264,7 @@ class PlayerAreaState extends State<PlayerArea> {
       height: 42,
       child: CupertinoButton(
         padding: EdgeInsets.zero,
-        color: AppColors.surface,
+        color: AppStyles.theme.surface,
         borderRadius: BorderRadius.circular(12),
         onPressed: () => _showControlsLegendPopup(context),
         child: const Icon(CupertinoIcons.info),

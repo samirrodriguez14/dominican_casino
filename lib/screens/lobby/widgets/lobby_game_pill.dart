@@ -51,13 +51,13 @@ class LobbyGamePill extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(title, style: AppStyles.title),
+                    Text(title, style: AppStyles.theme.title),
                     const SizedBox(width: 8),
                     _StatusChip(text: statusText, isFull: statusIsFull),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(subtitle, style: AppStyles.muted),
+                Text(subtitle, style: AppStyles.theme.mutedText),
               ],
             ),
           ),
@@ -73,7 +73,7 @@ class LobbyGamePill extends StatelessWidget {
                     ? AppColors.cerulean
                     : AppColors.cardBorder,
                 onPressed: onEnter, // null disables
-                child: Text(enterLabel,style: AppStyles.title,)
+                child: Text(enterLabel,style: AppStyles.theme.title,)
               ),
               const SizedBox(width: 8),
               CupertinoButton(

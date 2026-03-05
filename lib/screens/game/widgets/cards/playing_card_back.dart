@@ -34,7 +34,7 @@ class PlayingCardBack extends StatelessWidget {
       ),
       child: (!empty)
           ? Container(
-              decoration: AppStyles.surfaceBox().copyWith(
+              decoration: AppStyles.theme.surfaceBox().copyWith(
                 image: DecorationImage(
                   image: AssetImage('assets/images/logo_card.png'),
                   fit: BoxFit.fitHeight,

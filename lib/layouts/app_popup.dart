@@ -41,9 +41,9 @@ Future<T?> showAppPopup<T>({
                   Text(
                     subtitle,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style:  TextStyle(
                       fontSize: 13,
-                      color: AppColors.surface,
+                      color: AppStyles.theme.surface,
                     ),
                   ),
                 ],

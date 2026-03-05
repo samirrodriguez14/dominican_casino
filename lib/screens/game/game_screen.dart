@@ -93,34 +93,37 @@ class _GameScreenState extends State<GameScreen> {
 
     ///MAIN AREA
     return CupertinoPageScaffold(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              // _buildGameInfoRow(vm),
-              _buildGameTopBar(context, vm),
+      child: DecoratedBox(
+        decoration: AppStyle.theme.tableBackground(),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                // _buildGameInfoRow(vm),
+                _buildGameTopBar(context, vm),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-              //Opponets area
-              const OpponentArea(),
+                //Opponets area
+                const OpponentArea(),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-              // Main table area (playing area)
-              Expanded(child: PlayingArea()),
+                // Main table area (playing area)
+                Expanded(child: PlayingArea()),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-              // Player Area
-              PlayerArea(),
+                // Player Area
+                PlayerArea(),
 
-              // const SizedBox(height: 10),
+                // const SizedBox(height: 10),
 
-              // // DeckArea area:
-              // _buildDeckRow(vm),
-            ],
+                // // DeckArea area:
+                // _buildDeckRow(vm),
+              ],
+            ),
           ),
         ),
       ),
@@ -137,7 +140,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildGameTopBar(BuildContext context, RoomViewModel vm) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: AppStyles.raisedSurfaceBox(),
+      decoration: AppStyle.theme.raisedSurfaceBox(),
       child: Row(
         children: [
           // Left: Room
@@ -146,7 +149,7 @@ class _GameScreenState extends State<GameScreen> {
               alignment: Alignment.centerLeft,
               child: Text(
                 "Room: ${vm.gameId ?? "-"}",
-                style: AppStyles.body,
+                style: AppStyle.theme.body,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -157,7 +160,7 @@ class _GameScreenState extends State<GameScreen> {
             child: Center(
               child: Text(
                 "You: ${vm.joinedAsPlayer}",
-                style: AppStyles.body,
+                style: AppStyle.theme.body,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -182,7 +185,7 @@ class _GameScreenState extends State<GameScreen> {
                   children: [
                     Icon(Icons.close, color: AppColors.accentRed, size: 18),
                     const SizedBox(width: 6),
-                    Text("Leave", style: AppStyles.body),
+                    Text("Leave", style: AppStyles.theme.body),
                   ],
                 ),
               ),
@@ -192,7 +195,6 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
   }
-
 
   ///POPUP HELPERS START
   ///--------------------

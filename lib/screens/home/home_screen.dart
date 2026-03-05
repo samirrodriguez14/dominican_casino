@@ -26,7 +26,7 @@ class HomeScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 28),
               child: Container(
-                decoration: AppStyles.raisedSurfaceBox(),
+                decoration: AppStyles.theme.raisedSurfaceBox(),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -35,7 +35,7 @@ class HomeScreen extends StatelessWidget {
                     /// ---- TITLE ----
                     Text(
                       "Dominican Casino",
-                      style: AppStyles.title.copyWith(fontSize: 36),
+                      style: AppStyles.theme.title.copyWith(fontSize: 36),
                     ),
 
                     const SizedBox(height: 10),
@@ -44,7 +44,7 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(playerId, style: AppStyles.body),
+                        Text(playerId, style: AppStyles.theme.body),
                         const SizedBox(width: 6),
                         const Icon(
                           CupertinoIcons.pencil,

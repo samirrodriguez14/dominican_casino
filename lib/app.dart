@@ -5,6 +5,7 @@ import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/screens/home/home_screen.dart';
 import 'package:dominican_casino/screens/lobby/lobby_screen.dart';
 import 'package:dominican_casino/screens/game/game_screen.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
@@ -68,9 +69,9 @@ class App extends StatelessWidget {
     return CupertinoApp.router(
       title: 'Dominican Casino',
       routerConfig: router,
-      theme: buildCasinoCupertinoTheme(),
+      theme: buildCupertinoTheme(),
       builder: (context, child) {
-        return Material(color: AppColors.background, child: child!);
+        return Material(color: AppStyle.theme.background, child: child!);
       },
     );
   }

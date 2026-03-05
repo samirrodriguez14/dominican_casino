@@ -920,7 +920,9 @@ class RoomViewModel extends ChangeNotifier {
       final t = possibleTotals(selectedCards);
       final next = <int>{};
       for (final a in totals) {
-        for (final b in t) next.add(a + b);
+        for (final b in t) {
+          next.add(a + b);
+        }
       }
       totals = next;
     }
@@ -939,7 +941,9 @@ class RoomViewModel extends ChangeNotifier {
       final vals = possibleCardValues(selectedCard);
       final next = <int>{};
       for (final a in totals) {
-        for (final v in vals) next.add(a + v);
+        for (final v in vals) {
+          next.add(a + v);
+        }
       }
       totals = next;
     }

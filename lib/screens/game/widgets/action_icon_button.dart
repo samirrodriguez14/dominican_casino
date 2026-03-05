@@ -39,7 +39,7 @@ class ActionControlButton extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   label,
-                  style: AppStyles.body.copyWith(
+                  style: AppStyles.theme.body.copyWith(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: fg,

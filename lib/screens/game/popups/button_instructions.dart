@@ -81,9 +81,9 @@ class _LegendRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppStyles.title.copyWith(fontSize: 14)),
+                Text(title, style: AppStyles.theme.title.copyWith(fontSize: 14)),
                 const SizedBox(height: 2),
-                Text(desc, style: AppStyles.muted),
+                Text(desc, style: AppStyles.theme.mutedText),
               ],
             ),
           ),

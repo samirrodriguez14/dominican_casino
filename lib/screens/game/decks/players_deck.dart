@@ -28,7 +28,7 @@ class PlayersDeck extends StatelessWidget {
       },
       child: Container(
         padding: const EdgeInsets.all(4),
-        decoration: AppStyles.raisedSurfaceBox(),
+        decoration: AppStyles.theme.raisedSurfaceBox(),
         child: Column(
           children: [
             Row(

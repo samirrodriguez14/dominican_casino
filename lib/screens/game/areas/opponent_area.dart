@@ -26,37 +26,68 @@ class OpponentAreaState extends State<OpponentArea> {
 
   @override
   Widget build(BuildContext context) {
-    bool oppoentJoined = opp != null && opp != "";
-
+    bool opponentJoined = opp != null && opp != "";
+    final pillColor = highlightTurn
+        ? AppColors.accentGreen.withOpacity(0.75)
+        : AppColors.surfaceAlt.withOpacity(0.55);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: (oppoentJoined)
-            ? AppColors.surface
-            : AppColors.charcoal.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: highlightTurn
-              ? AppColors.accentGreen.withOpacity(0.75)
-              : AppColors.surfaceAlt.withOpacity(0.55),
-          width: highlightTurn ? 2 : 1,
-        ),
+      decoration: AppStyle.theme.playerSectionBox(
+        highlightColor: AppColors.accentGreen,
+        highlight: highlightTurn,
+        joined: opponentJoined,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                oppoentJoined ? "Opponent ($opp)" : "Waiting for opponent...",
-                style: AppStyles.muted,
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    opponentJoined ? "Id ($opp)" : "Waiting for opponent...",
+                    style: AppStyle.theme.mutedText,
+                  ),
+                ),
               ),
-              Center(child: Text("$score")),
+
+              Expanded(
+                child: Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: pillColor.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: pillColor),
+                    ),
+                    child: Text(
+                      "Opp score: $score",
+                      style: AppStyle.theme.mutedText.copyWith(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text("", style: AppStyle.theme.mutedText),
+                ),
+              ),
             ],
           ),
           Stack(
-            alignment: Alignment.centerRight,
+            alignment: Alignment.topRight,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

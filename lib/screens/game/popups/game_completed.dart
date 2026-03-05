@@ -49,7 +49,7 @@ class GameCompletedContent extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: highlight ? FontWeight.w800 : FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: AppStyles.theme.textPrimary,
             ),
           ),
         ),
@@ -58,7 +58,7 @@ class GameCompletedContent extends StatelessWidget {
           style: TextStyle(
             fontSize: 18,
             fontWeight: highlight ? FontWeight.w900 : FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: AppStyles.theme.textPrimary,
           ),
         ),
       ],
@@ -90,27 +90,27 @@ class GameCompletedContent extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: AppStyles.theme.background,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Game Over',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: AppStyles.theme.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 'Winner: $winnerLabel',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: AppStyles.theme.textPrimary,
                 ),
               ),
               const SizedBox(height: 12),
@@ -123,10 +123,10 @@ class GameCompletedContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        const Text(
+         Text(
           'You can leave the room or start a new game.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: AppColors.muted),
+          style: TextStyle(fontSize: 12, color: AppStyles.theme.muted),
         ),
       ],
     );

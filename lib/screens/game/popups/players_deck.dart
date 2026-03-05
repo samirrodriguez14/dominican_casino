@@ -29,22 +29,22 @@ class CollectedCardsStrip extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: AppStyles.raisedSurfaceBox(),
+      decoration: AppStyles.theme.raisedSurfaceBox(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              Text(title, style: AppStyles.title),
+              Text(title, style: AppStyles.theme.title),
               const Spacer(),
-              if (showCount) Text('${cards.length}', style: AppStyles.body),
+              if (showCount) Text('${cards.length}', style: AppStyles.theme.body),
             ],
           ),
           const SizedBox(height: 10),
 
           if (cards.isEmpty)
-            Text(emptyText, style: AppStyles.body)
+            Text(emptyText, style: AppStyles.theme.body)
           else
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxHeight ?? (h + 12)),

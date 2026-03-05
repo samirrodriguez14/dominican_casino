@@ -62,7 +62,7 @@ class DealAnimator {
       entry = OverlayEntry(
         builder: (_) => AnimatedBuilder(
           animation: controller,
-          builder: (_, __) {
+          builder: (_, _) {
             final p = pos.value;
             return Positioned(
               left: p.dx - cardWidth / 2,
@@ -104,15 +104,15 @@ class _CardBack extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppStyles.theme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.surfaceAlt, width: 1),
+        border: Border.all(color: AppStyles.theme.surfaceAlt, width: 1),
       ),
       alignment: Alignment.center,
       child: Text(
         'DC',
         style: TextStyle(
-          color: AppColors.textPrimary,
+          color: AppStyles.theme.textPrimary,
           fontWeight: FontWeight.w900,
         ),
       ),

@@ -71,10 +71,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   color: AppColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(12),
                   onPressed: vm.loading ? null : () => vm.createGame(),
-                  child: const Text(
+                  child:  Text(
                     "Create Game",
                     style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: AppStyle.theme.textPrimary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -115,7 +115,7 @@ Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Text("No games yet", style: AppStyles.muted),
+        child: Text("No games yet", style: AppStyles.theme.mutedText),
       ),
     );
   }

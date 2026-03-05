@@ -5,11 +5,15 @@ import 'package:dominican_casino/firebase_options.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
+import 'package:dominican_casino/style/casino_theme.dart';
+import 'package:dominican_casino/style/theme_data.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
+  AppStyle.theme = CasinoTheme();
+
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp(
@@ -18,6 +22,7 @@ void main() async {
   } catch (e) {
     devloper.log("Eror initializing Firebase");
   }
+
   runApp(
     MultiProvider(
       providers: [
@@ -33,6 +38,7 @@ void main() async {
           },
         ),
       ],
+
       child: App(),
     ),
   );

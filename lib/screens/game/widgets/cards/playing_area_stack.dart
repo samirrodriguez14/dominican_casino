@@ -45,14 +45,13 @@ class PlayingAreaStack extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
+        duration:  Duration(milliseconds: 140),
         curve: Curves.easeOut,
         width: totalWidth,
         height: height,
         decoration: BoxDecoration(
-          color: AppColors.separator,
+          color: AppStyles.theme.background,
           borderRadius: BorderRadius.circular(14),
-          // border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: [
             if (isSelected)
               BoxShadow(
@@ -101,8 +100,8 @@ class PlayingAreaStack extends StatelessWidget {
                 ),
                 child: Text(
                   '${stack.paired ? "P" : ''} ${stack.stackValue}',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style:  TextStyle(
+                    color: AppStyles.theme.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
@@ -129,10 +128,10 @@ class PlayingAreaStack extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child:  Icon(
                     Icons.check,
                     size: 14,
-                    color: AppColors.textPrimary,
+                    color: AppStyles.theme.textPrimary,
                   ),
                 ),
               ),
