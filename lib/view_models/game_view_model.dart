@@ -50,8 +50,8 @@ class RoomViewModel extends ChangeNotifier {
       bothPlayersReady;
 
   bool get bothPlayersJoined =>
-      _gameRepo.gameState?.player1 != "" &&
-      _gameRepo.gameState?.player2 != "";
+      _gameRepo.gameState?.player1 != "" && _gameRepo.gameState?.player2 != "";
+
   String? get playerId => _appRepo.player?.id;
 
   String? get gameId => _appRepo.currentGameId;
@@ -291,13 +291,6 @@ class RoomViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void performTakeFromTable(PlayingCardModel takingCard) {
-    if (selectedCard == null) return;
-    takeCardAction(selectedCard!, takingCard); // pass card
-    selectedCard = null;
-    notifyListeners();
-  }
-
   void performStackSelectedCards() {
     final id = Uuid().v4().substring(0, 8);
 
@@ -315,7 +308,7 @@ class RoomViewModel extends ChangeNotifier {
       );
 
       final chosen = pickTargetValue(totals, max: 14);
-      if (chosen == null) return; // no valid <= 14
+      if (chosen == null) return;
 
       final stack = PlayingAreaStackModel(
         id: id,
@@ -551,6 +544,17 @@ class RoomViewModel extends ChangeNotifier {
       takeStackAction(selectedStacks[0], selectedCard!);
     } else if (selectedCards.length == 1) {
       takeCardAction(selectedCard!, selectedCards[0]);
+    } else if (selectedCards.length > 1) {
+      //Create stack of selected cards and takestackaction
+      if (possibleTotals(selectedCards).contains(selectedCard!.valueHigh)) {
+        final id = Uuid().v4();
+        final stack = PlayingAreaStackModel(
+          id: id,
+          cards: selectedCards,
+          targetValue: selectedCard!.valueHigh,
+        );
+        takeStackAction(stack, selectedCard!);
+      }
     }
     selectedCard = null;
     selectedCards = [];
