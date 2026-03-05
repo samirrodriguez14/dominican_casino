@@ -14,6 +14,7 @@ class OpponentArea extends StatefulWidget {
 
 class OpponentAreaState extends State<OpponentArea> {
   bool get highlightTurn => context.select((RoomViewModel vm) => vm.isOppTurn);
+  String? get opp => context.select((RoomViewModel vm) => vm.opp);
   int get deckCount =>
       context.select((RoomViewModel vm) => vm.oppHandCardsTotal);
   List<PlayingCardModel> get collectedCards =>
@@ -21,11 +22,15 @@ class OpponentAreaState extends State<OpponentArea> {
 
   @override
   Widget build(BuildContext context) {
+    bool oppoentJoined = opp != null && opp != "";
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: (oppoentJoined)
+            ? AppColors.surface
+            : AppColors.charcoal.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: highlightTurn
@@ -37,7 +42,12 @@ class OpponentAreaState extends State<OpponentArea> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Opponent's hand", style: AppStyles.muted),
+          Text(
+            oppoentJoined
+                ? "Opponent ($opp)"
+                : "Waiting for opponent...",
+            style: AppStyles.muted,
+          ),
           Stack(
             alignment: Alignment.centerRight,
             children: [

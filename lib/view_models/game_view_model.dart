@@ -5,6 +5,7 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 enum Actions { take, play, add, stack }
@@ -44,15 +45,16 @@ class RoomViewModel extends ChangeNotifier {
   ///START GETTERS
   ///
   bool get canStart =>
-      (bothPlayersJoined && isController) &&
-      ((g?.started ?? false) || (handsEmpty));
+      (bothPlayersJoined && isController) && g?.started ==false ;
 
   bool get canRedeal =>
       ((g?.started ?? false) && isController) &&
       (canStartNextRound || handsEmpty);
+  bool get waitingControllerDeal => ( ((g?.started ?? false) && !isController) &&
+      (canStartNextRound || handsEmpty));
+  bool get controlGame => canStart || canRedeal || opp == "" || g==null || waitingControllerDeal;
 
-  bool get controlGame => canStart || canRedeal;
-
+  String get controllText => "";
   bool get isController =>
       g != null && me != null ? g!.controllerId == me : false;
 
@@ -63,7 +65,8 @@ class RoomViewModel extends ChangeNotifier {
       bothPlayersReady;
 
   bool get bothPlayersJoined =>
-      _gameRepo.gameState?.player1 != "" && _gameRepo.gameState?.player2 != "";
+      _gameRepo.gameState?.player1 != "" 
+      && _gameRepo.gameState?.player2 != "";
 
 
   String? get me => _appRepo.player?.id;
@@ -204,7 +207,7 @@ class RoomViewModel extends ChangeNotifier {
         bothPlayersReady = false;
         showRoundCompletePopup = false;
       }
-
+      HapticFeedback.mediumImpact();
       cancelSelection();
     } catch (e) {
       _appRepo.leaveGame();

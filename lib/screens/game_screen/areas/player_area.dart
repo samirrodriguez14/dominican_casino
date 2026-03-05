@@ -24,7 +24,7 @@ class PlayerAreaState extends State<PlayerArea> {
   Widget build(BuildContext context) {
     final isTurn = vm.currentTurn;
     final status = vm.roundStatus;
-    final waitingForDeal = vm.handsEmpty; 
+    final waitingForDeal = vm.handsEmpty;
 
     String pillText;
     Color pillColor;
@@ -46,7 +46,7 @@ class PlayerAreaState extends State<PlayerArea> {
       pillColor = AppColors.muted;
     }
 
-    final highlightTurn =vm.currentTurn;
+    final highlightTurn = vm.currentTurn;
 
     return Container(
       width: double.infinity,
@@ -57,52 +57,58 @@ class PlayerAreaState extends State<PlayerArea> {
         border: Border.all(
           color: highlightTurn
               ? AppColors.accentGreen.withOpacity(0.75)
-              : AppColors.surfaceAlt.withOpacity(0.55),
+              : AppColors.surfaceAlt.withOpacity(0.1),
           width: highlightTurn ? 2 : 1,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildPlayControls(context, vm),
-
+          Opacity(
+            opacity: highlightTurn ? 1 : 0.5,
+            child: _buildPlayControls(context, vm),
+          ),
           const SizedBox(height: 10),
+          Opacity(
+            opacity: highlightTurn ? 1 : 0.5,
+            child: SizedBox(
+              height: 140,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: vm.pHandCards.map((c) {
+                          final isSelected = vm.selectedCard == c;
 
-          SizedBox(
-            height: 140,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: vm.pHandCards.map((c) {
-                        final isSelected = vm.selectedCard == c;
-
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: GestureDetector(
-                            onTap: () => vm.selectCard(c),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              transform: isSelected
-                                  ? Matrix4.translationValues(0, -12, 0)
-                                  : Matrix4.identity(),
-                              child: PlayingCard(
-                                playingCardModel: c,
-                                width: 80,
-                                isSelected: isSelected,
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: GestureDetector(
+                              onTap: () => vm.selectCard(c),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                transform: isSelected
+                                    ? Matrix4.translationValues(0, -12, 0)
+                                    : Matrix4.identity(),
+                                child: PlayingCard(
+                                  playingCardModel: c,
+                                  width: 80,
+                                  isSelected: isSelected,
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
+                          );
+                        }).toList(),
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
 
@@ -188,7 +194,6 @@ class PlayerAreaState extends State<PlayerArea> {
           label: "Play",
           enabled: vm.canPlay(),
           onTap: () {
-            HapticFeedback.mediumImpact();
             vm.performPlayOnTable();
           },
         ),
@@ -203,7 +208,6 @@ class PlayerAreaState extends State<PlayerArea> {
               : "Take",
           enabled: vm.canTake(),
           onTap: () {
-            HapticFeedback.mediumImpact();
             vm.performTakeCards();
           },
         ),
@@ -214,7 +218,6 @@ class PlayerAreaState extends State<PlayerArea> {
           label: "Add",
           enabled: vm.canAdd(),
           onTap: () {
-            HapticFeedback.mediumImpact();
             vm.performStackSelectedCards();
           },
         ),
@@ -225,7 +228,6 @@ class PlayerAreaState extends State<PlayerArea> {
           label: "+Pair",
           enabled: vm.canAddAndPair(),
           onTap: () {
-            HapticFeedback.mediumImpact();
             vm.performStackAndPairSelectedCards();
           },
         ),
@@ -236,7 +238,6 @@ class PlayerAreaState extends State<PlayerArea> {
           label: "Pair",
           enabled: vm.canPair(),
           onTap: () {
-            HapticFeedback.mediumImpact();
             vm.performPairSelectedCards();
           },
         ),
