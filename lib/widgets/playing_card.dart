@@ -9,7 +9,6 @@ class PlayingCard extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isSelected;
 
-  // NEW: customize selection look if you want
   final Color? selectedBorderColor;
   final double selectedBorderWidth;
 
@@ -31,7 +30,6 @@ class PlayingCard extends StatelessWidget {
 
     final height = width * 1.4;
 
-    // pick a selection color that fits your theme
     final sel = selectedBorderColor ?? AppColors.accentGreen;
 
     return GestureDetector(

@@ -4,7 +4,7 @@ import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/screens/home_screen.dart';
 import 'package:dominican_casino/screens/lobby_screen.dart';
-import 'package:dominican_casino/screens/game_screen.dart';
+import 'package:dominican_casino/screens/game_screen/game_screen.dart';
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';

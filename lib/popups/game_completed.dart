@@ -67,11 +67,11 @@ class GameCompletedContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = vm.currentGame;
+    final g = vm.g;
     if (g == null) return const SizedBox.shrink();
 
-    final me = vm.playerId;
-    final opp = vm.opponentId;
+    final me = vm.me;
+    final opp = vm.opp;
 
     final scores = g.scores; // Map<String, dynamic>?
     final winnerId = g.winnerId; // String?

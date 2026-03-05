@@ -14,6 +14,7 @@ class LobbyViewModel extends ChangeNotifier {
   StreamSubscription<List<LobbyGame>>? _sub;
 
   List<LobbyGame> games = const [];
+  String? get userId =>_appRepo.player?.id;
   bool loading = true;
   String? error;
 

@@ -15,7 +15,7 @@ class RoomViewModel extends ChangeNotifier {
 
   late final GameRepo _gameRepo;
   late final AppRepo _appRepo;
-  GameState? currentGame;
+  GameState? g;
 
   int roundIndex = 1;
   RoundStatus roundStatus = RoundStatus.playing;
@@ -29,69 +29,84 @@ class RoomViewModel extends ChangeNotifier {
   int? _lastShownCompletedRoundIndex;
   bool showRoundCompletePopup = false;
 
-  List<PlayingCardModel> playerCards = [];
+  int oppHandCardsTotal = 0;
+  List<PlayingCardModel> oppCollectedCards = [];
+
   List<PlayingCardModel> playingAreaCards = [];
   List<PlayingAreaStackModel> playingAreaStacks = [];
-  List<PlayingCardModel> playerDeckCards = [];
+
+  List<PlayingCardModel> pHandCards = [];
+  List<PlayingCardModel> pCollectedCards = [];
 
   ///
   ///END VAR DECLARATION
 
   ///START GETTERS
   ///
-  bool get isController => currentGame != null && playerId != null
-      ? currentGame!.controllerId == playerId
-      : false;
+  bool get canStart =>
+      (bothPlayersJoined && isController) &&
+      ((g?.started ?? false) || (handsEmpty));
+
+  bool get canRedeal =>
+      ((g?.started ?? false) && isController) &&
+      (canStartNextRound || handsEmpty);
+
+  bool get controlGame => canStart || canRedeal;
+
+  bool get isController =>
+      g != null && me != null ? g!.controllerId == me : false;
 
   bool get canStartNextRound =>
-      currentGame != null &&
-      currentGame!.started &&
+      g != null &&
+      g!.started &&
       roundStatus == RoundStatus.completed &&
       bothPlayersReady;
 
   bool get bothPlayersJoined =>
       _gameRepo.gameState?.player1 != "" && _gameRepo.gameState?.player2 != "";
 
-  String? get playerId => _appRepo.player?.id;
+
+  String? get me => _appRepo.player?.id;
+
+  String? get opp {
+    if (g == null) return null;
+    return joinedAsPlayer == 'player1' ? g!.player2 : g!.player1;
+  }
 
   String? get gameId => _appRepo.currentGameId;
 
   bool get currentTurn {
-    final g = currentGame;
-    final me = playerId;
-    return g != null && me != null && g.currentTurnPlayerId == me;
+    return g != null &&
+        me != null &&
+        g!.currentTurnPlayerId == me &&
+        !handsEmpty &&
+        roundStatus == RoundStatus.playing;
+  }
+
+  bool get isOppTurn {
+    return g != null &&
+        opp != null &&
+        g!.currentTurnPlayerId == opp &&
+        !handsEmpty &&
+        roundStatus == RoundStatus.playing;
   }
 
   String get joinedAsPlayer {
-    final g = currentGame;
-    final me = playerId;
     if (g == null || me == null) return 'player2';
-    return (me == g.player1) ? 'player1' : 'player2';
-  }
-
-  String? get opponentId {
-    final g = currentGame;
-    if (g == null) return null;
-    return joinedAsPlayer == 'player1' ? g.player2 : g.player1;
+    return (me == g!.player1) ? 'player1' : 'player2';
   }
 
   bool get handsNotNull {
-    final g = currentGame;
-    final me = playerId;
-    final opp = opponentId;
     if (g == null || me == null || opp == null) return false;
 
-    return g.hands[me] != null && g.hands[opp] != null;
+    return g!.hands[me] != null && g!.hands[opp] != null;
   }
 
   bool get handsEmpty {
-    final g = currentGame;
-    final me = playerId;
-    final opp = opponentId;
     if (g == null || me == null || opp == null) return false;
 
-    final myHand = g.hands[me];
-    final oppHand = g.hands[opp];
+    final myHand = g!.hands[me];
+    final oppHand = g!.hands[opp];
 
     return myHand != null &&
         oppHand != null &&
@@ -99,15 +114,12 @@ class RoomViewModel extends ChangeNotifier {
         oppHand.isEmpty;
   }
 
-  bool get playerLeftMidGame =>
-      (currentGame?.player1 == null || currentGame?.player2 == null);
+  bool get playerLeftMidGame => (g?.player1 == null || g?.player2 == null);
 
   ///
   ///END GETTERS
 
-  RoomViewModel({required GameRepo gameRepo, required AppRepo appRepo})
-    : _gameRepo = gameRepo,
-      _appRepo = appRepo {
+  RoomViewModel({required this._gameRepo, required this._appRepo}) {
     _gameRepo.addListener(_onGameRepoChanged);
   }
 
@@ -119,19 +131,33 @@ class RoomViewModel extends ChangeNotifier {
     _gameRepo.listenToGame(id);
   }
 
+  // String _prettyPlayer(String? id) {
+  //   final me = this.me;
+  //   final opp = this.opp;
+
+  //   if (id == null || id.isEmpty) return "-";
+  //   if (me != null && id == me) return "You";
+  //   if (opp != null && id == opp) return "Opponent";
+  //   return id;
+  // }
+
   void _onGameRepoChanged() {
-    currentGame = _gameRepo.gameState;
-    developer.log("GameViewModel. LoadingGameState $playerId");
+    g = _gameRepo.gameState;
+    developer.log("GameViewModel. LoadingGameState $me");
     try {
-      if (currentGame != null && playerId != null) {
-        final g = currentGame!;
-        final me = playerId!;
+      if (g != null && me != null) {
+        final g = this.g!;
+        final me = this.me!;
 
         // existing board state
-        playerDeckCards = g.playersDeck[me] ?? [];
+        pHandCards = g.hands[me] ?? [];
+        pCollectedCards = g.playersDeck[me] ?? [];
+
         playingAreaCards = g.playingArea;
         playingAreaStacks = g.playingAreaStacks;
-        playerCards = g.hands[me] ?? [];
+
+        oppHandCardsTotal = g.hands[opp]?.length ?? 0;
+        oppCollectedCards = g.playersDeck[opp] ?? [];
 
         // round state
         roundIndex = g.roundIndex;
@@ -165,8 +191,8 @@ class RoomViewModel extends ChangeNotifier {
         }
       } else {
         playingAreaCards = [];
-        playerCards = [];
-        playerDeckCards = [];
+        pHandCards = [];
+        pCollectedCards = [];
         playingAreaStacks = [];
 
         roundIndex = 1;
@@ -196,48 +222,48 @@ class RoomViewModel extends ChangeNotifier {
   }
 
   void playAction(PlayingCardModel card) {
-    _gameRepo.makePlay(playerId!, card);
+    _gameRepo.makePlay(me!, card);
   }
 
   void takeCardAction(PlayingCardModel card, PlayingCardModel takingCard) {
-    _gameRepo.takeCard(playerId!, card, takingCard);
+    _gameRepo.takeCard(me!, card, takingCard);
   }
 
   void stackCardsActon(
     PlayingAreaStackModel stack,
     List<String?> cardStackIds,
   ) {
-    _gameRepo.stackCards(playerId!, selectedCard, cardStackIds, stack);
+    _gameRepo.stackCards(me!, selectedCard, cardStackIds, stack);
   }
 
   void pairCardsAction(PlayingAreaStackModel stack, List<String?> cardStackId) {
-    _gameRepo.pairStacks(playerId!, cardStackId, selectedCard, stack);
+    _gameRepo.pairStacks(me!, cardStackId, selectedCard, stack);
   }
 
   void stackAndPairStacks(
     PlayingAreaStackModel stack,
     List<String?> cardStackId,
   ) {
-    _gameRepo.stackAndPairStacks(playerId!, cardStackId, selectedCard, stack);
+    _gameRepo.stackAndPairStacks(me!, cardStackId, selectedCard, stack);
   }
 
   void takeStackAction(PlayingAreaStackModel stack, PlayingCardModel card) {
-    _gameRepo.takeStack(playerId!, stack, card);
+    _gameRepo.takeStack(me!, stack, card);
   }
 
   void addAndTakeCardsAction(
     List<PlayingCardModel> takingCards,
     PlayingCardModel card,
   ) {
-    _gameRepo.addAndTakeCards(playerId!, card, takingCards);
+    _gameRepo.addAndTakeCards(me!, card, takingCards);
   }
 
   Future<void> pressContinue() async {
-    await _gameRepo.setRoundReady(playerId!);
+    await _gameRepo.setRoundReady(me!);
   }
 
   Future<void> startNextRound() async {
-    await _gameRepo.dealNextRound(playerId!);
+    await _gameRepo.dealNextRound(me!);
   }
 
   Future<void> redealSameRound() async {
@@ -245,8 +271,8 @@ class RoomViewModel extends ChangeNotifier {
   }
 
   Future<void> leaveGame() async {
-    if (currentGame != null) {
-      await _gameRepo.leaveGame(playerId!);
+    if (g != null) {
+      await _gameRepo.leaveGame(me!);
       await _gameRepo.endGame();
     }
     _appRepo.leaveGame();
@@ -263,10 +289,10 @@ class RoomViewModel extends ChangeNotifier {
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text("Leave Game?"),
         content: Text(
-          (currentGame == null) ? "Game deleted" : "This will delete the game",
+          (g == null) ? "Game deleted" : "This will delete the game",
         ),
         actions: [
-          if (currentGame != null)
+          if (g != null)
             CupertinoDialogAction(
               onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text("Cancel"),
@@ -274,7 +300,7 @@ class RoomViewModel extends ChangeNotifier {
           CupertinoDialogAction(
             isDestructiveAction: true,
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text((currentGame == null) ? "Lobby" : "Abandon"),
+            child: Text((g == null) ? "Lobby" : "Abandon"),
           ),
         ],
       ),
@@ -426,7 +452,7 @@ class RoomViewModel extends ChangeNotifier {
       final common = intersectAll(sets);
 
       // must also be a value you can "claim" with a card in hand (excluding selectedCard)
-      final handVals = possibleValuesInHand(playerCards, selectedCard);
+      final handVals = possibleValuesInHand(pHandCards, selectedCard);
       final allowed = common.where(handVals.contains).toSet();
 
       final desired = pickPreferred(allowed) ?? pickPreferred(common);
@@ -475,7 +501,7 @@ class RoomViewModel extends ChangeNotifier {
       if (common.isEmpty) return;
 
       // Must have that value in hand (since your rules require holding the pair value)
-      final handVals = possibleValuesInHand(playerCards, null);
+      final handVals = possibleValuesInHand(pHandCards, null);
       final allowed = common.where(handVals.contains).toSet();
       final desired = pickPreferred(allowed);
       if (desired == null) return;
@@ -656,7 +682,7 @@ class RoomViewModel extends ChangeNotifier {
       final cardVals = possibleCardValues(selectedCard!);
 
       // values you have in hand excluding selectedCard (A => {1,14})
-      final handVals = possibleValuesInHand(playerCards, selectedCard);
+      final handVals = possibleValuesInHand(pHandCards, selectedCard);
 
       // Case 1: selectedCard + selectedCards(sum) must equal some other card you have in hand
       if (selectedCards.isNotEmpty && selectedStacks.isEmpty) {
@@ -690,7 +716,7 @@ class RoomViewModel extends ChangeNotifier {
     // selecting multiple table cards to form a stack whose value matches a card you have in hand
     if (selectedCard == null) {
       if (selectedCards.length > 1 && selectedStacks.isEmpty) {
-        final handVals = possibleValuesInHand(playerCards, null);
+        final handVals = possibleValuesInHand(pHandCards, null);
         final totals = possibleTotals(selectedCards);
         return totals.any(handVals.contains);
       }
@@ -702,7 +728,7 @@ class RoomViewModel extends ChangeNotifier {
   bool canAddAndPair() {
     if (selectedCard == null) return false;
 
-    final handVals = possibleValuesInHand(playerCards, selectedCard);
+    final handVals = possibleValuesInHand(pHandCards, selectedCard);
 
     // Base values for the selected card (A => [1,14], else [n])
     final selectedVals = possibleCardValues(selectedCard!);
@@ -746,7 +772,7 @@ class RoomViewModel extends ChangeNotifier {
   }
 
   bool canPair() {
-    final handVals = possibleValuesInHand(playerCards, selectedCard);
+    final handVals = possibleValuesInHand(pHandCards, selectedCard);
 
     if (selectedCard != null) {
       final cardVals = possibleCardValues(selectedCard!);
@@ -777,7 +803,7 @@ class RoomViewModel extends ChangeNotifier {
       if (selectedCards.length < 2 && selectedStacks.isEmpty) return false;
 
       // what values do I have in hand to "claim/pair" later?
-      final handVals = possibleValuesInHand(playerCards, null);
+      final handVals = possibleValuesInHand(pHandCards, null);
 
       // build possible value set per selected item
       final sets = <Set<int>>[];

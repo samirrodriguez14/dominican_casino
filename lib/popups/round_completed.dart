@@ -7,8 +7,8 @@ class RoundCompletedContent extends StatelessWidget {
 
   final RoomViewModel vm;
   String _prettyPlayer(String? id) {
-    final me = vm.playerId;
-    final opp = vm.opponentId;
+    final me = vm.me;
+    final opp = vm.opp;
 
     if (id == null || id.isEmpty) return "-";
     if (me != null && id == me) return "You";
@@ -36,8 +36,8 @@ class RoundCompletedContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final int roundIndex = vm.roundIndex;
 
-    final String player1Id = vm.currentGame?.player1 ?? '';
-    final String player2Id = vm.currentGame?.player2 ?? '';
+    final String player1Id = vm.g?.player1 ?? '';
+    final String player2Id = vm.g?.player2 ?? '';
 
     final Map<String, dynamic> roundScores =
         (vm.roundScores as Map?)?.cast<String, dynamic>() ?? const {};

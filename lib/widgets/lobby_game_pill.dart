@@ -1,75 +1,122 @@
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Icons;
-
 class LobbyGamePill extends StatelessWidget {
   const LobbyGamePill({
     super.key,
-    required this.gameId,
-    required this.player1Id,
-    required this.player2Id,
+    required this.title,
+    required this.subtitle,
+    required this.statusText,
+    required this.statusIsFull,
+    required this.enterEnabled,
+    required this.enterLabel,
     required this.onEnter,
     required this.onDelete,
   });
 
-  final String gameId;
-  final String? player1Id;
-  final String? player2Id;
-  final VoidCallback onEnter;
-  final VoidCallback onDelete;
+  final String title;
+  final String subtitle;
+  final String statusText;
+  final bool statusIsFull;
 
-  bool get hasOpenSlot {
-    final p1 = (player1Id ?? "").trim();
-    final p2 = (player2Id ?? "").trim();
-    return p1.isEmpty || p2.isEmpty;
-  }
+  final bool enterEnabled;
+  final String enterLabel;
+  final VoidCallback? onEnter;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.surface; // or your raisedSurfaceBox
+    final border = AppColors.surfaceAlt;
+
     return Container(
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              gameId,
-              style: AppStyles.body,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
-          // Door (enter) only if there is room (p1 or p2 missing)
-          // if (hasOpenSlot)
-            CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              minSize: 0,
-              onPressed: onEnter,
-              child: const Icon(
-                Icons.login,
-                size: 18,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          // else
-            // tiny placeholder spacing so pills align nicely
-            const SizedBox(width: 34),
-
-          // Delete (x) always available
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            onPressed: onDelete,
-            child: Icon(
-              Icons.close,
-              size: 18,
-              color: AppColors.muted.withOpacity(0.95),
-            ),
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: border.withOpacity(0.6)),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 14,
+            offset: Offset(0, 8),
+            color: Color(0x22000000),
           ),
         ],
+      ),
+      child: Row(
+        children: [
+          // Left text
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(title, style: AppStyles.title),
+                    const SizedBox(width: 8),
+                    _StatusChip(text: statusText, isFull: statusIsFull),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(subtitle, style: AppStyles.muted),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          // Actions
+          Row(
+            children: [
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                color: enterEnabled
+                    ? AppColors.cerulean
+                    : AppColors.cardBorder,
+                onPressed: onEnter, // null disables
+                child: Text(enterLabel,style: AppStyles.title,)
+              ),
+              const SizedBox(width: 8),
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                color: AppColors.accentRed,
+                onPressed: onDelete,
+                child: const Icon(CupertinoIcons.trash, size: 18, color: AppColors.cardBorder,),
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.text, required this.isFull});
+  final String text;
+  final bool isFull;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isFull
+        ? AppColors.accentRed.withOpacity(0.18)
+        : AppColors.accentGreen.withOpacity(0.18);
+    final fg = isFull ? AppColors.accentRed : AppColors.accentGreen;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: fg.withOpacity(0.35)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: fg,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+        ),
       ),
     );
   }

@@ -10,8 +10,8 @@ class GameStatusContent extends StatelessWidget {
   final RoomViewModel vm;
 
   String _prettyPlayer(String? id) {
-    final me = vm.playerId;
-    final opp = vm.opponentId;
+    final me = vm.me;
+    final opp = vm.opp;
 
     if (id == null || id.isEmpty) return "-";
     if (me != null && id == me) return "You";
@@ -21,9 +21,9 @@ class GameStatusContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = vm.currentGame;
-    final me = vm.playerId;
-    final opp = vm.opponentId;
+    final g = vm.g;
+    final me = vm.me;
+    final opp = vm.opp;
 
     // same rule you already use
     final Map<String, dynamic>? totalScore = g?.scores;
