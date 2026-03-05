@@ -1,6 +1,6 @@
 import 'package:dominican_casino/models/lobby_game.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
-import 'package:dominican_casino/widgets/lobby_game_pill.dart';
+import 'package:dominican_casino/screens/lobby/widgets/lobby_game_pill.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart' show ReadContext, WatchContext;

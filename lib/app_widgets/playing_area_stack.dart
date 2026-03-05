@@ -1,6 +1,6 @@
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/style/theme_data.dart';
-import 'package:dominican_casino/widgets/playing_card.dart';
+import 'package:dominican_casino/screens/game/widgets/cards/playing_card.dart';
 import 'package:flutter/material.dart';
 
 class PlayingAreaStack extends StatelessWidget {

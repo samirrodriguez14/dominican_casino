@@ -1,8 +1,8 @@
 import 'package:dominican_casino/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/popups/players_deck.dart';
-import 'package:dominican_casino/screens/game_screen/widgets/playing_card_back.dart';
-import 'package:dominican_casino/screens/game_screen/widgets/playing_card_extra_points.dart';
+import 'package:dominican_casino/screens/game/popups/players_deck.dart';
+import 'package:dominican_casino/screens/game/widgets/cards/playing_card_back.dart';
+import 'package:dominican_casino/screens/game/widgets/cards/playing_card_extra_points.dart';
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';

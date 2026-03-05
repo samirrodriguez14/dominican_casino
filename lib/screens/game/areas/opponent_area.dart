@@ -1,6 +1,6 @@
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/screens/game_screen/decks/players_deck.dart';
-import 'package:dominican_casino/screens/game_screen/widgets/playing_card_back.dart';
+import 'package:dominican_casino/screens/game/decks/players_deck.dart';
+import 'package:dominican_casino/screens/game/widgets/cards/playing_card_back.dart';
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -17,6 +17,8 @@ class OpponentAreaState extends State<OpponentArea> {
   String? get opp => context.select((RoomViewModel vm) => vm.opp);
   int get deckCount =>
       context.select((RoomViewModel vm) => vm.oppHandCardsTotal);
+  int get score => context.select((RoomViewModel vm) => vm.oppScore);
+
   int get extraPoints =>
       context.select((RoomViewModel vm) => vm.oppExtraPoints);
   List<PlayingCardModel> get collectedCards =>
@@ -44,11 +46,14 @@ class OpponentAreaState extends State<OpponentArea> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            oppoentJoined
-                ? "Opponent ($opp)"
-                : "Waiting for opponent...",
-            style: AppStyles.muted,
+          Row(
+            children: [
+              Text(
+                oppoentJoined ? "Opponent ($opp)" : "Waiting for opponent...",
+                style: AppStyles.muted,
+              ),
+              Center(child: Text("$score")),
+            ],
           ),
           Stack(
             alignment: Alignment.centerRight,
@@ -63,7 +68,11 @@ class OpponentAreaState extends State<OpponentArea> {
                   ),
                 ),
               ),
-              PlayersDeck(cards: collectedCards, me: false, extraPoints: extraPoints,),
+              PlayersDeck(
+                cards: collectedCards,
+                me: false,
+                extraPoints: extraPoints,
+              ),
             ],
           ),
         ],

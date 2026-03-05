@@ -81,6 +81,8 @@ class RoomViewModel extends ChangeNotifier {
     return joinedAsPlayer == 'player1' ? g!.player2 : g!.player1;
   }
 
+  int get oppScore => g == null ? 0 : g!.scores[opp] ?? 0;
+
   String? get gameId => _appRepo.currentGameId;
 
   bool get currentTurn {
