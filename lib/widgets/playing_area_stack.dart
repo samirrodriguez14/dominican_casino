@@ -3,7 +3,6 @@ import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/widgets/playing_card.dart';
 import 'package:flutter/material.dart';
 
-
 class PlayingAreaStack extends StatelessWidget {
   final PlayingAreaStackModel stack;
 
@@ -30,19 +29,17 @@ class PlayingAreaStack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final height = cardWidth * 1.4;
-
+    final stackColor = stack.paired
+        ? AppColors.cerulean
+        : (AppColors.accentGreen);
     // Total width for N overlapped cards
     final totalWidth = stack.cards.isEmpty
         ? cardWidth
         : cardWidth + (stack.cards.length - 1) * (cardWidth - overlap);
 
-    final badgeColor = stack.isOverLimit
-        ? AppColors.accentRed
-        : (stack.isValid ? AppColors.accentGreen : AppColors.accentAmber);
+    final badgeColor = stackColor;
 
     // Selection visuals for the whole stack
-    final borderColor = isSelected ? AppColors.accentGreen : AppColors.border;
-    final borderWidth = isSelected ? 2.0 : 1.0;
 
     return GestureDetector(
       onTap: onTap,
@@ -55,11 +52,11 @@ class PlayingAreaStack extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.separator,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: borderColor, width: borderWidth),
+          // border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: AppColors.accentGreen.withOpacity(0.30),
+                color: stackColor.withOpacity(0.60),
                 blurRadius: 18,
                 spreadRadius: 1,
                 offset: const Offset(0, 8),
@@ -79,7 +76,8 @@ class PlayingAreaStack extends StatelessWidget {
                   child: PlayingCard(
                     playingCardModel: stack.cards[i],
                     width: cardWidth,
-                    isSelected: false, // selection is shown on the stack container
+                    isSelected:
+                        false, // selection is shown on the stack container
                   ),
                 ),
               ),
@@ -102,7 +100,7 @@ class PlayingAreaStack extends StatelessWidget {
                   ],
                 ),
                 child: Text(
-                  '${stack.paired? "||":'+'} ${stack.targetValue}',
+                  '${stack.paired ? "P" : ''} ${stack.stackValue}',
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
@@ -121,7 +119,7 @@ class PlayingAreaStack extends StatelessWidget {
                   width: 22,
                   height: 22,
                   decoration: BoxDecoration(
-                    color: AppColors.accentGreen,
+                    color: stackColor,
                     borderRadius: BorderRadius.circular(999),
                     boxShadow: [
                       BoxShadow(

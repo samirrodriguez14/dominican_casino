@@ -1,13 +1,20 @@
 import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 
 class RoundCompletedContent extends StatelessWidget {
-  const RoundCompletedContent({
-    super.key,
-    required this.vm,
-  });
+  const RoundCompletedContent({super.key, required this.vm});
 
-  final dynamic vm;
+  final RoomViewModel vm;
+  String _prettyPlayer(String? id) {
+    final me = vm.playerId;
+    final opp = vm.opponentId;
+
+    if (id == null || id.isEmpty) return "-";
+    if (me != null && id == me) return "You";
+    if (opp != null && id == opp) return "Opponent";
+    return id;
+  }
 
   int _totalFor(Map<String, dynamic> roundScores, String pid) {
     final m = (roundScores[pid] as Map?) ?? const {};
@@ -17,25 +24,26 @@ class RoundCompletedContent extends StatelessWidget {
     return 0;
   }
 
-  Map<String, dynamic> _detailsFor(Map<String, dynamic> roundScores, String pid) {
+  Map<String, dynamic> _detailsFor(
+    Map<String, dynamic> roundScores,
+    String pid,
+  ) {
     final m = (roundScores[pid] as Map?) ?? const {};
     return Map<String, dynamic>.from(m);
   }
 
   @override
   Widget build(BuildContext context) {
-    final int roundIndex = vm.roundIndex as int;
+    final int roundIndex = vm.roundIndex;
 
-    final String player1Id = vm.player1Id as String;
-    final String player2Id = vm.player2Id as String;
+    final String player1Id = vm.currentGame?.player1 ?? '';
+    final String player2Id = vm.currentGame?.player2 ?? '';
 
     final Map<String, dynamic> roundScores =
         (vm.roundScores as Map?)?.cast<String, dynamic>() ?? const {};
 
-    final bool showContinue = (vm.showContinue as bool?) ?? false;
-
-    final String player1Label = (vm.player1Label as String?) ?? 'Player 1';
-    final String player2Label = (vm.player2Label as String?) ?? 'Player 2';
+    final String player1Label = _prettyPlayer(player1Id);
+    final String player2Label = _prettyPlayer(player2Id);
 
     final p1Total = _totalFor(roundScores, player1Id);
     final p2Total = _totalFor(roundScores, player2Id);
@@ -62,8 +70,10 @@ class RoundCompletedContent extends StatelessWidget {
 
     Widget chips(Map<String, dynamic> m) {
       final entries = m.entries
-          .where((e) =>
-              e.key != 'total' && (e.value is num) && (e.value as num) != 0)
+          .where(
+            (e) =>
+                e.key != 'total' && (e.value is num) && (e.value as num) != 0,
+          )
           .toList();
 
       if (entries.isEmpty) {
@@ -126,12 +136,11 @@ class RoundCompletedContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        if (showContinue)
-          Text(
-            'Tap Continue when you’re ready. The controller will start the next round after both players are ready.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.muted),
-          ),
+        Text(
+          'Tap Continue when you’re ready. The controller will start the next round after both players are ready.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
       ],
     );
   }

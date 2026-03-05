@@ -1,15 +1,17 @@
 class PlayingCardModel {
   final String suit;
   final String rank;
+  final bool isSpecial;
 
-  PlayingCardModel({required this.suit, required this.rank});
+  PlayingCardModel({required this.suit, required this.rank, this.isSpecial=false});
 
   String get label => '$rank$suit';
 
-  Map<String, dynamic> toMap() => {'suit': suit, 'rank': rank};
+  Map<String, dynamic> toMap() => {'suit': suit, 'rank': rank, 'isSpecial':isSpecial};
 
   static PlayingCardModel fromMap(Map<String, dynamic> m) =>
-      PlayingCardModel(suit: m['suit'] as String, rank: m['rank'] as String);
+      PlayingCardModel(suit: m['suit'] as String, rank: m['rank'] as String, isSpecial: m['isSpecial']);
+
   List<int> get possibleValues => isAce ? [1, 14] : [valueLow];
   @override
   String toString() => label;

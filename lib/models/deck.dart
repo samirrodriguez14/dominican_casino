@@ -3,10 +3,37 @@ import 'playing_card_model.dart';
 
 class Deck {
   static List<PlayingCardModel> standard() {
+    bool isSpecial(String rank, String suit) {
+      if (rank == 'A') return true;
+      if (rank == '10' && suit == '♦') return true;
+      if (suit == '♠') return true;
+      if (rank == '2' && suit == '♠') return true;
+      return false;
+    }
+
     final suits = ['♠', '♥', '♦', '♣'];
-    final ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-    // final ranks = ['A','2','3'];
-    return [for (var s in suits) for (var r in ranks) PlayingCardModel(suit: s, rank: r)];
+    final ranks = [
+      'A',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+      '10',
+      'J',
+      'Q',
+      'K',
+    ];
+    // final ranks = ['A','2','3'];//Uncomment for test round
+
+    return [
+      for (var s in suits)
+        for (var r in ranks)
+          PlayingCardModel(suit: s, rank: r, isSpecial: isSpecial(r, s)),
+    ];
   }
 
   static List<PlayingCardModel> shuffle(List<PlayingCardModel> deck) {

@@ -79,6 +79,14 @@ class GameRepo extends ChangeNotifier {
     await fs.takeCard(gameState!.id, playerId, card, takingCard);
   }
 
+  Future<void> addAndTakeCards(
+    String playerId,
+    PlayingCardModel card,
+    List<PlayingCardModel> takingCards,
+  ) async {
+    await fs.addAndTakeCards(gameState!.id, playerId, card, takingCards);
+  }
+
   Future<void> stackCards(
     String playerId,
     PlayingCardModel? playerCard,

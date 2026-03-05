@@ -4,37 +4,43 @@ import 'package:flutter/cupertino.dart';
 class ControlsLegendContent extends StatelessWidget {
   const ControlsLegendContent({super.key});
 
-
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: const [
         _LegendRow(
-          icon:  CupertinoIcons.square_arrow_up_on_square_fill,
+          icon: CupertinoIcons.square_arrow_up_fill,
           title: "Play",
           desc: "Play your selected card to the table (ends your turn).",
         ),
         _LegendRow(
-          icon:  CupertinoIcons.square_arrow_down_on_square_fill,
+          icon: CupertinoIcons.square_arrow_down_fill,
           title: "Take",
           desc:
               "Take cards/stacks from the table using your selected hand card.",
         ),
         _LegendRow(
-          icon: CupertinoIcons.plus_square_fill_on_square_fill ,
-          title: "Add",
-          desc: "Combine selected table cards into a stack.",
+          icon: CupertinoIcons.square_arrow_down_on_square_fill,
+          title: "+Take combo",
+          desc:
+              "Adds the selected table cards and takes them if your hand card matches the value of the sum.",
         ),
         _LegendRow(
-          icon: CupertinoIcons.rectangle_stack_fill_badge_plus ,
-          title: "Add/Pair",
-          desc: "Add and immediately pair into another stack (combo action).",
+          icon: CupertinoIcons.plus_square_fill,
+          title: "Add ",
+          desc: "Add all selected cards into a stack.",
         ),
         _LegendRow(
-          icon: CupertinoIcons.square_stack_3d_down_dottedline,
+          icon: CupertinoIcons.plus_square_fill_on_square_fill,
+          title: "+Pair combo",
+          desc:
+              "Adds your hand card to the selected card/sack and pairs it to any card/stack matching its value.",
+        ),
+        _LegendRow(
+          icon: CupertinoIcons.square_fill_on_square_fill,
           title: "Pair",
-          desc: "Pair selected cards/stacks according to your rules.",
+          desc: "Pair selected cards/stacks if they are all of the same value.",
         ),
       ],
     );
@@ -54,8 +60,8 @@ class _LegendRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-       final bg =  AppColors.surfaceAlt ;
-    final fg =  AppColors.textPrimary;
+    final bg = AppColors.surfaceAlt;
+    final fg = AppColors.textPrimary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -68,7 +74,7 @@ class _LegendRow extends StatelessWidget {
               color: bg,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 18, color: fg,),
+            child: Icon(icon, size: 18, color: fg),
           ),
           const SizedBox(width: 10),
           Expanded(

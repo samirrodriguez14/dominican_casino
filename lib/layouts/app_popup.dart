@@ -1,5 +1,6 @@
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 Future<T?> showAppPopup<T>({
   required BuildContext context,
@@ -62,6 +63,7 @@ Future<T?> showAppPopup<T>({
                       child: CupertinoButton.filled(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         onPressed: () {
+                          HapticFeedback.mediumImpact();
                           Navigator.of(ctx).pop();
                           onPrimary?.call();
                         },
@@ -75,6 +77,8 @@ Future<T?> showAppPopup<T>({
                         child: CupertinoButton(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           onPressed: () {
+                            HapticFeedback.lightImpact();
+
                             Navigator.of(ctx).pop();
                             onSecondary?.call();
                           },

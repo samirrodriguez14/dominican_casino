@@ -1,5 +1,6 @@
 import 'package:dominican_casino/layouts/app_popup.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/popups/button_instructions.dart';
 import 'package:dominican_casino/popups/game_completed.dart';
 import 'package:dominican_casino/popups/game_status.dart';
@@ -12,6 +13,7 @@ import 'package:dominican_casino/widgets/playing_area_stack.dart';
 import 'package:dominican_casino/widgets/playing_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -23,6 +25,14 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
+  bool _disposed = false;
+
+  @override
+  void disposed() {
+    _disposed = true;
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,13 +53,16 @@ class _GameScreenState extends State<GameScreen> {
     }
     if (vm.showRoundCompletePopup && vm.currentGame?.winnerId == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_disposed || !mounted) return;
+
+        final route = ModalRoute.of(context);
+        if (route != null && !route.isCurrent) return;
+
         showAppPopup(
           context: context,
           title: 'Round ${vm.roundIndex} Completed',
           subtitle: 'Review scores before continuing',
-          content: RoundCompletedContent(
-            vm:vm
-          ),
+          content: RoundCompletedContent(vm: vm),
           primaryText: 'Continue',
           onPrimary: () => vm.pressContinue(),
           barrierDismissible: false,
@@ -59,9 +72,13 @@ class _GameScreenState extends State<GameScreen> {
 
     if (vm.currentGame?.winnerId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_disposed || !mounted) return;
+        final route = ModalRoute.of(context);
+        if (route != null && !route.isCurrent) return;
+
         showAppPopup(
           context: context,
-          title: "",
+          title: "Game Over",
           content: GameCompletedContent(vm: vm),
         );
       });
@@ -158,8 +175,8 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildOpponentHandPreview(RoomViewModel vm) {
-    final count = vm.currentGame?.hands[vm.opponentId]?.length ?? 0;
-
+    // final count = vm.currentGame?.hands[vm.opponentId]?.length ?? 0;
+    final countDeck = vm.currentGame?.playersDeck[vm.opponentId]?.length ?? 0;
     final isTurn = vm.currentTurn;
     final status = vm.roundStatus;
 
@@ -189,61 +206,51 @@ class _GameScreenState extends State<GameScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Opponent", style: AppStyles.body),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 62, // tweak to match your card aspect
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SizedBox(
-                  height: 62,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: count,
-                    separatorBuilder: (_, __) => const SizedBox(width: 6),
-                    itemBuilder: (context, i) {
-                      return _faceDownCardMini();
-                    },
-                    padding: EdgeInsets.symmetric(
-                      horizontal:
-                          constraints.maxWidth / 2 - 22, // half card width
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+          Text("Opponent's hand", style: AppStyles.muted),
+          Stack(
+            alignment: Alignment.centerRight,
+            children: [
+              if (vm.currentGame != null &&
+                  vm.currentGame!.hands[vm.opponentId] != null)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: vm.currentGame!.hands[vm.opponentId]!
+                      .map(
+                        (e) => Padding(
+                          padding: EdgeInsetsGeometry.symmetric(horizontal: 2),
+                          child: _faceDownCardMini(),
+                        ),
+                      )
+                      .toList(),
+                ),
 
-  Widget _faceDownCardMini({double width = 44, double height = 62}) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: AppColors.surfaceAlt.withOpacity(.7),
-        border: Border.all(
-          color: AppColors.surfaceAlt.withOpacity(.6),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-            color: Colors.black.withOpacity(.12),
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: countDeck != 0
+                    ? () => showPlayersDeckPopup(
+                        context,
+                        vm.currentGame!.playersDeck[vm.opponentId]!,
+                        me: false,
+                      )
+                    : null,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: AppStyles.raisedSurfaceBox(),
+                  child: Column(
+                    children: [
+                      _faceDownCardMini(
+                        height: 40,
+                        width: 35,
+                        hasCards: countDeck != 0,
+                      ),
+                      Text("$countDeck"),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
-      ),
-      child: Container(
-        decoration: AppStyles.surfaceBox().copyWith(
-          image: DecorationImage(
-            image: AssetImage('assets/images/logo_card.png'),
-            fit: BoxFit.fill,
-          ),
-        ),
       ),
     );
   }
@@ -264,7 +271,7 @@ class _GameScreenState extends State<GameScreen> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 12,
+                  vertical: 18,
                 ),
                 child: Wrap(
                   alignment: WrapAlignment.center,
@@ -281,7 +288,10 @@ class _GameScreenState extends State<GameScreen> {
                           transform: isSelected
                               ? Matrix4.translationValues(0, -12, 0)
                               : Matrix4.identity(),
-                          child: PlayingAreaStack(stack: stack),
+                          child: PlayingAreaStack(
+                            stack: stack,
+                            isSelected: isSelected,
+                          ),
                         ),
                       );
                     }),
@@ -325,7 +335,7 @@ class _GameScreenState extends State<GameScreen> {
     Color pillColor;
 
     if (waitingForDeal) {
-      pillText = vm.isController ? "DEAL NEXT ROUND" : "WAITING FOR DEAL";
+      pillText = vm.isController ? "DEAL NEXT" : "WAITING DEAL";
       pillColor = AppColors.surfaceAlt;
     } else if (status == RoundStatus.playing) {
       pillText = isTurn ? "YOUR TURN" : "WAITING";
@@ -337,7 +347,7 @@ class _GameScreenState extends State<GameScreen> {
       pillText = "DEALING";
       pillColor = AppColors.surfaceAlt;
     } else {
-      pillText = "WAITING FOR PLAYERS";
+      pillText = "WAITING PLAYERS";
       pillColor = AppColors.muted;
     }
 
@@ -434,26 +444,36 @@ class _GameScreenState extends State<GameScreen> {
               ),
               CupertinoButton(
                 padding: EdgeInsets.zero,
-                onPressed: () => openGameStatusPopup(context, vm),
-                child: Opacity(
-                  opacity: 1,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: pillColor.withOpacity(0.18),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: pillColor),
-                    ),
-                    child: Text(
-                      "My Score: ${vm.currentGame?.scores[vm.playerId]}",
-                      style: AppStyles.muted.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  vm.cancelSelection();
+                },
+                child: Icon(Icons.cancel_sharp),
+              ),
+
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  openGameStatusPopup(context, vm);
+                },
+
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: pillColor.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: pillColor),
+                  ),
+                  child: Text(
+                    "My Score: ${vm.currentGame?.scores[vm.playerId] ?? 0}",
+                    style: AppStyles.muted.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
@@ -469,51 +489,70 @@ class _GameScreenState extends State<GameScreen> {
     return Row(
       children: [
         ActionControlButton(
-          icon: CupertinoIcons.square_arrow_up_on_square_fill,
+          icon: CupertinoIcons.square_arrow_up_fill,
           label: "Play",
           enabled: vm.canPlay(),
-          onTap: vm.performPlayOnTable,
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            vm.performPlayOnTable();
+          },
         ),
         const SizedBox(width: 10),
 
         ActionControlButton(
-          icon: CupertinoIcons.square_arrow_down_on_square_fill,
-          label: "Take",
+          icon: (vm.selectedCards.length > 1 && vm.canTake())
+              ? CupertinoIcons.square_arrow_down_on_square_fill
+              : CupertinoIcons.square_arrow_down_fill,
+          label: (vm.selectedCards.length > 1 && vm.canTake())
+              ? "+Take"
+              : "Take",
           enabled: vm.canTake(),
-          onTap: vm.performTakeCards,
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            vm.performTakeCards();
+          },
+        ),
+        const SizedBox(width: 10),
+
+        ActionControlButton(
+          icon: CupertinoIcons.plus_square_fill,
+          label: "Add",
+          enabled: vm.canAdd(),
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            vm.performStackSelectedCards();
+          },
         ),
         const SizedBox(width: 10),
 
         ActionControlButton(
           icon: CupertinoIcons.plus_square_fill_on_square_fill,
-          label: "Add",
-          enabled: vm.canAdd(),
-          onTap: vm.performStackSelectedCards,
-        ),
-        const SizedBox(width: 10),
-
-        ActionControlButton(
-          icon: CupertinoIcons.rectangle_stack_fill_badge_plus,
-          label: "A/P",
+          label: "+Pair",
           enabled: vm.canAddAndPair(),
-          onTap: vm.performStackAndPairSelectedCards,
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            vm.performStackAndPairSelectedCards();
+          },
         ),
         const SizedBox(width: 10),
 
         ActionControlButton(
-          icon: CupertinoIcons.square_stack_3d_down_dottedline,
+          icon: CupertinoIcons.square_fill_on_square_fill,
           label: "Pair",
           enabled: vm.canPair(),
-          onTap: vm.performPairSelectedCards,
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            vm.performPairSelectedCards();
+          },
         ),
 
         const SizedBox(width: 10),
-        buildControlsInfoButton(context),
+        _buildControlsInfoButton(context),
       ],
     );
   }
 
-  Widget buildControlsInfoButton(BuildContext context) {
+  Widget _buildControlsInfoButton(BuildContext context) {
     return SizedBox(
       width: 42,
       height: 42,
@@ -541,8 +580,9 @@ class _GameScreenState extends State<GameScreen> {
     return _deckBox(
       title: "Your Deck",
       subtitle: "${vm.playerDeckCards.length} cards",
-      onAction: () => showPlayersDeckPopup(context, vm),
+      onAction: () => showPlayersDeckPopup(context, vm.playerDeckCards),
       actionIcon: Icons.scoreboard_sharp,
+      hasCards: vm.playerDeckCards.isNotEmpty,
     );
   }
 
@@ -598,6 +638,7 @@ class _GameScreenState extends State<GameScreen> {
       actionLabel: actionLabel, // add this param if you want text
       actionIcon: actionIcon,
       onAction: onAction,
+      hasCards: remaining != 0,
     );
   }
 
@@ -608,6 +649,7 @@ class _GameScreenState extends State<GameScreen> {
     String? actionLabel,
     VoidCallback? onAction,
     bool enabled = true,
+    bool hasCards = false,
   }) {
     final isEnabled = enabled && onAction != null;
 
@@ -622,7 +664,7 @@ class _GameScreenState extends State<GameScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _faceDownCardMini(width: 32, height: 44),
+              _faceDownCardMini(width: 32, height: 44, hasCards: hasCards),
 
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,11 +690,54 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  void showPlayersDeckPopup(BuildContext context, RoomViewModel vm) {
+  Widget _faceDownCardMini({
+    double width = 44,
+    double height = 62,
+    bool hasCards = true,
+  }) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: AppColors.surfaceAlt.withOpacity(.7),
+        border: Border.all(
+          color: AppColors.surfaceAlt.withOpacity(.6),
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(.12),
+          ),
+        ],
+      ),
+      child: (hasCards)
+          ? Container(
+              decoration: AppStyles.surfaceBox().copyWith(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/logo_card.png'),
+                  fit: BoxFit.fitHeight,
+                ),
+              ),
+            )
+          : Container(
+              decoration: AppStyles.surfaceBox(),
+              child: Icon(CupertinoIcons.minus_circle_fill),
+            ),
+    );
+  }
+
+  void showPlayersDeckPopup(
+    BuildContext context,
+    List<PlayingCardModel> cards, {
+    bool me = true,
+  }) {
     showAppPopup(
       context: context,
-      title: "Cards Collected ",
-      content: CollectedCardsStrip(cards: vm.playerDeckCards),
+      title: "${me ? "My" : "Opponent's"} Collected Cards",
+      content: CollectedCardsStrip(cards: cards),
     );
   }
 

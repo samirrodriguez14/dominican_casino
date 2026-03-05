@@ -287,6 +287,52 @@ class GameHandler2 {
     );
   }
 
+  Future<void> addAndTakeCards(
+    Transaction tx,
+    DocumentReference<Object?> doc,
+    PlayingCardModel card,
+    List<PlayingCardModel> takingCards,
+    String playerId,
+  ) async {
+    await _runAction(
+      tx: tx,
+      doc: doc,
+      playerId: playerId,
+      mutator: (ctx) async {
+        final handsRaw = ctx.handsRaw();
+        final hand = _handOf(handsRaw, playerId);
+
+        if (!_removeCardMapOnce(hand, card)) {
+          return _TxResult(update: const {}, skipPost: true);
+        }
+        _setHand(handsRaw, playerId, hand);
+
+        final playing = ctx.playingArea();
+        for (var card in takingCards) {
+          _removeCardMapOnce(playing, card);
+        }
+
+        final decksRaw = ctx.playersDeckRaw();
+        final deck = _deckOf(decksRaw, playerId);
+        deck.add(card.toMap());
+        deck.addAll(takingCards.map((e)=> e.toMap()));
+        decksRaw[playerId] = deck;
+
+        final next = _handleTurn(ctx.data, playerId);
+
+        return _TxResult(
+          update: {
+            'hands': handsRaw,
+            'playingArea': playing,
+            'playersDeck': decksRaw,
+            'lastTookCardId': playerId,
+          },
+          nextTurnPlayerId: next,
+        );
+      },
+    );
+  }
+
   Future<void> takeStack(
     Transaction tx,
     DocumentReference<Object?> doc,
@@ -775,8 +821,8 @@ class GameHandler2 {
     developer.log(
       "_handle wiinwe with data: prev:::$prevScore, round:::$roundScore, $p1, $p2",
     );
-        int score1 = prevScore[p1] ?? 0;
-        int score2 = prevScore[p2] ?? 0;
+    int score1 = prevScore[p1] ?? 0;
+    int score2 = prevScore[p2] ?? 0;
 
     String highScoreId = (score1 >= score2) ? p1 : p2;
     String lowScoreId = (highScoreId == p1) ? p2 : p1;
@@ -822,7 +868,8 @@ class GameHandler2 {
         roundScore[player]['A'] = 0;
         roundScore[player]['10♦'] = 0;
         roundScore[player]['2♠'] = 0;
-        roundScore[player]['total'] = roundScore[player]['pi'] + roundScore[player]['carta'];
+        roundScore[player]['total'] =
+            roundScore[player]['pi'] + roundScore[player]['carta'];
         return false;
       }
       return true;

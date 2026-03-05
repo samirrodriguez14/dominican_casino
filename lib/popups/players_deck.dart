@@ -14,7 +14,6 @@ class CollectedCardsStrip extends StatelessWidget {
     this.showCount = true,
     this.emptyText = 'No cards collected yet.',
   });
-
   final List<PlayingCardModel> cards;
   final String title;
   final double cardWidth;
@@ -25,7 +24,7 @@ class CollectedCardsStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final h = cardWidth * 1.4;
+    final h = cardWidth * 2;
 
     return Container(
       width: double.infinity,
@@ -39,8 +38,7 @@ class CollectedCardsStrip extends StatelessWidget {
             children: [
               Text(title, style: AppStyles.title),
               const Spacer(),
-              if (showCount)
-                Text('${cards.length}', style: AppStyles.body),
+              if (showCount) Text('${cards.length}', style: AppStyles.body),
             ],
           ),
           const SizedBox(height: 10),
@@ -49,25 +47,24 @@ class CollectedCardsStrip extends StatelessWidget {
             Text(emptyText, style: AppStyles.body)
           else
             ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: maxHeight ?? (h + 6),
-              ),
+              constraints: BoxConstraints(maxHeight: maxHeight ?? (h + 12)),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 child: SizedBox(
                   height: h,
                   width: cardWidth + (cards.length - 1) * (cardWidth - overlap),
+
                   child: Stack(
+                    alignment:Alignment.bottomCenter,
                     children: [
                       for (int i = 0; i < cards.length; i++)
                         Positioned(
                           left: i * (cardWidth - overlap),
-                          top: 0,
+                          top: cards[i].isSpecial? 0:10,
                           child: PlayingCard(
                             playingCardModel: cards[i],
                             width: cardWidth,
-                            // view-only
                             isSelected: false,
                           ),
                         ),

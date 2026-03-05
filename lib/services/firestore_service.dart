@@ -126,6 +126,26 @@ class FirestoreService {
         });
   }
 
+  Future<void> addAndTakeCards(
+    String gameId,
+    String playerId,
+    PlayingCardModel card,
+    List<PlayingCardModel> takingCards,
+  ) async {
+    final doc = _games.doc(gameId);
+    developer.log("SERVICE docPath=${_games.doc(gameId).path}");
+
+    await _db
+        .runTransaction((tx) async {
+          await gameHandler.addAndTakeCards(tx, doc, card, takingCards, playerId);
+        })
+        .catchError((e, st) {
+          developer.log("runTransaction failed: $e\n$st");
+          throw e;
+        });
+  }
+
+
   Future<void> stackCard(
     String gameId,
     String playerId,
@@ -217,8 +237,8 @@ class FirestoreService {
           developer.log("runTransaction failed: $e\n$st");
           throw e;
         });
-
-    ///
-    ///PLAY HANDLE END
   }
+
+  ///
+  ///PLAY HANDLE END
 }

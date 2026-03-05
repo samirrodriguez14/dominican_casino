@@ -176,7 +176,7 @@ class RoomViewModel extends ChangeNotifier {
       showRoundCompletePopup = false;
     }
 
-    notifyListeners();
+    cancelSelection();
   }
 
   ///
@@ -218,6 +218,13 @@ class RoomViewModel extends ChangeNotifier {
     _gameRepo.takeStack(playerId!, stack, card);
   }
 
+  void addAndTakeCardsAction(
+    List<PlayingCardModel> takingCards,
+    PlayingCardModel card,
+  ) {
+    _gameRepo.addAndTakeCards(playerId!, card, takingCards);
+  }
+
   Future<void> pressContinue() async {
     await _gameRepo.setRoundReady(playerId!);
   }
@@ -245,6 +252,12 @@ class RoomViewModel extends ChangeNotifier {
   PlayingCardModel? selectedCard;
   List<PlayingCardModel> selectedCards = [];
   List<PlayingAreaStackModel> selectedStacks = [];
+  void cancelSelection() {
+    selectedCards = [];
+    selectedCard = null;
+    selectedStacks = [];
+    notifyListeners();
+  }
 
   void selectCard(PlayingCardModel card) {
     if (selectedCard == card) {
@@ -313,7 +326,7 @@ class RoomViewModel extends ChangeNotifier {
       final stack = PlayingAreaStackModel(
         id: id,
         cards: [...selectedCards],
-        targetValue: chosen,
+        stackValue: chosen,
       );
 
       final cardStackIds = <String?>[];
@@ -384,7 +397,8 @@ class RoomViewModel extends ChangeNotifier {
       final stack = PlayingAreaStackModel(
         id: id,
         cards: [],
-        targetValue: desired,
+        paired: true,
+        stackValue: desired,
       );
 
       if (selectedCards.isNotEmpty) stack.cards.addAll(selectedCards);
@@ -431,7 +445,8 @@ class RoomViewModel extends ChangeNotifier {
       final stack = PlayingAreaStackModel(
         id: id,
         cards: [],
-        targetValue: desired,
+        paired: true,
+        stackValue: desired,
       );
 
       // Add selected cards (all of them)
@@ -485,7 +500,7 @@ class RoomViewModel extends ChangeNotifier {
     for (final c in playingAreaCards) {
       tableCardVals.addAll(possibleCardValues(c));
     }
-    final tableStackVals = playingAreaStacks.map((s) => s.targetValue).toSet();
+    final tableStackVals = playingAreaStacks.map((s) => s.stackValue).toSet();
 
     // Require we can actually pair with something on table
     final matching =
@@ -502,7 +517,12 @@ class RoomViewModel extends ChangeNotifier {
 
     final chosen = matching.last; // pick highest match (or first for lowest)
 
-    final stack = PlayingAreaStackModel(id: id, cards: [], targetValue: chosen);
+    final stack = PlayingAreaStackModel(
+      id: id,
+      cards: [],
+      stackValue: chosen,
+      paired: true,
+    );
 
     // add selectedCards
     if (selectedCards.isNotEmpty) stack.cards.addAll(selectedCards);
@@ -524,7 +544,7 @@ class RoomViewModel extends ChangeNotifier {
 
     // absorb matching table stacks
     for (final s in playingAreaStacks) {
-      if (s.targetValue == chosen) {
+      if (s.stackValue == chosen) {
         stack.cards.addAll(s.cards);
         cardStackIds.add(s.id);
       }
@@ -547,13 +567,7 @@ class RoomViewModel extends ChangeNotifier {
     } else if (selectedCards.length > 1) {
       //Create stack of selected cards and takestackaction
       if (possibleTotals(selectedCards).contains(selectedCard!.valueHigh)) {
-        final id = Uuid().v4();
-        final stack = PlayingAreaStackModel(
-          id: id,
-          cards: selectedCards,
-          targetValue: selectedCard!.valueHigh,
-        );
-        takeStackAction(stack, selectedCard!);
+        addAndTakeCardsAction(selectedCards, selectedCard!);
       }
     }
     selectedCard = null;
@@ -620,8 +634,10 @@ class RoomViewModel extends ChangeNotifier {
       }
 
       // Case 2: selectedCard + selectedStack(current value) must equal some other card you have in hand
-      if (selectedStacks.length == 1 && selectedCards.isEmpty) {
-        final stackCurrentValue = selectedStacks[0].stackValue; // <-- IMPORTANT
+      if (selectedStacks.length == 1 &&
+          !selectedStacks[0].paired &&
+          selectedCards.isEmpty) {
+        final stackCurrentValue = selectedStacks[0].stackValue;
         for (final cv in cardVals) {
           final needed = stackCurrentValue + cv;
           if (handVals.contains(needed)) return true;
@@ -657,8 +673,10 @@ class RoomViewModel extends ChangeNotifier {
     Set<int> addTotals;
     if (selectedCards.isNotEmpty && selectedStacks.isEmpty) {
       addTotals = possibleTotals(selectedCards); // ace-flex sum
-    } else if (selectedStacks.length == 1 && selectedCards.isEmpty) {
-      addTotals = {selectedStacks[0].targetValue};
+    } else if (selectedStacks.length == 1 &&
+        !selectedStacks[0].paired &&
+        selectedCards.isEmpty) {
+      addTotals = {selectedStacks[0].stackValue};
     } else {
       return false;
     }
