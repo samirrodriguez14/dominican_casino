@@ -2,7 +2,6 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/screens/game/decks/players_deck.dart';
 import 'package:dominican_casino/screens/game/widgets/cards/playing_card_back.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -29,13 +28,13 @@ class OpponentAreaState extends State<OpponentArea> {
   Widget build(BuildContext context) {
     bool opponentJoined = opp != null && opp != "";
     final pillColor = highlightTurn
-        ? AppColors.accentGreen.withOpacity(0.75)
-        : AppStyle.theme.surfaceAlt.withOpacity(0.55);
+        ? AppStyle.theme.turnHighlight.withValues(alpha:0.75)
+        : AppStyle.theme.surfaceAlt.withValues(alpha:0.55);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: AppStyle.theme.playerSectionBox(
-        highlightColor: AppColors.accentGreen,
+        highlightColor: AppStyle.theme.turnHighlight,
         highlight: highlightTurn,
         joined: opponentJoined,
       ),
@@ -63,7 +62,7 @@ class OpponentAreaState extends State<OpponentArea> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: pillColor.withOpacity(0.18),
+                      color: pillColor.withValues(alpha:0.18),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: pillColor),
                     ),

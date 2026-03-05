@@ -5,7 +5,6 @@ import 'package:dominican_casino/screens/game/popups/game_status.dart';
 import 'package:dominican_casino/screens/game/decks/players_deck.dart';
 import 'package:dominican_casino/screens/game/widgets/action_icon_button.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:dominican_casino/screens/game/widgets/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
@@ -35,10 +34,12 @@ class PlayerAreaState extends State<PlayerArea> {
       pillColor = AppStyle.theme.surfaceAlt;
     } else if (status == RoundStatus.playing) {
       pillText = isTurn ? "YOUR TURN" : "WAITING";
-      pillColor = isTurn ? AppColors.accentGreen : AppStyle.theme.surfaceAlt;
+      pillColor = isTurn
+          ? AppStyle.theme.turnHighlight
+          : AppStyle.theme.surfaceAlt;
     } else if (status == RoundStatus.completed) {
       pillText = "ROUND COMPLETE";
-      pillColor = AppColors.accentRed;
+      pillColor = AppStyle.theme.danger;
     } else if (status == RoundStatus.dealing) {
       pillText = "DEALING";
       pillColor = AppStyle.theme.surfaceAlt;
@@ -54,7 +55,7 @@ class PlayerAreaState extends State<PlayerArea> {
       width: double.infinity,
       padding: const EdgeInsets.all(8),
       decoration: AppStyle.theme.playerSectionBox(
-        highlightColor: AppColors.accentGreen,
+        highlightColor: AppStyle.theme.turnHighlight,
         highlight: highlightTurn,
         joined: opponentJoined,
       ),
@@ -125,10 +126,10 @@ class PlayerAreaState extends State<PlayerArea> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: pillColor.withOpacity(0.18),
+                          color: pillColor.withValues(alpha: (0.18)),
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
-                            color: pillColor.withOpacity(0.40),
+                            color: pillColor.withValues(alpha: (0.40)),
                           ),
                         ),
                         child: Text(
@@ -158,7 +159,7 @@ class PlayerAreaState extends State<PlayerArea> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: pillColor.withOpacity(0.18),
+                            color: pillColor.withValues(alpha: (0.18)),
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(color: pillColor),
                           ),

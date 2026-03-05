@@ -1,6 +1,5 @@
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/screens/game/widgets/cards/playing_card.dart';
 import 'package:flutter/material.dart';
 
@@ -31,8 +30,8 @@ class PlayingAreaStack extends StatelessWidget {
   Widget build(BuildContext context) {
     final height = cardWidth * 1.4;
     final stackColor = stack.paired
-        ? AppColors.cardBorder
-        : (AppColors.accentGreen);
+        ? AppStyle.theme.cardBorder
+        : (AppStyle.theme.turnHighlight);
     // Total width for N overlapped cards
     final totalWidth = stack.cards.isEmpty
         ? cardWidth
@@ -46,7 +45,7 @@ class PlayingAreaStack extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration:  Duration(milliseconds: 140),
+        duration: Duration(milliseconds: 140),
         curve: Curves.easeOut,
         width: totalWidth,
         height: height,
@@ -56,7 +55,7 @@ class PlayingAreaStack extends StatelessWidget {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: stackColor.withOpacity(0.60),
+                color: stackColor.withValues(alpha: (0.60)),
                 blurRadius: 18,
                 spreadRadius: 1,
                 offset: const Offset(0, 8),
@@ -93,7 +92,9 @@ class PlayingAreaStack extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.shadow.withOpacity(0.25),
+                      color: AppStyle.theme.background.withValues(
+                        alpha: (0.25),
+                      ),
                       blurRadius: 10,
                       offset: const Offset(0, 6),
                     ),
@@ -101,7 +102,7 @@ class PlayingAreaStack extends StatelessWidget {
                 ),
                 child: Text(
                   '${stack.paired ? "P" : ''} ${stack.stackValue}',
-                  style:  TextStyle(
+                  style: TextStyle(
                     color: AppStyle.theme.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
@@ -123,13 +124,15 @@ class PlayingAreaStack extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.shadow.withOpacity(0.25),
+                        color: AppStyle.theme.background.withValues(
+                          alpha: (0.25),
+                        ),
                         blurRadius: 10,
                         offset: const Offset(0, 6),
                       ),
                     ],
                   ),
-                  child:  Icon(
+                  child: Icon(
                     Icons.check,
                     size: 14,
                     color: AppStyle.theme.textPrimary,

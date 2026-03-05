@@ -19,18 +19,16 @@ class PlayingCardBack extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: empty
-            ? AppStyle.theme.background.withValues(alpha: (0.7))
-            : AppStyle.theme.surfaceAlt.withValues(alpha: (.7)),
+        color: empty? AppStyle.theme.background.withValues(alpha:0.7):  AppStyle.theme.surfaceAlt.withValues(alpha:.7),
         border: Border.all(
-          color: AppStyle.theme.surfaceAlt.withValues(alpha: (.6)),
+          color: AppStyle.theme.surfaceAlt.withValues(alpha:.6),
           width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
             blurRadius: 6,
             offset: const Offset(0, 2),
-            color: AppStyle.theme.background.withValues(alpha: (.12)),
+            color: AppStyle.theme.background.withValues(alpha:.12),
           ),
         ],
       ),

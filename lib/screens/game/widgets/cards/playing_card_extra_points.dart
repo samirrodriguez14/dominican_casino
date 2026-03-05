@@ -28,7 +28,7 @@ class PlayingCardExtraPoints extends StatelessWidget {
           BoxShadow(
             blurRadius: 6,
             offset: const Offset(0, 2),
-        color: AppStyle.theme.background.withOpacity(.12),
+        color: AppStyle.theme.background.withValues(alpha:(.12)),
           ),
         ],
       ),

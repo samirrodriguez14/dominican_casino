@@ -6,7 +6,6 @@ import 'package:dominican_casino/screens/home/home_screen.dart';
 import 'package:dominican_casino/screens/lobby/lobby_screen.dart';
 import 'package:dominican_casino/screens/game/game_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:flutter/cupertino.dart';

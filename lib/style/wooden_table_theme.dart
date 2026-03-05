@@ -1,5 +1,4 @@
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class WoodenTableTheme extends AppTheme {
@@ -27,30 +26,7 @@ class WoodenTableTheme extends AppTheme {
   @override
   Color get border => const Color(0xFF3A2314);
 
-  @override
-  BoxDecoration surfaceBox() {
-    return BoxDecoration(
-      color: surface,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: border),
-    );
-  }
 
-  @override
-  BoxDecoration raisedSurfaceBox() {
-    return BoxDecoration(
-      color: surfaceRaised,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: border),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(.35),
-          blurRadius: 12,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    );
-  }
 
   @override
   BoxDecoration tableBackground() {
@@ -66,21 +42,6 @@ class WoodenTableTheme extends AppTheme {
     );
   }
 
-  @override
-  BoxDecoration playerSectionBox({
-    required Color highlightColor,
-    bool highlight = false,
-    bool joined = true,
-  }) {
-    return BoxDecoration(
-      color: surface,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(
-        color: highlight ? highlightColor : border,
-        width: highlight ? 2 : 1,
-      ),
-    );
-  }
 
   @override
   TextStyle get title =>
@@ -94,5 +55,59 @@ class WoodenTableTheme extends AppTheme {
 
   @override
   TextStyle get caption =>
-      TextStyle(color: muted.withOpacity(.9), fontSize: 12);
+      TextStyle(color: muted.withValues(alpha:(.9)), fontSize: 12);
+      
+        @override
+        // TODO: implement cardBackground
+        Color get cardBackground => throw UnimplementedError();
+      
+        @override
+        // TODO: implement cardBorder
+        Color get cardBorder => throw UnimplementedError();
+      
+        @override
+        // TODO: implement danger
+        Color get danger => throw UnimplementedError();
+      
+        @override
+        // TODO: implement opponentHighlight
+        Color get opponentHighlight => throw UnimplementedError();
+      
+        @override
+        // TODO: implement success
+        Color get success => throw UnimplementedError();
+      
+        @override
+        // TODO: implement suitBlack
+        Color get suitBlack => throw UnimplementedError();
+      
+        @override
+        // TODO: implement suitRed
+        Color get suitRed => throw UnimplementedError();
+      
+        @override
+        // TODO: implement turnHighlight
+        Color get turnHighlight => throw UnimplementedError();
+      
+        @override
+        // TODO: implement warning
+        Color get warning => throw UnimplementedError();
+        
+          @override
+          BoxDecoration playerSectionBox({Color? highlightColor, bool highlight = false, bool joined = true}) {
+            // TODO: implement playerSectionBox
+            throw UnimplementedError();
+          }
+          
+            @override
+            BoxDecoration raisedSurfaceBox({Color? color}) {
+              // TODO: implement raisedSurfaceBox
+              throw UnimplementedError();
+            }
+          
+            @override
+            BoxDecoration surfaceBox({Color? color}) {
+              // TODO: implement surfaceBox
+              throw UnimplementedError();
+            }
 }

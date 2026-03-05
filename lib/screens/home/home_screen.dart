@@ -1,8 +1,6 @@
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
-import 'package:dominican_casino/style/theme_data.dart';
-
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,7 +10,7 @@ class HomeScreen extends StatelessWidget {
     final playerId = "Player123"; // replace later with repo value
 
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppStyle.theme.background,
       child: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -47,10 +45,10 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         Text(playerId, style: AppStyle.theme.body),
                         const SizedBox(width: 6),
-                        const Icon(
+                        Icon(
                           CupertinoIcons.pencil,
                           size: 16,
-                          color: AppColors.muted,
+                          color: AppStyle.theme.muted,
                         ),
                       ],
                     ),
@@ -59,7 +57,7 @@ class HomeScreen extends StatelessWidget {
 
                     /// ---- START BUTTON ----
                     CupertinoButton(
-                      color: AppColors.surfaceAlt,
+                      color: AppStyle.theme.surfaceAlt,
                       borderRadius: BorderRadius.circular(12),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,
@@ -68,10 +66,10 @@ class HomeScreen extends StatelessWidget {
                       onPressed: () {
                         context.go('/lobby');
                       },
-                      child: const Text(
+                      child: Text(
                         "Start",
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: AppStyle.theme.textPrimary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

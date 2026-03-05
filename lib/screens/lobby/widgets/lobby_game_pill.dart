@@ -1,6 +1,6 @@
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/theme_data.dart';
 import 'package:flutter/cupertino.dart';
+
 class LobbyGamePill extends StatelessWidget {
   const LobbyGamePill({
     super.key,
@@ -34,7 +34,7 @@ class LobbyGamePill extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border.withOpacity(0.6)),
+        border: Border.all(color: border.withValues(alpha: (0.6))),
         boxShadow: const [
           BoxShadow(
             blurRadius: 14,
@@ -69,22 +69,32 @@ class LobbyGamePill extends StatelessWidget {
           Row(
             children: [
               CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 color: enterEnabled
-                    ? AppColors.primaryAction
+                    ? AppStyle.theme.surfaceAlt
                     : AppStyle.theme.border,
                 onPressed: onEnter, // null disables
-                child: Text(enterLabel,style: AppStyle.theme.title,)
+                child: Text(enterLabel, style: AppStyle.theme.title),
               ),
               const SizedBox(width: 8),
               CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                color: AppColors.accentRed,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                color: AppStyle.theme.danger,
                 onPressed: onDelete,
-                child:  Icon(CupertinoIcons.trash, size: 18, color: AppStyle.theme.border,),
+                child: Icon(
+                  CupertinoIcons.trash,
+                  size: 18,
+                  color: AppStyle.theme.border,
+                ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -99,16 +109,16 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = isFull
-        ? AppColors.accentRed.withOpacity(0.18)
-        : AppColors.accentGreen.withOpacity(0.18);
-    final fg = isFull ? AppColors.accentRed : AppColors.accentGreen;
+        ? AppStyle.theme.danger.withValues(alpha: (0.18))
+        : AppStyle.theme.turnHighlight.withValues(alpha: (0.18));
+    final fg = isFull ? AppStyle.theme.danger : AppStyle.theme.turnHighlight;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: fg.withOpacity(0.35)),
+        border: Border.all(color: fg.withValues(alpha: (0.35))),
       ),
       child: Text(
         text,

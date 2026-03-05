@@ -1,5 +1,5 @@
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -30,7 +30,7 @@ class PlayingCard extends StatelessWidget {
 
     final height = width * 1.4;
 
-    final sel = selectedBorderColor ?? AppColors.accentGreen;
+    final sel = selectedBorderColor ?? AppStyle.theme.turnHighlight;
 
     return GestureDetector(
       onTap: onTap,
@@ -40,24 +40,24 @@ class PlayingCard extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: AppColors.cardBackground,
+          color: AppStyle.theme.cardBackground,
           borderRadius: BorderRadius.circular(14),
 
           border: Border.all(
-            color: isSelected ? sel : AppColors.cardBorder,
+            color: isSelected ? sel : AppStyle.theme.cardBorder,
             width: isSelected ? selectedBorderWidth : 1,
           ),
 
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: sel.withOpacity(0.35),
+                color: sel.withValues(alpha:(0.35)),
                 blurRadius: 18,
                 spreadRadius: 2,
                 offset: const Offset(0, 8),
               ),
             BoxShadow(
-              color: AppColors.shadow.withOpacity(0.15),
+              color: AppStyle.theme.background.withValues(alpha:(0.15)),
               blurRadius: 8,
               offset: const Offset(2, 4),
             ),
@@ -65,50 +65,6 @@ class PlayingCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // if (isSelected)
-              // Positioned.fill(
-              //   child: Container(
-              //     decoration: BoxDecoration(
-              //       borderRadius: BorderRadius.circular(14),
-              //       gradient: LinearGradient(
-              //         begin: Alignment.topLeft,
-              //         end: Alignment.bottomRight,
-              //         colors: [
-              //           sel.withOpacity(0.17),
-              //           sel.withOpacity(0.18),
-              //         ],
-              //       ),
-              //     ),
-              //   ),
-              // ),
-
-            // Optional: check badge
-            // if (isSelected)
-            //   Positioned(
-            //     top: 8,
-            //     right: 8,
-            //     child: Container(
-            //       width: 15,
-            //       height: 15,
-            //       decoration: BoxDecoration(
-            //         color: sel,
-            //         borderRadius: BorderRadius.circular(999),
-            //         boxShadow: [
-            //           BoxShadow(
-            //             color: AppColors.shadow.withOpacity(0.25),
-            //             blurRadius: 10,
-            //             offset: const Offset(0, 6),
-            //           ),
-            //         ],
-            //       ),
-            //       child: const Icon(
-            //         Icons.check,
-            //         size: 14,
-            //         color: AppColors.textPrimary,
-            //       ),
-            //     ),
-            //   ),
-
             // Top Left
             Positioned(
               top: 8,
@@ -190,7 +146,7 @@ class PlayingCard extends StatelessWidget {
 
   Color _suitColor(String suit) {
     return (suit == '♥' || suit == '♦')
-        ? AppColors.suitRed
-        : AppColors.suitBlack;
+        ? AppStyle.theme.suitRed
+        : AppStyle.theme.suitBlack;
   }
 

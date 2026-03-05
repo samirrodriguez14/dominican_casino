@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class DealAnimator {
