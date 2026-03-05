@@ -99,6 +99,9 @@ class RoomViewModel extends ChangeNotifier {
         oppHand.isEmpty;
   }
 
+  bool get playerLeftMidGame =>
+      (currentGame?.player1 == null || currentGame?.player2 == null);
+
   ///
   ///END GETTERS
 
@@ -119,64 +122,68 @@ class RoomViewModel extends ChangeNotifier {
   void _onGameRepoChanged() {
     currentGame = _gameRepo.gameState;
     developer.log("GameViewModel. LoadingGameState $playerId");
+    try {
+      if (currentGame != null && playerId != null) {
+        final g = currentGame!;
+        final me = playerId!;
 
-    if (currentGame != null && playerId != null) {
-      final g = currentGame!;
-      final me = playerId!;
+        // existing board state
+        playerDeckCards = g.playersDeck[me] ?? [];
+        playingAreaCards = g.playingArea;
+        playingAreaStacks = g.playingAreaStacks;
+        playerCards = g.hands[me] ?? [];
 
-      // existing board state
-      playerDeckCards = g.playersDeck[me] ?? [];
-      playingAreaCards = g.playingArea;
-      playingAreaStacks = g.playingAreaStacks;
-      playerCards = g.hands[me] ?? [];
+        // round state
+        roundIndex = g.roundIndex;
+        roundStatus = g.roundStatus;
 
-      // round state
-      roundIndex = g.roundIndex;
-      roundStatus = g.roundStatus;
+        roundReady = Map<String, bool>.from(g.roundReady);
+        roundScores = Map<String, dynamic>.from(g.roundScores);
 
-      roundReady = Map<String, bool>.from(g.roundReady);
-      roundScores = Map<String, dynamic>.from(g.roundScores);
+        iAmReadyForNextRound = roundReady[me] == true;
 
-      iAmReadyForNextRound = roundReady[me] == true;
+        final p1 = g.player1 ?? '';
+        final p2 = g.player2 ?? '';
 
-      final p1 = g.player1 ?? '';
-      final p2 = g.player2 ?? '';
+        bothPlayersReady =
+            (p1.isNotEmpty &&
+            p2.isNotEmpty &&
+            roundReady[p1] == true &&
+            roundReady[p2] == true);
 
-      bothPlayersReady =
-          (p1.isNotEmpty &&
-          p2.isNotEmpty &&
-          roundReady[p1] == true &&
-          roundReady[p2] == true);
+        // popup logic
+        if (roundStatus == RoundStatus.completed && !iAmReadyForNextRound) {
+          final alreadyShown = (_lastShownCompletedRoundIndex == roundIndex);
 
-      // popup logic
-      if (roundStatus == RoundStatus.completed && !iAmReadyForNextRound) {
-        final alreadyShown = (_lastShownCompletedRoundIndex == roundIndex);
+          showRoundCompletePopup = !alreadyShown;
 
-        showRoundCompletePopup = !alreadyShown;
-
-        if (showRoundCompletePopup) {
-          _lastShownCompletedRoundIndex = roundIndex;
+          if (showRoundCompletePopup) {
+            _lastShownCompletedRoundIndex = roundIndex;
+          }
+        } else {
+          showRoundCompletePopup = false;
         }
       } else {
+        playingAreaCards = [];
+        playerCards = [];
+        playerDeckCards = [];
+        playingAreaStacks = [];
+
+        roundIndex = 1;
+        roundStatus = RoundStatus.playing;
+        roundReady = {};
+        roundScores = {};
+
+        iAmReadyForNextRound = false;
+        bothPlayersReady = false;
         showRoundCompletePopup = false;
       }
-    } else {
-      playingAreaCards = [];
-      playerCards = [];
-      playerDeckCards = [];
-      playingAreaStacks = [];
 
-      roundIndex = 1;
-      roundStatus = RoundStatus.playing;
-      roundReady = {};
-      roundScores = {};
-
-      iAmReadyForNextRound = false;
-      bothPlayersReady = false;
-      showRoundCompletePopup = false;
+      cancelSelection();
+    } catch (e) {
+      _appRepo.leaveGame();
+      developer.log("Error mounting the game back $e");
     }
-
-    cancelSelection();
   }
 
   ///
@@ -238,10 +245,41 @@ class RoomViewModel extends ChangeNotifier {
   }
 
   Future<void> leaveGame() async {
-    _gameRepo.leaveGame();
+    if (currentGame != null) {
+      await _gameRepo.leaveGame(playerId!);
+      await _gameRepo.endGame();
+    }
     _appRepo.leaveGame();
-
     notifyListeners();
+  }
+
+  Future<void> endGame() async {
+    await _gameRepo.endGame();
+  }
+
+  Future<bool> confirmDelete(BuildContext context) async {
+    final res = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text("Leave Game?"),
+        content: Text(
+          (currentGame == null) ? "Game deleted" : "This will delete the game",
+        ),
+        actions: [
+          if (currentGame != null)
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text("Cancel"),
+            ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text((currentGame == null) ? "Lobby" : "Abandon"),
+          ),
+        ],
+      ),
+    );
+    return res ?? false;
   }
 
   ///

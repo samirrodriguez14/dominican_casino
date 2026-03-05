@@ -123,6 +123,24 @@ class GameHandler2 {
     });
   }
 
+  Future<void> leaveGame(String gameId, String pid) async {
+    final doc = _games.doc(gameId);
+    final snap = await doc.get();
+    if (!snap.exists) return;
+
+    final data = snap.data() as Map<String, dynamic>;
+
+    final player1 = data['player1'];
+    final player2 = data['player2'];
+
+    (player1 == pid) ? "" : "";
+
+    await doc.update({
+      'player1': (pid == player1) ? null : player1,
+      'player2': (pid == player2) ? null : player2,
+    });
+  }
+
   Future<void> dealSameRound(String gameId) async {
     final doc = _games.doc(gameId);
     final snap = await doc.get();
@@ -315,7 +333,7 @@ class GameHandler2 {
         final decksRaw = ctx.playersDeckRaw();
         final deck = _deckOf(decksRaw, playerId);
         deck.add(card.toMap());
-        deck.addAll(takingCards.map((e)=> e.toMap()));
+        deck.addAll(takingCards.map((e) => e.toMap()));
         decksRaw[playerId] = deck;
 
         final next = _handleTurn(ctx.data, playerId);

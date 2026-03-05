@@ -141,8 +141,13 @@ class GameRepo extends ChangeNotifier {
     await fs.takeStack(gameState!.id, playerId, stack, takingCard);
   }
 
-  void leaveGame() {}
-  void endGame() {}
+  Future<void> leaveGame(String playerId) async {
+    await fs.leaveGame(gameState!.id, playerId);
+  }
+
+  Future<void> endGame() async {
+    await fs.deleteGame(gameState!.id);
+  }
 
   //GENERAL ACTIONS
 }

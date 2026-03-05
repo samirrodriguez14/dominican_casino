@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:dominican_casino/layouts/app_popup.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
@@ -27,11 +29,11 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   bool _disposed = false;
 
-  @override
-  void disposed() {
-    _disposed = true;
-    super.dispose();
-  }
+  // @override
+  // void disposed() {
+  //   _disposed = true;
+  //   super.dispose();
+  // }
 
   @override
   void initState() {
@@ -80,6 +82,8 @@ class _GameScreenState extends State<GameScreen> {
           context: context,
           title: "Game Over",
           content: GameCompletedContent(vm: vm),
+          primaryText: "Go to Lobby",
+          onPrimary: () async => vm.endGame(),
         );
       });
     }
@@ -155,7 +159,11 @@ class _GameScreenState extends State<GameScreen> {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () async {
-                  await vm.leaveGame();
+                  developer.log('');
+                  HapticFeedback.mediumImpact();
+                  final ok = await vm.confirmDelete(context);
+                  if (ok) await vm.leaveGame();
+
                   if (context.mounted) context.go('/lobby');
                 },
                 child: Row(

@@ -30,7 +30,7 @@ class FirestoreService {
 
   Stream<GameState?> streamGame(String gameId) {
     return _games.doc(gameId).snapshots().map((snap) {
-      developer.log('updateGame: ${snap.data().toString() != ""}');
+      // developer.log('updateGame: ${snap.data().toString() != ""}');
       if (!snap.exists) return null;
       return GameState.fromMap(
         Map<String, dynamic>.from(snap.data() as Map<String, dynamic>),
@@ -54,6 +54,16 @@ class FirestoreService {
 
   Future<void> startGame(String gameId) async =>
       await gameHandler.startGame(gameId);
+
+  Future<void> leaveGame(String gameId, String pid) async =>
+      await gameHandler.leaveGame(gameId, pid);
+
+
+  ///
+  ///GAME HANDLE END
+
+  ///ROUND CONTROLLERS
+  ///
 
   Future<void> dealSameRound(String gameId) async =>
       await gameHandler.dealSameRound(gameId);
@@ -86,7 +96,9 @@ class FirestoreService {
   }
 
   ///
-  ///GAME HANDLE END
+  ///ROUND CONTROLLERS
+  
+
 
   ///PlayHandle START
   ///
@@ -137,14 +149,19 @@ class FirestoreService {
 
     await _db
         .runTransaction((tx) async {
-          await gameHandler.addAndTakeCards(tx, doc, card, takingCards, playerId);
+          await gameHandler.addAndTakeCards(
+            tx,
+            doc,
+            card,
+            takingCards,
+            playerId,
+          );
         })
         .catchError((e, st) {
           developer.log("runTransaction failed: $e\n$st");
           throw e;
         });
   }
-
 
   Future<void> stackCard(
     String gameId,
