@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class ControlsLegendContent extends StatelessWidget {
@@ -60,8 +60,8 @@ class _LegendRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = AppColors.surfaceAlt;
-    final fg = AppColors.textPrimary;
+    final bg = AppStyle.theme.surfaceAlt;
+    final fg = AppStyle.theme.textPrimary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -81,9 +81,9 @@ class _LegendRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppStyles.theme.title.copyWith(fontSize: 14)),
+                Text(title, style: AppStyle.theme.title.copyWith(fontSize: 14)),
                 const SizedBox(height: 2),
-                Text(desc, style: AppStyles.theme.mutedText),
+                Text(desc, style: AppStyle.theme.mutedText),
               ],
             ),
           ),

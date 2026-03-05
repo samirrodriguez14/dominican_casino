@@ -10,6 +10,7 @@ import 'package:dominican_casino/screens/game/popups/round_completed.dart';
 import 'package:dominican_casino/screens/game/areas/opponent_area.dart';
 import 'package:dominican_casino/screens/game/areas/player_area.dart';
 import 'package:dominican_casino/screens/game/areas/playing_area.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -185,7 +186,7 @@ class _GameScreenState extends State<GameScreen> {
                   children: [
                     Icon(Icons.close, color: AppColors.accentRed, size: 18),
                     const SizedBox(width: 6),
-                    Text("Leave", style: AppStyles.theme.body),
+                    Text("Leave", style: AppStyle.theme.body),
                   ],
                 ),
               ),

@@ -1,6 +1,12 @@
 import 'dart:ui';
 
+import 'package:dominican_casino/style/casino_theme.dart';
 import 'package:flutter/cupertino.dart';
+class AppStyle {
+  static AppTheme theme = CasinoTheme();
+}
+
+
 
 abstract class AppTheme {
   double get radius;

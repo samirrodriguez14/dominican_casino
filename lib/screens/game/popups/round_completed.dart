@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -77,9 +77,9 @@ class RoundCompletedContent extends StatelessWidget {
           .toList();
 
       if (entries.isEmpty) {
-        return const Text(
+        return Text(
           'No bonuses this round.',
-          style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 12, color: AppStyle.theme.textPrimary),
         );
       }
 
@@ -90,7 +90,7 @@ class RoundCompletedContent extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: AppStyle.theme.background,
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
@@ -109,7 +109,7 @@ class RoundCompletedContent extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: AppStyle.theme.background,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
@@ -117,17 +117,16 @@ class RoundCompletedContent extends StatelessWidget {
             children: [
               Text(
                 'Round $roundIndex results',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: AppStyle.theme.textPrimary,
                 ),
               ),
               const SizedBox(height: 10),
               scoreRow(player1Label, p1Total),
               const SizedBox(height: 6),
               chips(p1),
-              const SizedBox(height: 12),
               const SizedBox(height: 12),
               scoreRow(player2Label, p2Total),
               const SizedBox(height: 6),
@@ -139,7 +138,7 @@ class RoundCompletedContent extends StatelessWidget {
         Text(
           'Tap Continue when you’re ready. The controller will start the next round after both players are ready.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: AppColors.muted),
+          style: TextStyle(fontSize: 12, color: AppStyle.theme.muted),
         ),
       ],
     );

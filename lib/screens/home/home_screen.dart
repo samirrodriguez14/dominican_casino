@@ -1,3 +1,4 @@
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dominican_casino/style/theme_data.dart';
@@ -26,7 +27,7 @@ class HomeScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 28),
               child: Container(
-                decoration: AppStyles.theme.raisedSurfaceBox(),
+                decoration: AppStyle.theme.raisedSurfaceBox(),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -35,7 +36,7 @@ class HomeScreen extends StatelessWidget {
                     /// ---- TITLE ----
                     Text(
                       "Dominican Casino",
-                      style: AppStyles.theme.title.copyWith(fontSize: 36),
+                      style: AppStyle.theme.title.copyWith(fontSize: 36),
                     ),
 
                     const SizedBox(height: 10),
@@ -44,7 +45,7 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(playerId, style: AppStyles.theme.body),
+                        Text(playerId, style: AppStyle.theme.body),
                         const SizedBox(width: 6),
                         const Icon(
                           CupertinoIcons.pencil,

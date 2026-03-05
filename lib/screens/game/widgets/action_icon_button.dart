@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 class ActionControlButton extends StatelessWidget {
   const ActionControlButton({
@@ -16,8 +16,8 @@ class ActionControlButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = enabled ? AppColors.surfaceAlt : AppColors.surface;
-    final fg = enabled ? AppColors.textPrimary : AppColors.muted;
+    final bg = enabled ? AppStyle.theme.surfaceAlt : AppStyle.theme.surface;
+    final fg = enabled ? AppStyle.theme.textPrimary : AppStyle.theme.muted;
 
     return Expanded(
       child: AnimatedScale(
@@ -39,7 +39,7 @@ class ActionControlButton extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   label,
-                  style: AppStyles.theme.body.copyWith(
+                  style: AppStyle.theme.body.copyWith(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: fg,

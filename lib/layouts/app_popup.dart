@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
@@ -43,7 +43,7 @@ Future<T?> showAppPopup<T>({
                     textAlign: TextAlign.center,
                     style:  TextStyle(
                       fontSize: 13,
-                      color: AppStyles.theme.surface,
+                      color: AppStyle.theme.surface,
                     ),
                   ),
                 ],

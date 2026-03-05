@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class PlayingCardExtraPoints extends StatelessWidget {
@@ -22,16 +22,13 @@ class PlayingCardExtraPoints extends StatelessWidget {
           topLeft: Radius.circular(5),
           bottomLeft: Radius.circular(5),
         ),
-        color: AppColors.alabasterGrey,
-        // border: Border.all(
-        //   color: AppColors.surfaceAlt.withOpacity(.6),
-        //   width: 0.5,
-        // ),
+        color: AppStyle.theme.surface,
+
         boxShadow: [
           BoxShadow(
             blurRadius: 6,
             offset: const Offset(0, 2),
-            color: AppColors.background.withOpacity(.12),
+        color: AppStyle.theme.background.withOpacity(.12),
           ),
         ],
       ),

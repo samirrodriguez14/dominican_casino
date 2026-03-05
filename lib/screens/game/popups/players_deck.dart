@@ -1,5 +1,5 @@
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/screens/game/widgets/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -29,22 +29,22 @@ class CollectedCardsStrip extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: AppStyles.theme.raisedSurfaceBox(),
+      decoration: AppStyle.theme.raisedSurfaceBox(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              Text(title, style: AppStyles.theme.title),
+              Text(title, style: AppStyle.theme.title),
               const Spacer(),
-              if (showCount) Text('${cards.length}', style: AppStyles.theme.body),
+              if (showCount) Text('${cards.length}', style: AppStyle.theme.body),
             ],
           ),
           const SizedBox(height: 10),
 
           if (cards.isEmpty)
-            Text(emptyText, style: AppStyles.theme.body)
+            Text(emptyText, style: AppStyle.theme.body)
           else
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxHeight ?? (h + 12)),

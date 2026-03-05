@@ -4,6 +4,7 @@ import 'package:dominican_casino/screens/game/popups/button_instructions.dart';
 import 'package:dominican_casino/screens/game/popups/game_status.dart';
 import 'package:dominican_casino/screens/game/decks/players_deck.dart';
 import 'package:dominican_casino/screens/game/widgets/action_icon_button.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:dominican_casino/screens/game/widgets/cards/playing_card.dart';
@@ -31,19 +32,19 @@ class PlayerAreaState extends State<PlayerArea> {
 
     if (waitingForDeal) {
       pillText = vm.isController ? "DEAL NEXT" : "WAITING DEAL";
-      pillColor = AppStyles.theme.surfaceAlt;
+      pillColor = AppStyle.theme.surfaceAlt;
     } else if (status == RoundStatus.playing) {
       pillText = isTurn ? "YOUR TURN" : "WAITING";
-      pillColor = isTurn ? AppColors.accentGreen : AppStyles.theme.surfaceAlt;
+      pillColor = isTurn ? AppColors.accentGreen : AppStyle.theme.surfaceAlt;
     } else if (status == RoundStatus.completed) {
       pillText = "ROUND COMPLETE";
       pillColor = AppColors.accentRed;
     } else if (status == RoundStatus.dealing) {
       pillText = "DEALING";
-      pillColor = AppStyles.theme.surfaceAlt;
+      pillColor = AppStyle.theme.surfaceAlt;
     } else {
       pillText = "WAITING PLAYERS";
-      pillColor = AppStyles.theme.muted;
+      pillColor = AppStyle.theme.muted;
     }
 
     final highlightTurn = vm.currentTurn;
@@ -132,10 +133,10 @@ class PlayerAreaState extends State<PlayerArea> {
                         ),
                         child: Text(
                           pillText,
-                          style: AppStyles.theme.mutedText.copyWith(
+                          style: AppStyle.theme.mutedText.copyWith(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: AppStyles.theme.textPrimary,
+                            color: AppStyle.theme.textPrimary,
                           ),
                         ),
                       ),
@@ -163,10 +164,10 @@ class PlayerAreaState extends State<PlayerArea> {
                           ),
                           child: Text(
                             "My Score: ${vm.g?.scores[vm.me] ?? 0}",
-                            style: AppStyles.theme.mutedText.copyWith(
+                            style: AppStyle.theme.mutedText.copyWith(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
-                              color: AppStyles.theme.textPrimary,
+                              color: AppStyle.theme.textPrimary,
                             ),
                           ),
                         ),
@@ -264,7 +265,7 @@ class PlayerAreaState extends State<PlayerArea> {
       height: 42,
       child: CupertinoButton(
         padding: EdgeInsets.zero,
-        color: AppStyles.theme.surface,
+        color: AppStyle.theme.surface,
         borderRadius: BorderRadius.circular(12),
         onPressed: () => _showControlsLegendPopup(context),
         child: const Icon(CupertinoIcons.info),

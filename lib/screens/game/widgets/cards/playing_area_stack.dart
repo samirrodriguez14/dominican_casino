@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/screens/game/widgets/cards/playing_card.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +31,7 @@ class PlayingAreaStack extends StatelessWidget {
   Widget build(BuildContext context) {
     final height = cardWidth * 1.4;
     final stackColor = stack.paired
-        ? AppColors.cerulean
+        ? AppColors.cardBorder
         : (AppColors.accentGreen);
     // Total width for N overlapped cards
     final totalWidth = stack.cards.isEmpty
@@ -50,7 +51,7 @@ class PlayingAreaStack extends StatelessWidget {
         width: totalWidth,
         height: height,
         decoration: BoxDecoration(
-          color: AppStyles.theme.background,
+          color: AppStyle.theme.background,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             if (isSelected)
@@ -101,7 +102,7 @@ class PlayingAreaStack extends StatelessWidget {
                 child: Text(
                   '${stack.paired ? "P" : ''} ${stack.stackValue}',
                   style:  TextStyle(
-                    color: AppStyles.theme.textPrimary,
+                    color: AppStyle.theme.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
@@ -131,7 +132,7 @@ class PlayingAreaStack extends StatelessWidget {
                   child:  Icon(
                     Icons.check,
                     size: 14,
-                    color: AppStyles.theme.textPrimary,
+                    color: AppStyle.theme.textPrimary,
                   ),
                 ),
               ),

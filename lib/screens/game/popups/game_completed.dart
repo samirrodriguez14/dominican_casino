@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -49,7 +49,7 @@ class GameCompletedContent extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: highlight ? FontWeight.w800 : FontWeight.w600,
-              color: AppStyles.theme.textPrimary,
+              color: AppStyle.theme.textPrimary,
             ),
           ),
         ),
@@ -58,7 +58,7 @@ class GameCompletedContent extends StatelessWidget {
           style: TextStyle(
             fontSize: 18,
             fontWeight: highlight ? FontWeight.w900 : FontWeight.w800,
-            color: AppStyles.theme.textPrimary,
+            color: AppStyle.theme.textPrimary,
           ),
         ),
       ],
@@ -90,7 +90,7 @@ class GameCompletedContent extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppStyles.theme.background,
+            color: AppStyle.theme.background,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
@@ -101,7 +101,7 @@ class GameCompletedContent extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: AppStyles.theme.textPrimary,
+                  color: AppStyle.theme.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
@@ -110,7 +110,7 @@ class GameCompletedContent extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppStyles.theme.textPrimary,
+                  color: AppStyle.theme.textPrimary,
                 ),
               ),
               const SizedBox(height: 12),
@@ -126,7 +126,7 @@ class GameCompletedContent extends StatelessWidget {
          Text(
           'You can leave the room or start a new game.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: AppStyles.theme.muted),
+          style: TextStyle(fontSize: 12, color: AppStyle.theme.muted),
         ),
       ],
     );

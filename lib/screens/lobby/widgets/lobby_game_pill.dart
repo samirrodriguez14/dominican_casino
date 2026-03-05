@@ -1,3 +1,4 @@
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:flutter/cupertino.dart';
 class LobbyGamePill extends StatelessWidget {
@@ -25,8 +26,8 @@ class LobbyGamePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = AppColors.surface; // or your raisedSurfaceBox
-    final border = AppColors.surfaceAlt;
+    final bg = AppStyle.theme.surface; // or your raisedSurfaceBox
+    final border = AppStyle.theme.surfaceAlt;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -51,13 +52,13 @@ class LobbyGamePill extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(title, style: AppStyles.theme.title),
+                    Text(title, style: AppStyle.theme.title),
                     const SizedBox(width: 8),
                     _StatusChip(text: statusText, isFull: statusIsFull),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(subtitle, style: AppStyles.theme.mutedText),
+                Text(subtitle, style: AppStyle.theme.mutedText),
               ],
             ),
           ),
@@ -70,17 +71,17 @@ class LobbyGamePill extends StatelessWidget {
               CupertinoButton(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 color: enterEnabled
-                    ? AppColors.cerulean
-                    : AppColors.cardBorder,
+                    ? AppColors.primaryAction
+                    : AppStyle.theme.border,
                 onPressed: onEnter, // null disables
-                child: Text(enterLabel,style: AppStyles.theme.title,)
+                child: Text(enterLabel,style: AppStyle.theme.title,)
               ),
               const SizedBox(width: 8),
               CupertinoButton(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 color: AppColors.accentRed,
                 onPressed: onDelete,
-                child: const Icon(CupertinoIcons.trash, size: 18, color: AppColors.cardBorder,),
+                child:  Icon(CupertinoIcons.trash, size: 18, color: AppStyle.theme.border,),
               ),
             ],
           )

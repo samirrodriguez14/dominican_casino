@@ -1,5 +1,5 @@
 import 'package:dominican_casino/screens/game/widgets/cards/playing_card_back.dart';
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:dominican_casino/screens/game/widgets/cards/playing_area_stack.dart';
 import 'package:dominican_casino/screens/game/widgets/cards/playing_card.dart';
@@ -37,10 +37,10 @@ class PlayingAreaState extends State<PlayingArea> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("Playing Area", style: AppStyles.theme.body),
+                        Text("Playing Area", style: AppStyle.theme.body),
                         Text(
                           'Last Take: ${vm.lastTookCard}',
-                          style: AppStyles.theme.body,
+                          style: AppStyle.theme.body,
                         ),
                       ],
                     ),
@@ -55,7 +55,7 @@ class PlayingAreaState extends State<PlayingArea> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(CupertinoIcons.xmark_circle_fill, size: 15),
-                              Text("selection", style: AppStyles.theme.body),
+                              Text("selection", style: AppStyle.theme.body),
                             ],
                           ),
                         ),
@@ -208,7 +208,7 @@ class PlayingAreaState extends State<PlayingArea> {
         opacity: actionEnbled ? 1 : .8,
         child: Container(
           padding: EdgeInsets.all((isEnabled) ? 12 : 2),
-          decoration: AppStyles.theme.raisedSurfaceBox(),
+          decoration: AppStyle.theme.raisedSurfaceBox(),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -223,7 +223,7 @@ class PlayingAreaState extends State<PlayingArea> {
                     empty: !hasCards,
                   ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: AppStyles.theme.mutedText),
+                  Text(subtitle, style: AppStyle.theme.mutedText),
                 ],
               ),
               if (isEnabled) SizedBox(width: 8),
@@ -233,7 +233,7 @@ class PlayingAreaState extends State<PlayingArea> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(actionIcon, size: cardWidth),
-                    Text(actionLabel, style: AppStyles.theme.title),
+                    Text(actionLabel, style: AppStyle.theme.title),
                   ],
                 ),
             ],

@@ -104,15 +104,15 @@ class _CardBack extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppStyles.theme.surface,
+        color: AppStyle.theme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppStyles.theme.surfaceAlt, width: 1),
+        border: Border.all(color: AppStyle.theme.surfaceAlt, width: 1),
       ),
       alignment: Alignment.center,
       child: Text(
         'DC',
         style: TextStyle(
-          color: AppStyles.theme.textPrimary,
+          color: AppStyle.theme.textPrimary,
           fontWeight: FontWeight.w900,
         ),
       ),

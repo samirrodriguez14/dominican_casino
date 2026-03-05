@@ -1,10 +1,10 @@
 import 'package:dominican_casino/models/lobby_game.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/screens/lobby/widgets/lobby_game_pill.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart' show ReadContext, WatchContext;
-import 'package:dominican_casino/style/theme_data.dart';
 import 'package:provider/provider.dart';
 
 class LobbyScreen extends StatefulWidget {
@@ -28,7 +28,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
     final vm = context.watch<LobbyViewModel>();
 
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppStyle.theme.background,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -68,7 +68,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
               SizedBox(
                 width: double.infinity,
                 child: CupertinoButton(
-                  color: AppColors.surfaceAlt,
+                  color: AppStyle.theme.surfaceAlt,
                   borderRadius: BorderRadius.circular(12),
                   onPressed: vm.loading ? null : () => vm.createGame(),
                   child:  Text(
@@ -115,7 +115,7 @@ Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Text("No games yet", style: AppStyles.theme.mutedText),
+        child: Text("No games yet", style: AppStyle.theme.mutedText),
       ),
     );
   }

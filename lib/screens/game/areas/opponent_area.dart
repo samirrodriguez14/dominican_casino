@@ -1,6 +1,7 @@
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/screens/game/decks/players_deck.dart';
 import 'package:dominican_casino/screens/game/widgets/cards/playing_card_back.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/theme_data.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -29,7 +30,7 @@ class OpponentAreaState extends State<OpponentArea> {
     bool opponentJoined = opp != null && opp != "";
     final pillColor = highlightTurn
         ? AppColors.accentGreen.withOpacity(0.75)
-        : AppColors.surfaceAlt.withOpacity(0.55);
+        : AppStyle.theme.surfaceAlt.withOpacity(0.55);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -71,7 +72,7 @@ class OpponentAreaState extends State<OpponentArea> {
                       style: AppStyle.theme.mutedText.copyWith(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: AppStyle.theme.textPrimary,
                       ),
                     ),
                   ),

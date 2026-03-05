@@ -1,5 +1,5 @@
 import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/style/theme_data.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +42,7 @@ class GameStatusContent extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: AppStyle.theme.background,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
@@ -71,19 +71,19 @@ class GameStatusContent extends StatelessWidget {
         Expanded(
           child: Text(
             k,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: AppColors.muted,
+              color: AppStyle.theme.muted,
             ),
           ),
         ),
         Text(
           v,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: AppStyle.theme.textPrimary,
           ),
         ),
       ],
