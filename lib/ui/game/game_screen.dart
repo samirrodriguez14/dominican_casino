@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/ui/game/decks/game_deck.dart';
+import 'package:dominican_casino/ui/game/decks/players_deck.dart';
 import 'package:dominican_casino/ui/game/popups/button_instructions.dart';
 import 'package:dominican_casino/ui/game/popups/game_completed.dart';
 import 'package:dominican_casino/ui/game/popups/game_status.dart';
@@ -57,7 +58,7 @@ class GameScreenState extends State<GameScreen> {
 
     ///GAME/ROUND STATUS CONTROLLERS
     ///---------------------
-    if (vm.showRoundCompletePopup && vm.g?.winnerId == null) {
+    if (vm.showRoundCompletePopup) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_disposed || !mounted) return;
 
@@ -124,7 +125,13 @@ class GameScreenState extends State<GameScreen> {
                     PlayerArea(),
                   ],
                 ),
-
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ConstrainedBox(constraints: BoxConstraints(maxWidth: 70, maxHeight: 70*1.4 ),
+                  child:  AppStyle.theme.dottedBox(
+                    child: PlayersDeck(cards: [], me: false, extraPoints: 0),
+                  ),
+                ),),
                 AnimatedAlign(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
@@ -132,7 +139,7 @@ class GameScreenState extends State<GameScreen> {
                       ? Alignment.center
                       : Alignment.centerRight,
                   child: Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.fromLTRB(0,0,8,0),
                     child: GameControlDeck(),
                   ),
                 ),

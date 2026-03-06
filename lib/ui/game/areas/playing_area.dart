@@ -41,7 +41,7 @@ class PlayingAreaState extends State<PlayingArea> {
         ),
 
         Positioned(
-          left: -5,
+          left: -10,
           top: 0,
           bottom: 0,
           child: Column(
@@ -96,7 +96,7 @@ class PlayingAreaState extends State<PlayingArea> {
               transform: isSelected
                   ? Matrix4.translationValues(0, -12, 0)
                   : Matrix4.identity(),
-              child: PlayingCard(playingCardModel: c, isSelected: isSelected),
+              child: PlayingCard(playingCardModel: c, isSelected: isSelected, width: 70,),
             ),
           );
         }),

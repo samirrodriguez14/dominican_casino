@@ -1,3 +1,4 @@
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
@@ -25,8 +26,8 @@ class PlayersDeck extends StatelessWidget {
         HapticFeedback.mediumImpact();
         showPlayersDeckPopup(context, cards, me: me);
       },
-      child: Container(
-        padding: const EdgeInsets.all(0),
+      child: AppStyle.theme.dottedBox(
+        // padding: const EdgeInsets.all(0),
         // decoration: AppStyle.theme.raisedSurfaceBox(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,

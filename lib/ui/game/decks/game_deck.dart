@@ -125,7 +125,7 @@ class _DeckBox extends StatelessWidget {
               children: [
                 PlayingCardBack(width: cardWidth, empty: !hasCards),
                 const SizedBox(height: 2),
-                Text(subtitle, style: AppStyle.theme.mutedText),
+               if (subtitle!='0') Text(subtitle, style: AppStyle.theme.mutedText),
               ],
             ),
             if (isEnabled) const SizedBox(width: 8),

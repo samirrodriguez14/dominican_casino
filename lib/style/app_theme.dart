@@ -8,6 +8,8 @@ class AppStyle {
 abstract class AppTheme {
   double get radius;
 
+  String get cardBack;
+  String get appLogo;
   // ---- Base colors ----
   Color get background;
   Color get surface;
@@ -18,11 +20,11 @@ abstract class AppTheme {
   Color get border;
 
   // ---- Game / Card accents (NEW) ----
-  Color get turnHighlight;        // used for current-turn outline/glow
-  Color get opponentHighlight;    // optional: opponent turn
-  Color get danger;               // delete / errors
-  Color get warning;              // warnings / “confirm”
-  Color get success;              // success states (can equal turnHighlight)
+  Color get turnHighlight; // used for current-turn outline/glow
+  Color get opponentHighlight; // optional: opponent turn
+  Color get danger; // delete / errors
+  Color get warning; // warnings / “confirm”
+  Color get success; // success states (can equal turnHighlight)
 
   // Cards (optional but super useful across themes)
   Color get cardBackground;
@@ -46,8 +48,13 @@ abstract class AppTheme {
   TextStyle get body;
   TextStyle get mutedText;
   TextStyle get caption;
-}
 
+  Widget dottedBox({
+    required Widget child,
+    Color? color,
+    EdgeInsets padding = const EdgeInsets.all(12),
+  });
+}
 
 CupertinoThemeData buildCupertinoTheme() {
   final t = AppStyle.theme;

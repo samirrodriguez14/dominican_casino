@@ -1,10 +1,15 @@
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'app_theme.dart'; // wherever your AppTheme abstract class lives
 
 class WalnutTheme extends AppTheme {
   @override
   double get radius => 12;
+  @override
+  String get appLogo => 'assets/images/logo_icon_wooden_transparent.png';
 
+  @override
+  String get cardBack => "assets/images/card_wood_back.png";
   // ---- Base colors (Walnut) ----
   @override
   Color get background => const Color(0xFF1A120E); // deep walnut shadow
@@ -133,4 +138,28 @@ class WalnutTheme extends AppTheme {
 
   @override
   TextStyle get caption => TextStyle(color: muted.withValues(alpha: .85), fontSize: 12);
+
+@override
+Widget dottedBox({
+  required Widget child,
+  Color? color,
+  EdgeInsets padding = const EdgeInsets.all(2),
+}) {
+  return DottedBorder(
+    color: border.withValues(alpha: .8),
+    strokeWidth: 1.4,
+    dashPattern: const [4, 4],
+    borderType: BorderType.RRect,
+    radius: Radius.circular(radius),
+    child: Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color ?? surface,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: child,
+    ),
+  );
+}
+
 }

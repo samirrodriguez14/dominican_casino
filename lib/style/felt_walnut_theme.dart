@@ -1,10 +1,16 @@
+import 'package:dotted_border/dotted_border.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
 
 class FeltWalnutTheme extends AppTheme {
   @override
   double get radius => 12;
+  @override
+  String get appLogo => 'assets/images/logo_icon_wooden_transparent.png';
 
+  @override
+  String get cardBack => "assets/images/card_wood_back.png";
   // Base
   @override
   Color get background => const Color(0xFF071C14);
@@ -82,7 +88,7 @@ class FeltWalnutTheme extends AppTheme {
     final hc = highlightColor ?? turnHighlight;
 
     return BoxDecoration(
-      color: surface.withValues(alpha: .30), 
+      color: surface.withValues(alpha: .30),
 
       borderRadius: BorderRadius.circular(radius),
 
@@ -90,7 +96,7 @@ class FeltWalnutTheme extends AppTheme {
         color: highlight
             ? hc.withValues(alpha: .25)
             : border.withValues(alpha: .25),
-        width:1,
+        width: 1,
       ),
 
       gradient: LinearGradient(
@@ -139,4 +145,28 @@ class FeltWalnutTheme extends AppTheme {
   @override
   TextStyle get caption =>
       TextStyle(color: muted.withValues(alpha: .85), fontSize: 12);
+
+@override
+Widget dottedBox({
+  required Widget child,
+  Color? color,
+  EdgeInsets padding = const EdgeInsets.all(2),
+}) {
+  return DottedBorder(
+    color: border.withValues(alpha: .8),
+    strokeWidth: 1.4,
+    dashPattern: const [4, 4],
+    borderType: BorderType.RRect,
+    radius: Radius.circular(radius),
+    child: Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color ?? CupertinoColors.transparent,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: child,
+    ),
+  );
+}
+
 }

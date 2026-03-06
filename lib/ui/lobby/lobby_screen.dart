@@ -46,11 +46,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      
                       image: DecorationImage(
-                        image: AssetImage(
-                          'assets/images/logo_icon_wooden_transparent.png',
-                        ),
+                        image: AssetImage(AppStyle.theme.appLogo),
                       ),
                     ),
                   ),
@@ -71,7 +68,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   color: AppStyle.theme.surfaceAlt,
                   borderRadius: BorderRadius.circular(12),
                   onPressed: vm.loading ? null : () => vm.createGame(),
-                  child:  Text(
+                  child: Text(
                     "Create Game",
                     style: TextStyle(
                       color: AppStyle.theme.textPrimary,
@@ -92,68 +89,69 @@ class _LobbyBody extends StatelessWidget {
   const _LobbyBody({required this.vm});
   final LobbyViewModel vm;
 
-@override
-Widget build(BuildContext context) {
-  if (vm.loading && vm.games.isEmpty) {
-    return const Center(child: CupertinoActivityIndicator());
-  }
+  @override
+  Widget build(BuildContext context) {
+    if (vm.loading && vm.games.isEmpty) {
+      return const Center(child: CupertinoActivityIndicator());
+    }
 
-  if (vm.error != null && vm.games.isEmpty) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          vm.error!,
-          style: const TextStyle(color: CupertinoColors.systemRed),
-          textAlign: TextAlign.center,
+    if (vm.error != null && vm.games.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            vm.error!,
+            style: const TextStyle(color: CupertinoColors.systemRed),
+            textAlign: TextAlign.center,
+          ),
         ),
-      ),
-    );
-  }
-
-  if (vm.games.isEmpty) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text("No games yet", style: AppStyle.theme.mutedText),
-      ),
-    );
-  }
-
-  final myUid = vm.userId; // <-- expose current user id in your VM
-
-  return ListView.separated(
-    padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-    itemCount: vm.games.length,
-    separatorBuilder: (_, __) => const SizedBox(height: 10),
-    itemBuilder: (context, i) {
-      final g = vm.games[i];
-
-      final full = _isFull(g);
-      final canEnter = _canEnter(g, myUid?? "");
-
-      return LobbyGamePill(
-        // New UI props you’ll add:
-        title: "Game ${_shortId(g.id)}",
-        subtitle: "P1: ${g.player1?.isNotEmpty == true ? "Ready" : "Open"}  •  "
-            "P2: ${g.player2?.isNotEmpty == true ? "Ready" : "Open"}",
-        statusText: full ? "FULL" : "OPEN",
-        statusIsFull: full,
-
-        enterEnabled: canEnter,
-        enterLabel: canEnter ? "Enter" : "Full",
-
-        onEnter: canEnter ? () => vm.joinGame(g.id) : null,
-
-        onDelete: () async {
-          final ok = await _confirmDelete(context, g.id);
-          if (!ok) return;
-          await vm.deleteGame(g.id);
-        },
       );
-    },
-  );
-}
+    }
+
+    if (vm.games.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text("No games yet", style: AppStyle.theme.mutedText),
+        ),
+      );
+    }
+
+    final myUid = vm.userId; // <-- expose current user id in your VM
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+      itemCount: vm.games.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, i) {
+        final g = vm.games[i];
+
+        final full = _isFull(g);
+        final canEnter = _canEnter(g, myUid ?? "");
+
+        return LobbyGamePill(
+          // New UI props you’ll add:
+          title: "Game ${_shortId(g.id)}",
+          subtitle:
+              "P1: ${g.player1?.isNotEmpty == true ? "Ready" : "Open"}  •  "
+              "P2: ${g.player2?.isNotEmpty == true ? "Ready" : "Open"}",
+          statusText: full ? "FULL" : "OPEN",
+          statusIsFull: full,
+
+          enterEnabled: canEnter,
+          enterLabel: canEnter ? "Enter" : "Full",
+
+          onEnter: canEnter ? () => vm.joinGame(g.id) : null,
+
+          onDelete: () async {
+            final ok = await _confirmDelete(context, g.id);
+            if (!ok) return;
+            await vm.deleteGame(g.id);
+          },
+        );
+      },
+    );
+  }
 
   Future<bool> _confirmDelete(BuildContext context, String gameId) async {
     final res = await showCupertinoDialog<bool>(
@@ -176,19 +174,20 @@ Widget build(BuildContext context) {
     );
     return res ?? false;
   }
+
   bool _isFull(LobbyGame g) {
-  final p1 = (g.player1 ?? '').trim();
-  final p2 = (g.player2 ?? '').trim();
-  return p1.isNotEmpty && p2.isNotEmpty;
-}
+    final p1 = (g.player1 ?? '').trim();
+    final p2 = (g.player2 ?? '').trim();
+    return p1.isNotEmpty && p2.isNotEmpty;
+  }
 
-/// Allow entering if there's a spot OR user is already one of the players
-bool _canEnter(LobbyGame g, String myUid) {
-  final p1 = (g.player1 ?? '').trim();
-  final p2 = (g.player2 ?? '').trim();
-  final isMe = p1 == myUid || p2 == myUid;
-  return isMe || !_isFull(g);
-}
+  /// Allow entering if there's a spot OR user is already one of the players
+  bool _canEnter(LobbyGame g, String myUid) {
+    final p1 = (g.player1 ?? '').trim();
+    final p2 = (g.player2 ?? '').trim();
+    final isMe = p1 == myUid || p2 == myUid;
+    return isMe || !_isFull(g);
+  }
 
-String _shortId(String id) => id.length <= 6 ? id : id.substring(0, 6);
+  String _shortId(String id) => id.length <= 6 ? id : id.substring(0, 6);
 }

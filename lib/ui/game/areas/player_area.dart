@@ -36,7 +36,7 @@ class PlayerAreaState extends State<PlayerArea> {
           ),
           const SizedBox(height: 10),
           Opacity(
-            opacity: highlightTurn ? 1 : 0.5,
+            opacity:1,
             child: SizedBox(
               height: 160,
               child: LayoutBuilder(

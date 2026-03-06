@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
+import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
 import 'package:dominican_casino/ui/game/game_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -23,7 +24,9 @@ class App extends StatelessWidget {
       initialLocation: '/home',
 
       routes: [
+        GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+        GoRoute(path: '/instructions', builder: (context, state) => const InstructionsScreen()),
         GoRoute(
           path: '/lobby',
           builder: (context, state) {

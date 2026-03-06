@@ -23,7 +23,7 @@ class PlayingCardBack extends StatelessWidget {
                   width: 1,
                 ),
                 image: DecorationImage(
-                  image: AssetImage('assets/images/card_wood_back.png'),
+                  image: AssetImage(AppStyle.theme.cardBack),
                   fit: BoxFit.fill,
                 ),
               ),

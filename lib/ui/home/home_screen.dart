@@ -7,16 +7,16 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final playerId = "Player123"; 
-  
+    final playerId = "Player123";
+
     return CupertinoPageScaffold(
       backgroundColor: AppStyle.theme.background,
       child: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
             opacity: 0.35,
-            image: const AssetImage(
-              'assets/images/logo_icon_wooden_transparent.png',
+            image:  AssetImage(
+              AppStyle.theme.appLogo,
             ),
             fit: BoxFit.fitHeight,
           ),
@@ -110,6 +110,37 @@ class HomeScreen extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
                         ),
+                      ),
+                    ),
+
+                    /// ---- START BUTTON ----
+                  
+                    /// ---- INSTRUCTIONS ----
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 10,
+                      ),
+                      onPressed: () {
+                        context.go('/instructions');
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            CupertinoIcons.book,
+                            size: 18,
+                            color: AppStyle.theme.muted,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Instructions",
+                            style: TextStyle(
+                              color: AppStyle.theme.muted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
