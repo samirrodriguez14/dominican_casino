@@ -96,40 +96,41 @@ class _GameScreenState extends State<GameScreen> {
       child: DecoratedBox(
         decoration: AppStyle.theme.tableBackground(),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                // _buildGameInfoRow(vm),
-                _buildGameTopBar(context, vm),
+            bottom: false,
 
-                const SizedBox(height: 10),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                child: _buildGameTopBar(context, vm),
+              ),
 
-                //Opponets area
-                const OpponentArea(),
+              const SizedBox(height: 10),
 
-                const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 36),
+                child: const OpponentArea(),
+              ),
 
-                // Main table area (playing area)
-                Expanded(child: PlayingArea()),
+              const SizedBox(height: 10),
 
-                const SizedBox(height: 10),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: PlayingArea(),
+                ),
+              ),
 
-                // Player Area
-                PlayerArea(),
+              const SizedBox(height: 10),
 
-                // const SizedBox(height: 10),
-
-                // // DeckArea area:
-                // _buildDeckRow(vm),
-              ],
-            ),
+              // Player area now reaches the bottom
+              PlayerArea(),
+            ],
           ),
         ),
       ),
     );
   }
-
   // ---------------------------
   // AREAS START
   // --------------------------

@@ -1,18 +1,21 @@
 import 'dart:developer' as devloper;
 
 import 'package:dominican_casino/app.dart';
-import 'package:dominican_casino/firebase_options.dart';
+import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/casino_theme.dart';
+import 'package:dominican_casino/style/felt_walnut_theme.dart';
+import 'package:dominican_casino/style/midnight_theme.dart';
+import 'package:dominican_casino/style/wooden_table_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
-  AppStyle.theme = CasinoTheme();
+  AppStyle.theme = FeltWalnutTheme();
 
   WidgetsFlutterBinding.ensureInitialized();
   try {

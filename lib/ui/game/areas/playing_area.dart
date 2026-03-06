@@ -1,8 +1,8 @@
-import 'package:dominican_casino/screens/game/widgets/cards/playing_card_back.dart';
+import 'package:dominican_casino/ui/game/widgets/cards/playing_card_back.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
-import 'package:dominican_casino/screens/game/widgets/cards/playing_area_stack.dart';
-import 'package:dominican_casino/screens/game/widgets/cards/playing_card.dart';
+import 'package:dominican_casino/ui/game/widgets/cards/playing_area_stack.dart';
+import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -19,31 +19,37 @@ class PlayingAreaState extends State<PlayingArea> {
   @override
   Widget build(BuildContext context) {
     return Stack(
-      alignment: vm.controlGame ? Alignment.center : Alignment.bottomRight,
+      alignment: vm.controlGame ? Alignment.center : Alignment.centerRight,
       children: [
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
-          // decoration: AppStyles.premiumGameTable(),
+          // decoration: AppStyle.theme.tableBackground(),
           child: Opacity(
             opacity: vm.controlGame ? 0.5 : 1,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 18,
+                    ),
+                    child: _buildCardWrap(context, vm),
+                  ),
+                ),
                 Stack(
                   alignment: Alignment.center,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text("Playing Area", style: AppStyle.theme.body),
-                        Text(
-                          'Last Take: ${vm.lastTookCard}',
-                          style: AppStyle.theme.body,
-                        ),
-                      ],
-                    ),
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Text(
+                      'Last Take: ${vm.lastTookCard}',
+                      style: AppStyle.theme.body,
+                    ),),
+
                     if (vm.anySelected)
                       Center(
                         child: GestureDetector(
@@ -62,17 +68,6 @@ class PlayingAreaState extends State<PlayingArea> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 8),
-
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 18,
-                    ),
-                    child: _buildCardWrap(context, vm),
-                  ),
-                ),
               ],
             ),
           ),
@@ -80,7 +75,7 @@ class PlayingAreaState extends State<PlayingArea> {
         AnimatedAlign(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
-          alignment: vm.controlGame ? Alignment.center : Alignment.bottomRight,
+          alignment: vm.controlGame ? Alignment.center : Alignment.centerRight,
           child: Padding(padding: EdgeInsets.all(8), child: _buildDeckArea(vm)),
         ),
       ],
@@ -190,8 +185,8 @@ class PlayingAreaState extends State<PlayingArea> {
     bool hasCards = false,
   }) {
     final actionEnbled = isEnabled && onAction != null;
-    final double cardWidth = isEnabled ? 70 : 32;
-    final double cardHeight = isEnabled ? 100 : 44;
+    final double cardWidth = isEnabled ? 70 : 50;
+    final double cardHeight = isEnabled ? 100 : 70;
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: actionEnbled
@@ -208,7 +203,7 @@ class PlayingAreaState extends State<PlayingArea> {
         opacity: actionEnbled ? 1 : .8,
         child: Container(
           padding: EdgeInsets.all((isEnabled) ? 12 : 2),
-          decoration: AppStyle.theme.raisedSurfaceBox(),
+          // decoration: AppStyle.theme.raisedSurfaceBox(),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,

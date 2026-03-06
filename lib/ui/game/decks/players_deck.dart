@@ -1,8 +1,8 @@
-import 'package:dominican_casino/layouts/app_popup.dart';
+import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/screens/game/popups/players_deck.dart';
-import 'package:dominican_casino/screens/game/widgets/cards/playing_card_back.dart';
-import 'package:dominican_casino/screens/game/widgets/cards/playing_card_extra_points.dart';
+import 'package:dominican_casino/ui/game/popups/players_deck.dart';
+import 'package:dominican_casino/ui/game/widgets/cards/playing_card_back.dart';
+import 'package:dominican_casino/ui/game/widgets/cards/playing_card_extra_points.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -28,7 +28,7 @@ class PlayersDeck extends StatelessWidget {
       },
       child: Container(
         padding: const EdgeInsets.all(4),
-        decoration: AppStyle.theme.raisedSurfaceBox(),
+        // decoration: AppStyle.theme.raisedSurfaceBox(),
         child: Column(
           children: [
             Row(
@@ -37,7 +37,7 @@ class PlayersDeck extends StatelessWidget {
                 if (extraPoints > 0)
                  PlayingCardExtraPoints( height: 30, width: 14, total: extraPoints,),
 
-                PlayingCardBack(height: 40, width: 35, empty: deckCount == 0),
+                PlayingCardBack(height: 80, width: 60, empty: deckCount == 0),
               ],
             ),
             Text("$deckCount"),
