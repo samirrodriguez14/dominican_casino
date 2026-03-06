@@ -1,11 +1,8 @@
-import 'package:dominican_casino/ui/game/widgets/cards/playing_card_back.dart';
-import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/game/decks/players_deck.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class PlayingArea extends StatefulWidget {
@@ -19,17 +16,15 @@ class PlayingAreaState extends State<PlayingArea> {
   @override
   Widget build(BuildContext context) {
     return Stack(
-      alignment: vm.controlGame ? Alignment.center : Alignment.centerRight,
+      clipBehavior: Clip.none,
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          // decoration: AppStyle.theme.tableBackground(),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
           child: Opacity(
             opacity: vm.controlGame ? 0.5 : 1,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Expanded(
                   child: SingleChildScrollView(
@@ -40,43 +35,30 @@ class PlayingAreaState extends State<PlayingArea> {
                     child: _buildCardWrap(context, vm),
                   ),
                 ),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: Text(
-                      'Last Take: ${vm.lastTookCard}',
-                      style: AppStyle.theme.body,
-                    ),),
-
-                    if (vm.anySelected)
-                      Center(
-                        child: GestureDetector(
-                          onTap: () {
-                            HapticFeedback.mediumImpact();
-                            vm.cancelSelection();
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(CupertinoIcons.xmark_circle_fill, size: 15),
-                              Text("selection", style: AppStyle.theme.body),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
               ],
             ),
           ),
         ),
-        AnimatedAlign(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          alignment: vm.controlGame ? Alignment.center : Alignment.centerRight,
-          child: Padding(padding: EdgeInsets.all(8), child: _buildDeckArea(vm)),
+
+        Positioned(
+          left: -5,
+          top: 0,
+          bottom: 0,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              PlayersDeck(
+                cards: vm.oppCollectedCards,
+                me: false,
+                extraPoints: vm.oppExtraPoints,
+              ),
+              PlayersDeck(
+                cards: vm.pCollectedCards,
+                me: true,
+                extraPoints: vm.myExtraPoints,
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -119,122 +101,6 @@ class PlayingAreaState extends State<PlayingArea> {
           );
         }),
       ],
-    );
-  }
-
-  Widget _buildDeckArea(RoomViewModel vm) {
-    final g = vm.g;
-
-    final remaining = g?.deck.length;
-    final started = g?.started ?? false;
-    final isController = vm.isController;
-    final canRedeal = vm.canRedeal;
-
-    final canStart = vm.canStart;
-
-    final String subtitle = remaining == null ? "-" : "$remaining";
-
-    late final IconData actionIcon;
-    late final String actionLabel;
-    late final VoidCallback? onAction;
-
-    if (g == null) {
-      actionIcon = CupertinoIcons.lock_circle_fill;
-      actionLabel = "Deleted";
-      onAction = null;
-    } else if (!started) {
-      if (canStart) {
-        actionIcon = CupertinoIcons.play_circle_fill;
-        actionLabel = "Start";
-        onAction = () => vm.startGame();
-      } else {
-        actionIcon = CupertinoIcons.lock_circle_fill;
-        actionLabel = isController ? "Waiting…" : "Locked";
-        onAction = null;
-      }
-    } else {
-      if (canRedeal) {
-        actionIcon = CupertinoIcons.refresh_circled_solid;
-        actionLabel = "Redeal";
-        onAction = (vm.canStartNextRound)
-            ? () => vm.startNextRound()
-            : () => vm.redealSameRound();
-      } else {
-        actionIcon = CupertinoIcons.lock_circle_fill;
-        actionLabel = "Waiting…";
-        onAction = null;
-      }
-    }
-
-    return _deckBox(
-      subtitle: subtitle,
-      actionLabel: actionLabel,
-      actionIcon: actionIcon,
-      onAction: onAction,
-      isEnabled: vm.controlGame,
-      hasCards: remaining != 0,
-    );
-  }
-
-  Widget _deckBox({
-    required String subtitle,
-    required IconData actionIcon,
-    String actionLabel = "",
-    VoidCallback? onAction,
-    required bool isEnabled,
-    bool hasCards = false,
-  }) {
-    final actionEnbled = isEnabled && onAction != null;
-    final double cardWidth = isEnabled ? 70 : 50;
-    final double cardHeight = isEnabled ? 100 : 70;
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      onPressed: actionEnbled
-          ? () async {
-              onAction();
-            }
-          : (actionLabel == "Deleted")
-          ? () async {
-              await vm.leaveGame();
-              if (mounted) context.go('/lobby');
-            }
-          : null,
-      child: Opacity(
-        opacity: actionEnbled ? 1 : .8,
-        child: Container(
-          padding: EdgeInsets.all((isEnabled) ? 12 : 2),
-          // decoration: AppStyle.theme.raisedSurfaceBox(),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  PlayingCardBack(
-                    width: cardWidth,
-                    height: cardHeight,
-                    empty: !hasCards,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: AppStyle.theme.mutedText),
-                ],
-              ),
-              if (isEnabled) SizedBox(width: 8),
-
-              if (isEnabled)
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(actionIcon, size: cardWidth),
-                    Text(actionLabel, style: AppStyle.theme.title),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

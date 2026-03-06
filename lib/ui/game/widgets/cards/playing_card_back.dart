@@ -3,47 +3,42 @@ import 'package:flutter/cupertino.dart';
 
 class PlayingCardBack extends StatelessWidget {
   final double width;
-  final double height;
   final bool empty;
 
-  const PlayingCardBack({
-    super.key,
-    this.width = 44,
-    this.height = 62,
-    this.empty = false,
-  });
+  const PlayingCardBack({super.key, this.width = 44, this.empty = false});
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final height = width * 1.4;
+
+    return SizedBox(
       width: width,
       height: height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: empty
-            ? AppStyle.theme.background.withValues(alpha: (0.7))
-            : AppStyle.theme.surfaceAlt.withValues(alpha: (.7)),
-        border: Border.all(
-          color: AppStyle.theme.surfaceAlt.withValues(alpha: (.6)),
-          width: 0.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-            color: AppStyle.theme.background.withValues(alpha: (.12)),
-          ),
-        ],
-      ),
+
       child: (!empty)
           ? Container(
-              decoration: AppStyle.theme.surfaceBox().copyWith(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppStyle.theme.surfaceRaised,
+                  width: 1,
+                ),
                 image: DecorationImage(
-                  image: AssetImage('assets/images/logo_card.png'),
-                  fit: BoxFit.fitHeight,
+                  image: AssetImage('assets/images/card_wood_back.png'),
+                  fit: BoxFit.fill,
                 ),
               ),
             )
-          : Icon(CupertinoIcons.minus_circle_fill),
+          : Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: AppStyle.theme.surface,
+                border: Border.all(
+                  color: AppStyle.theme.surfaceRaised,
+                  width: 1,
+                ),
+              ),
+              child: Icon(CupertinoIcons.minus_circle_fill),
+            ),
     );
   }
 }

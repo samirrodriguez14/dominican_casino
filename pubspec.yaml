@@ -31,4 +31,4 @@ flutter:
     
 flutter_launcher_icons:
   ios: true
-  image_path: "assets/images/logo_icon_transparent.png"
+  image_path: "assets/images/logo_icon_wooden_transparent.png"

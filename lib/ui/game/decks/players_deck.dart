@@ -1,9 +1,8 @@
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/ui/game/popups/players_deck.dart';
+import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card_extra_points.dart';
-import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
@@ -20,34 +19,45 @@ class PlayersDeck extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final deckCount = cards.length;
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      onPressed: () {
+    return GestureDetector(
+      // padding: EdgeInsets.zero,
+      onTap: () {
         HapticFeedback.mediumImpact();
-        _showPlayersDeckPopup(context, cards, me: me);
+        showPlayersDeckPopup(context, cards, me: me);
       },
       child: Container(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(0),
         // decoration: AppStyle.theme.raisedSurfaceBox(),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Row(
+            Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (extraPoints > 0)
-                 PlayingCardExtraPoints( height: 30, width: 14, total: extraPoints,),
-
-                PlayingCardBack(height: 80, width: 60, empty: deckCount == 0),
+                if (extraPoints > 0 && me)
+                  PlayingCardExtraPoints(
+                    me: me,
+                    height: 24,
+                    width: 50,
+                    total: extraPoints,
+                  ),
+                PlayingCardBack( width: 55, empty: deckCount == 0),
+                if (extraPoints > 0 && !me)
+                  PlayingCardExtraPoints(
+                    me: me,
+                    height: 24,
+                    width: 50,
+                    total: extraPoints,
+                  ),
               ],
             ),
-            Text("$deckCount"),
           ],
         ),
       ),
     );
   }
 
-  void _showPlayersDeckPopup(
+  static void showPlayersDeckPopup(
     BuildContext context,
     List<PlayingCardModel> cards, {
     bool me = true,

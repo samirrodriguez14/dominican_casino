@@ -70,7 +70,17 @@ class App extends StatelessWidget {
       routerConfig: router,
       theme: buildCupertinoTheme(),
       builder: (context, child) {
-        return Material(color: AppStyle.theme.background, child: child!);
+        if (child == null) return const SizedBox();
+
+        return Material(
+          color: AppStyle.theme.background,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: child,
+            ),
+          ),
+        );
       },
     );
   }

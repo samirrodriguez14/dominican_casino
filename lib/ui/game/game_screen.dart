@@ -2,10 +2,11 @@ import 'dart:developer' as developer;
 
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/ui/game/decks/game_deck.dart';
 import 'package:dominican_casino/ui/game/popups/button_instructions.dart';
 import 'package:dominican_casino/ui/game/popups/game_completed.dart';
 import 'package:dominican_casino/ui/game/popups/game_status.dart';
-import 'package:dominican_casino/ui/game/popups/players_deck.dart';
+import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
 import 'package:dominican_casino/ui/game/popups/round_completed.dart';
 import 'package:dominican_casino/ui/game/areas/opponent_area.dart';
 import 'package:dominican_casino/ui/game/areas/player_area.dart';
@@ -22,10 +23,10 @@ class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
 
   @override
-  State<GameScreen> createState() => _GameScreenState();
+  State<GameScreen> createState() => GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class GameScreenState extends State<GameScreen> {
   bool _disposed = false;
 
   @override
@@ -91,41 +92,52 @@ class _GameScreenState extends State<GameScreen> {
       });
     }
 
-    ///MAIN AREA
-    return CupertinoPageScaffold(
-      child: DecoratedBox(
-        decoration: AppStyle.theme.tableBackground(),
-        child: SafeArea(
+    return SizedBox(
+      width: MediaQuery.of(context).size.width.clamp(0, 600),
+      child: CupertinoPageScaffold(
+        child: DecoratedBox(
+          decoration: AppStyle.theme.tableBackground(),
+          child: SafeArea(
             bottom: false,
-
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                child: _buildGameTopBar(context, vm),
-              ),
-
-              const SizedBox(height: 10),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 36),
-                child: const OpponentArea(),
-              ),
-
-              const SizedBox(height: 10),
-
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: PlayingArea(),
+            child: Stack(
+              children: [
+                // Base board
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                      child: _buildGameTopBar(context, vm),
+                    ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 36),
+                      child: const OpponentArea(),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: PlayingArea(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    PlayerArea(),
+                  ],
                 ),
-              ),
 
-              const SizedBox(height: 10),
-
-              // Player area now reaches the bottom
-              PlayerArea(),
-            ],
+                AnimatedAlign(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  alignment: vm.controlGame
+                      ? Alignment.center
+                      : Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: GameControlDeck(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -200,7 +212,7 @@ class _GameScreenState extends State<GameScreen> {
   ///POPUP HELPERS START
   ///--------------------
 
-  void showPlayersDeckPopup(
+  static void showPlayersDeckPopup(
     BuildContext context,
     List<PlayingCardModel> cards, {
     bool me = true,
@@ -212,21 +224,21 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  void showControlsLegendPopup(BuildContext context) {
+  static void showControlsLegendPopup(BuildContext context) {
     showAppPopup(
       context: context,
       title: "Controls",
-      subtitle: "What each button does",
+      // subtitle: "What each button does",
       primaryText: "Got it",
       content: const ControlsLegendContent(),
     );
   }
 
-  void showGameStatusPopup(BuildContext context, RoomViewModel vm) {
+  static void showGameStatusPopup(BuildContext context, RoomViewModel vm) {
     showAppPopup(
       context: context,
       title: 'Game Status',
-      subtitle: 'Turn, dealer, round, and scores',
+      // subtitle: 'Turn, dealer, round, and scores',
       content: GameStatusContent(vm: vm),
       primaryText: 'Close',
       onPrimary: () {}, // optional

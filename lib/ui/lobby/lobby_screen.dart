@@ -49,7 +49,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                       
                       image: DecorationImage(
                         image: AssetImage(
-                          'assets/images/logo_icon_transparent.png',
+                          'assets/images/logo_icon_wooden_transparent.png',
                         ),
                       ),
                     ),

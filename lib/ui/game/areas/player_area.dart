@@ -1,14 +1,10 @@
 import 'package:dominican_casino/style/layouts/app_popup.dart';
-import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/ui/game/popups/button_instructions.dart';
-import 'package:dominican_casino/ui/game/popups/game_status.dart';
-import 'package:dominican_casino/ui/game/decks/players_deck.dart';
 import 'package:dominican_casino/ui/game/widgets/action_icon_button.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class PlayerArea extends StatefulWidget {
@@ -22,190 +18,69 @@ class PlayerAreaState extends State<PlayerArea> {
 
   @override
   Widget build(BuildContext context) {
-    final isTurn = vm.currentTurn;
-    final status = vm.roundStatus;
-    final waitingForDeal = vm.handsEmpty;
-
-    String pillText;
-    Color pillColor;
-
-    if (waitingForDeal) {
-      pillText = vm.isController ? "DEAL NEXT" : "WAITING DEAL";
-      pillColor = AppStyle.theme.surfaceAlt;
-    } else if (status == RoundStatus.playing) {
-      pillText = isTurn ? "YOUR TURN" : "WAITING";
-      pillColor = isTurn
-          ? AppStyle.theme.turnHighlight
-          : AppStyle.theme.surfaceAlt;
-    } else if (status == RoundStatus.completed) {
-      pillText = "ROUND COMPLETE";
-      pillColor = AppStyle.theme.danger;
-    } else if (status == RoundStatus.dealing) {
-      pillText = "DEALING";
-      pillColor = AppStyle.theme.surfaceAlt;
-    } else {
-      pillText = "WAITING PLAYERS";
-      pillColor = AppStyle.theme.muted;
-    }
-
     final highlightTurn = vm.currentTurn;
-    bool opponentJoined = vm.opp != null && vm.opp != "";
-
-    return Stack(
-      alignment: Alignment.topRight,
-      children: [
-        Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+    return Container(
+      decoration: AppStyle.theme.playerSectionBox(
+        highlightColor: AppStyle.theme.turnHighlight,
+        highlight: highlightTurn,
+        joined: false,
+      ),
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Opacity(
+            opacity: highlightTurn ? 1 : 0.8,
+            child: _buildPlayControls(context, vm),
+          ),
+          const SizedBox(height: 10),
+          Opacity(
+            opacity: highlightTurn ? 1 : 0.5,
+            child: SizedBox(
+              height: 160,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth,
                       ),
-                      decoration: BoxDecoration(
-                        color: pillColor.withValues(alpha: (0.18)),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: pillColor.withValues(alpha: (0.40)),
-                        ),
-                      ),
-                      child: Text(
-                        pillText,
-                        style: AppStyle.theme.mutedText.copyWith(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppStyle.theme.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: () {
-                        HapticFeedback.mediumImpact();
-                        _showGameStatusPopup(context, vm);
-                      },
-
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: pillColor.withValues(alpha: (0.18)),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: pillColor),
-                        ),
-                        child: Text(
-                          "My Score: ${vm.g?.scores[vm.me] ?? 0}",
-                          style: AppStyle.theme.mutedText.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: AppStyle.theme.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                Expanded(
-                  child: Align(
-                    alignment: AlignmentGeometry.centerRight,
-                    child: Text(''),
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(8),
-              decoration: AppStyle.theme.playerSectionBox(
-                highlightColor: AppStyle.theme.turnHighlight,
-                highlight: highlightTurn,
-                joined: opponentJoined,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Opacity(
-                    opacity: highlightTurn ? 1 : 0.5,
-                    child: _buildPlayControls(context, vm),
-                  ),
-                  const SizedBox(height: 10),
-                  Opacity(
-                    opacity: highlightTurn ? 1 : 0.5,
-                    child: SizedBox(
-                      height: 160,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minWidth: constraints.maxWidth,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: vm.pHandCards.map((c) {
-                                  final isSelected = vm.selectedCard == c;
-
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 5),
-                                    child: GestureDetector(
-                                      onTap: () => vm.selectCard(c),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 150,
-                                        ),
-                                        transform: isSelected
-                                            ? Matrix4.translationValues(
-                                                0,
-                                                -12,
-                                                0,
-                                              )
-                                            : Matrix4.identity(),
-                                        child: PlayingCard(
-                                          playingCardModel: c,
-                                          width: 90,
-                                          isSelected: isSelected,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: vm.pHandCards.map((c) {
+                          final isSelected = vm.selectedCard == c;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 5),
+                            child: GestureDetector(
+                              onTap: () => vm.selectCard(c),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                transform: isSelected
+                                    ? Matrix4.translationValues(0, -12, 0)
+                                    : Matrix4.identity(),
+                                child: PlayingCard(
+                                  playingCardModel: c,
+                                  width: 90,
+                                  isSelected: isSelected,
+                                ),
                               ),
                             ),
                           );
-                        },
+                        }).toList(),
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 10),
-                ],
+                  );
+                },
               ),
             ),
-          ],
-        ),
-        Align(
-          alignment: Alignment.topRight,
-          child: PlayersDeck(
-            cards: vm.pCollectedCards,
-            me: true,
-            extraPoints: vm.myExtraPoints,
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+        ],
+      ),
+
+      // Floating deck: outside the player area box (top edge)
     );
   }
 
@@ -289,21 +164,22 @@ class PlayerAreaState extends State<PlayerArea> {
     showAppPopup(
       context: context,
       title: "Controls",
-      subtitle: "What each button does",
+      // subtitle: "What each button does",
       primaryText: "Got it",
       content: const ControlsLegendContent(),
     );
   }
 
-  void _showGameStatusPopup(BuildContext context, RoomViewModel vm) {
-    showAppPopup(
-      context: context,
-      title: 'Game Status',
-      subtitle: 'Turn, dealer, round, and scores',
-      content: GameStatusContent(vm: vm),
-      primaryText: 'Close',
-      onPrimary: () {}, // optional
-      barrierDismissible: true,
-    );
-  }
+  // void _showGameStatusPopup(BuildContext context, RoomViewModel vm) {
+  //   showAppPopup(
+  //     context: context,
+  //     title: 'Game Status',
+  //     subtitle: 'Turn, dealer, round, and scores',
+  //     content: GameStatusContent(vm: vm),
+  //     primaryText: 'Close',
+  //     onPrimary: () {}, // optional
+  //     barrierDismissible: true,
+  //   );
+  // }
+
 }

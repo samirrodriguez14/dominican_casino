@@ -1,5 +1,4 @@
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/ui/game/decks/players_deck.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card_back.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
@@ -27,9 +26,7 @@ class OpponentAreaState extends State<OpponentArea> {
   @override
   Widget build(BuildContext context) {
     bool opponentJoined = opp != null && opp != "";
-    final pillColor = highlightTurn
-        ? AppStyle.theme.turnHighlight.withValues(alpha:0.75)
-        : AppStyle.theme.surfaceAlt.withValues(alpha:0.55);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -39,72 +36,28 @@ class OpponentAreaState extends State<OpponentArea> {
         joined: opponentJoined,
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    opponentJoined ? "Id ($opp)" : "Waiting for opponent...",
-                    style: AppStyle.theme.mutedText,
-                  ),
-                ),
-              ),
+          Text(
+            opponentJoined ? "Id ($opp)" : "Waiting for opponent...",
+            style: AppStyle.theme.mutedText,
+          ),
+          const SizedBox(height: 8),
 
-              Expanded(
-                child: Align(
-                  alignment: Alignment.center,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: pillColor.withValues(alpha:0.18),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: pillColor),
-                    ),
-                    child: Text(
-                      "Opp score: $score",
-                      style: AppStyle.theme.mutedText.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppStyle.theme.textPrimary,
+          SizedBox(
+            height: 80, // reserve card height
+            child: deckCount == 0
+                ? const SizedBox()
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      deckCount,
+                      (index) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: PlayingCardBack(width: 55),
                       ),
                     ),
                   ),
-                ),
-              ),
-
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text("", style: AppStyle.theme.mutedText),
-                ),
-              ),
-            ],
-          ),
-          Stack(
-            alignment: Alignment.topRight,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  deckCount,
-                  (index) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: PlayingCardBack(),
-                  ),
-                ),
-              ),
-              PlayersDeck(
-                cards: collectedCards,
-                me: false,
-                extraPoints: extraPoints,
-              ),
-            ],
           ),
         ],
       ),
