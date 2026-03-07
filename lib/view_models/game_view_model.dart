@@ -2,7 +2,6 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -15,9 +14,9 @@ class RoomViewModel extends ChangeNotifier {
   ///
 
   late final GameRepo _gameRepo;
-  late final AppRepo _appRepo;
   GameState? g;
-
+  String gid;
+  String pid;
   int roundIndex = 1;
   RoundStatus roundStatus = RoundStatus.playing;
 
@@ -61,6 +60,8 @@ class RoomViewModel extends ChangeNotifier {
   bool get controlGame =>
       canStart || canRedeal || opp == "" || g == null || waitingControllerDeal;
 
+  bool get lastTakeMe => _lastTookCardId == me && me != "";
+  bool get lastTakeOpp => _lastTookCardId == opp && opp != '';
   String get controllText => "";
   bool get isController =>
       g != null && me != null ? g!.controllerId == me : false;
@@ -74,7 +75,7 @@ class RoomViewModel extends ChangeNotifier {
   bool get bothPlayersJoined =>
       _gameRepo.gameState?.player1 != "" && _gameRepo.gameState?.player2 != "";
 
-  String? get me => _appRepo.player?.id;
+  String? get me => pid;
 
   String? get opp {
     if (g == null) return null;
@@ -83,7 +84,6 @@ class RoomViewModel extends ChangeNotifier {
 
   int get oppScore => g == null ? 0 : g!.scores[opp] ?? 0;
 
-  String? get gameId => _appRepo.currentGameId;
 
   bool get currentTurn {
     return g != null &&
@@ -134,18 +134,43 @@ class RoomViewModel extends ChangeNotifier {
   ///
   ///END GETTERS
 
-  RoomViewModel({required this._gameRepo, required this._appRepo}) {
+  RoomViewModel({required this._gameRepo, required this.gid, required this.pid}) {
+  
     _gameRepo.addListener(_onGameRepoChanged);
   }
 
   ///LISTEN FOR GAME CHANGES START
   ///
-  void startListening() {
-    final id = gameId;
-    if (id == null) return;
-    _gameRepo.listenToGame(id);
+  Future<bool> startListening() async{
+    try {
+      _gameRepo.listenToGame(gid);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      developer.log("GameViewModel.startListening Error: $e");
+    }
+    return false;
   }
-
+    Future<bool> loadGame() async{
+    try {
+      await _gameRepo.loadGame(gid);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      developer.log("GameViewModel.loadGame Error: $e");
+    }
+    return false;
+  }
+    Future<bool> joinGame() async{
+    try {
+      await _gameRepo.joinGame(gid, pid);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      developer.log("GameViewModel.joiningGame Error: $e");
+    }
+    return false;
+  }
   // String _prettyPlayer(String? id) {
   //   final me = this.me;
   //   final opp = this.opp;
@@ -156,9 +181,10 @@ class RoomViewModel extends ChangeNotifier {
   //   return id;
   // }
 
-  void _onGameRepoChanged() {
+  void _onGameRepoChanged() async {
     g = _gameRepo.gameState;
-    developer.log("GameViewModel. LoadingGameState $me");
+    developer.log("GameViewModel._onGameRepoChanged $me, ${g?.id}");
+    
     try {
       if (g != null && me != null) {
         final g = this.g!;
@@ -226,8 +252,8 @@ class RoomViewModel extends ChangeNotifier {
       HapticFeedback.mediumImpact();
       cancelSelection();
     } catch (e) {
-      _appRepo.leaveGame();
-      developer.log("Error mounting the game back $e");
+      _gameRepo.leaveGame(pid);
+      developer.log("GameViewModel._onGameRepoChanged Error $e");
     }
   }
 
@@ -291,10 +317,11 @@ class RoomViewModel extends ChangeNotifier {
 
   Future<void> leaveGame() async {
     if (g != null) {
-      await _gameRepo.leaveGame(me!);
-      await _gameRepo.endGame();
+      _gameRepo.leaveGame(pid) ;   
+      // await _gameRepo.leaveGame(me!);
+      // await _gameRepo.endGame();
     }
-    _appRepo.leaveGame();
+    // _gameRepo.leaveGame(pid);
     notifyListeners();
   }
 

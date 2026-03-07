@@ -20,16 +20,12 @@ class AppRepo extends ChangeNotifier {
   AppRepo({required this.fs});
 
   Future<void> loadApp() async {
-    developer.log("Loading player");
+    developer.log("AppRepo: Loading player");
     player = await _loadPlayer();
-    developer.log("player ${player?.id}");
+    developer.log("AppRepo: player ${player?.id}");
     if (player != null) appStatus = AppStatus.appReady;
   }
 
-  Future<void> leaveGame() async {
-    currentGameId = null;
-    appStatus = AppStatus.appReady;
-  }
   Future<void> deleteGame(String gameId) async {
     fs.deleteGame(gameId);
   }
@@ -51,30 +47,16 @@ class AppRepo extends ChangeNotifier {
       player = Player(id: id, name: "testUser");
 
       await sp.setString("player_id", jsonEncode(player!.toJson()));
-      developer.log("Player loaded: ${sp.getString('player_id')}");
+      developer.log("AppRepo: Player loaded: ${sp.getString('player_id')}");
 
       return player;
     } catch (e) {
-      developer.log("Error: $e");
+      developer.log("AppRepo.loadPlayer Error: $e");
 
       appStatus = AppStatus.appError;
     }
-    //Save it locally.
     return null;
   }
 
-  Future<bool> joinGame(String gameId) async {
-    try {
-      currentGameId = gameId;
-      await fs.joinGame(gameId, player!.id);
-      appStatus = AppStatus.inGame;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      developer.log("Error Joining Game: $e");
-      return false;
-    }
-    //Save State locally.
-    //Notify stream
-  }
+
 }

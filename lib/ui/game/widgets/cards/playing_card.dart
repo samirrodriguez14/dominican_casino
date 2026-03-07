@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 class PlayingCard extends StatelessWidget {
   final PlayingCardModel playingCardModel;
   final double width;
+  final double heightMultiplyer;
   final VoidCallback? onTap;
   final bool isSelected;
 
@@ -16,6 +17,7 @@ class PlayingCard extends StatelessWidget {
     super.key,
     required this.playingCardModel,
     this.width = 80,
+    this.heightMultiplyer = 1.4,
     this.onTap,
     required this.isSelected,
     this.selectedBorderColor,
@@ -28,7 +30,7 @@ class PlayingCard extends StatelessWidget {
     final suit = _normalizeSuit(playingCardModel.suit);
     final suitColor = _suitColor(suit);
 
-    final height = width * 1.4;
+    final height = width * heightMultiplyer;
 
     final sel = selectedBorderColor ?? AppStyle.theme.turnHighlight;
 

@@ -32,7 +32,7 @@ class LobbyViewModel extends ChangeNotifier {
         notifyListeners();
       },
       onError: (e, st) {
-        developer.log("listenGames error: $e", stackTrace: st);
+        developer.log("LobbyViewModel.listenGames Error: $e", stackTrace: st);
         loading = false;
         error = e.toString();
         notifyListeners();
@@ -41,7 +41,6 @@ class LobbyViewModel extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    // If your stream is realtime, refresh can just restart the subscription.
     startListening();
   }
 
@@ -49,9 +48,10 @@ class LobbyViewModel extends ChangeNotifier {
     await _appRepo.createGame();
   }
 
-  Future<void> joinGame(String gameId) async {
-    await _appRepo.joinGame(gameId);
-  }
+  // Future<void> joinGame(String gameId) async {
+  //   await _appRepo.joinGame(gameId);
+
+  // }
 
   Future<void> deleteGame(String gameId) async {
    await _appRepo.deleteGame(gameId);

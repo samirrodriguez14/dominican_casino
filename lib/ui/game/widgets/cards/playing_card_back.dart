@@ -3,9 +3,8 @@ import 'package:flutter/cupertino.dart';
 
 class PlayingCardBack extends StatelessWidget {
   final double width;
-  final bool empty;
 
-  const PlayingCardBack({super.key, this.width = 44, this.empty = false});
+  const PlayingCardBack({super.key, this.width = 44});
   @override
   Widget build(BuildContext context) {
     final height = width * 1.4;
@@ -14,8 +13,8 @@ class PlayingCardBack extends StatelessWidget {
       width: width,
       height: height,
 
-      child: (!empty)
-          ? Container(
+      child: 
+          Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
@@ -28,17 +27,7 @@ class PlayingCardBack extends StatelessWidget {
                 ),
               ),
             )
-          : Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                color: AppStyle.theme.surface,
-                border: Border.all(
-                  color: AppStyle.theme.surfaceRaised,
-                  width: 1,
-                ),
-              ),
-              child: Icon(CupertinoIcons.minus_circle_fill),
-            ),
+          
     );
   }
 }

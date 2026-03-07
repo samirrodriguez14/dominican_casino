@@ -117,12 +117,11 @@ class _LobbyBody extends StatelessWidget {
       );
     }
 
-    final myUid = vm.userId; // <-- expose current user id in your VM
-
+    final myUid = vm.userId; 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
       itemCount: vm.games.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
         final g = vm.games[i];
 
@@ -130,8 +129,7 @@ class _LobbyBody extends StatelessWidget {
         final canEnter = _canEnter(g, myUid ?? "");
 
         return LobbyGamePill(
-          // New UI props you’ll add:
-          title: "Game ${_shortId(g.id)}",
+          title: g.id,
           subtitle:
               "P1: ${g.player1?.isNotEmpty == true ? "Ready" : "Open"}  •  "
               "P2: ${g.player2?.isNotEmpty == true ? "Ready" : "Open"}",
@@ -140,8 +138,12 @@ class _LobbyBody extends StatelessWidget {
 
           enterEnabled: canEnter,
           enterLabel: canEnter ? "Enter" : "Full",
-
-          onEnter: canEnter ? () => vm.joinGame(g.id) : null,
+          
+          onEnter: canEnter
+              ? () {
+                  context.go('/game/${g.id}');
+                }
+              : null,
 
           onDelete: () async {
             final ok = await _confirmDelete(context, g.id);

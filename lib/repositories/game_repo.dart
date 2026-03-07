@@ -23,11 +23,11 @@ class GameRepo extends ChangeNotifier {
         .listen(
           (gs) {
             gameState = gs;
-            developer.log("GameRepo.Setting GameState ${gs?.id}");
+            developer.log("GameRepo.listenToGame GameState ${gs?.id}");
             notifyListeners();
           },
           onError: (e, st) {
-            developer.log("Error updating game: $e");
+            developer.log("GameRepo.listenToGame Error: $e");
           },
         );
   }
@@ -35,11 +35,35 @@ class GameRepo extends ChangeNotifier {
   //LISTENS TO GAME CHANGES. NOTIFIES VIEW MODEL
 
   //GENERAL ACTIONS
+
+  Future<bool> loadGame(String gid) async {
+    try {
+      gameState = await fs.loadGame(gid);
+      developer.log("GameRepo.loadGame Success: ${gameState!.id}");
+
+      return true;
+    } catch (e) {
+      developer.log("GameRepo.loadGame Error: $e");
+      return false;
+    }
+  }
+
+  Future<bool> joinGame(String gid, String pid) async {
+    try {
+      if (gameState == null) await loadGame(gid);
+      await fs.joinGame(gameState!.id, pid);
+      return true;
+    } catch (e) {
+      developer.log("AppRepo.joinGame Error Joining Game: $e");
+      return false;
+    }
+  }
+
   Future<void> startGame() async {
     try {
       await fs.startGame(gameState!.id);
     } catch (e) {
-      developer.log("Error starting Game $e");
+      developer.log("GameRepo.startGame Error: $e");
     }
   }
 
@@ -47,7 +71,7 @@ class GameRepo extends ChangeNotifier {
     try {
       await fs.dealSameRound(gameState!.id);
     } catch (e) {
-      developer.log("Error Dealing same round $e");
+      developer.log("GameRepo.dealSameRound Error: $e");
     }
   }
 
@@ -55,7 +79,7 @@ class GameRepo extends ChangeNotifier {
     try {
       await fs.dealNextRound(gameState!.id, playerId);
     } catch (e) {
-      developer.log("Error delaing Next round $e");
+      developer.log("GameRepo.dealNextRound Error: $e");
     }
   }
 
@@ -142,7 +166,8 @@ class GameRepo extends ChangeNotifier {
   }
 
   Future<void> leaveGame(String playerId) async {
-    await fs.leaveGame(gameState!.id, playerId);
+    gameState = null;
+    // await fs.leaveGame(gameState!.id, playerId);
   }
 
   Future<void> endGame() async {

@@ -1,76 +1,153 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
+import 'package:app_links/app_links.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
+import 'package:dominican_casino/ui/game/game_screen.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
-import 'package:dominican_casino/ui/game/game_screen.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
+import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-class App extends StatelessWidget {
+class App extends StatefulWidget {
   const App({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final appRepo = context.watch<AppRepo>();
-    final router = GoRouter(
-      initialLocation: '/home',
+  State<App> createState() => _MyAppState();
+}
 
+class _MyAppState extends State<App> {
+  late final AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSub;
+  late final GoRouter _router;
+
+  bool _handledInitialLink = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _appLinks = AppLinks();
+
+    _router = GoRouter(
+      initialLocation: '/home',
       routes: [
         GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
-        GoRoute(path: '/instructions', builder: (context, state) => const InstructionsScreen()),
+        GoRoute(
+          path: '/instructions',
+          builder: (context, state) => const InstructionsScreen(),
+        ),
         GoRoute(
           path: '/lobby',
           builder: (context, state) {
             return ChangeNotifierProvider(
-              create: (context) =>
-                  LobbyViewModel(appRepo: context.read<AppRepo>()),
-
-              child: LobbyScreen(),
+              create: (_) => LobbyViewModel(appRepo: context.read<AppRepo>()),
+              child: const LobbyScreen(),
             );
           },
         ),
-        GoRoute(
-          path: '/game:gameId',
-          builder: (context, state) {
-            // final gameId = state.pathParameters['gameId']!;
 
+        GoRoute(
+          path: '/join/:gameId',
+          redirect: (context, state) async {
+            final gameId = state.pathParameters['gameId']!;
+            return '/game/$gameId';
+          },
+        ),
+
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (context, state) {
+            final gameId = state.pathParameters['gameId']!;
+            final pid = context.read<AppRepo>().player?.id;
+            if (pid == null) return HomeScreen();
             return ChangeNotifierProvider(
-              create: (context) => RoomViewModel(
+              create: (_) => RoomViewModel(
+                gid: gameId,
+                pid: pid,
                 gameRepo: context.read<GameRepo>(),
-                appRepo: context.read<AppRepo>(),
               ),
               child: GameScreen(),
             );
           },
         ),
       ],
-      redirect: (context, state) {
-        String loc = state.matchedLocation;
-        developer.log("AppState ${appRepo.appStatus}. going: $loc");
+    );
 
-        try {
-          if (appRepo.appStatus == AppStatus.inGame) {
-            return '/game:${appRepo.currentGameId}';
-          }
-        } catch (e) {
-          appRepo.appStatus = AppStatus.notReady;
-          return '/home';
-        }
-        return null;
+    _initDeepLinks();
+  }
+
+  Future<void> _initDeepLinks() async {
+    try {
+      final initialUri = await _appLinks.getInitialLink();
+      if (!_handledInitialLink && initialUri != null) {
+        _handledInitialLink = true;
+        developer.log('DeepLink: Initial app link: $initialUri');
+        _handleIncomingUri(initialUri);
+      }
+    } catch (e, st) {
+      developer.log(
+        'DeepLink: Failed to read initial app link',
+        error: e,
+        stackTrace: st,
+      );
+    }
+
+    _linkSub = _appLinks.uriLinkStream.listen(
+      (uri) {
+        developer.log('DeepLink: Incoming app link stream: $uri');
+        _handleIncomingUri(uri);
+      },
+      onError: (Object err, StackTrace st) {
+        developer.log(
+          'DeepLink: App link stream error',
+          error: err,
+          stackTrace: st,
+        );
       },
     );
+  }
+
+  void _handleIncomingUri(Uri uri) {
+    final segments = uri.pathSegments;
+    developer.log('DeepLink: path segments: $segments');
+
+    if (segments.isEmpty) return;
+
+    if (segments.first == 'join' && segments.length >= 2) {
+      final gameId = segments[1];
+      _router.go('/join/$gameId');
+      return;
+    }
+
+    if (segments.first == 'game' && segments.length >= 2) {
+      final gameId = segments[1];
+      _router.go('/join/$gameId');
+      return;
+    }
+    _router.go('/home');
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    _router.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return CupertinoApp.router(
       title: 'Dominican Casino',
-      routerConfig: router,
+      routerConfig: _router,
       theme: buildCupertinoTheme(),
       builder: (context, child) {
         if (child == null) return const SizedBox();

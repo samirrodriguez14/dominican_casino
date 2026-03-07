@@ -3,7 +3,6 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/ui/game/decks/game_deck.dart';
-import 'package:dominican_casino/ui/game/decks/players_deck.dart';
 import 'package:dominican_casino/ui/game/popups/button_instructions.dart';
 import 'package:dominican_casino/ui/game/popups/game_completed.dart';
 import 'package:dominican_casino/ui/game/popups/game_status.dart';
@@ -39,8 +38,15 @@ class GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RoomViewModel>().startListening();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ok = await context.read<RoomViewModel>().loadGame();
+      if (ok) {
+         await context.read<RoomViewModel>().joinGame();
+        await context.read<RoomViewModel>().startListening();
+        return;
+      }
+      context.go('/home');
+      developer.log("GameScreenInit: $ok");
     });
   }
 
@@ -127,19 +133,20 @@ class GameScreenState extends State<GameScreen> {
                 ),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: ConstrainedBox(constraints: BoxConstraints(maxWidth: 70, maxHeight: 70*1.4 ),
-                  child:  AppStyle.theme.dottedBox(
-                    child: PlayersDeck(cards: [], me: false, extraPoints: 0),
+
+                  child: AppStyle.theme.dottedBox(
+                    child: SizedBox(width: 57, height: (57 * 1.7)),
                   ),
-                ),),
+                ),
                 AnimatedAlign(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
                   alignment: vm.controlGame
                       ? Alignment.center
                       : Alignment.centerRight,
+
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0,0,8,0),
+                    padding: EdgeInsetsGeometry.fromLTRB(0, 0, 2, 0),
                     child: GameControlDeck(),
                   ),
                 ),
@@ -168,7 +175,7 @@ class GameScreenState extends State<GameScreen> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                "Room: ${vm.gameId ?? "-"}",
+                "Room: ${vm.gid}",
                 style: AppStyle.theme.body,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -193,12 +200,11 @@ class GameScreenState extends State<GameScreen> {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () async {
-                  developer.log('');
                   HapticFeedback.mediumImpact();
                   final ok = await vm.confirmDelete(context);
                   if (ok) await vm.leaveGame();
 
-                  if (context.mounted) context.go('/lobby');
+                  if (context.mounted && ok) context.go('/lobby');
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

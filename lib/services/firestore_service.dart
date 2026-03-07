@@ -43,21 +43,33 @@ class FirestoreService {
 
   ///GAME HANDLE START
   ///
+  ///
+  Future<GameState> loadGame(String gid) async {
+    final snap = await _games.doc(gid).get();
+    return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
+  }
+
   Future<String> createGame() => gameHandler.createGame();
 
   Future<void> deleteGame(String gameId) async {
-    await FirebaseFirestore.instance.collection('games').doc(gameId).delete();
+    await _games.doc(gameId).delete();
   }
 
-  Future<String?> joinGame(String gameId, String pid) =>
-      gameHandler.joinGame(gameId: gameId, pid: pid);
+  Future<String?> joinGame(String gameId, String pid) async {
+    String? g;
+    try {
+      g = await gameHandler.joinGame(gameId: gameId, pid: pid);
+    } catch (e) {
+      developer.log("Service.fs.joinGame Error $e");
+    }
+    return g;
+  }
 
   Future<void> startGame(String gameId) async =>
       await gameHandler.startGame(gameId);
 
   Future<void> leaveGame(String gameId, String pid) async =>
       await gameHandler.leaveGame(gameId, pid);
-
 
   ///
   ///GAME HANDLE END
@@ -97,8 +109,6 @@ class FirestoreService {
 
   ///
   ///ROUND CONTROLLERS
-  
-
 
   ///PlayHandle START
   ///

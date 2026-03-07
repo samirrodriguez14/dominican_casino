@@ -1,5 +1,6 @@
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 class LobbyGamePill extends StatelessWidget {
   const LobbyGamePill({
@@ -52,9 +53,8 @@ class LobbyGamePill extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(title, style: AppStyle.theme.title),
+                    Text("Game $title", style: AppStyle.theme.title),
                     const SizedBox(width: 8),
-                    _StatusChip(text: statusText, isFull: statusIsFull),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -68,6 +68,7 @@ class LobbyGamePill extends StatelessWidget {
           // Actions
           Row(
             children: [
+              
               CupertinoButton(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -96,38 +97,6 @@ class LobbyGamePill extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.text, required this.isFull});
-  final String text;
-  final bool isFull;
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = isFull
-        ? AppStyle.theme.danger.withValues(alpha: (0.18))
-        : AppStyle.theme.turnHighlight.withValues(alpha: (0.18));
-    final fg = isFull ? AppStyle.theme.danger : AppStyle.theme.turnHighlight;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: fg.withValues(alpha: (0.35))),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: fg,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-        ),
       ),
     );
   }

@@ -1,8 +1,12 @@
-import 'package:dominican_casino/ui/game/decks/players_deck.dart';
+import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/layouts/app_popup.dart';
+import 'package:dominican_casino/ui/game/decks/card_deck.dart';
+import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class PlayingArea extends StatefulWidget {
@@ -13,16 +17,18 @@ class PlayingArea extends StatefulWidget {
 
 class PlayingAreaState extends State<PlayingArea> {
   RoomViewModel get vm => context.read<RoomViewModel>();
+
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-          child: Opacity(
-            opacity: vm.controlGame ? 0.5 : 1,
+    return Opacity(
+      opacity: vm.controlGame ? 0.5 : 1,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -38,29 +44,55 @@ class PlayingAreaState extends State<PlayingArea> {
               ],
             ),
           ),
-        ),
 
-        Positioned(
-          left: -10,
-          top: 0,
-          bottom: 0,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              PlayersDeck(
-                cards: vm.oppCollectedCards,
-                me: false,
-                extraPoints: vm.oppExtraPoints,
-              ),
-              PlayersDeck(
-                cards: vm.pCollectedCards,
-                me: true,
-                extraPoints: vm.myExtraPoints,
-              ),
-            ],
+          Positioned(
+            left: -10,
+            top: 0,
+            bottom: 0,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                AppStyle.theme.dottedBox(
+                  color: vm.lastTakeOpp ? AppStyle.theme.border : null,
+                  child: CardDeck(
+                    cardWidth: 55,
+                    cards: vm.oppCollectedCards,
+                    extraPoints: vm.oppExtraPoints,
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      showAppPopup(
+                        context: context,
+                        title: "Opponent's Collected Cards",
+                        content: CollectedCardsStrip(
+                          cards: vm.oppCollectedCards,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                AppStyle.theme.dottedBox(
+                  color: vm.lastTakeMe ? AppStyle.theme.border : null,
+
+                  child: CardDeck(
+                    cardWidth: 55,
+                    cards: vm.pCollectedCards,
+                    extraPoints: vm.myExtraPoints,
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      showAppPopup(
+                        context: context,
+                        title: "My Collected Cards",
+                        content: CollectedCardsStrip(cards: vm.pCollectedCards),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -96,7 +128,11 @@ class PlayingAreaState extends State<PlayingArea> {
               transform: isSelected
                   ? Matrix4.translationValues(0, -12, 0)
                   : Matrix4.identity(),
-              child: PlayingCard(playingCardModel: c, isSelected: isSelected, width: 70,),
+              child: PlayingCard(
+                playingCardModel: c,
+                isSelected: isSelected,
+                width: 70,
+              ),
             ),
           );
         }),

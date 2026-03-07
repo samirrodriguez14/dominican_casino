@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "R8L4884H4D.com.example.dominicanCasino"
+        ],
+        "paths": [
+          "/join/*",
+          "/game/*"
+        ]
+      }
+    ]
+  }
+}

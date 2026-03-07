@@ -51,38 +51,47 @@ class GameHandler2 {
     required String pid,
   }) async {
     final doc = _games.doc(gameId);
-    developer.log("GameId: $gameId, Pid: $pid");
+    developer.log("GHandler.joinGame: GameId: $gameId, Pid: $pid");
+
+    String? result = pid;
 
     await _db.runTransaction((tx) async {
       final s = await tx.get(doc);
-      if (!s.exists) return;
-
+      if (!s.exists) {
+        result = null;
+        return;
+      }
       final data = s.data() as Map<String, dynamic>;
 
       var player1 = (data['player1'] as String?) ?? '';
       var player2 = (data['player2'] as String?) ?? '';
 
-      developer.log("player1: $player1; player2: $player2");
+      developer.log("GHandler.joinGame: player1: $player1; player2: $player2");
 
-      if (player1 == "") {
+      if (player1 == pid || player2 == pid) {
+        developer.log("GHandler.joinGame: Player $pid already joined game $gameId");
+      } else if (player1 == "") {
         player1 = pid;
       } else if (player2 == "") {
         player2 = pid;
       } else {
-        developer.log("Game full");
+        developer.log("GHandler.joinGame: Game full");
+        result = null;
         return;
       }
 
-      final controller = (data['controllerId'] as String?) ?? player1;
+      if (result != null) {
+        final controller = (data['controllerId'] as String?) ?? player1;
 
-      tx.update(doc, {
-        'player1': player1,
-        'player2': player2,
-        'controllerId': controller,
-      });
+        tx.update(doc, {
+          'player1': player1,
+          'player2': player2,
+          'controllerId': controller,
+        });
+      }
     });
 
-    return pid;
+    return result;
   }
 
   /// START GAME
@@ -525,17 +534,15 @@ class GameHandler2 {
   }) async {
     final s = await tx.get(doc);
     if (!s.exists) return;
-    developer.log("HANDLER docPath=${doc.path}");
+    developer.log("GHandler._runAction: docPath=${doc.path}");
     final data = (s.data() as Map<String, dynamic>);
     final cur = data['currentTurnPlayerId'];
     if (cur != playerId) return;
-    developer.log("PlayerId: $playerId");
+    developer.log("GHandler._runAction: PlayerId: $playerId");
 
     final ctx = _TxCtx(tx: tx, doc: doc, data: data, playerId: playerId);
-    developer.log("ctx run");
-
     final result = await mutator(ctx);
-    developer.log("skpPost =${result.skipPost}");
+    developer.log("GHandler._runAction skpPost =${result.skipPost}");
 
     if (result.skipPost) {
       tx.update(doc, result.update);
@@ -590,7 +597,7 @@ class GameHandler2 {
       patch['started'] = winner ? false : true;
     }
     tx.update(doc, patch);
-    developer.log("round ended =$roundComplete");
+    developer.log("GHandler._runAction round ended =$roundComplete");
   }
 
   ///
@@ -761,7 +768,7 @@ class GameHandler2 {
         : totalScores[p2] += roundScores[p2]['total'];
 
     developer.log(
-      "winner: $winner roundScores ${roundScores[p1]} ${roundScores[p2]}\nTotalScores: ${totalScores[p1]}, ${totalScores[p2]}",
+      "GHandler.handleScores winner: $winner roundScores ${roundScores[p1]} ${roundScores[p2]}\nTotalScores: ${totalScores[p1]}, ${totalScores[p2]}",
     );
     data['extraPoints'] = 0;
     data['extraPointsHolderId']='';
@@ -890,7 +897,7 @@ class GameHandler2 {
   ) {
     //compute highest prev score first:
     developer.log(
-      "_handle wiinwe with data: prev:::$prevScore, round:::$roundScore, $p1, $p2",
+      "GHandler._handleWinner win with data: prev:::$prevScore, round:::$roundScore, $p1, $p2",
     );
     int score1 = prevScore[p1] ?? 0;
     int score2 = prevScore[p2] ?? 0;
@@ -945,7 +952,7 @@ class GameHandler2 {
       }
       return true;
     }
-    developer.log("prev:::$score, round:::${roundScore[player]['total']},");
+    developer.log("GHandler._handleWinningConditions prev:::$score, round:::${roundScore[player]['total']},");
     return (score + roundScore[player]['total']) >= 21;
   }
 }

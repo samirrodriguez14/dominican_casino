@@ -38,7 +38,7 @@ class PlayerAreaState extends State<PlayerArea> {
           Opacity(
             opacity:1,
             child: SizedBox(
-              height: 160,
+              height: 150,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
