@@ -35,6 +35,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
+              //TopBar
               Row(
                 children: [
                   CupertinoButton(
@@ -61,16 +62,18 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 ],
               ),
               const SizedBox(height: 10),
+             //Body
               Expanded(child: _LobbyBody(vm: vm)),
               const SizedBox(height: 10),
+             //Bottom bar buttons
               Row(
                 spacing: 10,
                 children: [
-                   Expanded(
+                  Expanded(
                     child: CupertinoButton(
                       color: AppStyle.theme.surfaceAlt,
                       borderRadius: BorderRadius.circular(12),
-                      onPressed:null,
+                      onPressed: null,
                       child: Text(
                         "Joined Games",
                         style: TextStyle(
@@ -80,8 +83,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                       ),
                     ),
                   ),
-                
-                  
+
                   Expanded(
                     // width: double.infinity,
                     child: CupertinoButton(
@@ -97,8 +99,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
                       ),
                     ),
                   ),
-                
-                
                 ],
               ),
             ],
@@ -125,7 +125,7 @@ class _LobbyBody extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Text(
             vm.error!,
-            style: const TextStyle(color: CupertinoColors.systemRed),
+            style: TextStyle(color: AppStyle.theme.danger),
             textAlign: TextAlign.center,
           ),
         ),
@@ -148,14 +148,16 @@ class _LobbyBody extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
         final g = vm.games[i];
-
         final full = _isFull(g);
         final joined = _joined(g, myUid ?? "_");
+        final p1Info = g.playersInfo?[g.player1 ?? ""] ?? "";
+        final p2Info = g.playersInfo?[g.player2 ?? ""] ?? "";
         return LobbyGamePill(
-          title: _shortId(g.id), 
-          subtitle:
-              "P1: ${g.player1?.isNotEmpty == true ? "Ready" : "Open"}  •  "
-              "P2: ${g.player2?.isNotEmpty == true ? "Ready" : "Open"}",
+          title: _shortId(g.id),
+          subtitle: "",
+          pid: myUid??"",
+          player1: g.player1?.isNotEmpty == true ? "${p1Info['name']}" : "Open",
+          player2: g.player2?.isNotEmpty == true ? "${p2Info['name']}" : "Open",
           statusText: full ? "FULL" : "OPEN",
           statusIsFull: full,
           joined: joined,

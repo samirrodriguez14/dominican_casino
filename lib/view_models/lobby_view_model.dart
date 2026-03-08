@@ -15,6 +15,7 @@ class LobbyViewModel extends ChangeNotifier {
 
   List<LobbyGame> games = const [];
   String? get userId =>_appRepo.player?.id;
+
   bool loading = true;
   String? error;
 

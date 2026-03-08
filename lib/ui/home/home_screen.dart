@@ -64,6 +64,7 @@ class HomeScreenState extends State<HomeScreen>{
                       onTap: () async {
                         final controller = TextEditingController(
                           text: vm.name,
+                          
                         );
 
                         final newName = await showCupertinoDialog<String>(
@@ -74,6 +75,7 @@ class HomeScreenState extends State<HomeScreen>{
                               padding: const EdgeInsets.only(top: 12),
                               child: CupertinoTextField(
                                 controller: controller,
+                                maxLength: 10,
                                 placeholder: 'Enter your name',
                                 autofocus: true,
                               ),
