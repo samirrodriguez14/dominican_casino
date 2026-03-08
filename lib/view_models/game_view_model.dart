@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
@@ -15,8 +16,8 @@ class RoomViewModel extends ChangeNotifier {
 
   late final GameRepo _gameRepo;
   GameState? g;
+  Player player;
   String gid;
-  String pid;
   int roundIndex = 1;
   RoundStatus roundStatus = RoundStatus.playing;
 
@@ -48,6 +49,16 @@ class RoomViewModel extends ChangeNotifier {
 
   ///START GETTERS
   ///
+  String get me => player.id;
+
+  String? get opp {
+    if (g == null) return null;
+    return joinedAsPlayer == 'player1' ? g!.player2 : g!.player1;
+  }
+  Player? _oppInfo;
+  
+  Player? get oppInfo=> _oppInfo;
+
   bool get canStart =>
       (bothPlayersJoined && isController) && g?.started == false;
 
@@ -63,8 +74,7 @@ class RoomViewModel extends ChangeNotifier {
   bool get lastTakeMe => _lastTookCardId == me && me != "";
   bool get lastTakeOpp => _lastTookCardId == opp && opp != '';
   String get controllText => "";
-  bool get isController =>
-      g != null && me != null ? g!.controllerId == me : false;
+  bool get isController => g != null ? g!.controllerId == me : false;
 
   bool get canStartNextRound =>
       g != null &&
@@ -75,19 +85,10 @@ class RoomViewModel extends ChangeNotifier {
   bool get bothPlayersJoined =>
       _gameRepo.gameState?.player1 != "" && _gameRepo.gameState?.player2 != "";
 
-  String? get me => pid;
-
-  String? get opp {
-    if (g == null) return null;
-    return joinedAsPlayer == 'player1' ? g!.player2 : g!.player1;
-  }
-
   int get oppScore => g == null ? 0 : g!.scores[opp] ?? 0;
-
 
   bool get currentTurn {
     return g != null &&
-        me != null &&
         g!.currentTurnPlayerId == me &&
         !handsEmpty &&
         roundStatus == RoundStatus.playing;
@@ -102,18 +103,18 @@ class RoomViewModel extends ChangeNotifier {
   }
 
   String get joinedAsPlayer {
-    if (g == null || me == null) return 'player2';
+    if (g == null) return 'player2';
     return (me == g!.player1) ? 'player1' : 'player2';
   }
 
   bool get handsNotNull {
-    if (g == null || me == null || opp == null) return false;
+    if (g == null || opp == null) return false;
 
     return g!.hands[me] != null && g!.hands[opp] != null;
   }
 
   bool get handsEmpty {
-    if (g == null || me == null || opp == null) return false;
+    if (g == null || opp == null) return false;
 
     final myHand = g!.hands[me];
     final oppHand = g!.hands[opp];
@@ -134,14 +135,17 @@ class RoomViewModel extends ChangeNotifier {
   ///
   ///END GETTERS
 
-  RoomViewModel({required this._gameRepo, required this.gid, required this.pid}) {
-  
+  RoomViewModel({
+    required this._gameRepo,
+    required this.player,
+    required this.gid,
+  }) {
     _gameRepo.addListener(_onGameRepoChanged);
   }
 
   ///LISTEN FOR GAME CHANGES START
   ///
-  Future<bool> startListening() async{
+  Future<bool> startListening() async {
     try {
       _gameRepo.listenToGame(gid);
       notifyListeners();
@@ -151,7 +155,8 @@ class RoomViewModel extends ChangeNotifier {
     }
     return false;
   }
-    Future<bool> loadGame() async{
+
+  Future<bool> loadGame() async {
     try {
       await _gameRepo.loadGame(gid);
       notifyListeners();
@@ -161,9 +166,10 @@ class RoomViewModel extends ChangeNotifier {
     }
     return false;
   }
-    Future<bool> joinGame() async{
+
+  Future<bool> joinGame() async {
     try {
-      await _gameRepo.joinGame(gid, pid);
+      await _gameRepo.joinGame(gid, me, player.toJson());
       notifyListeners();
       return true;
     } catch (e) {
@@ -184,12 +190,10 @@ class RoomViewModel extends ChangeNotifier {
   void _onGameRepoChanged() async {
     g = _gameRepo.gameState;
     developer.log("GameViewModel._onGameRepoChanged $me, ${g?.id}");
-    
-    try {
-      if (g != null && me != null) {
-        final g = this.g!;
-        final me = this.me!;
 
+    try {
+      if (g != null) {
+        final g = this.g!;
         // existing board state
         pHandCards = g.hands[me] ?? [];
         pCollectedCards = g.playersDeck[me] ?? [];
@@ -215,7 +219,7 @@ class RoomViewModel extends ChangeNotifier {
 
         final p1 = g.player1 ?? '';
         final p2 = g.player2 ?? '';
-
+        _oppInfo = Player.fromDto(g.playersInfo?[opp]??{});
         bothPlayersReady =
             (p1.isNotEmpty &&
             p2.isNotEmpty &&
@@ -252,7 +256,7 @@ class RoomViewModel extends ChangeNotifier {
       HapticFeedback.mediumImpact();
       cancelSelection();
     } catch (e) {
-      _gameRepo.leaveGame(pid);
+      _gameRepo.leaveGame(me);
       developer.log("GameViewModel._onGameRepoChanged Error $e");
     }
   }
@@ -267,48 +271,48 @@ class RoomViewModel extends ChangeNotifier {
   }
 
   void playAction(PlayingCardModel card) {
-    _gameRepo.makePlay(me!, card);
+    _gameRepo.makePlay(me, card);
   }
 
   void takeCardAction(PlayingCardModel card, PlayingCardModel takingCard) {
-    _gameRepo.takeCard(me!, card, takingCard);
+    _gameRepo.takeCard(me, card, takingCard);
   }
 
   void stackCardsActon(
     PlayingAreaStackModel stack,
     List<String?> cardStackIds,
   ) {
-    _gameRepo.stackCards(me!, selectedCard, cardStackIds, stack);
+    _gameRepo.stackCards(me, selectedCard, cardStackIds, stack);
   }
 
   void pairCardsAction(PlayingAreaStackModel stack, List<String?> cardStackId) {
-    _gameRepo.pairStacks(me!, cardStackId, selectedCard, stack);
+    _gameRepo.pairStacks(me, cardStackId, selectedCard, stack);
   }
 
   void stackAndPairStacks(
     PlayingAreaStackModel stack,
     List<String?> cardStackId,
   ) {
-    _gameRepo.stackAndPairStacks(me!, cardStackId, selectedCard, stack);
+    _gameRepo.stackAndPairStacks(me, cardStackId, selectedCard, stack);
   }
 
   void takeStackAction(PlayingAreaStackModel stack, PlayingCardModel card) {
-    _gameRepo.takeStack(me!, stack, card);
+    _gameRepo.takeStack(me, stack, card);
   }
 
   void addAndTakeCardsAction(
     List<PlayingCardModel> takingCards,
     PlayingCardModel card,
   ) {
-    _gameRepo.addAndTakeCards(me!, card, takingCards);
+    _gameRepo.addAndTakeCards(me, card, takingCards);
   }
 
   Future<void> pressContinue() async {
-    await _gameRepo.setRoundReady(me!);
+    await _gameRepo.setRoundReady(me);
   }
 
   Future<void> startNextRound() async {
-    await _gameRepo.dealNextRound(me!);
+    await _gameRepo.dealNextRound(me);
   }
 
   Future<void> redealSameRound() async {
@@ -317,7 +321,7 @@ class RoomViewModel extends ChangeNotifier {
 
   Future<void> leaveGame() async {
     if (g != null) {
-      _gameRepo.leaveGame(pid) ;   
+      _gameRepo.leaveGame(me);
       // await _gameRepo.leaveGame(me!);
       // await _gameRepo.endGame();
     }

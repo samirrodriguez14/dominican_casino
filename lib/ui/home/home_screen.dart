@@ -1,13 +1,21 @@
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/view_models/home_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-class HomeScreen extends StatelessWidget {
+
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+  @override
+  State<StatefulWidget> createState()=> HomeScreenState();
+}
+class HomeScreenState extends State<HomeScreen>{
 
   @override
   Widget build(BuildContext context) {
-    final playerId = "Player123";
+    final HomeViewModel vm = context.watch<HomeViewModel>();
 
     return CupertinoPageScaffold(
       backgroundColor: AppStyle.theme.background,
@@ -15,9 +23,7 @@ class HomeScreen extends StatelessWidget {
         decoration: BoxDecoration(
           image: DecorationImage(
             opacity: 0.35,
-            image:  AssetImage(
-              AppStyle.theme.appLogo,
-            ),
+            image: AssetImage(AppStyle.theme.appLogo),
             fit: BoxFit.fitHeight,
           ),
         ),
@@ -34,7 +40,6 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    /// ---- TITLE ----
                     Text(
                       "Dominican Casino",
                       textAlign: TextAlign.center,
@@ -46,20 +51,59 @@ class HomeScreen extends StatelessWidget {
 
                     const SizedBox(height: 18),
 
-                    /// ---- DIVIDER ----
                     Container(
                       height: 1,
                       width: 120,
-                      color: AppStyle.theme.surfaceAlt.withOpacity(.6),
+                      color: AppStyle.theme.surfaceAlt.withValues(alpha: .6),
                     ),
 
                     const SizedBox(height: 20),
 
                     /// ---- PLAYER NAME ----
                     GestureDetector(
-                      onTap: () {
-                        // later open edit name popup
+                      onTap: () async {
+                        final controller = TextEditingController(
+                          text: vm.name,
+                        );
+
+                        final newName = await showCupertinoDialog<String>(
+                          context: context,
+                          builder: (context) => CupertinoAlertDialog(
+                            title: const Text('Edit name'),
+                            content: Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: CupertinoTextField(
+                                controller: controller,
+                                placeholder: 'Enter your name',
+                                autofocus: true,
+                              ),
+                            ),
+                            actions: [
+                              CupertinoDialogAction(
+                                child: const Text('Cancel'),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                              CupertinoDialogAction(
+                                isDefaultAction: true,
+                                child: const Text('Save'),
+                                onPressed: () {
+                                  Navigator.pop(
+                                    context,
+                                    controller.text.trim(),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (newName != null &&
+                            newName.isNotEmpty &&
+                            newName != vm.name) {
+                          await vm.updatePlayerName(newName);
+                        }
                       },
+                     
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -78,7 +122,7 @@ class HomeScreen extends StatelessWidget {
                               color: AppStyle.theme.muted,
                             ),
                             const SizedBox(width: 8),
-                            Text(playerId, style: AppStyle.theme.body),
+                            Text(vm.name??"", style: AppStyle.theme.body),
                             const SizedBox(width: 6),
                             Icon(
                               CupertinoIcons.pencil,
@@ -113,8 +157,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
 
-                    /// ---- START BUTTON ----
-                  
+
                     /// ---- INSTRUCTIONS ----
                     CupertinoButton(
                       padding: const EdgeInsets.symmetric(

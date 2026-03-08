@@ -30,6 +30,7 @@ class GameHandler2 {
       'hands': {},
       'scores': {},
       'playersDeck': {},
+      'playersInfo': {},
       'lastTookCardId': '',
       'player1': '',
       'player2': '',
@@ -49,6 +50,7 @@ class GameHandler2 {
   Future<String?> joinGame({
     required String gameId,
     required String pid,
+    required Map<String, dynamic> playerInfo,
   }) async {
     final doc = _games.doc(gameId);
     developer.log("GHandler.joinGame: GameId: $gameId, Pid: $pid");
@@ -65,14 +67,21 @@ class GameHandler2 {
 
       var player1 = (data['player1'] as String?) ?? '';
       var player2 = (data['player2'] as String?) ?? '';
-
+      var playersInfo = (data['playersInfo'] as Map<String, dynamic>?) ?? {};
       developer.log("GHandler.joinGame: player1: $player1; player2: $player2");
+      developer.log("GHandler.joinGame: playersInfo $playersInfo");
 
       if (player1 == pid || player2 == pid) {
-        developer.log("GHandler.joinGame: Player $pid already joined game $gameId");
+        developer.log(
+          "GHandler.joinGame: Player $pid already joined game $gameId",
+        );
       } else if (player1 == "") {
+        developer.log("GHandler.joinGame: playersInfo $playersInfo");
+
+        playersInfo[pid] = playerInfo;
         player1 = pid;
       } else if (player2 == "") {
+        playersInfo[pid] = playerInfo;
         player2 = pid;
       } else {
         developer.log("GHandler.joinGame: Game full");
@@ -86,6 +95,7 @@ class GameHandler2 {
         tx.update(doc, {
           'player1': player1,
           'player2': player2,
+          'playersInfo': playersInfo,
           'controllerId': controller,
         });
       }
@@ -771,7 +781,7 @@ class GameHandler2 {
       "GHandler.handleScores winner: $winner roundScores ${roundScores[p1]} ${roundScores[p2]}\nTotalScores: ${totalScores[p1]}, ${totalScores[p2]}",
     );
     data['extraPoints'] = 0;
-    data['extraPointsHolderId']='';
+    data['extraPointsHolderId'] = '';
     data['roundScores'] = roundScores;
     data['scores'] = totalScores;
     data['winnerId'] = winner;
@@ -952,7 +962,9 @@ class GameHandler2 {
       }
       return true;
     }
-    developer.log("GHandler._handleWinningConditions prev:::$score, round:::${roundScore[player]['total']},");
+    developer.log(
+      "GHandler._handleWinningConditions prev:::$score, round:::${roundScore[player]['total']},",
+    );
     return (score + roundScore[player]['total']) >= 21;
   }
 }

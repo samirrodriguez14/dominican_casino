@@ -1,6 +1,5 @@
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 
 class LobbyGamePill extends StatelessWidget {
   const LobbyGamePill({
@@ -13,6 +12,8 @@ class LobbyGamePill extends StatelessWidget {
     required this.enterLabel,
     required this.onEnter,
     required this.onDelete,
+    required this.joined,
+    required this.onShare,
   });
 
   final String title;
@@ -21,9 +22,11 @@ class LobbyGamePill extends StatelessWidget {
   final bool statusIsFull;
 
   final bool enterEnabled;
+  final bool joined;
   final String enterLabel;
   final VoidCallback? onEnter;
   final VoidCallback onDelete;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -86,14 +89,29 @@ class LobbyGamePill extends StatelessWidget {
                   horizontal: 10,
                   vertical: 8,
                 ),
-                color: AppStyle.theme.danger,
-                onPressed: onDelete,
+                color: AppStyle.theme.muted,
+                onPressed: statusIsFull? null:onShare,
                 child: Icon(
-                  CupertinoIcons.trash,
+                  CupertinoIcons.share_up,
                   size: 18,
                   color: AppStyle.theme.border,
                 ),
               ),
+             const SizedBox(width: 8),
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                color: AppStyle.theme.danger,
+                onPressed: joined? onDelete:null,
+                child: Icon(
+                  CupertinoIcons.trash,
+                  size: 18,
+                  color: AppStyle.theme.textPrimary,
+                ),
+              ),
+            
             ],
           ),
         ],

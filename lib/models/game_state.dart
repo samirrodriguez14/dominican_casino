@@ -45,6 +45,7 @@ class GameState {
   final String lastTookCardId;
   final String? player1;
   final String? player2;
+  final Map<String, dynamic>? playersInfo;
   final String? winnerId;
   final int roundIndex;
   final RoundStatus roundStatus;
@@ -68,6 +69,7 @@ class GameState {
     this.winnerId,
     this.player1,
     this.player2,
+    this.playersInfo,
 
     // round defaults (safe for old docs)
     this.roundIndex = 1,
@@ -91,6 +93,7 @@ class GameState {
           (k, v) => MapEntry(k, v.map((c) => c.toMap()).toList()),
         ),
         'scores': scores,
+        'playersInfo': playersInfo,
         'playersDeck': playersDeck.map(
           (k, v) => MapEntry(k, v.map((c) => c.toMap()).toList()),
         ),
@@ -167,6 +170,7 @@ class GameState {
       lastTookCardId: (m['lastTookCardId'] as String?) ?? '',
       player1: m['player1'] as String?,
       player2: m['player2'] as String?,
+      playersInfo: m['playersInfo'],
       winnerId: m['winnerId'] as String?,
       extraPoints: m['extraPoints'],
       extraPointsHolderId: m['extraPointsHolderId'],

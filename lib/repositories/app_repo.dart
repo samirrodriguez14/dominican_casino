@@ -34,6 +34,27 @@ class AppRepo extends ChangeNotifier {
     await fs.createGame();
   }
 
+  Future<bool> updatePlayer(String name) async {
+    final SharedPreferences sp = await SharedPreferences.getInstance();
+    try {
+      final p = sp.getString('player_id');
+      if (p == null) {
+        developer.log("AppRepo.updatePlayer No player found locally");
+        //Create new later
+        final id = _uuid.v4().substring(0, 8);
+        player = Player(id: id, name: name);
+      }
+      player!.name = name;
+      await sp.setString("player_id", jsonEncode(player!.toJson()));
+      developer.log("AppRepo: Player updated: ${sp.getString('player_id')}");
+      notifyListeners();
+      return true;
+    } catch (e) {
+      developer.log("AppRepo.loadPlayer Error: $e");
+      return false;
+    }
+  }
+
   Future<Player?> _loadPlayer() async {
     //Tries to find a player Id locally..
     final SharedPreferences sp = await SharedPreferences.getInstance();
@@ -44,7 +65,7 @@ class AppRepo extends ChangeNotifier {
         return player;
       }
       final id = _uuid.v4().substring(0, 8);
-      player = Player(id: id, name: "testUser");
+      player = Player(id: id, name: "player_$id");
 
       await sp.setString("player_id", jsonEncode(player!.toJson()));
       developer.log("AppRepo: Player loaded: ${sp.getString('player_id')}");
@@ -57,6 +78,4 @@ class AppRepo extends ChangeNotifier {
     }
     return null;
   }
-
-
 }

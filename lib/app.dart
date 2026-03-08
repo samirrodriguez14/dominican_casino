@@ -10,6 +10,7 @@ import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
+import 'package:dominican_casino/view_models/home_view_model.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -40,7 +41,14 @@ class _MyAppState extends State<App> {
       initialLocation: '/home',
       routes: [
         GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
-        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+        GoRoute(
+          path: '/home',
+          builder: (context, state) => ChangeNotifierProvider(
+            create: (context) =>
+                HomeViewModel(appRepo: context.read<AppRepo>()),
+            child: HomeScreen(),
+          ),
+        ),
         GoRoute(
           path: '/instructions',
           builder: (context, state) => const InstructionsScreen(),
@@ -67,12 +75,13 @@ class _MyAppState extends State<App> {
           path: '/game/:gameId',
           builder: (context, state) {
             final gameId = state.pathParameters['gameId']!;
-            final pid = context.read<AppRepo>().player?.id;
-            if (pid == null) return HomeScreen();
+            final player = context.read<AppRepo>().player;
+            if (player == null) return HomeScreen();
             return ChangeNotifierProvider(
               create: (_) => RoomViewModel(
                 gid: gameId,
-                pid: pid,
+                player: player,
+                // pid: player.id,
                 gameRepo: context.read<GameRepo>(),
               ),
               child: GameScreen(),

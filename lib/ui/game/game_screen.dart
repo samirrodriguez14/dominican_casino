@@ -53,14 +53,13 @@ class GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<RoomViewModel>();
-    final playerId = vm.me;
-
+   
     //ENSURE INITIALIZED
-    if (playerId == null) {
-      return const CupertinoPageScaffold(
-        child: Center(child: CupertinoActivityIndicator()),
-      );
-    }
+    // if (playerId == null) {
+    //   return const CupertinoPageScaffold(
+    //     child: Center(child: CupertinoActivityIndicator()),
+    //   );
+    // }
 
     ///GAME/ROUND STATUS CONTROLLERS
     ///---------------------
@@ -186,7 +185,7 @@ class GameScreenState extends State<GameScreen> {
           Expanded(
             child: Center(
               child: Text(
-                "You: ${vm.joinedAsPlayer}",
+                "You: ${vm.player.name}",
                 style: AppStyle.theme.body,
                 overflow: TextOverflow.ellipsis,
               ),

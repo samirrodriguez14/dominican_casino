@@ -2,7 +2,7 @@ import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/lobby_game.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
-import 'package:dominican_casino/services/game_handler2.dart';
+import 'package:dominican_casino/services/game_handler.dart';
 import '../models/playing_card_model.dart';
 import '../models/game_state.dart';
 
@@ -55,10 +55,10 @@ class FirestoreService {
     await _games.doc(gameId).delete();
   }
 
-  Future<String?> joinGame(String gameId, String pid) async {
+  Future<String?> joinGame(String gameId, String pid, Map<String, dynamic> playerInfo) async {
     String? g;
     try {
-      g = await gameHandler.joinGame(gameId: gameId, pid: pid);
+      g = await gameHandler.joinGame(gameId: gameId, pid: pid, playerInfo: playerInfo);
     } catch (e) {
       developer.log("Service.fs.joinGame Error $e");
     }

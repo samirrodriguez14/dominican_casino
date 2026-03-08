@@ -14,7 +14,7 @@ class GameStatusContent extends StatelessWidget {
     final opp = vm.opp;
 
     if (id == null || id.isEmpty) return "-";
-    if (me != null && id == me) return "You";
+    if (id == me) return "You";
     if (opp != null && id == opp) return "Opponent";
     return id;
   }

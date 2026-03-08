@@ -48,10 +48,10 @@ class GameRepo extends ChangeNotifier {
     }
   }
 
-  Future<bool> joinGame(String gid, String pid) async {
+  Future<bool> joinGame(String gid, String pid, Map<String, dynamic> playerInfo) async {
     try {
       if (gameState == null) await loadGame(gid);
-      await fs.joinGame(gameState!.id, pid);
+      await fs.joinGame(gameState!.id, pid, playerInfo);
       return true;
     } catch (e) {
       developer.log("AppRepo.joinGame Error Joining Game: $e");

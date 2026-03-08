@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart' show ReadContext, WatchContext;
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class LobbyScreen extends StatefulWidget {
   const LobbyScreen({super.key});
@@ -62,20 +63,43 @@ class _LobbyScreenState extends State<LobbyScreen> {
               const SizedBox(height: 10),
               Expanded(child: _LobbyBody(vm: vm)),
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: CupertinoButton(
-                  color: AppStyle.theme.surfaceAlt,
-                  borderRadius: BorderRadius.circular(12),
-                  onPressed: vm.loading ? null : () => vm.createGame(),
-                  child: Text(
-                    "Create Game",
-                    style: TextStyle(
-                      color: AppStyle.theme.textPrimary,
-                      fontWeight: FontWeight.w700,
+              Row(
+                spacing: 10,
+                children: [
+                   Expanded(
+                    child: CupertinoButton(
+                      color: AppStyle.theme.surfaceAlt,
+                      borderRadius: BorderRadius.circular(12),
+                      onPressed:null,
+                      child: Text(
+                        "Joined Games",
+                        style: TextStyle(
+                          color: AppStyle.theme.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                
+                  
+                  Expanded(
+                    // width: double.infinity,
+                    child: CupertinoButton(
+                      color: AppStyle.theme.surfaceAlt,
+                      borderRadius: BorderRadius.circular(12),
+                      onPressed: vm.loading ? null : () => vm.createGame(),
+                      child: Text(
+                        "+ Create",
+                        style: TextStyle(
+                          color: AppStyle.theme.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                
+                
+                ],
               ),
             ],
           ),
@@ -117,7 +141,7 @@ class _LobbyBody extends StatelessWidget {
       );
     }
 
-    final myUid = vm.userId; 
+    final myUid = vm.userId;
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
       itemCount: vm.games.length,
@@ -126,20 +150,23 @@ class _LobbyBody extends StatelessWidget {
         final g = vm.games[i];
 
         final full = _isFull(g);
-        final canEnter = _canEnter(g, myUid ?? "");
-
+        final joined = _joined(g, myUid ?? "_");
         return LobbyGamePill(
-          title: g.id,
+          title: _shortId(g.id), 
           subtitle:
               "P1: ${g.player1?.isNotEmpty == true ? "Ready" : "Open"}  •  "
               "P2: ${g.player2?.isNotEmpty == true ? "Ready" : "Open"}",
           statusText: full ? "FULL" : "OPEN",
           statusIsFull: full,
+          joined: joined,
+          enterEnabled: !full || joined,
+          enterLabel: joined
+              ? "Enter"
+              : full
+              ? "Full"
+              : "Join",
 
-          enterEnabled: canEnter,
-          enterLabel: canEnter ? "Enter" : "Full",
-          
-          onEnter: canEnter
+          onEnter: !full || joined
               ? () {
                   context.go('/game/${g.id}');
                 }
@@ -149,6 +176,16 @@ class _LobbyBody extends StatelessWidget {
             final ok = await _confirmDelete(context, g.id);
             if (!ok) return;
             await vm.deleteGame(g.id);
+          },
+          onShare: () async {
+            final link = "https://dominican-casino.web.app/join/${g.id}";
+            final message =
+                '''
+                Join my Dominican Casino game!
+                $link
+                ''';
+
+            await SharePlus.instance.share(ShareParams(text: message));
           },
         );
       },
@@ -183,12 +220,11 @@ class _LobbyBody extends StatelessWidget {
     return p1.isNotEmpty && p2.isNotEmpty;
   }
 
-  /// Allow entering if there's a spot OR user is already one of the players
-  bool _canEnter(LobbyGame g, String myUid) {
+  bool _joined(LobbyGame g, String myUid) {
     final p1 = (g.player1 ?? '').trim();
     final p2 = (g.player2 ?? '').trim();
     final isMe = p1 == myUid || p2 == myUid;
-    return isMe || !_isFull(g);
+    return isMe;
   }
 
   String _shortId(String id) => id.length <= 6 ? id : id.substring(0, 6);

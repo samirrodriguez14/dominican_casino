@@ -11,7 +11,7 @@ class RoundCompletedContent extends StatelessWidget {
     final opp = vm.opp;
 
     if (id == null || id.isEmpty) return "-";
-    if (me != null && id == me) return "You";
+    if (id == me) return "You";
     if (opp != null && id == opp) return "Opponent";
     return id;
   }
@@ -136,7 +136,7 @@ class RoundCompletedContent extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          'Tap Continue when you’re ready. The controller will start the next round after both players are ready.',
+          "Tap Continue when you're ready. The controller will start the next round after both players are ready.",
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, color: AppStyle.theme.muted),
         ),

@@ -48,11 +48,6 @@ class LobbyViewModel extends ChangeNotifier {
     await _appRepo.createGame();
   }
 
-  // Future<void> joinGame(String gameId) async {
-  //   await _appRepo.joinGame(gameId);
-
-  // }
-
   Future<void> deleteGame(String gameId) async {
    await _appRepo.deleteGame(gameId);
   }

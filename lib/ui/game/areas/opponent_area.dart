@@ -1,3 +1,4 @@
+import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card_back.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -14,6 +15,7 @@ class OpponentArea extends StatefulWidget {
 class OpponentAreaState extends State<OpponentArea> {
   bool get highlightTurn => context.select((RoomViewModel vm) => vm.isOppTurn);
   String? get opp => context.select((RoomViewModel vm) => vm.opp);
+  Player? get oppInfo => context.select((RoomViewModel vm) => vm.oppInfo);
   int get deckCount =>
       context.select((RoomViewModel vm) => vm.oppHandCardsTotal);
   int get score => context.select((RoomViewModel vm) => vm.oppScore);
@@ -39,7 +41,9 @@ class OpponentAreaState extends State<OpponentArea> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            opponentJoined ? "Id ($opp)" : "Waiting for opponent...",
+            opponentJoined
+                ? "Opponent: ${oppInfo?.name}"
+                : "Waiting for opponent...",
             style: AppStyle.theme.mutedText,
           ),
           const SizedBox(height: 8),
