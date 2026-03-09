@@ -14,11 +14,11 @@ class PlayerArea extends StatefulWidget {
 }
 
 class PlayerAreaState extends State<PlayerArea> {
-  RoomViewModel get vm => context.read<RoomViewModel>();
+  GameViewModel get vm => context.read<GameViewModel>();
 
   @override
   Widget build(BuildContext context) {
-    final highlightTurn = vm.currentTurn;
+    final highlightTurn = vm.isMyTurn;
     return Container(
       decoration: AppStyle.theme.playerSectionBox(
         highlightColor: AppStyle.theme.turnHighlight,
@@ -49,7 +49,7 @@ class PlayerAreaState extends State<PlayerArea> {
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: vm.pHandCards.map((c) {
+                        children: vm.myHandCards.map((c) {
                           final isSelected = vm.selectedCard == c;
                           return Padding(
                             padding: const EdgeInsets.only(right: 5),
@@ -84,7 +84,7 @@ class PlayerAreaState extends State<PlayerArea> {
     );
   }
 
-  Widget _buildPlayControls(BuildContext context, RoomViewModel vm) {
+  Widget _buildPlayControls(BuildContext context, GameViewModel vm) {
     return Row(
       children: [
         ActionControlButton(

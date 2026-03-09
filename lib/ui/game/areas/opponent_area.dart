@@ -13,17 +13,17 @@ class OpponentArea extends StatefulWidget {
 }
 
 class OpponentAreaState extends State<OpponentArea> {
-  bool get highlightTurn => context.select((RoomViewModel vm) => vm.isOppTurn);
-  String? get opp => context.select((RoomViewModel vm) => vm.opp);
-  Player? get oppInfo => context.select((RoomViewModel vm) => vm.oppInfo);
+  bool get highlightTurn => context.select((GameViewModel vm) => vm.isOppTurn);
+  String? get opp => context.select((GameViewModel vm) => vm.opp);
+  Player? get oppInfo => context.select((GameViewModel vm) => vm.oppInfo);
   int get deckCount =>
-      context.select((RoomViewModel vm) => vm.oppHandCardsTotal);
-  int get score => context.select((RoomViewModel vm) => vm.oppScore);
+      context.select((GameViewModel vm) => vm.oppHandCardsTotal);
+  int get score => context.select((GameViewModel vm) => vm.oppScore);
 
   int get extraPoints =>
-      context.select((RoomViewModel vm) => vm.oppExtraPoints);
+      context.select((GameViewModel vm) => vm.oppExtraPoints);
   List<PlayingCardModel> get collectedCards =>
-      context.select((RoomViewModel vm) => vm.oppCollectedCards);
+      context.select((GameViewModel vm) => vm.oppCollectedCards);
 
   @override
   Widget build(BuildContext context) {

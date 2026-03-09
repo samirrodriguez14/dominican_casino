@@ -56,8 +56,8 @@ abstract class AppTheme {
   });
 }
 
-CupertinoThemeData buildCupertinoTheme() {
-  final t = AppStyle.theme;
+CupertinoThemeData buildCupertinoTheme(AppTheme theme) {
+  final t = theme;
   return CupertinoThemeData(
     brightness: Brightness.dark,
     primaryColor: t.surfaceAlt,

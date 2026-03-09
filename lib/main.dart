@@ -8,12 +8,15 @@ import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 // import 'package:dominican_casino/style/casino_theme.dart';
 import 'package:dominican_casino/style/felt_walnut_theme.dart';
+import 'package:dominican_casino/view_models/app_theme_view_model.dart';
+import 'package:dominican_casino/view_models/profile_view_model.dart';
 // import 'package:dominican_casino/style/midnight_theme.dart';
 // import 'package:dominican_casino/style/wooden_table_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 void main() async {
   AppStyle.theme = FeltWalnutTheme();
 
@@ -26,9 +29,7 @@ void main() async {
     devloper.log("Eror initializing Firebase");
   }
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   runApp(
     MultiProvider(
@@ -43,6 +44,14 @@ void main() async {
             appRepo.loadApp();
             return appRepo;
           },
+        ),
+        ChangeNotifierProvider(
+          create: (context) =>
+              ProfileViewModel(appRepo: context.read<AppRepo>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) =>
+              AppThemeViewModel(appRepo: context.read<AppRepo>()),
         ),
       ],
 

@@ -1,5 +1,4 @@
 import 'package:dotted_border/dotted_border.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
 
@@ -7,10 +6,10 @@ class MidnightNeonTheme extends AppTheme {
   @override
   double get radius => 14;
   @override
-  String get appLogo => 'assets/images/logo_icon_transparent_png';
+  String get appLogo => 'assets/images/logo_icon_transparent.png';
 
   @override
-  String get cardBack => "assets/images/logo_card.png";
+  String get cardBack => "assets/images/card_back.png";
   // Base
   @override
   Color get background => const Color(0xFF070A12);

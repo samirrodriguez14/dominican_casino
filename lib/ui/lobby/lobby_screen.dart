@@ -40,7 +40,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 children: [
                   CupertinoButton(
                     padding: EdgeInsets.zero,
-                    onPressed: () => context.go('/home'),
+                    onPressed: () => context.go('/landing'),
                     child: const Icon(CupertinoIcons.back),
                   ),
                   const Spacer(),

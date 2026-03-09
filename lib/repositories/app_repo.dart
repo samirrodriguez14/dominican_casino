@@ -4,6 +4,12 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
+import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/casino_theme.dart';
+import 'package:dominican_casino/style/felt_walnut_theme.dart';
+import 'package:dominican_casino/style/midnight_theme.dart';
+import 'package:dominican_casino/style/wooden_table_theme.dart';
+import 'package:dominican_casino/ui/app_shell/settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -11,6 +17,11 @@ import 'package:uuid/uuid.dart';
 enum AppStatus { notReady, appReady, inGame, appError }
 
 class AppRepo extends ChangeNotifier {
+
+  Theme _appTheme = Theme.feltWaltnut;
+  Theme get appTheme => _appTheme;
+  AppTheme get selectedTheme => themeFromEnum(_appTheme);
+
   AppStatus appStatus = AppStatus.notReady;
   Player? player;
   String? currentGameId;
@@ -18,6 +29,12 @@ class AppRepo extends ChangeNotifier {
   final FirestoreService fs;
   final Uuid _uuid = const Uuid();
   AppRepo({required this.fs});
+
+  set appTheme(Theme value) {
+    if (_appTheme == value) return;
+    _appTheme = value;
+    notifyListeners();
+  }
 
   Future<void> loadApp() async {
     developer.log("AppRepo: Loading player");
@@ -77,5 +94,18 @@ class AppRepo extends ChangeNotifier {
       appStatus = AppStatus.appError;
     }
     return null;
+  }
+
+  static AppTheme themeFromEnum(Theme theme) {
+    switch (theme) {
+      case Theme.feltWaltnut:
+        return FeltWalnutTheme();
+      case Theme.walnut:
+        return WalnutTheme();
+      case Theme.casino:
+        return CasinoTheme();
+      case Theme.midnight:
+        return MidnightNeonTheme();
+    }
   }
 }

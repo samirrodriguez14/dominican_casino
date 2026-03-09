@@ -16,12 +16,12 @@ class PlayingArea extends StatefulWidget {
 }
 
 class PlayingAreaState extends State<PlayingArea> {
-  RoomViewModel get vm => context.read<RoomViewModel>();
+  GameViewModel get vm => context.read<GameViewModel>();
 
   @override
   Widget build(BuildContext context) {
     return Opacity(
-      opacity: vm.controlGame ? 0.5 : 1,
+      opacity: vm.canControlGame ? 0.5 : 1,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -76,14 +76,14 @@ class PlayingAreaState extends State<PlayingArea> {
 
                   child: CardDeck(
                     cardWidth: 55,
-                    cards: vm.pCollectedCards,
+                    cards: vm.myCollectedCards,
                     extraPoints: vm.myExtraPoints,
                     onTap: () {
                       HapticFeedback.mediumImpact();
                       showAppPopup(
                         context: context,
                         title: "My Collected Cards",
-                        content: CollectedCardsStrip(cards: vm.pCollectedCards),
+                        content: CollectedCardsStrip(cards: vm.myCollectedCards),
                       );
                     },
                   ),
@@ -96,7 +96,7 @@ class PlayingAreaState extends State<PlayingArea> {
     );
   }
 
-  Widget _buildCardWrap(BuildContext context, RoomViewModel vm) {
+  Widget _buildCardWrap(BuildContext context, GameViewModel vm) {
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 10,
@@ -106,7 +106,7 @@ class PlayingAreaState extends State<PlayingArea> {
           bool isSelected = vm.selectedStacks.contains(stack);
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: vm.controlGame ? null : () => vm.selectStack(stack),
+            onTap: vm.canControlGame ? null : () => vm.selectStack(stack),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               transform: isSelected
@@ -122,7 +122,7 @@ class PlayingAreaState extends State<PlayingArea> {
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
 
-            onTap: vm.controlGame ? null : () => vm.selectCardToStack(c),
+            onTap: vm.canControlGame ? null : () => vm.selectCardToStack(c),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               transform: isSelected

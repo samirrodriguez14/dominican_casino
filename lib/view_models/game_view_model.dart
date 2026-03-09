@@ -10,7 +10,7 @@ import 'package:uuid/uuid.dart';
 
 enum Actions { take, play, add, stack }
 
-class RoomViewModel extends ChangeNotifier {
+class GameViewModel extends ChangeNotifier {
   ///START VAR DECLARATIONS
   ///
 
@@ -18,6 +18,9 @@ class RoomViewModel extends ChangeNotifier {
   GameState? g;
   Player player;
   String gid;
+
+  ///ROUND VARS
+  ///
   int roundIndex = 1;
   RoundStatus roundStatus = RoundStatus.playing;
 
@@ -26,73 +29,48 @@ class RoomViewModel extends ChangeNotifier {
 
   bool iAmReadyForNextRound = false;
   bool bothPlayersReady = false;
-
   int? _lastShownCompletedRoundIndex;
   bool showRoundCompletePopup = false;
 
-  int oppHandCardsTotal = 0;
-  List<PlayingCardModel> oppCollectedCards = [];
-
-  int _extraPoints = 0;
-  String extraPointsHolderId = '';
-
-  String _lastTookCardId = '';
-
-  List<PlayingCardModel> playingAreaCards = [];
-  List<PlayingAreaStackModel> playingAreaStacks = [];
-
-  List<PlayingCardModel> pHandCards = [];
-  List<PlayingCardModel> pCollectedCards = [];
-
   ///
-  ///END VAR DECLARATION
-
-  ///START GETTERS
   ///
+  ///MY INFO
+
   String get me => player.id;
-
-  String? get opp {
-    if (g == null) return null;
-    return joinedAsPlayer == 'player1' ? g!.player2 : g!.player1;
+  String get joinedAsPlayer {
+    if (g == null) return 'player2';
+    return (me == g!.player1) ? 'player1' : 'player2';
   }
-  Player? _oppInfo;
-  
-  Player? get oppInfo=> _oppInfo;
-
-  bool get canStart =>
-      (bothPlayersJoined && isController) && g?.started == false;
-
-  bool get canRedeal =>
-      ((g?.started ?? false) && isController) &&
-      (canStartNextRound || handsEmpty);
-  bool get waitingControllerDeal =>
-      (((g?.started ?? false) && !isController) &&
-      (canStartNextRound || handsEmpty));
-  bool get controlGame =>
-      canStart || canRedeal || opp == "" || g == null || waitingControllerDeal;
 
   bool get lastTakeMe => _lastTookCardId == me && me != "";
-  bool get lastTakeOpp => _lastTookCardId == opp && opp != '';
-  String get controllText => "";
-  bool get isController => g != null ? g!.controllerId == me : false;
 
-  bool get canStartNextRound =>
-      g != null &&
-      g!.started &&
-      roundStatus == RoundStatus.completed &&
-      bothPlayersReady;
-
-  bool get bothPlayersJoined =>
-      _gameRepo.gameState?.player1 != "" && _gameRepo.gameState?.player2 != "";
-
-  int get oppScore => g == null ? 0 : g!.scores[opp] ?? 0;
-
-  bool get currentTurn {
+  List<PlayingCardModel> myHandCards = [];
+  List<PlayingCardModel> myCollectedCards = [];
+  bool get isMyTurn {
     return g != null &&
         g!.currentTurnPlayerId == me &&
         !handsEmpty &&
         roundStatus == RoundStatus.playing;
   }
+
+  int get myExtraPoints => (extraPointsHolderId == me) ? _extraPoints : 0;
+
+  ///OPPONENT INFO
+  String? get opp {
+    if (g == null) return null;
+    return joinedAsPlayer == 'player1' ? g!.player2 : g!.player1;
+  }
+
+  Player? _oppInfo;
+
+  Player? get oppInfo => _oppInfo;
+
+  int oppHandCardsTotal = 0;
+  List<PlayingCardModel> oppCollectedCards = [];
+
+  bool get lastTakeOpp => _lastTookCardId == opp && opp != '';
+
+  int get oppScore => g == null ? 0 : g!.scores[opp] ?? 0;
 
   bool get isOppTurn {
     return g != null &&
@@ -102,10 +80,55 @@ class RoomViewModel extends ChangeNotifier {
         roundStatus == RoundStatus.playing;
   }
 
-  String get joinedAsPlayer {
-    if (g == null) return 'player2';
-    return (me == g!.player1) ? 'player1' : 'player2';
-  }
+  int get oppExtraPoints => (extraPointsHolderId == opp) ? _extraPoints : 0;
+
+  ///End OPP INFO
+
+  ///GEN GAME INFO
+  int _extraPoints = 0;
+  String extraPointsHolderId = '';
+  String _lastTookCardId = '';
+  String get lastTookCard => (_lastTookCardId == me) ? "You" : "Opponent";
+  bool get isController => g != null ? g!.controllerId == me : false;
+
+  List<PlayingCardModel> playingAreaCards = [];
+  List<PlayingAreaStackModel> playingAreaStacks = [];
+
+  //END GEN GAME INFO
+
+  ///LOGIC FOR GAME CONTROL
+  /// provide enum for stric structure.
+  /// Diffeent state:
+  /// 
+  /// 1 first Deal [Game sets to true, Round to playing. round set to 1]
+  ///   Dealer: CanStart
+  ///   NotCont: Waiting on Dealer
+  /// 
+  /// 2. Round ends [ last card from both players is paced.]
+  
+  
+  bool get canStart =>
+      (bothPlayersJoined && isController) && g?.started == false;
+
+  bool get canRedeal =>
+      ((g?.started ?? false) && isController) &&
+      (canStartNextRound || handsEmpty);
+
+  bool get waitingControllerDeal =>
+      (((g?.started ?? false) && !isController) &&
+      (canStartNextRound || handsEmpty));
+
+  bool get canControlGame =>
+      canStart || canRedeal || opp == "" || g == null || waitingControllerDeal;
+
+  bool get canStartNextRound =>
+      g != null &&
+      g!.started &&
+      roundStatus == RoundStatus.completed &&
+      bothPlayersReady;
+
+  bool get bothPlayersJoined =>
+      _gameRepo.gameState?.player1 != "" && _gameRepo.gameState?.player2 != "";
 
   bool get handsNotNull {
     if (g == null || opp == null) return false;
@@ -125,17 +148,12 @@ class RoomViewModel extends ChangeNotifier {
         oppHand.isEmpty;
   }
 
-  int get myExtraPoints => (extraPointsHolderId == me) ? _extraPoints : 0;
-  int get oppExtraPoints => (extraPointsHolderId == opp) ? _extraPoints : 0;
-
-  String get lastTookCard => (_lastTookCardId == me) ? "You" : "Opponent";
-
   bool get playerLeftMidGame => (g?.player1 == null || g?.player2 == null);
 
   ///
   ///END GETTERS
 
-  RoomViewModel({
+  GameViewModel({
     required this._gameRepo,
     required this.player,
     required this.gid,
@@ -177,6 +195,7 @@ class RoomViewModel extends ChangeNotifier {
     }
     return false;
   }
+
   // String _prettyPlayer(String? id) {
   //   final me = this.me;
   //   final opp = this.opp;
@@ -195,8 +214,8 @@ class RoomViewModel extends ChangeNotifier {
       if (g != null) {
         final g = this.g!;
         // existing board state
-        pHandCards = g.hands[me] ?? [];
-        pCollectedCards = g.playersDeck[me] ?? [];
+        myHandCards = g.hands[me] ?? [];
+        myCollectedCards = g.playersDeck[me] ?? [];
 
         playingAreaCards = g.playingArea;
         playingAreaStacks = g.playingAreaStacks;
@@ -219,7 +238,7 @@ class RoomViewModel extends ChangeNotifier {
 
         final p1 = g.player1 ?? '';
         final p2 = g.player2 ?? '';
-        _oppInfo = Player.fromDto(g.playersInfo?[opp]??{});
+        _oppInfo = Player.fromDto(g.playersInfo?[opp] ?? {});
         bothPlayersReady =
             (p1.isNotEmpty &&
             p2.isNotEmpty &&
@@ -240,8 +259,8 @@ class RoomViewModel extends ChangeNotifier {
         }
       } else {
         playingAreaCards = [];
-        pHandCards = [];
-        pCollectedCards = [];
+        myHandCards = [];
+        myCollectedCards = [];
         playingAreaStacks = [];
 
         roundIndex = 1;
@@ -316,16 +335,13 @@ class RoomViewModel extends ChangeNotifier {
   }
 
   Future<void> redealSameRound() async {
-    _gameRepo.dealSameRound();
+    await _gameRepo.dealSameRound();
   }
 
   Future<void> leaveGame() async {
     if (g != null) {
       _gameRepo.leaveGame(me);
-      // await _gameRepo.leaveGame(me!);
-      // await _gameRepo.endGame();
     }
-    // _gameRepo.leaveGame(pid);
     notifyListeners();
   }
 
@@ -370,6 +386,7 @@ class RoomViewModel extends ChangeNotifier {
       selectedCard != null ||
       selectedCards.isNotEmpty ||
       selectedStacks.isNotEmpty;
+
   void cancelSelection() {
     selectedCards = [];
     selectedCard = null;
@@ -504,7 +521,7 @@ class RoomViewModel extends ChangeNotifier {
       final common = intersectAll(sets);
 
       // must also be a value you can "claim" with a card in hand (excluding selectedCard)
-      final handVals = possibleValuesInHand(pHandCards, selectedCard);
+      final handVals = possibleValuesInHand(myHandCards, selectedCard);
       final allowed = common.where(handVals.contains).toSet();
 
       final desired = pickPreferred(allowed) ?? pickPreferred(common);
@@ -553,7 +570,7 @@ class RoomViewModel extends ChangeNotifier {
       if (common.isEmpty) return;
 
       // Must have that value in hand (since your rules require holding the pair value)
-      final handVals = possibleValuesInHand(pHandCards, null);
+      final handVals = possibleValuesInHand(myHandCards, null);
       final allowed = common.where(handVals.contains).toSet();
       final desired = pickPreferred(allowed);
       if (desired == null) return;
@@ -734,7 +751,7 @@ class RoomViewModel extends ChangeNotifier {
       final cardVals = possibleCardValues(selectedCard!);
 
       // values you have in hand excluding selectedCard (A => {1,14})
-      final handVals = possibleValuesInHand(pHandCards, selectedCard);
+      final handVals = possibleValuesInHand(myHandCards, selectedCard);
 
       // Case 1: selectedCard + selectedCards(sum) must equal some other card you have in hand
       if (selectedCards.isNotEmpty && selectedStacks.isEmpty) {
@@ -768,7 +785,7 @@ class RoomViewModel extends ChangeNotifier {
     // selecting multiple table cards to form a stack whose value matches a card you have in hand
     if (selectedCard == null) {
       if (selectedCards.length > 1 && selectedStacks.isEmpty) {
-        final handVals = possibleValuesInHand(pHandCards, null);
+        final handVals = possibleValuesInHand(myHandCards, null);
         final totals = possibleTotals(selectedCards);
         return totals.any(handVals.contains);
       }
@@ -780,7 +797,7 @@ class RoomViewModel extends ChangeNotifier {
   bool canAddAndPair() {
     if (selectedCard == null) return false;
 
-    final handVals = possibleValuesInHand(pHandCards, selectedCard);
+    final handVals = possibleValuesInHand(myHandCards, selectedCard);
 
     // Base values for the selected card (A => [1,14], else [n])
     final selectedVals = possibleCardValues(selectedCard!);
@@ -824,7 +841,7 @@ class RoomViewModel extends ChangeNotifier {
   }
 
   bool canPair() {
-    final handVals = possibleValuesInHand(pHandCards, selectedCard);
+    final handVals = possibleValuesInHand(myHandCards, selectedCard);
 
     if (selectedCard != null) {
       final cardVals = possibleCardValues(selectedCard!);
@@ -855,7 +872,7 @@ class RoomViewModel extends ChangeNotifier {
       if (selectedCards.length < 2 && selectedStacks.isEmpty) return false;
 
       // what values do I have in hand to "claim/pair" later?
-      final handVals = possibleValuesInHand(pHandCards, null);
+      final handVals = possibleValuesInHand(myHandCards, null);
 
       // build possible value set per selected item
       final sets = <Set<int>>[];

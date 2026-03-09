@@ -15,15 +15,15 @@ class GameControlDeck extends StatefulWidget {
 }
 
 class _GameControlDeckState extends State<GameControlDeck> {
-  RoomViewModel get vm => context.read<RoomViewModel>();
+  GameViewModel get vm => context.read<GameViewModel>();
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<RoomViewModel>();
+    final vm = context.watch<GameViewModel>();
     return _buildDeckArea(context, vm);
   }
 
-  Widget _buildDeckArea(BuildContext context, RoomViewModel vm) {
+  Widget _buildDeckArea(BuildContext context, GameViewModel vm) {
     final g = vm.g;
     final started = g?.started ?? false;
     final isController = vm.isController;
@@ -56,12 +56,12 @@ class _GameControlDeckState extends State<GameControlDeck> {
         // onAction = null;
       }
     }
-    final actionEnabled = vm.controlGame && onAction != null;
+    final actionEnabled = vm.canControlGame && onAction != null;
 
-    final double cardWidth = vm.controlGame ? 90 : 55;
+    final double cardWidth = vm.canControlGame ? 90 : 55;
 
     return Container(
-      padding: EdgeInsets.all(vm.controlGame ? 12 : 2),
+      padding: EdgeInsets.all(vm.canControlGame ? 12 : 2),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -81,8 +81,8 @@ class _GameControlDeckState extends State<GameControlDeck> {
               
             ],
           ),
-          if (vm.controlGame) const SizedBox(width: 8),
-          if (vm.controlGame)
+          if (vm.canControlGame) const SizedBox(width: 8),
+          if (vm.canControlGame)
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [

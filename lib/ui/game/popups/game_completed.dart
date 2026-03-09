@@ -11,7 +11,7 @@ class GameCompletedContent extends StatelessWidget {
     this.winnerLabelOverride,
   });
 
-  final RoomViewModel vm;
+  final GameViewModel vm;
 
   /// Display labels
   final String youLabel;

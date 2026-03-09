@@ -4,14 +4,17 @@ import 'dart:developer' as developer;
 import 'package:app_links/app_links.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
+import 'package:dominican_casino/ui/app_shell/app_shell.dart';
 import 'package:dominican_casino/ui/game/game_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
+import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:dominican_casino/view_models/game_view_model.dart';
 import 'package:dominican_casino/view_models/home_view_model.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
+import 'package:dominican_casino/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -50,6 +53,16 @@ class _MyAppState extends State<App> {
           ),
         ),
         GoRoute(
+          path: '/landing',
+          builder: (context, state) => ChangeNotifierProvider(
+            create: (context) {
+                ProfileViewModel(appRepo: context.read<AppRepo>());
+                AppThemeViewModel(appRepo: context.read<AppRepo>());
+            },
+            child: AppShell(),
+          ),
+        ),
+        GoRoute(
           path: '/instructions',
           builder: (context, state) => const InstructionsScreen(),
         ),
@@ -78,7 +91,7 @@ class _MyAppState extends State<App> {
             final player = context.read<AppRepo>().player;
             if (player == null) return HomeScreen();
             return ChangeNotifierProvider(
-              create: (_) => RoomViewModel(
+              create: (_) => GameViewModel(
                 gid: gameId,
                 player: player,
                 // pid: player.id,
@@ -154,21 +167,28 @@ class _MyAppState extends State<App> {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoApp.router(
-      title: 'Dominican Casino',
-      routerConfig: _router,
-      theme: buildCupertinoTheme(),
-      builder: (context, child) {
-        if (child == null) return const SizedBox();
+    final AppRepo appRepo = context.read<AppRepo>();
 
-        return Material(
-          color: AppStyle.theme.background,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: child,
-            ),
-          ),
+    return ListenableBuilder(
+      listenable: appRepo,
+      builder: (context, _) {
+        return CupertinoApp.router(
+          title: 'Dominican Casino',
+          routerConfig: _router,
+          theme: buildCupertinoTheme(appRepo.selectedTheme),
+          builder: (context, child) {
+            if (child == null) return const SizedBox();
+            AppStyle.theme = appRepo.selectedTheme;
+            return Material(
+              color: AppStyle.theme.background,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: child,
+                ),
+              ),
+            );
+          },
         );
       },
     );

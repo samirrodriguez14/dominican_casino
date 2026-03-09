@@ -5,7 +5,7 @@ import 'package:flutter/cupertino.dart';
 class RoundCompletedContent extends StatelessWidget {
   const RoundCompletedContent({super.key, required this.vm});
 
-  final RoomViewModel vm;
+  final GameViewModel vm;
   String _prettyPlayer(String? id) {
     final me = vm.me;
     final opp = vm.opp;

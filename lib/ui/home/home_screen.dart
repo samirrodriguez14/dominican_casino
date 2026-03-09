@@ -147,10 +147,10 @@ class HomeScreenState extends State<HomeScreen>{
                         vertical: 14,
                       ),
                       onPressed: () {
-                        context.go('/lobby');
+                        context.go('/landing');
                       },
                       child: Text(
-                        "Lobby",
+                        "Start",
                         style: TextStyle(
                           color: AppStyle.theme.textPrimary,
                           fontWeight: FontWeight.w700,
@@ -193,6 +193,7 @@ class HomeScreenState extends State<HomeScreen>{
               ),
             ),
           ),
+     
         ),
       ),
     );

@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 class GameStatusContent extends StatelessWidget {
   const GameStatusContent({super.key, required this.vm});
 
-  final RoomViewModel vm;
+  final GameViewModel vm;
 
   String _prettyPlayer(String? id) {
     final me = vm.me;

@@ -39,10 +39,10 @@ class GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final ok = await context.read<RoomViewModel>().loadGame();
+      final ok = await context.read<GameViewModel>().loadGame();
       if (ok) {
-         await context.read<RoomViewModel>().joinGame();
-        await context.read<RoomViewModel>().startListening();
+         await context.read<GameViewModel>().joinGame();
+        await context.read<GameViewModel>().startListening();
         return;
       }
       context.go('/home');
@@ -52,7 +52,7 @@ class GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<RoomViewModel>();
+    final vm = context.watch<GameViewModel>();
    
     //ENSURE INITIALIZED
     // if (playerId == null) {
@@ -140,7 +140,7 @@ class GameScreenState extends State<GameScreen> {
                 AnimatedAlign(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
-                  alignment: vm.controlGame
+                  alignment: vm.canControlGame
                       ? Alignment.center
                       : Alignment.centerRight,
 
@@ -163,7 +163,7 @@ class GameScreenState extends State<GameScreen> {
   ///GAME TOP BAR
   ///---------------------
 
-  Widget _buildGameTopBar(BuildContext context, RoomViewModel vm) {
+  Widget _buildGameTopBar(BuildContext context, GameViewModel vm) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: AppStyle.theme.raisedSurfaceBox(),
@@ -246,7 +246,7 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
-  static void showGameStatusPopup(BuildContext context, RoomViewModel vm) {
+  static void showGameStatusPopup(BuildContext context, GameViewModel vm) {
     showAppPopup(
       context: context,
       title: 'Game Status',
