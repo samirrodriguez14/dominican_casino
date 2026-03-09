@@ -73,6 +73,7 @@ class LobbyViewModel extends ChangeNotifier {
       final ok = await confirmDelete(context, gid);
       if (!ok) return;
       await deleteGame(gid);
+      notifyListeners();
     };
   }
 

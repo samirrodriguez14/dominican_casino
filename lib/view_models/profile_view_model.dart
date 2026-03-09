@@ -4,12 +4,17 @@ import 'package:flutter/cupertino.dart';
 class ProfileViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
 
-  String get name=>_appRepo.player?.name?? "_";
+  String get name => _appRepo.player?.name ?? "_";
 
   ProfileViewModel({required this._appRepo});
 
-    Future<void> updatePlayerName(String name) async {
+  Future<void> updatePlayerName(String name) async {
     await _appRepo.updatePlayer(name);
     notifyListeners();
+  }
+
+  void logout() {
+    _appRepo.logout();
+    _appRepo.appStatus =AppStatus.notReady;
   }
 }

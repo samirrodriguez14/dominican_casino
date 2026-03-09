@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/cupertino.dart';
+
 class CasinoTheme extends AppTheme {
   @override
   double get radius => 12;
@@ -24,7 +25,7 @@ class CasinoTheme extends AppTheme {
   @override
   Color get muted => const Color(0xFF778DA9);
   @override
-  Color get border => surfaceAlt.withValues(alpha:.55);
+  Color get border => surfaceAlt.withValues(alpha: .55);
 
   // NEW accents
   @override
@@ -50,33 +51,33 @@ class CasinoTheme extends AppTheme {
 
   @override
   BoxDecoration surfaceBox({Color? color}) => BoxDecoration(
-        color: color ?? surface,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: border),
-      );
+    color: color ?? surface,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: border),
+  );
 
   @override
   BoxDecoration raisedSurfaceBox({Color? color}) => BoxDecoration(
-        color: color ?? surfaceRaised,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: border),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.black.withValues(alpha:.25),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      );
+    color: color ?? surfaceRaised,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: border),
+    boxShadow: [
+      BoxShadow(
+        color: CupertinoColors.black.withValues(alpha: .25),
+        blurRadius: 10,
+        offset: const Offset(0, 6),
+      ),
+    ],
+  );
 
   @override
   BoxDecoration tableBackground() => BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [const Color(0xFF0B1422), background],
-        ),
-      );
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [const Color(0xFF0B1422), background],
+    ),
+  );
 
   @override
   BoxDecoration playerSectionBox({
@@ -87,16 +88,18 @@ class CasinoTheme extends AppTheme {
     final hc = (highlightColor ?? turnHighlight);
 
     return BoxDecoration(
-      color: joined ? (highlight ? background : surface) : CupertinoColors.black.withValues(alpha:.12),
+      color: joined
+          ? (highlight ? background : surface)
+          : CupertinoColors.black.withValues(alpha: .12),
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
-        color: highlight ? hc.withValues(alpha:.75) : border,
+        color: highlight ? hc.withValues(alpha: .75) : border,
         width: highlight ? 2 : 1,
       ),
       boxShadow: highlight
           ? [
               BoxShadow(
-                color: hc.withValues(alpha:.20),
+                color: hc.withValues(alpha: .20),
                 blurRadius: 14,
                 spreadRadius: 1,
                 offset: const Offset(0, 4),
@@ -104,7 +107,7 @@ class CasinoTheme extends AppTheme {
             ]
           : [
               BoxShadow(
-                color: CupertinoColors.black.withValues(alpha:.20),
+                color: CupertinoColors.black.withValues(alpha: .20),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -113,11 +116,8 @@ class CasinoTheme extends AppTheme {
   }
 
   @override
-  TextStyle get title => TextStyle(
-        color: textPrimary,
-        fontWeight: FontWeight.w700,
-        fontSize: 16,
-      );
+  TextStyle get title =>
+      TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: 16);
 
   @override
   TextStyle get body => TextStyle(color: textPrimary, fontSize: 14);
@@ -126,29 +126,32 @@ class CasinoTheme extends AppTheme {
   TextStyle get mutedText => TextStyle(color: muted, fontSize: 13);
 
   @override
-  TextStyle get caption => TextStyle(color: muted.withValues(alpha:.9), fontSize: 12);
+  TextStyle get caption =>
+      TextStyle(color: muted.withValues(alpha: .9), fontSize: 12);
 
-
-@override
-Widget dottedBox({
-  required Widget child,
-  Color? color,
-  EdgeInsets padding = const EdgeInsets.all(2),
-}) {
-  return DottedBorder(
-    color: border.withValues(alpha: .8),
-    strokeWidth: 1.4,
-    dashPattern: const [4, 4],
-    borderType: BorderType.RRect,
-    radius: Radius.circular(radius),
-    child: Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: color ?? surface,
-        borderRadius: BorderRadius.circular(radius),
+  @override
+  Widget dottedBox({
+    required Widget child,
+    Color? color,
+    EdgeInsets padding = const EdgeInsets.all(2),
+  }) {
+    return DottedBorder(
+      options: RectDottedBorderOptions(
+        color: border.withValues(alpha: .8),
+        strokeWidth: 1.4,
+        dashPattern: const [4, 4],
+        // borderType: BorderType.RRect,
+        // radius: Radius.circular(radius),
       ),
-      child: child,
-    ),
-  );
-}
+
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: color ?? surface,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+        child: child,
+      ),
+    );
+  }
 }

@@ -1,7 +1,8 @@
 import 'dart:developer' as devloper;
 
 import 'package:dominican_casino/app.dart';
-import 'package:dominican_casino/services/firebase_options.dart';
+import 'package:dominican_casino/services/firebase_auth_service.dart';
+import 'package:dominican_casino/firebase_options.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
@@ -10,8 +11,9 @@ import 'package:dominican_casino/style/felt_walnut_theme.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:dominican_casino/view_models/games/games_view_model.dart';
 import 'package:dominican_casino/view_models/home_view_model.dart';
-import 'package:dominican_casino/view_models/lobby_view_model.dart';
+import 'package:dominican_casino/view_models/games/lobby_view_model.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -31,16 +33,24 @@ void main() async {
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  runApp(
+  runApp( 
     MultiProvider(
       providers: [
         Provider(create: (context) => FirestoreService()),
+        Provider(
+          create: (context) => FirebaseAuthService(auth: FirebaseAuth.instance),
+        ),
         ChangeNotifierProvider(
           create: (context) => GameRepo(fs: context.read<FirestoreService>()),
         ),
         ChangeNotifierProvider(
           create: (context) {
-            final appRepo = AppRepo(fs: context.read<FirestoreService>());
+            final firebaseAuthService = context.read<FirebaseAuthService>();
+            final firestoreService = context.read<FirestoreService>();
+            final appRepo = AppRepo(
+              fs: firestoreService,
+              auth: firebaseAuthService,
+            );
             appRepo.loadApp();
             return appRepo;
           },

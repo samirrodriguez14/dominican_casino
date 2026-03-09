@@ -1,9 +1,9 @@
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
-import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
-import 'package:dominican_casino/ui/lobby/widgets/lobby_game_pill.dart';
-import 'package:dominican_casino/view_models/lobby_view_model.dart';
+import 'package:dominican_casino/ui/app_shell/games/current_games/lobby_screen.dart';
+import 'package:dominican_casino/ui/app_shell/games/current_games/widgets/lobby_game_pill.dart';
+import 'package:dominican_casino/view_models/games/lobby_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -23,39 +23,40 @@ class GamesScreen extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: screenHeight * 0.18,
-                      height: screenHeight * 0.18,
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage(AppStyle.theme.appLogo),
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-                    Text(
-                      "Select a game to Start",
-                      style: AppStyle.theme.mutedText.copyWith(fontSize: 16),
-                    ),
-
-                    GameModeCarousel(),
-                    Text(
-                      "or",
-                      style: AppStyle.theme.mutedText.copyWith(fontSize: 16),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      spacing: 16,
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        
+                        Container(
+                          width: screenHeight * 0.18,
+                          height: screenHeight * 0.18,
+                          decoration: BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage(AppStyle.theme.appLogo),
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        Text(
+                          "Select a game to Start",
+                          style: AppStyle.theme.mutedText.copyWith(
+                            fontSize: 16,
+                          ),
+                        ),
+
+                        GameModeCarousel(),
+
+                        const SizedBox(height: 16),
+
                         CupertinoButton(
                           padding: const EdgeInsets.all(12),
                           color: AppStyle.theme.border,
@@ -68,20 +69,21 @@ class GamesScreen extends StatelessWidget {
                             style: AppStyle.theme.title,
                           ),
                         ),
+
+                        const SizedBox(height: 90),
                       ],
                     ),
-                    const SizedBox(height: 90),
-                  ],
+                  ),
                 ),
               ),
             ),
-
             // Draggable challenge sheet
             DraggableScrollableSheet(
               initialChildSize: 0.10,
               minChildSize: 0.10,
               maxChildSize: 0.82,
               snap: true,
+
               snapSizes: const [0.10, .82],
               builder: (context, scrollController) {
                 return CurrentGamesSheet(scrollController: scrollController);
@@ -135,9 +137,10 @@ class GamesScreen extends StatelessWidget {
 }
 
 class CurrentGamesSheet extends StatefulWidget {
-  const CurrentGamesSheet({super.key, required this.scrollController});
+  CurrentGamesSheet({super.key, required this.scrollController});
   final ScrollController scrollController;
-
+  final DraggableScrollableController sheetController =
+      DraggableScrollableController();
   @override
   State<CurrentGamesSheet> createState() => _CurrentGamesSheetState();
 }
@@ -191,6 +194,7 @@ class _CurrentGamesSheetState extends State<CurrentGamesSheet> {
             child: _CurrentGamesBody(
               vm: vm,
               scrollController: widget.scrollController,
+              sheetController: widget.sheetController,
             ),
           ),
         ],
@@ -200,14 +204,19 @@ class _CurrentGamesSheetState extends State<CurrentGamesSheet> {
 }
 
 class _CurrentGamesBody extends StatelessWidget {
-  const _CurrentGamesBody({required this.vm, required this.scrollController});
+  const _CurrentGamesBody({
+    required this.vm,
+    required this.scrollController,
+    required this.sheetController,
+  });
 
   final LobbyViewModel vm;
   final ScrollController scrollController;
+  final DraggableScrollableController sheetController;
 
   @override
   Widget build(BuildContext context) {
-    if (vm.loading && vm.games.isEmpty) {
+    if (vm.loading) {
       return const Center(child: CupertinoActivityIndicator());
     }
 
@@ -237,16 +246,21 @@ class _CurrentGamesBody extends StatelessWidget {
       final p2 = (g.player2 ?? '').trim();
       return p1 == myUid || p2 == myUid;
     }).toList();
-
     if (myGames.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (sheetController.isAttached) {
+          sheetController.animateTo(
+            0.18, // minChildSize
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+
       return Center(
-        child: Text(
-          "You are not in any games",
-          style: AppStyle.theme.mutedText,
-        ),
+        child: Text("No games yet", style: AppStyle.theme.mutedText),
       );
     }
-
     return ListView.separated(
       controller: scrollController,
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
@@ -276,6 +290,13 @@ class _CurrentGamesBody extends StatelessWidget {
             final ok = await vm.confirmDelete(context, g.id);
             if (!ok) return;
             await vm.deleteGame(g.id);
+            if (myGames.length <= 1 && sheetController.isAttached) {
+              await sheetController.animateTo(
+                0.18, // your minChildSize
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOut,
+              );
+            }
           },
           onShare: () async {
             final link = "https://dominican-casino.web.app/join/${g.id}";

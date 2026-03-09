@@ -4,15 +4,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
-  State<StatefulWidget> createState()=> HomeScreenState();
+  State<StatefulWidget> createState() => HomeScreenState();
 }
-class HomeScreenState extends State<HomeScreen>{
 
+class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final HomeViewModel vm = context.watch<HomeViewModel>();
@@ -62,10 +60,7 @@ class HomeScreenState extends State<HomeScreen>{
                     /// ---- PLAYER NAME ----
                     GestureDetector(
                       onTap: () async {
-                        final controller = TextEditingController(
-                          text: vm.name,
-                          
-                        );
+                        final controller = TextEditingController(text: vm.name);
 
                         final newName = await showCupertinoDialog<String>(
                           context: context,
@@ -105,7 +100,7 @@ class HomeScreenState extends State<HomeScreen>{
                           await vm.updatePlayerName(newName);
                         }
                       },
-                     
+
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -124,7 +119,7 @@ class HomeScreenState extends State<HomeScreen>{
                               color: AppStyle.theme.muted,
                             ),
                             const SizedBox(width: 8),
-                            Text(vm.name??"", style: AppStyle.theme.body),
+                            Text(vm.name ?? "", style: AppStyle.theme.body),
                             const SizedBox(width: 6),
                             Icon(
                               CupertinoIcons.pencil,
@@ -146,6 +141,28 @@ class HomeScreenState extends State<HomeScreen>{
                         horizontal: 36,
                         vertical: 14,
                       ),
+                      onPressed: () async {
+                        if (await vm.login() && context.mounted) {
+                          context.go("/landing");
+                        }
+                      },
+                      child: Text(
+                        "Continue With Google",
+                        style: TextStyle(
+                          color: AppStyle.theme.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+
+                    CupertinoButton(
+                      color: AppStyle.theme.surfaceAlt,
+                      borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 36,
+                        vertical: 14,
+                      ),
                       onPressed: () {
                         context.go('/landing');
                       },
@@ -158,7 +175,6 @@ class HomeScreenState extends State<HomeScreen>{
                         ),
                       ),
                     ),
-
 
                     /// ---- INSTRUCTIONS ----
                     CupertinoButton(
@@ -193,7 +209,6 @@ class HomeScreenState extends State<HomeScreen>{
               ),
             ),
           ),
-     
         ),
       ),
     );

@@ -60,10 +60,10 @@ class GameModeCard extends StatelessWidget {
               Expanded(
                 child: CupertinoButton(
                   padding: const EdgeInsets.symmetric(vertical: 10),
-                  color: theme.border,
+                  color: (mode==GameMode.casino)? theme.border: theme.muted,
                   borderRadius: BorderRadius.circular(theme.radius),
-                  onPressed: () => gameEnter(context, vm, mode),
-                  child: Text("New", style: AppStyle.theme.title),
+                  onPressed: () =>  (mode==GameMode.casino)?gameEnter(context, vm, mode):null,
+                  child: Text(mode==GameMode.casino? "New":"Working", style: AppStyle.theme.title),
                 ),
               ),
             ],

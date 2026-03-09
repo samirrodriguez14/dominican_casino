@@ -9,7 +9,7 @@ import 'package:dominican_casino/ui/game/game_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
-import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
+import 'package:dominican_casino/ui/app_shell/games/current_games/lobby_screen.dart';
 import 'package:dominican_casino/view_models/games/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -33,11 +33,15 @@ class _MyAppState extends State<App> {
   @override
   void initState() {
     super.initState();
+    // final appRepoStatus= context.select((AppRepo appRepo)=> appRepo.appStatus);
+    final appRepo = context.read<AppRepo>();
 
     _appLinks = AppLinks();
 
     _router = GoRouter(
+      refreshListenable:appRepo ,
       initialLocation: '/home',
+
       routes: [
         GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
         GoRoute(path: '/home', builder: (context, state) => HomeScreen()),
@@ -81,6 +85,15 @@ class _MyAppState extends State<App> {
           },
         ),
       ],
+      redirect: (context, state) {
+        developer.log(state.uri.path);
+        if (state.uri.path == '/home' &&
+            appRepo.appStatus == AppStatus.appReady
+            && appRepo.player != null) {
+          return '/landing';
+        }
+        return null;
+      },
     );
 
     _initDeepLinks();
@@ -162,7 +175,7 @@ class _MyAppState extends State<App> {
               color: AppStyle.theme.background,
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
+                  constraints: const BoxConstraints(maxWidth: 760),
                   child: child,
                 ),
               ),

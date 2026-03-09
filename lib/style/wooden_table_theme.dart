@@ -146,11 +146,14 @@ Widget dottedBox({
   EdgeInsets padding = const EdgeInsets.all(2),
 }) {
   return DottedBorder(
-    color: border.withValues(alpha: .8),
-    strokeWidth: 1.4,
-    dashPattern: const [4, 4],
-    borderType: BorderType.RRect,
-    radius: Radius.circular(radius),
+      options: RectDottedBorderOptions(
+        color: border.withValues(alpha: .8),
+        strokeWidth: 1.4,
+        dashPattern: const [4, 4],
+        // borderType: BorderType.RRect,
+        // radius: Radius.circular(radius),
+      ),
+
     child: Container(
       padding: padding,
       decoration: BoxDecoration(
