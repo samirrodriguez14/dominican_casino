@@ -24,7 +24,6 @@ class AppRepo extends ChangeNotifier {
 
   AppStatus appStatus = AppStatus.notReady;
   Player? player;
-  String? currentGameId;
   final List<GameState> games = [];
   final FirestoreService fs;
   final Uuid _uuid = const Uuid();

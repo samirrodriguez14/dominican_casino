@@ -4,6 +4,7 @@ import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
@@ -99,14 +100,13 @@ class GameViewModel extends ChangeNotifier {
   ///LOGIC FOR GAME CONTROL
   /// provide enum for stric structure.
   /// Diffeent state:
-  /// 
+  ///
   /// 1 first Deal [Game sets to true, Round to playing. round set to 1]
   ///   Dealer: CanStart
   ///   NotCont: Waiting on Dealer
-  /// 
+  ///
   /// 2. Round ends [ last card from both players is paced.]
-  
-  
+
   bool get canStart =>
       (bothPlayersJoined && isController) && g?.started == false;
 
@@ -148,7 +148,9 @@ class GameViewModel extends ChangeNotifier {
         oppHand.isEmpty;
   }
 
-  bool get playerLeftMidGame => (g?.player1 == null || g?.player2 == null);
+  bool get waitingOnOpponent =>
+      ((g?.player1 != null || g?.player1 != "") &&
+      (g?.player2 == null || g?.player2 == ""));
 
   ///
   ///END GETTERS
@@ -206,10 +208,9 @@ class GameViewModel extends ChangeNotifier {
   //   return id;
   // }
 
-  void _onGameRepoChanged() async {
+  void _onGameRepoChanged() async { 
     g = _gameRepo.gameState;
-    developer.log("GameViewModel._onGameRepoChanged $me, ${g?.id}");
-
+    developer.log("GameViewModel._onGameRepoChanged Me: $me, GameID: ${g?.id}");
     try {
       if (g != null) {
         final g = this.g!;
@@ -275,8 +276,8 @@ class GameViewModel extends ChangeNotifier {
       HapticFeedback.mediumImpact();
       cancelSelection();
     } catch (e) {
-      _gameRepo.leaveGame(me);
       developer.log("GameViewModel._onGameRepoChanged Error $e");
+      notifyListeners();
     }
   }
 
@@ -285,8 +286,8 @@ class GameViewModel extends ChangeNotifier {
 
   ///GENERAL ACTIONS START
   ///
-  void startGame() {
-    _gameRepo.startGame();
+  Future<void> startGame() async {
+    await _gameRepo.startGame();
   }
 
   void playAction(PlayingCardModel card) {
@@ -340,7 +341,7 @@ class GameViewModel extends ChangeNotifier {
 
   Future<void> leaveGame() async {
     if (g != null) {
-      _gameRepo.leaveGame(me);
+      await _gameRepo.endGame();
     }
     notifyListeners();
   }
@@ -355,19 +356,30 @@ class GameViewModel extends ChangeNotifier {
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text("Leave Game?"),
         content: Text(
-          (g == null) ? "Game deleted" : "This will delete the game",
+          (g == null) ? "Game deleted" : "Go to Lobby to keep game",
         ),
         actions: [
+          if (g != null)
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text("Go to Lobby", style: AppStyle.theme.title),
+            ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              Navigator.of(ctx).pop(true);
+
+              await leaveGame();
+              await endGame();
+              Navigator.of(ctx).pop(true);
+            },
+            child: Text("Abandon"),
+          ),
           if (g != null)
             CupertinoDialogAction(
               onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text("Cancel"),
             ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text((g == null) ? "Lobby" : "Abandon"),
-          ),
         ],
       ),
     );

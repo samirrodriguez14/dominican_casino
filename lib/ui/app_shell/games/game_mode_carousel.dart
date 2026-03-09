@@ -2,7 +2,6 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:go_router/go_router.dart';
 
 class GameModeCarousel extends StatefulWidget {
   const GameModeCarousel({super.key});
@@ -13,7 +12,7 @@ class GameModeCarousel extends StatefulWidget {
 
 class _GameModeCarouselState extends State<GameModeCarousel> {
   final PageController controller = PageController(
-    viewportFraction: 0.45,
+    viewportFraction: 0.55,
     initialPage: 1,
   );
 
@@ -31,28 +30,26 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
 
   @override
   Widget build(BuildContext context) {
-        double screenHeight = MediaQuery.of(context).size.height;
+    double screenHeight = MediaQuery.of(context).size.height;
 
     return SizedBox(
-      height: screenHeight*0.28,
+      height: screenHeight * 0.3,
       child: PageView.builder(
         controller: controller,
         itemCount: GameMode.values.length,
         itemBuilder: (context, index) {
           final diff = (page - index).abs();
-          final scale = (1 - (diff * 0.25)).clamp(0.5, 1.0);
-          final mode =  GameMode.values[index];
+          final scale = (1 - (diff * 0.4)).clamp(0.1, 1.0);
+          final mode = GameMode.values[index];
           return Center(
             child: Transform.scale(
               scale: scale,
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
                     decoration: AppStyle.theme.raisedSurfaceBox(),
-                    child: CupertinoButton(
-                      onPressed: () => gameEnter(context, mode),
-                      child: GameModeCard(mode: mode),
-                    ),
+                    child: GameModeCard(mode: mode),
                   ),
                 ],
               ),
@@ -63,17 +60,4 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
     );
   }
 
-  void gameEnter(BuildContext context, GameMode mode) {
-    switch (mode) {
-      case GameMode.tresydos:
-        // context.go('');
-        break;
-      case GameMode.casino:
-        context.go('/lobby');
-        break;
-      case GameMode.robaito:
-        // context.go('/landing');
-        break;
-    }
-  }
 }

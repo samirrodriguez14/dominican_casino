@@ -7,72 +7,61 @@ class ChallengePlayersSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
-
-    return SizedBox(
-      height: screenHeight*0.30,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: AppStyle.theme.surfaceBox(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Challenge a Player",
-              style: AppStyle.theme.title.copyWith(fontSize: 24),
-            ),
-            // const SizedBox(height: 6),
-            // Text(
-            //   "Search for an opponent and start a match.",
-            //   style: AppStyle.theme.mutedText,
-            // ),
-            const SizedBox(height: 14),
-
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: AppStyle.theme.raisedSurfaceBox(),
-              //  BoxDecoration(
-              //   color: AppStyle.theme.surface,
-              //   borderRadius: BorderRadius.circular(AppStyle.theme.radius),
-              //   border: Border.all(color: AppStyle.theme.border),
-              // ),
-              child: Row(
-                children: [
-                  Icon(
-                    CupertinoIcons.search,
-                    color: AppStyle.theme.muted,
-                    size: 18,
+    return Container(
+      constraints: BoxConstraints(
+        minHeight: 180,
+        maxHeight: screenHeight * 0.42,
+      ),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: AppStyle.theme.surfaceBox(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Challenge a Player",
+            style: AppStyle.theme.title.copyWith(fontSize: 24),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: AppStyle.theme.raisedSurfaceBox(),
+            child: Row(
+              children: [
+                Icon(
+                  CupertinoIcons.search,
+                  color: AppStyle.theme.muted,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: CupertinoTextField(
+                    placeholder: "Search players",
+                    placeholderStyle: AppStyle.theme.mutedText,
+                    style: AppStyle.theme.body,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: const BoxDecoration(),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: CupertinoTextField(
-                      placeholder: "Search players",
-                      placeholderStyle: AppStyle.theme.mutedText,
-                      style: AppStyle.theme.body,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration:  const BoxDecoration(),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 14),
+          const SizedBox(height: 10),
 
-            Expanded(
-              child: ListView.separated(
-                itemCount: 8,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  return _ChallengePlayerTile(
-                    playerName: "Player ${index + 1}",
-                    onChallenge: () {},
-                  );
-                },
-              ),
+          Expanded(
+            child: ListView.separated(
+              itemCount: 8,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                return _ChallengePlayerTile(
+                  playerName: "Player ${index + 1}",
+                  onChallenge: () {},
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -91,7 +80,7 @@ class _ChallengePlayerTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
-              decoration: AppStyle.theme.raisedSurfaceBox(),
+      decoration: AppStyle.theme.raisedSurfaceBox(),
       // BoxDecoration(
       //   color: AppStyle.theme.surface,
       //   borderRadius: BorderRadius.circular(AppStyle.theme.radius),

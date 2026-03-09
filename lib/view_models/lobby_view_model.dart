@@ -19,15 +19,15 @@ class LobbyViewModel extends ChangeNotifier {
   bool loading = true;
   String? error;
 
-  void startListening() {
+  void startListening(String pid) {
     _sub?.cancel();
     loading = true;
     error = null;
     notifyListeners();
 
-    _sub = _appRepo.fs.listenGames().listen(
+    _sub = _appRepo.fs.listenGames(pid).listen(
       (list) {
-        games = list;
+        games = list.where((g)=>g.player1 ==pid || g.player2 ==pid).toList();
         loading = false;
         error = null;
         notifyListeners();
@@ -41,8 +41,8 @@ class LobbyViewModel extends ChangeNotifier {
     );
   }
 
-  Future<void> refresh() async {
-    startListening();
+  Future<void> refresh(String pid) async {
+    startListening(pid);
   }
 
   Future<void> createGame() async {

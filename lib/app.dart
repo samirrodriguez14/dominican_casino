@@ -10,11 +10,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
-import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:dominican_casino/view_models/games/game_view_model.dart';
-import 'package:dominican_casino/view_models/home_view_model.dart';
-import 'package:dominican_casino/view_models/lobby_view_model.dart';
-import 'package:dominican_casino/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -44,36 +40,19 @@ class _MyAppState extends State<App> {
       initialLocation: '/home',
       routes: [
         GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
-        GoRoute(
-          path: '/home',
-          builder: (context, state) => ChangeNotifierProvider(
-            create: (context) =>
-                HomeViewModel(appRepo: context.read<AppRepo>()),
-            child: HomeScreen(),
-          ),
-        ),
+        GoRoute(path: '/home', builder: (context, state) => HomeScreen()),
         GoRoute(
           path: '/landing',
-          builder: (context, state) => ChangeNotifierProvider(
-            create: (context) {
-                ProfileViewModel(appRepo: context.read<AppRepo>());
-                AppThemeViewModel(appRepo: context.read<AppRepo>());
-            },
-            child: AppShell(),
-          ),
+          builder: (context, state) => const AppShell(),
         ),
+
         GoRoute(
           path: '/instructions',
           builder: (context, state) => const InstructionsScreen(),
         ),
         GoRoute(
           path: '/lobby',
-          builder: (context, state) {
-            return ChangeNotifierProvider(
-              create: (_) => LobbyViewModel(appRepo: context.read<AppRepo>()),
-              child: const LobbyScreen(),
-            );
-          },
+          builder: (context, state) => const LobbyScreen(),
         ),
 
         GoRoute(

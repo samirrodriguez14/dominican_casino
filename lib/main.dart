@@ -9,6 +9,9 @@ import 'package:dominican_casino/style/app_theme.dart';
 // import 'package:dominican_casino/style/casino_theme.dart';
 import 'package:dominican_casino/style/felt_walnut_theme.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
+import 'package:dominican_casino/view_models/games/games_view_model.dart';
+import 'package:dominican_casino/view_models/home_view_model.dart';
+import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';
 // import 'package:dominican_casino/style/midnight_theme.dart';
 // import 'package:dominican_casino/style/wooden_table_theme.dart';
@@ -48,6 +51,18 @@ void main() async {
         ChangeNotifierProvider(
           create: (context) =>
               ProfileViewModel(appRepo: context.read<AppRepo>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) =>
+              GamesViewModel(appRepo: context.read<AppRepo>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) =>
+              LobbyViewModel(appRepo: context.read<AppRepo>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) =>
+              HomeViewModel(appRepo: context.read<AppRepo>()),
         ),
         ChangeNotifierProvider(
           create: (context) =>

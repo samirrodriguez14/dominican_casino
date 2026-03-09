@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/lobby_game.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/services/game_handler.dart';
+import 'package:rxdart/rxdart.dart';
 import '../models/playing_card_model.dart';
 import '../models/game_state.dart';
 
@@ -19,14 +20,18 @@ class FirestoreService {
 
   ///START STREAMS
   ///
-  Stream<List<LobbyGame>> listenGames() {
-    return _games.snapshots().map((snap) {
-      return snap.docs.map((d) {
-        final data = d.data() as Map<String, dynamic>;
-        return LobbyGame.fromDoc(d.id, data);
-      }).toList();
-    });
-  }
+Stream<List<LobbyGame>> listenGames(String pid) {
+  final p1 = _games.where('player1', isEqualTo: pid).snapshots();
+  final p2 = _games.where('player2', isEqualTo: pid).snapshots();
+
+  return Rx.combineLatest2(p1, p2, (a, b) {
+    final docs = [...a.docs, ...b.docs];
+    return docs.map((d) {
+      final data = d.data() as Map<String, dynamic>;
+      return LobbyGame.fromDoc(d.id, data);
+    }).toList();
+  });
+}
 
   Stream<GameState?> streamGame(String gameId) {
     return _games.doc(gameId).snapshots().map((snap) {

@@ -40,8 +40,8 @@ class GameScreenState extends State<GameScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final ok = await context.read<GameViewModel>().loadGame();
-      if (ok) {
-         await context.read<GameViewModel>().joinGame();
+      if (ok && mounted) {
+        await context.read<GameViewModel>().joinGame();
         await context.read<GameViewModel>().startListening();
         return;
       }
@@ -53,13 +53,13 @@ class GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<GameViewModel>();
-   
+
     //ENSURE INITIALIZED
-    // if (playerId == null) {
-    //   return const CupertinoPageScaffold(
-    //     child: Center(child: CupertinoActivityIndicator()),
-    //   );
-    // }
+    if (vm.g == null) {
+      return const CupertinoPageScaffold(
+        child: Center(child: CupertinoActivityIndicator()),
+      );
+    }
 
     ///GAME/ROUND STATUS CONTROLLERS
     ///---------------------
@@ -201,9 +201,7 @@ class GameScreenState extends State<GameScreen> {
                 onTap: () async {
                   HapticFeedback.mediumImpact();
                   final ok = await vm.confirmDelete(context);
-                  if (ok) await vm.leaveGame();
-
-                  if (context.mounted && ok) context.go('/lobby');
+                  if (context.mounted && ok) context.go('/landing');
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

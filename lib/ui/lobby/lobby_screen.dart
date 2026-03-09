@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/lobby_game.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/ui/lobby/widgets/lobby_game_pill.dart';
@@ -20,7 +21,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LobbyViewModel>().startListening();
+      final pid = context.read<AppRepo>().player?.id ?? "__";
+      context.read<LobbyViewModel>().startListening(pid);
     });
   }
 
@@ -56,51 +58,15 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   const Spacer(),
                   CupertinoButton(
                     padding: EdgeInsets.zero,
-                    onPressed: () => vm.refresh(),
+                    onPressed: () => vm.refresh(vm.userId ?? "__"),
                     child: const Icon(CupertinoIcons.refresh),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
-             //Body
+              //Body
               Expanded(child: _LobbyBody(vm: vm)),
               const SizedBox(height: 10),
-             //Bottom bar buttons
-              Row(
-                spacing: 10,
-                children: [
-                  Expanded(
-                    child: CupertinoButton(
-                      color: AppStyle.theme.surfaceAlt,
-                      borderRadius: BorderRadius.circular(12),
-                      onPressed: null,
-                      child: Text(
-                        "Joined Games",
-                        style: TextStyle(
-                          color: AppStyle.theme.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  Expanded(
-                    // width: double.infinity,
-                    child: CupertinoButton(
-                      color: AppStyle.theme.surfaceAlt,
-                      borderRadius: BorderRadius.circular(12),
-                      onPressed: vm.loading ? null : () => vm.createGame(),
-                      child: Text(
-                        "+ Create",
-                        style: TextStyle(
-                          color: AppStyle.theme.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
@@ -155,7 +121,7 @@ class _LobbyBody extends StatelessWidget {
         return LobbyGamePill(
           title: _shortId(g.id),
           subtitle: "",
-          pid: myUid??"",
+          pid: myUid ?? "",
           player1: g.player1?.isNotEmpty == true ? "${p1Info['name']}" : "Open",
           player2: g.player2?.isNotEmpty == true ? "${p2Info['name']}" : "Open",
           statusText: full ? "FULL" : "OPEN",

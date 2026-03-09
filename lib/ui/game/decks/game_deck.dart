@@ -1,11 +1,14 @@
+import 'dart:developer' as developer;
+
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/game/decks/card_deck.dart';
 import 'package:dominican_casino/ui/game/game_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
+// import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:dominican_casino/view_models/games/game_view_model.dart';
+import 'package:share_plus/share_plus.dart';
 
 class GameControlDeck extends StatefulWidget {
   const GameControlDeck({super.key});
@@ -29,15 +32,20 @@ class _GameControlDeckState extends State<GameControlDeck> {
     final isController = vm.isController;
     final canRedeal = vm.canRedeal;
     final canStart = vm.canStart;
+    final waitingOnOpponent = vm.waitingOnOpponent;
     late final IconData actionIcon;
     late final String actionLabel;
-    late  VoidCallback? onAction=()=>{};
+    late Future<void> Function()? onAction;
 
     if (!started) {
-      if (canStart) {
+      if (waitingOnOpponent) {
+        actionIcon = CupertinoIcons.share;
+        actionLabel = "Share";
+        onAction = () async => _shareAction(g?.id);
+      } else if (canStart) {
         actionIcon = CupertinoIcons.play_arrow_solid;
         actionLabel = "Start";
-        onAction = () => vm.startGame();
+        onAction = () async => await vm.startGame();
       } else {
         actionIcon = CupertinoIcons.lock;
         actionLabel = isController ? "Waiting…" : "Locked";
@@ -53,7 +61,7 @@ class _GameControlDeckState extends State<GameControlDeck> {
       } else {
         actionIcon = CupertinoIcons.lock;
         actionLabel = "Waiting…";
-        // onAction = null;
+        onAction = null;
       }
     }
     final actionEnabled = vm.canControlGame && onAction != null;
@@ -66,56 +74,80 @@ class _GameControlDeckState extends State<GameControlDeck> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
+          //CardDeck Button
           Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CardDeck(
                 cardWidth: cardWidth,
-                cards: vm.g?.deck??[],
+                cards: vm.g?.deck ?? [],
                 extraPoints: 0,
                 onTap: () {
                   GameScreenState.showGameStatusPopup(context, vm);
                 },
               ),
-              
             ],
           ),
-          if (vm.canControlGame) const SizedBox(width: 8),
+
+          //Action Button
           if (vm.canControlGame)
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CupertinoButton(
-                  onPressed: actionEnabled
-                      ? () async {
-                          HapticFeedback.mediumImpact();
-                          onAction?.call();
-                        }
-                      : (actionLabel == "Deleted")
-                      ? () async {
-                          HapticFeedback.mediumImpact();
-
-                          await vm.leaveGame();
-                          if (mounted) context.go('/lobby');
-                        }
-                      : () => {},
-
-                  child: Container(
-                    decoration: AppStyle.theme.raisedSurfaceBox(),
-                    child: Icon(
-                      actionIcon,
-                      size: cardWidth,
-                      color: AppStyle.theme.muted,
-                    ),
-                  ),
-                ),
-
-                Text(actionLabel, style: AppStyle.theme.title),
-              ],
+            _buildControlArea(
+              onAction,
+              g?.id,
+              actionEnabled,
+              actionIcon,
+              actionLabel,
+              cardWidth,
             ),
         ],
       ),
     );
+  }
+
+  Widget _buildControlArea(
+    Future<void> Function()? onAction,
+    String? gid,
+    bool actionEnabled,
+    IconData actionIcon,
+    String actionLabel,
+    double cardWidth,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CupertinoButton(
+          onPressed: (onAction != null)
+              ? () async {
+                  HapticFeedback.mediumImpact();
+                  onAction();
+                }
+              : null,
+          child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 8),
+            padding: EdgeInsets.all(8),
+            decoration: AppStyle.theme.raisedSurfaceBox(),
+            child: Icon(
+              actionIcon,
+              size: cardWidth,
+              color: AppStyle.theme.muted,
+            ),
+          ),
+        ),
+        Text(actionLabel, style: AppStyle.theme.title),
+        if (gid != null) Text("ID: $gid", style: AppStyle.theme.mutedText),
+      ],
+    );
+  }
+
+  static Future<void> _shareAction(String? gid) async {
+    if (gid == null) return;
+    developer.log("sharing");
+    final link = "https://dominican-casino.web.app/join/$gid";
+    final message =
+        '''Join my Dominican Casino game!
+               $link
+                ''';
+
+    await SharePlus.instance.share(ShareParams(text: message));
   }
 }

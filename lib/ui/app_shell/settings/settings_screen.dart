@@ -21,43 +21,44 @@ class SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.read<AppThemeViewModel>();
-    return Padding(
-      padding: EdgeInsetsGeometry.symmetric(horizontal: 20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            "Choose Your Table",
-            style: AppStyle.theme.title.copyWith(fontSize: 50),
-          ),
-          SizedBox(height: 20),
-
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: Theme.values.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.92,
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsetsGeometry.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Choose Your Table",
+              style: AppStyle.theme.title.copyWith(fontSize: 40),
             ),
-            itemBuilder: (context, index) {
-              final themeType = Theme.values[index];
-              final previewTheme = AppRepo.themeFromEnum(themeType);
-              final selected = vm.appTheme == themeType;
+            SizedBox(height: 20),
 
-              return ThemeOptionCard(
-                themeType: themeType,
-                previewTheme: previewTheme,
-                selected: selected,
-                onTap: () => vm.selectTheme(themeType),
-              );
-            },
-          ),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: Theme.values.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.92,
+              ),
+              itemBuilder: (context, index) {
+                final themeType = Theme.values[index];
+                final previewTheme = AppRepo.themeFromEnum(themeType);
+                final selected = vm.appTheme == themeType;
 
-          SizedBox(height: 40),
-        ],
+                return ThemeOptionCard(
+                  themeType: themeType,
+                  previewTheme: previewTheme,
+                  selected: selected,
+                  onTap: () => vm.selectTheme(themeType),
+                );
+              },
+            ),
+
+          ],
+        ),
       ),
     );
   }
