@@ -12,7 +12,7 @@ import 'package:dominican_casino/ui/game/areas/opponent_area.dart';
 import 'package:dominican_casino/ui/game/areas/player_area.dart';
 import 'package:dominican_casino/ui/game/areas/playing_area.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/view_models/game_view_model.dart';
+import 'package:dominican_casino/view_models/games/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

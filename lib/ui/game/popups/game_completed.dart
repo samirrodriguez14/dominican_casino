@@ -1,5 +1,5 @@
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/view_models/game_view_model.dart';
+import 'package:dominican_casino/view_models/games/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 
 class GameCompletedContent extends StatelessWidget {

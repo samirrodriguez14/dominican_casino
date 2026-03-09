@@ -11,7 +11,7 @@ import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
-import 'package:dominican_casino/view_models/game_view_model.dart';
+import 'package:dominican_casino/view_models/games/game_view_model.dart';
 import 'package:dominican_casino/view_models/home_view_model.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';

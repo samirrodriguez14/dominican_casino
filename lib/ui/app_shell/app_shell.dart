@@ -1,6 +1,7 @@
-import 'package:dominican_casino/ui/app_shell/games_screen.dart';
-import 'package:dominican_casino/ui/app_shell/profile_screen.dart';
-import 'package:dominican_casino/ui/app_shell/settings_screen.dart';
+import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
+import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
+import 'package:dominican_casino/ui/app_shell/settings/settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 
 class AppShell extends StatefulWidget {
@@ -36,6 +37,13 @@ class AppShellState extends State<AppShell> {
 
       tabBar: CupertinoTabBar(
         height: 80,
+        // backgroundColor: AppStyle.theme.surface,
+        border: Border(
+          top: BorderSide(
+            color: AppStyle.theme.border.withValues(alpha: .5),
+            width: 0.5,
+          ),
+        ),
         currentIndex: currentIndex,
         onTap: (i) {
           setState(() => currentIndex = i);
@@ -52,7 +60,6 @@ class AppShellState extends State<AppShell> {
           BottomNavigationBarItem(
             icon: AnimatedScale(
               curve: Curves.easeOutBack,
-
               scale: currentIndex == 1 ? 1.7 : 1.5,
               duration: const Duration(milliseconds: 750),
               child: Icon(CupertinoIcons.game_controller, size: iconSize),
@@ -61,7 +68,6 @@ class AppShellState extends State<AppShell> {
           BottomNavigationBarItem(
             icon: AnimatedScale(
               curve: Curves.easeOutBack,
-
               scale: currentIndex == 2 ? 1.3 : 1,
               duration: const Duration(milliseconds: 750),
               child: Icon(CupertinoIcons.profile_circled, size: iconSize),

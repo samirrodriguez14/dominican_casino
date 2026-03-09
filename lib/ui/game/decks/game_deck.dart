@@ -5,7 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:dominican_casino/view_models/game_view_model.dart';
+import 'package:dominican_casino/view_models/games/game_view_model.dart';
 
 class GameControlDeck extends StatefulWidget {
   const GameControlDeck({super.key});

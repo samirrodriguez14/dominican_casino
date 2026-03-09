@@ -1,6 +1,6 @@
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/theme_option.dart';
+import 'package:dominican_casino/ui/app_shell/settings/theme_option.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';

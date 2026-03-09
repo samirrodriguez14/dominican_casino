@@ -9,7 +9,7 @@ import 'package:dominican_casino/style/casino_theme.dart';
 import 'package:dominican_casino/style/felt_walnut_theme.dart';
 import 'package:dominican_casino/style/midnight_theme.dart';
 import 'package:dominican_casino/style/wooden_table_theme.dart';
-import 'package:dominican_casino/ui/app_shell/settings_screen.dart';
+import 'package:dominican_casino/ui/app_shell/settings/settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
