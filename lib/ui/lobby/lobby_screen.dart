@@ -56,16 +56,16 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     ),
                   ),
                   const Spacer(),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () => vm.refresh(vm.userId ?? "__"),
-                    child: const Icon(CupertinoIcons.refresh),
-                  ),
+                  // CupertinoButton(
+                  //   padding: EdgeInsets.zero,
+                  //   onPressed: () => vm.refresh(vm.userId ?? "__"),
+                  //   child: const Icon(CupertinoIcons.refresh),
+                  // ),
                 ],
               ),
               const SizedBox(height: 10),
               //Body
-              Expanded(child: _LobbyBody(vm: vm)),
+              Expanded(child: LobbyBody(vm: vm)),
               const SizedBox(height: 10),
             ],
           ),
@@ -75,8 +75,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
   }
 }
 
-class _LobbyBody extends StatelessWidget {
-  const _LobbyBody({required this.vm});
+class LobbyBody extends StatelessWidget {
+  const LobbyBody({super.key, required this.vm});
   final LobbyViewModel vm;
 
   @override
@@ -114,34 +114,37 @@ class _LobbyBody extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
         final g = vm.games[i];
-        final full = _isFull(g);
-        final joined = _joined(g, myUid ?? "_");
+
+        final full = isFull(g);
+        final joinedGame = joined(g, myUid ?? "_");
         final p1Info = g.playersInfo?[g.player1 ?? ""] ?? "";
         final p2Info = g.playersInfo?[g.player2 ?? ""] ?? "";
+        final myTurn = myUid != null && g.currentTurnPlayerId == myUid;
         return LobbyGamePill(
-          title: _shortId(g.id),
+          title: shortId(g.id),
           subtitle: "",
           pid: myUid ?? "",
+          myTurn: myTurn,
           player1: g.player1?.isNotEmpty == true ? "${p1Info['name']}" : "Open",
           player2: g.player2?.isNotEmpty == true ? "${p2Info['name']}" : "Open",
           statusText: full ? "FULL" : "OPEN",
           statusIsFull: full,
-          joined: joined,
-          enterEnabled: !full || joined,
-          enterLabel: joined
+          joined: joinedGame,
+          enterEnabled: !full || joinedGame,
+          enterLabel: joinedGame
               ? "Enter"
               : full
               ? "Full"
               : "Join",
 
-          onEnter: !full || joined
+          onEnter: !full || joinedGame
               ? () {
                   context.go('/game/${g.id}');
                 }
               : null,
 
           onDelete: () async {
-            final ok = await _confirmDelete(context, g.id);
+            final ok = await vm.confirmDelete(context, g.id);
             if (!ok) return;
             await vm.deleteGame(g.id);
           },
@@ -160,40 +163,20 @@ class _LobbyBody extends StatelessWidget {
     );
   }
 
-  Future<bool> _confirmDelete(BuildContext context, String gameId) async {
-    final res = await showCupertinoDialog<bool>(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: const Text("Delete game?"),
-        content: Text("Game: $gameId"),
-        actions: [
-          CupertinoDialogAction(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text("Cancel"),
-          ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text("Delete"),
-          ),
-        ],
-      ),
-    );
-    return res ?? false;
-  }
 
-  bool _isFull(LobbyGame g) {
+  static bool isFull(LobbyGame g) {
     final p1 = (g.player1 ?? '').trim();
     final p2 = (g.player2 ?? '').trim();
     return p1.isNotEmpty && p2.isNotEmpty;
   }
 
-  bool _joined(LobbyGame g, String myUid) {
+ static bool joined(LobbyGame g, String myUid) {
     final p1 = (g.player1 ?? '').trim();
     final p2 = (g.player2 ?? '').trim();
     final isMe = p1 == myUid || p2 == myUid;
     return isMe;
   }
 
-  String _shortId(String id) => id.length <= 6 ? id : id.substring(0, 6);
+  static String shortId(String id) => id.length <= 6 ? id : id.substring(0, 6);
+
 }

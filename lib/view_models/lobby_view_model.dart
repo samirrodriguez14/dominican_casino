@@ -14,7 +14,7 @@ class LobbyViewModel extends ChangeNotifier {
   StreamSubscription<List<LobbyGame>>? _sub;
 
   List<LobbyGame> games = const [];
-  String? get userId =>_appRepo.player?.id;
+  String? get userId => _appRepo.player?.id;
 
   bool loading = true;
   String? error;
@@ -25,32 +25,77 @@ class LobbyViewModel extends ChangeNotifier {
     error = null;
     notifyListeners();
 
-    _sub = _appRepo.fs.listenGames(pid).listen(
-      (list) {
-        games = list.where((g)=>g.player1 ==pid || g.player2 ==pid).toList();
-        loading = false;
-        error = null;
-        notifyListeners();
-      },
-      onError: (e, st) {
-        developer.log("LobbyViewModel.listenGames Error: $e", stackTrace: st);
-        loading = false;
-        error = e.toString();
-        notifyListeners();
-      },
-    );
+    _sub = _appRepo.fs
+        .listenGames(pid)
+        .listen(
+          (list) {
+            games = list
+                .where((g) => g.player1 == pid || g.player2 == pid)
+                .toList();
+            games.sort((a, b) {
+              final aTurn = a.currentTurnPlayerId == pid;
+              final bTurn = b.currentTurnPlayerId == pid;
+
+              if (aTurn && !bTurn) return -1;
+              if (!aTurn && bTurn) return 1;
+              return 0;
+            });
+            loading = false;
+            error = null;
+            notifyListeners();
+          },
+          onError: (e, st) {
+            developer.log(
+              "LobbyViewModel.listenGames Error: $e",
+              stackTrace: st,
+            );
+            loading = false;
+            error = e.toString();
+            notifyListeners();
+          },
+        );
   }
 
-  Future<void> refresh(String pid) async {
-    startListening(pid);
-  }
+  // Future<void> refresh(String pid) async {
+  //   startListening(pid);
+  // }
 
   Future<void> createGame() async {
     await _appRepo.createGame();
   }
 
   Future<void> deleteGame(String gameId) async {
-   await _appRepo.deleteGame(gameId);
+    await _appRepo.deleteGame(gameId);
+  }
+
+  Future<void> onDelete(BuildContext context, String gid) async {
+    () async {
+      final ok = await confirmDelete(context, gid);
+      if (!ok) return;
+      await deleteGame(gid);
+    };
+  }
+
+  Future<bool> confirmDelete(BuildContext context, String gameId) async {
+    final res = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text("Delete game?"),
+        content: Text("Game: $gameId"),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text("Cancel"),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+    return res ?? false;
   }
 
   @override

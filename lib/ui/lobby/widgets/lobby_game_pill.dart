@@ -17,6 +17,7 @@ class LobbyGamePill extends StatelessWidget {
     required this.onDelete,
     required this.joined,
     required this.onShare,
+    required this.myTurn,
   });
 
   final String title;
@@ -26,7 +27,7 @@ class LobbyGamePill extends StatelessWidget {
   final String player2;
   final String statusText;
   final bool statusIsFull;
-
+  final bool myTurn;
   final bool enterEnabled;
   final bool joined;
   final String enterLabel;
@@ -44,7 +45,7 @@ class LobbyGamePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: bg,
+        color: myTurn ? AppStyle.theme.border : bg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: border.withValues(alpha: (0.6))),
         boxShadow: const [
@@ -61,6 +62,9 @@ class LobbyGamePill extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (myTurn) Text("You're Up!"),
+                const SizedBox(height: 6),
+
                 _playerRow(player1),
                 const SizedBox(height: 6),
                 _playerRow(player2),

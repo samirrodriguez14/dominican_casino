@@ -2,8 +2,16 @@ class LobbyGame {
   final String id;
   final String? player1;
   final String? player2;
-  final Map<String,dynamic>? playersInfo;
-  LobbyGame({required this.id, this.player1, this.player2, this.playersInfo});
+  final String? currentTurnPlayerId;
+  final Map<String, dynamic>? playersInfo;
+
+  LobbyGame({
+    required this.id,
+    this.player1,
+    this.player2,
+    this.playersInfo,
+    required this.currentTurnPlayerId,
+  });
 
   factory LobbyGame.fromDoc(String id, Map<String, dynamic> data) {
     return LobbyGame(
@@ -11,6 +19,7 @@ class LobbyGame {
       player1: data['player1'] as String?,
       player2: data['player2'] as String?,
       playersInfo: data['playersInfo'] as Map<String, dynamic>,
+      currentTurnPlayerId: data['currentTurnPlayerId'],
     );
   }
 }
