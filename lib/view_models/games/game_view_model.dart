@@ -156,10 +156,10 @@ class GameViewModel extends ChangeNotifier {
   ///END GETTERS
 
   GameViewModel({
-    required this._gameRepo,
+    required GameRepo gameRepo,
     required this.player,
     required this.gid,
-  }) {
+  }): _gameRepo = gameRepo {
     _gameRepo.addListener(_onGameRepoChanged);
   }
 

@@ -6,7 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
 ///MOVE TO APPSTATE OR SOMEWHERE ELSE
-enum Theme { feltWaltnut, walnut, casino, midnight }
+enum Theme { feltWaltnut, dominican,casino, midnight, casinoLight, greenTable}
 
 enum Cardtheme { blue, dark, wood }
 

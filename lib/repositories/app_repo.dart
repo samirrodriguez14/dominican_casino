@@ -6,9 +6,11 @@ import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/casino_theme.dart';
+import 'package:dominican_casino/style/casino_theme_light.dart';
 import 'package:dominican_casino/style/felt_walnut_theme.dart';
+import 'package:dominican_casino/style/green_table_theme.dart';
 import 'package:dominican_casino/style/midnight_theme.dart';
-import 'package:dominican_casino/style/wooden_table_theme.dart';
+import 'package:dominican_casino/style/dominican_theme.dart';
 import 'package:dominican_casino/ui/app_shell/settings/settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -99,12 +101,16 @@ class AppRepo extends ChangeNotifier {
     switch (theme) {
       case Theme.feltWaltnut:
         return FeltWalnutTheme();
-      case Theme.walnut:
-        return WalnutTheme();
+      case Theme.dominican:
+        return DominicanTheme();
       case Theme.casino:
         return CasinoTheme();
       case Theme.midnight:
         return MidnightNeonTheme();
+      case Theme.casinoLight:
+        return LightCasinoTheme();
+      case Theme.greenTable:
+        return GreenTableTheme();
     }
   }
 }

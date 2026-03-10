@@ -102,12 +102,16 @@ class _ThemePreviewHeader extends StatelessWidget {
     switch (themeType) {
       case Theme.feltWaltnut:
         return 'Felt Walnut';
-      case Theme.walnut:
-        return 'Walnut';
+      case Theme.dominican:
+        return 'Dominican';
       case Theme.casino:
         return 'Casino';
       case Theme.midnight:
         return 'Midnight';
+      case Theme.casinoLight:
+        return 'Casino Light';
+      case Theme.greenTable:
+        return 'Green Light';
     }
   }
 

@@ -5,7 +5,7 @@ import 'package:flutter/cupertino.dart';
 class AppThemeViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
   Theme get appTheme => _appRepo.appTheme;
-  AppThemeViewModel({required this._appRepo});
+  AppThemeViewModel({required AppRepo appRepo}): _appRepo = appRepo; 
 
   void selectTheme(Theme theme) {
     _appRepo.appTheme = theme;

@@ -13,13 +13,13 @@ class FeltWalnutTheme extends AppTheme {
   String get cardBack => "assets/images/card_wood_back.png";
   // Base
   @override
-  Color get background => const Color(0xFF071C14);
+  Color get background => const Color.fromARGB(255, 10, 41, 29);
   @override
-  Color get surface => const Color(0xFF1F1511);
+  Color get surface => const Color.fromARGB(255, 49, 33, 27);
   @override
-  Color get surfaceRaised => const Color(0xFF2A1D17);
+  Color get surfaceRaised => const Color.fromARGB(255, 54, 37, 29);
   @override
-  Color get surfaceAlt => const Color(0xFF4A3428);
+  Color get surfaceAlt => const Color.fromARGB(255, 93, 65, 49);
   @override
   Color get textPrimary => const Color(0xFFF3ECE2);
   @override
@@ -75,7 +75,7 @@ class FeltWalnutTheme extends AppTheme {
     gradient: RadialGradient(
       center: Alignment(0, -0.15),
       radius: 1.3,
-      colors: [Color(0xFF114330), Color(0xFF071C14)],
+      colors: [Color.fromARGB(255, 32, 111, 81), Color.fromARGB(255, 17, 68, 49)],
     ),
   );
 
