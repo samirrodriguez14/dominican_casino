@@ -7,10 +7,10 @@ class GreenTableTheme extends AppTheme {
   double get radius => 14;
 
   @override
-  String get appLogo => 'assets/images/logo_icon_transparent.png';
+  String get appLogo => 'assets/images/logo_icon_wooden_transparent.png';
 
   @override
-  String get cardBack => 'assets/images/card_back.png';
+  String get cardBack => "assets/images/card_wood_back.png";
 
   // ---- Base colors ----
   @override

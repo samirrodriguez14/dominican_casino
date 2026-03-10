@@ -35,6 +35,7 @@ void main() async {
     MultiProvider(
       providers: [
         Provider(create: (context) => FirestoreService()),
+
         ChangeNotifierProvider(
           create: (context) => GameRepo(fs: context.read<FirestoreService>()),
         ),
