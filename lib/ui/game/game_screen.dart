@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
+import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/ui/game/decks/game_deck.dart';
 import 'package:dominican_casino/ui/game/popups/button_instructions.dart';
 import 'package:dominican_casino/ui/game/popups/game_completed.dart';
@@ -57,8 +58,20 @@ class GameScreenState extends State<GameScreen> {
 
     //ENSURE INITIALIZED
     if (vm.g == null) {
-      return const CupertinoPageScaffold(
-        child: Center(child: CupertinoActivityIndicator()),
+      return  CupertinoPageScaffold(
+        child:
+
+         Center(child:
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+          
+          CupertinoActivityIndicator(),
+          Text("taking too long?"),
+          CupertinoButton(child: Text("Home"), onPressed: (){
+            context.go('/landing');
+          })
+          ])),
       );
     }
 
@@ -120,19 +133,23 @@ class GameScreenState extends State<GameScreen> {
                   children: [
                     const SizedBox(height: 10),
                     Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 0),
-                        
-                        child:
-                        (false)? 
-                        TresydosPlayingArea():
-
-                        PlayingArea(),
-                      ),
+                      child: (vm.gameMode == GameMode.casino)
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                              child: PlayingArea(),
+                            )
+                          : Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 0,
+                              ),
+                              child: TresydosPlayingArea(),
+                            ),
                     ),
+
                     const SizedBox(height: 10),
                     PlayerArea(),
-                    
 
                     // const SizedBox(height: 10),
                     Padding(

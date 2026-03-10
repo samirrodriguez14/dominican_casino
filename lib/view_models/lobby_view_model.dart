@@ -60,9 +60,9 @@ class LobbyViewModel extends ChangeNotifier {
   //   startListening(pid);
   // }
 
-  Future<void> createGame() async {
-    await _appRepo.createGame();
-  }
+  // Future<void> createGame() async {
+  //   await _appRepo.createGame();
+  // }
 
   Future<void> deleteGame(String gameId) async {
     await _appRepo.deleteGame(gameId);

@@ -2,15 +2,16 @@ import 'dart:developer' as developer;
 
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:flutter/cupertino.dart';
 
 class GamesViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
   GamesViewModel({required AppRepo appRepo}): _appRepo = appRepo; 
-
-  Future<String?> newGame() async {
+  
+  Future<String?> newGame(GameMode mode) async {
     try {
-      String gid = await _createGame();
+      String gid = await _createGame(mode);
       String? pid = _appRepo.player?.id;
       Player? playersInfo = _appRepo.player;
       if (pid != null && playersInfo != null) {
@@ -23,8 +24,8 @@ class GamesViewModel extends ChangeNotifier {
     return null;
   }
 
-  Future<String> _createGame() async {
-    return await _appRepo.fs.createGame();
+  Future<String> _createGame(GameMode mode) async {
+    return await _appRepo.fs.createGame(mode);
   }
 
   Future<String?> _joinGame(

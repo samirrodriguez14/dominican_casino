@@ -5,6 +5,7 @@ import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
@@ -42,6 +43,7 @@ class GameViewModel extends ChangeNotifier {
     if (g == null) return 'player2';
     return (me == g!.player1) ? 'player1' : 'player2';
   }
+  GameMode? get gameMode => g?.gameMode;
 
   bool get lastTakeMe => _lastTookCardId == me && me != "";
 

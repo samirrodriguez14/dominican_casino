@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
+import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 
 import 'playing_card_model.dart';
 
@@ -26,8 +27,32 @@ String roundStatusTo(RoundStatus s) {
       return 'playing';
   }
 }
+GameMode gameModeFrom(String? s) {
+  switch (s) {
+    case 'tresydos':
+      return GameMode.tresydos;
+    case 'casino':
+      return GameMode.casino;
+    case 'robaito':
+    default:
+      return GameMode.robaito;
+  }
+}
+String gameModeTo(GameMode s) {
+  switch (s) {
+
+    case GameMode.tresydos:
+    return 'tresydos';
+    case GameMode.casino:
+    return 'casino';
+    case GameMode.robaito:
+    return 'robaito';
+  }
+}
+
 
 class GameState {
+  final GameMode gameMode;
   final String id;
   final String controllerId;
   final bool started;
@@ -53,6 +78,7 @@ class GameState {
   final Map<String, dynamic> roundScores; 
 
   GameState({
+    required this.gameMode,
     required this.id,
     required this.controllerId,
     required this.started,
@@ -81,6 +107,7 @@ class GameState {
 
   Map<String, dynamic> toMap() => {
         'id': id,
+        'gameMode': gameModeTo(gameMode),
         'controllerId': controllerId,
         'started': started,
         'currentTurnPlayerId': currentTurnPlayerId,
@@ -112,6 +139,8 @@ class GameState {
       };
 
   static GameState fromMap(Map<String, dynamic> m) {
+
+    final gameMode = gameModeFrom(m['gameMode']);
     final playing = (m['playingArea'] as List<dynamic>? ?? [])
         .map((e) => PlayingCardModel.fromMap(Map<String, dynamic>.from(e)))
         .toList();
@@ -157,6 +186,7 @@ class GameState {
     final roundScores = Map<String, dynamic>.from(m['roundScores'] ?? {});
 
     return GameState(
+      gameMode: gameMode ,
       id: (m['id'] as String?) ?? '',
       controllerId: (m['controllerId'] as String?) ?? '',
       started: m['started'] == true,

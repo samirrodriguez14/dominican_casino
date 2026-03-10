@@ -28,7 +28,7 @@ class TresydosPlayingAreaState extends State<TresydosPlayingArea> {
             alignment: Alignment.center,
             children: [
               Positioned(
-                right: -100,
+                right: -94,
                 child: SizedBox(
                   width: 300,
                   child: Transform.rotate(
@@ -38,7 +38,7 @@ class TresydosPlayingAreaState extends State<TresydosPlayingArea> {
                 ),
               ),
               Positioned(
-                left: -100,
+                left: -94,
                 child: SizedBox(
                   width: 300,
                   child: Transform.rotate(

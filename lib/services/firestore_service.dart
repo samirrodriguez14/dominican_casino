@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/lobby_game.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/services/game_handler.dart';
+import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:rxdart/rxdart.dart';
 import '../models/playing_card_model.dart';
 import '../models/game_state.dart';
@@ -54,7 +55,7 @@ Stream<List<LobbyGame>> listenGames(String pid) {
     return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
   }
 
-  Future<String> createGame() => gameHandler.createGame();
+  Future<String> createGame(GameMode mode) => gameHandler.createGame(mode);
 
   Future<void> deleteGame(String gameId) async {
     await _games.doc(gameId).delete();

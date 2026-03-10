@@ -76,6 +76,7 @@ class GamesScreen extends StatelessWidget {
               minChildSize: 0.10,
               maxChildSize: 0.82,
               snap: true,
+              // expand: false,
               snapSizes: const [0.10, .82],
               builder: (context, scrollController) {
                 return CurrentGamesSheet(scrollController: scrollController);

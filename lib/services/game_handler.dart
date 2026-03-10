@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:uuid/uuid.dart';
 
 class GameHandler2 {
@@ -15,11 +16,12 @@ class GameHandler2 {
   final Uuid _uuid = const Uuid();
 
   /// CREATE GAME (moved from FirestoreService)
-  Future<String> createGame() async {
+  Future<String> createGame(GameMode mode) async {
     final id = _uuid.v4().substring(0, 8);
     final doc = _games.doc(id);
 
     await doc.set({
+      'gameMode':mode.name,
       'id': id,
       'controllerId': null,
       'started': false,

@@ -83,25 +83,47 @@ class _CurrentGamesBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (vm.loading && vm.games.isEmpty) {
-      return const Center(child: CupertinoActivityIndicator());
+      return ListView(
+        controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 40),
+          Center(child: CupertinoActivityIndicator()),
+          SizedBox(height: 400),
+        ],
+      );
     }
 
     if (vm.error != null && vm.games.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            vm.error!,
-            style: TextStyle(color: AppStyle.theme.danger),
-            textAlign: TextAlign.center,
+      return ListView(
+        controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 40),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              vm.error!,
+              style: TextStyle(color: AppStyle.theme.danger),
+              textAlign: TextAlign.center,
+            ),
           ),
-        ),
+          const SizedBox(height: 400),
+        ],
       );
     }
 
     if (vm.games.isEmpty) {
-      return Center(
-        child: Text("No current games", style: AppStyle.theme.mutedText),
+      return ListView(
+        controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 10),
+          Center(
+            child: Text("No current games", style: AppStyle.theme.mutedText),
+          ),
+          const SizedBox(height: 400),
+        ],
       );
     }
 
@@ -114,16 +136,25 @@ class _CurrentGamesBody extends StatelessWidget {
     }).toList();
 
     if (myGames.isEmpty) {
-      return Center(
-        child: Text(
-          "You are not in any games",
-          style: AppStyle.theme.mutedText,
-        ),
+      return ListView(
+        controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 40),
+          Center(
+            child: Text(
+              "You are not in any games",
+              style: AppStyle.theme.mutedText,
+            ),
+          ),
+          const SizedBox(height: 400),
+        ],
       );
     }
 
     return ListView.separated(
       controller: scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
       itemCount: myGames.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
@@ -154,11 +185,10 @@ class _CurrentGamesBody extends StatelessWidget {
           },
           onShare: () async {
             final link = "https://dominican-casino.web.app/join/${g.id}";
-            final message =
-                '''
-                Join my Dominican Casino game!
-                $link
-                ''';
+            final message = '''
+Join my Dominican Casino game!
+$link
+''';
 
             await SharePlus.instance.share(ShareParams(text: message));
           },
