@@ -159,7 +159,7 @@ class GameViewModel extends ChangeNotifier {
     required GameRepo gameRepo,
     required this.player,
     required this.gid,
-  }): _gameRepo = gameRepo {
+  }) : _gameRepo = gameRepo {
     _gameRepo.addListener(_onGameRepoChanged);
   }
 
@@ -208,7 +208,7 @@ class GameViewModel extends ChangeNotifier {
   //   return id;
   // }
 
-  void _onGameRepoChanged() async { 
+  void _onGameRepoChanged() async {
     g = _gameRepo.gameState;
     developer.log("GameViewModel._onGameRepoChanged Me: $me, GameID: ${g?.id}");
     try {
@@ -726,6 +726,9 @@ class GameViewModel extends ChangeNotifier {
 
   /// HANDLERS START
   ///
+  ///
+  bool cannotPlay() =>
+      !canPlay() && !canTake() && !canAdd() && !canAddAndPair() && !canPair();
 
   bool canPlay() {
     return (selectedCard != null &&

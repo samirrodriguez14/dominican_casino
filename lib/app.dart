@@ -7,7 +7,6 @@ import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/ui/app_shell/app_shell.dart';
 import 'package:dominican_casino/ui/game/game_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/game_modes/tresydos/tresydos_screen.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
@@ -56,10 +55,10 @@ class _MyAppState extends State<App> {
           builder: (context, state) => const LobbyScreen(),
         ),
 
-        GoRoute(
-          path: '/tresydos',
-          builder: (context, state) => const TresyDosScreen(),
-        ),
+        // GoRoute(
+        //   path: '/tresydos',
+        //   builder: (context, state) => const TresyDosScreen(),
+        // ),
         GoRoute(
           path: '/join/:gameId',
           redirect: (context, state) async {

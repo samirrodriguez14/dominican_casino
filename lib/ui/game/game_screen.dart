@@ -2,16 +2,17 @@ import 'dart:developer' as developer;
 
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/ui/game/decks/game_deck.dart';
 import 'package:dominican_casino/ui/game/popups/button_instructions.dart';
 import 'package:dominican_casino/ui/game/popups/game_completed.dart';
 import 'package:dominican_casino/ui/game/popups/game_status.dart';
 import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
 import 'package:dominican_casino/ui/game/popups/round_completed.dart';
-import 'package:dominican_casino/ui/game/areas/opponent_area.dart';
 import 'package:dominican_casino/ui/game/areas/player_area.dart';
-import 'package:dominican_casino/ui/game/areas/playing_area.dart';
+import 'package:dominican_casino/ui/game_modes/casino/casino_playing_area.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/game_modes/tresydos/tresydos_playing_area.dart';
 import 'package:dominican_casino/view_models/games/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -104,38 +105,42 @@ class GameScreenState extends State<GameScreen> {
         child: DecoratedBox(
           decoration: AppStyle.theme.tableBackground(),
           child: SafeArea(
-            bottom: false,
+            // bottom: false,
             child: Stack(
               children: [
                 // Base board
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(
+                    // horizontal: 12,
+                    vertical: 24,
+                  ),
+                  child: CasinoBoard(child: Container()),
+                ),
                 Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                      child: _buildGameTopBar(context, vm),
-                    ),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 36),
-                      child: const OpponentArea(),
-                    ),
                     const SizedBox(height: 10),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: PlayingArea(),
+                        padding: const EdgeInsets.symmetric(horizontal: 0),
+                        
+                        child:
+                        (false)? 
+                        TresydosPlayingArea():
+
+                        PlayingArea(),
                       ),
                     ),
                     const SizedBox(height: 10),
                     PlayerArea(),
-                  ],
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
+                    
 
-                  child: AppStyle.theme.dottedBox(
-                    child: SizedBox(width: 57, height: (57 * 1.7)),
-                  ),
+                    // const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                      child: _buildGameTopBar(context, vm),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
                 AnimatedAlign(
                   duration: const Duration(milliseconds: 200),
@@ -145,7 +150,7 @@ class GameScreenState extends State<GameScreen> {
                       : Alignment.centerRight,
 
                   child: Padding(
-                    padding: EdgeInsetsGeometry.fromLTRB(0, 0, 2, 0),
+                    padding: EdgeInsetsGeometry.only(right: 18),
                     child: GameControlDeck(),
                   ),
                 ),

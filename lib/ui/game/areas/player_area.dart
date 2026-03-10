@@ -30,53 +30,50 @@ class PlayerAreaState extends State<PlayerArea> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Opacity(
-            opacity: highlightTurn ? 1 : 0.8,
-            child: _buildPlayControls(context, vm),
-          ),
+          _buildPlayControls(context, vm),
+
           const SizedBox(height: 10),
-          Opacity(
-            opacity:1,
-            child: SizedBox(
-              height: 150,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minWidth: constraints.maxWidth,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: vm.myHandCards.map((c) {
-                          final isSelected = vm.selectedCard == c;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 5),
-                            child: GestureDetector(
-                              onTap: () => vm.selectCard(c),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 150),
-                                transform: isSelected
-                                    ? Matrix4.translationValues(0, -12, 0)
-                                    : Matrix4.identity(),
-                                child: PlayingCard(
-                                  playingCardModel: c,
-                                  width: 90,
-                                  isSelected: isSelected,
-                                ),
+
+          SizedBox(
+            height: 150,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: vm.myHandCards.map((c) {
+                        final isSelected = vm.selectedCard == c;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 5),
+                          child: GestureDetector(
+                            onTap: (!vm.isMyTurn)
+                                ? null
+                                : () => vm.selectCard(c),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              transform: isSelected
+                                  ? Matrix4.translationValues(0, -12, 0)
+                                  : Matrix4.identity(),
+                              child: PlayingCard(
+                                playingCardModel: c,
+                                width: 90,
+                                isSelected: isSelected,
                               ),
                             ),
-                          );
-                        }).toList(),
-                      ),
+                          ),
+                        );
+                      }).toList(),
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
           ),
-          const SizedBox(height: 10),
+
+          // const SizedBox(height: 10),
         ],
       ),
 
@@ -86,61 +83,75 @@ class PlayerAreaState extends State<PlayerArea> {
 
   Widget _buildPlayControls(BuildContext context, GameViewModel vm) {
     return Row(
+      spacing: 5,
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        ActionControlButton(
-          icon: CupertinoIcons.square_arrow_up_fill,
-          label: "Play",
-          enabled: vm.canPlay(),
-          onTap: () {
-            vm.performPlayOnTable();
-          },
-        ),
-        const SizedBox(width: 10),
+        if (vm.cannotPlay())
+          ActionControlButton(
+            icon: CupertinoIcons.exclamationmark,
+            label: vm.isMyTurn ? "Your Turn" : "Opponet's turn",
+            enabled: vm.isMyTurn,
+            onTap: () {
+              vm.performPlayOnTable();
+            },
+          ),
+        if (vm.canPlay())
+          ActionControlButton(
+            icon: CupertinoIcons.square_arrow_up_fill,
+            label: "Play",
+            enabled: vm.canPlay(),
+            onTap: () {
+              vm.performPlayOnTable();
+            },
+          ),
 
-        ActionControlButton(
-          icon: (vm.selectedCards.length > 1 && vm.canTake())
-              ? CupertinoIcons.square_arrow_down_on_square_fill
-              : CupertinoIcons.square_arrow_down_fill,
-          label: (vm.selectedCards.length > 1 && vm.canTake())
-              ? "+Take"
-              : "Take",
-          enabled: vm.canTake(),
-          onTap: () {
-            vm.performTakeCards();
-          },
-        ),
-        const SizedBox(width: 10),
+        // const SizedBox(width: 10),
+        if (vm.canTake())
+          ActionControlButton(
+            icon: (vm.selectedCards.length > 1 && vm.canTake())
+                ? CupertinoIcons.square_arrow_down_on_square_fill
+                : CupertinoIcons.square_arrow_down_fill,
+            label: (vm.selectedCards.length > 1 && vm.canTake())
+                ? "+Take"
+                : "Take",
+            enabled: vm.canTake(),
+            onTap: () {
+              vm.performTakeCards();
+            },
+          ),
+        // const SizedBox(width: 10),
+        if (vm.canAdd())
+          ActionControlButton(
+            icon: CupertinoIcons.plus_square_fill,
+            label: "Add",
+            enabled: vm.canAdd(),
+            onTap: () {
+              vm.performStackSelectedCards();
+            },
+          ),
+        // const SizedBox(width: 10),
+        if (vm.canAddAndPair())
+          ActionControlButton(
+            icon: CupertinoIcons.plus_square_fill_on_square_fill,
+            label: "+Pair",
+            enabled: vm.canAddAndPair(),
+            onTap: () {
+              vm.performStackAndPairSelectedCards();
+            },
+          ),
+        // const SizedBox(width: 10),
+        if (vm.canPair())
+          ActionControlButton(
+            icon: CupertinoIcons.square_fill_on_square_fill,
+            label: "Pair",
+            enabled: vm.canPair(),
+            onTap: () {
+              vm.performPairSelectedCards();
+            },
+          ),
 
-        ActionControlButton(
-          icon: CupertinoIcons.plus_square_fill,
-          label: "Add",
-          enabled: vm.canAdd(),
-          onTap: () {
-            vm.performStackSelectedCards();
-          },
-        ),
-        const SizedBox(width: 10),
-
-        ActionControlButton(
-          icon: CupertinoIcons.plus_square_fill_on_square_fill,
-          label: "+Pair",
-          enabled: vm.canAddAndPair(),
-          onTap: () {
-            vm.performStackAndPairSelectedCards();
-          },
-        ),
-        const SizedBox(width: 10),
-
-        ActionControlButton(
-          icon: CupertinoIcons.square_fill_on_square_fill,
-          label: "Pair",
-          enabled: vm.canPair(),
-          onTap: () {
-            vm.performPairSelectedCards();
-          },
-        ),
-
-        const SizedBox(width: 10),
+        // const SizedBox(width: 10),
         _buildControlsInfoButton(context),
       ],
     );
@@ -181,5 +192,4 @@ class PlayerAreaState extends State<PlayerArea> {
   //     barrierDismissible: true,
   //   );
   // }
-
 }

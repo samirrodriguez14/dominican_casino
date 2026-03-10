@@ -1,8 +1,6 @@
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/game/decks/card_deck.dart';
-import 'package:dominican_casino/ui/game/game_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 // import 'package:go_router/go_router.dart';
@@ -74,22 +72,7 @@ class _GameControlDeckState extends State<GameControlDeck> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          //CardDeck Button
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CardDeck(
-                cardWidth: cardWidth,
-                cards: vm.g?.deck ?? [],
-                extraPoints: 0,
-                onTap: () {
-                  GameScreenState.showGameStatusPopup(context, vm);
-                },
-              ),
-            ],
-          ),
 
-          //Action Button
           if (vm.canControlGame)
             _buildControlArea(
               onAction,

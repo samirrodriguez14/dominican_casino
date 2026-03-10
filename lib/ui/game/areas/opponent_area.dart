@@ -32,11 +32,11 @@ class OpponentAreaState extends State<OpponentArea> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: AppStyle.theme.playerSectionBox(
-        highlightColor: AppStyle.theme.turnHighlight,
-        highlight: highlightTurn,
-        joined: opponentJoined,
-      ),
+      // decoration: AppStyle.theme.playerSectionBox(
+      //   highlightColor: AppStyle.theme.turnHighlight,
+      //   highlight: highlightTurn,
+      //   joined: opponentJoined,
+      // ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -48,20 +48,21 @@ class OpponentAreaState extends State<OpponentArea> {
           ),
           const SizedBox(height: 8),
 
-          SizedBox(
-            height: 80, // reserve card height
-            child: deckCount == 0
-                ? const SizedBox()
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      deckCount,
-                      (index) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: PlayingCardBack(width: 55),
+          AppStyle.theme.dottedBox(
+            child: SizedBox(
+              height: 80, // reserve card height
+              child:
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        deckCount,
+                        (index) => Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: PlayingCardBack(width: 55),
+                        ),
                       ),
                     ),
-                  ),
+            ),
           ),
         ],
       ),

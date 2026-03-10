@@ -8,6 +8,7 @@ class CardDeck extends StatelessWidget {
   final List<PlayingCardModel> cards;
   final int extraPoints;
   final double cardWidth;
+  final String title;
   final Function() onTap;
 
   const CardDeck({
@@ -15,6 +16,7 @@ class CardDeck extends StatelessWidget {
     required this.cards,
     required this.cardWidth,
     required this.extraPoints,
+    required this.title,
     required this.onTap,
   });
   @override
@@ -27,6 +29,7 @@ class CardDeck extends StatelessWidget {
         children: [
           Column(
             children: [
+              Text(title, style: AppStyle.theme.mutedText,),
               Stack(
                 alignment: Alignment.topCenter,
                 children: [
