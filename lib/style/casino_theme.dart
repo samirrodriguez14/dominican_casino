@@ -136,13 +136,11 @@ class CasinoTheme extends AppTheme {
     EdgeInsets padding = const EdgeInsets.all(2),
   }) {
     return DottedBorder(
-      options: RectDottedBorderOptions(
-        color: border.withValues(alpha: .8),
-        strokeWidth: 1.4,
-        dashPattern: const [4, 4],
-        // borderType: BorderType.RRect,
-        // radius: Radius.circular(radius),
-      ),
+      color: border.withValues(alpha: .8),
+      strokeWidth: 1.4,
+      dashPattern: const [4, 4],
+      borderType: BorderType.RRect,
+      radius: Radius.circular(radius),
 
       child: Container(
         padding: padding,

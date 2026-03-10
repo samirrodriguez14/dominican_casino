@@ -9,7 +9,7 @@ import 'package:dominican_casino/models/lobby_game.dart';
 class LobbyViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
 
-  LobbyViewModel({required this._appRepo});
+  LobbyViewModel({required AppRepo appRepo}):_appRepo = appRepo;
 
   StreamSubscription<List<LobbyGame>>? _sub;
 

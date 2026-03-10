@@ -6,7 +6,7 @@ class ProfileViewModel extends ChangeNotifier {
 
   String get name => _appRepo.player?.name ?? "_";
 
-  ProfileViewModel({required this._appRepo});
+  ProfileViewModel({required AppRepo appRepo}):_appRepo = appRepo;
 
   Future<void> updatePlayerName(String name) async {
     await _appRepo.updatePlayer(name);

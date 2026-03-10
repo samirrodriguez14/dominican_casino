@@ -6,7 +6,7 @@ import 'package:flutter/cupertino.dart';
 
 class GamesViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
-  GamesViewModel({required this._appRepo});
+  GamesViewModel({required AppRepo appRepo}):_appRepo = appRepo;
 
   Future<String?> newGame() async {
     try {
