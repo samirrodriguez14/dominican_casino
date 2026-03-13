@@ -75,7 +75,9 @@ class FeltWalnutTheme extends AppTheme {
     gradient: RadialGradient(
       center: Alignment(0, -0.15),
       radius: 1.3,
-      colors: [Color.fromARGB(255, 32, 111, 81), Color.fromARGB(255, 17, 68, 49)],
+      colors: [
+        Color.fromARGB(255, 32, 111, 81),
+         Color.fromARGB(255, 17, 68, 49)],
     ),
   );
 

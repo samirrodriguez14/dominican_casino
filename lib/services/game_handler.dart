@@ -561,7 +561,6 @@ class GameHandler2 {
       return;
     }
 
-    // Post-processing stays exactly like you do today:
     // - next turn (if provided)
     // - controller (based on roundEnded)
     // - scores (based on roundEnded)

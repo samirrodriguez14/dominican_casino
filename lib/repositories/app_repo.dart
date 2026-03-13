@@ -5,13 +5,6 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/casino_theme.dart';
-import 'package:dominican_casino/style/casino_theme_light.dart';
-import 'package:dominican_casino/style/felt_walnut_theme.dart';
-import 'package:dominican_casino/style/green_table_theme.dart';
-import 'package:dominican_casino/style/midnight_theme.dart';
-import 'package:dominican_casino/style/dominican_theme.dart';
-import 'package:dominican_casino/ui/app_shell/settings/settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -83,7 +76,7 @@ class AppRepo extends ChangeNotifier {
         return player;
       }
       final id = _uuid.v4().substring(0, 8);
-      player = Player(id: id, name: "player_$id");
+      player = Player(id: id, name: "p_$id");
 
       await sp.setString("player_id", jsonEncode(player!.toJson()));
       developer.log("AppRepo: Player loaded: ${sp.getString('player_id')}");
@@ -97,20 +90,5 @@ class AppRepo extends ChangeNotifier {
     return null;
   }
 
-  static AppTheme themeFromEnum(Theme theme) {
-    switch (theme) {
-      case Theme.feltWaltnut:
-        return FeltWalnutTheme();
-      case Theme.dominican:
-        return DominicanTheme();
-      case Theme.casino:
-        return CasinoTheme();
-      case Theme.midnight:
-        return MidnightNeonTheme();
-      case Theme.casinoLight:
-        return LightCasinoTheme();
-      case Theme.greenTable:
-        return GreenTableTheme();
-    }
-  }
+
 }

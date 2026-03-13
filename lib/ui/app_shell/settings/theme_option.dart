@@ -1,5 +1,4 @@
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/settings/settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 
 class ThemeOptionCard extends StatelessWidget {
@@ -98,22 +97,7 @@ class _ThemePreviewHeader extends StatelessWidget {
   final AppTheme previewTheme;
   final bool selected;
 
-  String get label {
-    switch (themeType) {
-      case Theme.feltWaltnut:
-        return 'Felt Walnut';
-      case Theme.dominican:
-        return 'Dominican';
-      case Theme.casino:
-        return 'Casino';
-      case Theme.midnight:
-        return 'Midnight';
-      case Theme.casinoLight:
-        return 'Casino Light';
-      case Theme.greenTable:
-        return 'Green Light';
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +105,7 @@ class _ThemePreviewHeader extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            label,
+            themeLabel(themeType),
             style: TextStyle(
               color: previewTheme.textPrimary,
               fontSize: 15,

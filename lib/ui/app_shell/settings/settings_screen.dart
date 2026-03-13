@@ -1,14 +1,9 @@
-import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/settings/theme_option.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-///MOVE TO APPSTATE OR SOMEWHERE ELSE
-enum Theme { feltWaltnut, dominican,casino, midnight, casinoLight, greenTable}
-
-enum Cardtheme { blue, dark, wood }
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -45,7 +40,7 @@ class SettingsScreenState extends State<SettingsScreen> {
               ),
               itemBuilder: (context, index) {
                 final themeType = Theme.values[index];
-                final previewTheme = AppRepo.themeFromEnum(themeType);
+                final previewTheme = themeFromEnum(themeType);
                 final selected = vm.appTheme == themeType;
 
                 return ThemeOptionCard(

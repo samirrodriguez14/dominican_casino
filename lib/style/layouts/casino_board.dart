@@ -1,3 +1,4 @@
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class CasinoBoard extends StatelessWidget {
@@ -9,10 +10,11 @@ class CasinoBoard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(18), // wood thickness
-      decoration: BoxDecoration(
+      decoration: 
+      BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF7B4F2A), Color(0xFF5C3A1E)],
+        gradient: LinearGradient(
+          colors: [AppStyle.theme.border,AppStyle.theme.border],
         ),
         boxShadow: const [
           BoxShadow(
@@ -23,18 +25,8 @@ class CasinoBoard extends StatelessWidget {
         ],
       ),
       child: Container(
-        decoration: BoxDecoration(
+        decoration: AppStyle.theme.tableBackground().copyWith(
           borderRadius: BorderRadius.circular(22),
-          gradient: RadialGradient(
-            center: Alignment(0, -0.05),
-            radius: 1.2,
-            colors: [
-              Color.fromARGB(255, 19, 68, 49),
-              Color.fromARGB(255, 18, 59, 44),
-
-              Color.fromARGB(255, 11, 44, 32),
-            ],
-          ),
         ),
         child: child,
       ),
