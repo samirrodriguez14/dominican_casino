@@ -2,15 +2,20 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:app_links/app_links.dart';
+import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
+import 'package:dominican_casino/services/firestore_service.dart';
+import 'package:dominican_casino/services/game_service.dart';
 import 'package:dominican_casino/ui/app_shell/app_shell.dart';
 import 'package:dominican_casino/ui/game/game_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/general_game/general_game_screen.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
 import 'package:dominican_casino/view_models/games/game_view_model.dart';
+import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -55,15 +60,11 @@ class _MyAppState extends State<App> {
           builder: (context, state) => const LobbyScreen(),
         ),
 
-        // GoRoute(
-        //   path: '/tresydos',
-        //   builder: (context, state) => const TresyDosScreen(),
-        // ),
         GoRoute(
           path: '/join/:gameId',
           redirect: (context, state) async {
             final gameId = state.pathParameters['gameId']!;
-            return '/game/$gameId';
+            return '/gengame/$gameId';
           },
         ),
 
@@ -81,6 +82,24 @@ class _MyAppState extends State<App> {
                 gameRepo: context.read<GameRepo>(),
               ),
               child: GameScreen(),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/gengame/:gameId',
+          builder: (context, state) {
+            final gameId = state.pathParameters['gameId']!;
+            final player = context.read<AppRepo>().player;
+            if (player == null) return HomeScreen();
+            GameService gameService = FirestoreService();
+            return ChangeNotifierProvider(
+              create: (_) => GeneralGameViewModel(
+                gid: gameId,
+                gameEngine: CasinoGameEngine(gameService:gameService),
+                player: player,
+                gameRepo: context.read<GameRepo>(),
+              ),
+              child: GeneralGameScreen(),
             );
           },
         ),

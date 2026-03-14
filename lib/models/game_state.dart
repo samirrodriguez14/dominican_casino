@@ -1,3 +1,4 @@
+import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 
@@ -27,37 +28,41 @@ String roundStatusTo(RoundStatus s) {
       return 'playing';
   }
 }
+
 GameMode gameModeFrom(String? s) {
   switch (s) {
     case 'tresydos':
       return GameMode.tresydos;
     case 'casino':
       return GameMode.casino;
+    case 'casinoNew':
+      return GameMode.casinoNew;
     case 'robaito':
     default:
       return GameMode.robaito;
   }
 }
+
 String gameModeTo(GameMode s) {
   switch (s) {
-
     case GameMode.tresydos:
-    return 'tresydos';
+      return 'tresydos';
     case GameMode.casino:
-    return 'casino';
+      return 'casino';
     case GameMode.robaito:
-    return 'robaito';
+      return 'robaito';
+    case GameMode.casinoNew:
+      return 'casinoNew';
   }
 }
-
 
 class GameState {
   final GameMode gameMode;
   final String id;
   final String controllerId;
-  final bool started;
-  final String? currentTurnPlayerId;
-
+  bool started;
+  String? currentTurnPlayerId;
+  List<CardMoveEvent> cardMoveEvents =[];
   final List<PlayingCardModel> playingArea;
   final List<PlayingAreaStackModel> playingAreaStacks;
 
@@ -74,8 +79,8 @@ class GameState {
   final String? winnerId;
   final int roundIndex;
   final RoundStatus roundStatus;
-  final Map<String, bool> roundReady; 
-  final Map<String, dynamic> roundScores; 
+  final Map<String, bool> roundReady;
+  final Map<String, dynamic> roundScores;
 
   GameState({
     required this.gameMode,
@@ -92,6 +97,7 @@ class GameState {
     required this.hands,
     required this.playersDeck,
     required this.lastTookCardId,
+    required this.cardMoveEvents,
     this.winnerId,
     this.player1,
     this.player2,
@@ -102,44 +108,41 @@ class GameState {
     this.roundStatus = RoundStatus.playing,
     Map<String, bool>? roundReady,
     Map<String, dynamic>? roundScores,
-  })  : roundReady = roundReady ?? const {},
-        roundScores = roundScores ?? const {};
+  }) : roundReady = roundReady ?? const {},
+       roundScores = roundScores ?? const {};
 
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'gameMode': gameModeTo(gameMode),
-        'controllerId': controllerId,
-        'started': started,
-        'currentTurnPlayerId': currentTurnPlayerId,
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'gameMode': gameModeTo(gameMode),
+    'controllerId': controllerId,
+    'started': started,
+    'currentTurnPlayerId': currentTurnPlayerId,
 
-        'deck': deck.map((c) => c.toMap()).toList(),
-        'playingArea': playingArea.map((c) => c.toMap()).toList(),
-        'playingAreaStacks': playingAreaStacks.map((s) => s.toMap()).toList(),
+    'deck': deck.map((c) => c.toMap()).toList(),
+    'playingArea': playingArea.map((c) => c.toMap()).toList(),
+    'playingAreaStacks': playingAreaStacks.map((s) => s.toMap()).toList(),
 
-        'hands': hands.map(
-          (k, v) => MapEntry(k, v.map((c) => c.toMap()).toList()),
-        ),
-        'scores': scores,
-        'playersInfo': playersInfo,
-        'playersDeck': playersDeck.map(
-          (k, v) => MapEntry(k, v.map((c) => c.toMap()).toList()),
-        ),
-        'extraPoints': extraPoints,
-        'extraPointsHolderId': extraPointsHolderId,
-        'lastTookCardId': lastTookCardId,
+    'hands': hands.map((k, v) => MapEntry(k, v.map((c) => c.toMap()).toList())),
+    'scores': scores,
+    'playersInfo': playersInfo,
+    'playersDeck': playersDeck.map(
+      (k, v) => MapEntry(k, v.map((c) => c.toMap()).toList()),
+    ),
+    'extraPoints': extraPoints,
+    'extraPointsHolderId': extraPointsHolderId,
+    'lastTookCardId': lastTookCardId,
 
-        'player1': player1,
-        'player2': player2,
-        'winnerId': winnerId,
+    'player1': player1,
+    'player2': player2,
+    'winnerId': winnerId,
 
-        'roundIndex': roundIndex,
-        'roundStatus': roundStatusTo(roundStatus),
-        'roundReady': roundReady,
-        'roundScores': roundScores,
-      };
+    'roundIndex': roundIndex,
+    'roundStatus': roundStatusTo(roundStatus),
+    'roundReady': roundReady,
+    'roundScores': roundScores,
+  };
 
   static GameState fromMap(Map<String, dynamic> m) {
-
     final gameMode = gameModeFrom(m['gameMode']);
     final playing = (m['playingArea'] as List<dynamic>? ?? [])
         .map((e) => PlayingCardModel.fromMap(Map<String, dynamic>.from(e)))
@@ -184,9 +187,13 @@ class GameState {
     });
 
     final roundScores = Map<String, dynamic>.from(m['roundScores'] ?? {});
-
+   final cardMoveEvents = (m['cardMoveEvents'] as List?)
+        ?.map((e) => CardMoveEvent.fromDto(e))
+        .toList() ??
+    [];
     return GameState(
-      gameMode: gameMode ,
+      gameMode: gameMode,
+      cardMoveEvents: cardMoveEvents,
       id: (m['id'] as String?) ?? '',
       controllerId: (m['controllerId'] as String?) ?? '',
       started: m['started'] == true,

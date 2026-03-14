@@ -16,7 +16,7 @@ class GameViewModel extends ChangeNotifier {
   ///START VAR DECLARATIONS
   ///
 
-  late final GameRepo _gameRepo;
+  late final GameRepo gameRepo;
   GameState? g;
   Player player;
   String gid;
@@ -43,6 +43,7 @@ class GameViewModel extends ChangeNotifier {
     if (g == null) return 'player2';
     return (me == g!.player1) ? 'player1' : 'player2';
   }
+
   GameMode? get gameMode => g?.gameMode;
 
   bool get lastTakeMe => _lastTookCardId == me && me != "";
@@ -100,14 +101,6 @@ class GameViewModel extends ChangeNotifier {
   //END GEN GAME INFO
 
   ///LOGIC FOR GAME CONTROL
-  /// provide enum for stric structure.
-  /// Diffeent state:
-  ///
-  /// 1 first Deal [Game sets to true, Round to playing. round set to 1]
-  ///   Dealer: CanStart
-  ///   NotCont: Waiting on Dealer
-  ///
-  /// 2. Round ends [ last card from both players is paced.]
 
   bool get canStart =>
       (bothPlayersJoined && isController) && g?.started == false;
@@ -130,7 +123,7 @@ class GameViewModel extends ChangeNotifier {
       bothPlayersReady;
 
   bool get bothPlayersJoined =>
-      _gameRepo.gameState?.player1 != "" && _gameRepo.gameState?.player2 != "";
+      gameRepo.gameState?.player1 != "" && gameRepo.gameState?.player2 != "";
 
   bool get handsNotNull {
     if (g == null || opp == null) return false;
@@ -154,22 +147,44 @@ class GameViewModel extends ChangeNotifier {
       ((g?.player1 != null || g?.player1 != "") &&
       (g?.player2 == null || g?.player2 == ""));
 
-  ///
   ///END GETTERS
 
+  //GAME VIEW MODEL UPDATES UI... THAT'S IT!
+  //GAME ENGINE +GAME RULES IS SOURCE OF TRUTH
+  //WHAT THINGS MUST THE UI KNOW FOR UPDATE
+
+  //  CURR GAME STATE...
+
+  //      GAME STATUS: waiting, playing, roundComplete, gameOver
+  //      CARD MOVE EVENTS
+  //
+  //      CURR SCORE
+  //      LAST ROUND SCORE
+
+  //      CURR PLAYER TURN
+  //      LAST TO TAKE CARD
+
+  //      MY CURR HAND
+  //      MY COLLECTED CARDS
+
+  //      EXTRA POINTS
+
+  //      OPPONENTS HAND
+  //      OPPONENTS COLLECTED CARDS
+
   GameViewModel({
-    required GameRepo gameRepo,
+    required this.gameRepo,
     required this.player,
     required this.gid,
-  }) : _gameRepo = gameRepo {
-    _gameRepo.addListener(_onGameRepoChanged);
+  }) {
+    gameRepo.addListener(_onGameRepoChanged);
   }
 
   ///LISTEN FOR GAME CHANGES START
   ///
   Future<bool> startListening() async {
     try {
-      _gameRepo.listenToGame(gid);
+      gameRepo.listenToGame(gid);
       notifyListeners();
       return true;
     } catch (e) {
@@ -180,7 +195,7 @@ class GameViewModel extends ChangeNotifier {
 
   Future<bool> loadGame() async {
     try {
-      await _gameRepo.loadGame(gid);
+      await gameRepo.fs.loadGame(gid);
       notifyListeners();
       return true;
     } catch (e) {
@@ -191,7 +206,7 @@ class GameViewModel extends ChangeNotifier {
 
   Future<bool> joinGame() async {
     try {
-      await _gameRepo.joinGame(gid, me, player.toJson());
+      await gameRepo.joinGame(gid, me, player.toJson());
       notifyListeners();
       return true;
     } catch (e) {
@@ -200,18 +215,8 @@ class GameViewModel extends ChangeNotifier {
     return false;
   }
 
-  // String _prettyPlayer(String? id) {
-  //   final me = this.me;
-  //   final opp = this.opp;
-
-  //   if (id == null || id.isEmpty) return "-";
-  //   if (me != null && id == me) return "You";
-  //   if (opp != null && id == opp) return "Opponent";
-  //   return id;
-  // }
-
   void _onGameRepoChanged() async {
-    g = _gameRepo.gameState;
+    g = gameRepo.gameState;
     developer.log("GameViewModel._onGameRepoChanged Me: $me, GameID: ${g?.id}");
     try {
       if (g != null) {
@@ -289,67 +294,26 @@ class GameViewModel extends ChangeNotifier {
   ///GENERAL ACTIONS START
   ///
   Future<void> startGame() async {
-    await _gameRepo.startGame();
-  }
-
-  void playAction(PlayingCardModel card) {
-    _gameRepo.makePlay(me, card);
-  }
-
-  void takeCardAction(PlayingCardModel card, PlayingCardModel takingCard) {
-    _gameRepo.takeCard(me, card, takingCard);
-  }
-
-  void stackCardsActon(
-    PlayingAreaStackModel stack,
-    List<String?> cardStackIds,
-  ) {
-    _gameRepo.stackCards(me, selectedCard, cardStackIds, stack);
-  }
-
-  void pairCardsAction(PlayingAreaStackModel stack, List<String?> cardStackId) {
-    _gameRepo.pairStacks(me, cardStackId, selectedCard, stack);
-  }
-
-  void stackAndPairStacks(
-    PlayingAreaStackModel stack,
-    List<String?> cardStackId,
-  ) {
-    _gameRepo.stackAndPairStacks(me, cardStackId, selectedCard, stack);
-  }
-
-  void takeStackAction(PlayingAreaStackModel stack, PlayingCardModel card) {
-    _gameRepo.takeStack(me, stack, card);
-  }
-
-  void addAndTakeCardsAction(
-    List<PlayingCardModel> takingCards,
-    PlayingCardModel card,
-  ) {
-    _gameRepo.addAndTakeCards(me, card, takingCards);
+    await gameRepo.startGame();
   }
 
   Future<void> pressContinue() async {
-    await _gameRepo.setRoundReady(me);
+    await gameRepo.setRoundReady(me);
   }
 
   Future<void> startNextRound() async {
-    await _gameRepo.dealNextRound(me);
+    await gameRepo.dealNextRound(me);
   }
 
   Future<void> redealSameRound() async {
-    await _gameRepo.dealSameRound();
+    await gameRepo.dealSameRound();
   }
 
   Future<void> leaveGame() async {
     if (g != null) {
-      await _gameRepo.endGame();
+      await gameRepo.fs.deleteGame(g!.id);
     }
     notifyListeners();
-  }
-
-  Future<void> endGame() async {
-    await _gameRepo.endGame();
   }
 
   Future<bool> confirmDelete(BuildContext context) async {
@@ -372,7 +336,6 @@ class GameViewModel extends ChangeNotifier {
               Navigator.of(ctx).pop(true);
 
               await leaveGame();
-              await endGame();
               Navigator.of(ctx).pop(true);
             },
             child: Text("Abandon"),
@@ -386,6 +349,46 @@ class GameViewModel extends ChangeNotifier {
       ),
     );
     return res ?? false;
+  }
+
+
+
+//PLAYING ACTIONS
+  void playAction(PlayingCardModel card) {
+    gameRepo.makePlay(me, card);
+  }
+
+  void takeCardAction(PlayingCardModel card, PlayingCardModel takingCard) {
+    gameRepo.takeCard(me, card, takingCard);
+  }
+
+  void stackCardsActon(
+    PlayingAreaStackModel stack,
+    List<String?> cardStackIds,
+  ) {
+    gameRepo.stackCards(me, selectedCard, cardStackIds, stack);
+  }
+
+  void pairCardsAction(PlayingAreaStackModel stack, List<String?> cardStackId) {
+    gameRepo.pairStacks(me, cardStackId, selectedCard, stack);
+  }
+
+  void stackAndPairStacks(
+    PlayingAreaStackModel stack,
+    List<String?> cardStackId,
+  ) {
+    gameRepo.stackAndPairStacks(me, cardStackId, selectedCard, stack);
+  }
+
+  void takeStackAction(PlayingAreaStackModel stack, PlayingCardModel card) {
+    gameRepo.takeStack(me, stack, card);
+  }
+
+  void addAndTakeCardsAction(
+    List<PlayingCardModel> takingCards,
+    PlayingCardModel card,
+  ) {
+    gameRepo.addAndTakeCards(me, card, takingCards);
   }
 
   ///
@@ -1021,7 +1024,7 @@ class GameViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    _gameRepo.removeListener(_onGameRepoChanged);
+    gameRepo.removeListener(_onGameRepoChanged);
     super.dispose();
   }
 }

@@ -107,7 +107,7 @@ class GameScreenState extends State<GameScreen> {
           title: "Game Over",
           content: GameCompletedContent(vm: vm),
           primaryText: "Go to Lobby",
-          onPrimary: () async => vm.endGame(),
+          onPrimary: () async => vm.leaveGame(),
         );
       });
     }

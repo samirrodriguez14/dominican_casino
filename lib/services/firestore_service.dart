@@ -3,12 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/lobby_game.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/services/game_handler.dart';
+import 'package:dominican_casino/services/game_service.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:rxdart/rxdart.dart';
 import '../models/playing_card_model.dart';
 import '../models/game_state.dart';
 
-class FirestoreService {
+class FirestoreService extends GameService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final CollectionReference _games = FirebaseFirestore.instance.collection(
     'games',
@@ -21,19 +22,21 @@ class FirestoreService {
 
   ///START STREAMS
   ///
-Stream<List<LobbyGame>> listenGames(String pid) {
-  final p1 = _games.where('player1', isEqualTo: pid).snapshots();
-  final p2 = _games.where('player2', isEqualTo: pid).snapshots();
+  @override
+  Stream<List<LobbyGame>> listenGames(String pid) {
+    final p1 = _games.where('player1', isEqualTo: pid).snapshots();
+    final p2 = _games.where('player2', isEqualTo: pid).snapshots();
 
-  return Rx.combineLatest2(p1, p2, (a, b) {
-    final docs = [...a.docs, ...b.docs];
-    return docs.map((d) {
-      final data = d.data() as Map<String, dynamic>;
-      return LobbyGame.fromDoc(d.id, data);
-    }).toList();
-  });
-}
+    return Rx.combineLatest2(p1, p2, (a, b) {
+      final docs = [...a.docs, ...b.docs];
+      return docs.map((d) {
+        final data = d.data() as Map<String, dynamic>;
+        return LobbyGame.fromDoc(d.id, data);
+      }).toList();
+    });
+  }
 
+  @override
   Stream<GameState?> streamGame(String gameId) {
     return _games.doc(gameId).snapshots().map((snap) {
       // developer.log('updateGame: ${snap.data().toString() != ""}');
@@ -49,22 +52,46 @@ Stream<List<LobbyGame>> listenGames(String pid) {
 
   ///GAME HANDLE START
   ///
-  ///
+  @override
   Future<GameState> loadGame(String gid) async {
     final snap = await _games.doc(gid).get();
     return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
   }
 
+  @override
   Future<String> createGame(GameMode mode) => gameHandler.createGame(mode);
 
+  @override
+  Future<String> newCreateGame(GameState gState) =>
+      gameHandler.createGame(gState.gameMode);
+  @override
+  Future<GameState> updateGame(GameState gState) async {
+    //Updating game
+
+    await _games.doc(gState.id).set(gState.toJson());
+    final snap = await _games.doc(gState.id).get();
+
+    return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
+  }
+
+  @override
   Future<void> deleteGame(String gameId) async {
     await _games.doc(gameId).delete();
   }
 
-  Future<String?> joinGame(String gameId, String pid, Map<String, dynamic> playerInfo) async {
+  @override
+  Future<String?> joinGame(
+    String gameId,
+    String pid,
+    Map<String, dynamic> playerInfo,
+  ) async {
     String? g;
     try {
-      g = await gameHandler.joinGame(gameId: gameId, pid: pid, playerInfo: playerInfo);
+      g = await gameHandler.joinGame(
+        gameId: gameId,
+        pid: pid,
+        playerInfo: playerInfo,
+      );
     } catch (e) {
       developer.log("Service.fs.joinGame Error $e");
     }

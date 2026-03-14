@@ -41,10 +41,6 @@ class AppRepo extends ChangeNotifier {
     fs.deleteGame(gameId);
   }
 
-  // Future<void> createGame() async {
-  //   await fs.createGame();
-  // }
-
   Future<bool> updatePlayer(String name) async {
     final SharedPreferences sp = await SharedPreferences.getInstance();
     try {
@@ -89,6 +85,5 @@ class AppRepo extends ChangeNotifier {
     }
     return null;
   }
-
 
 }

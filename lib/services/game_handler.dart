@@ -23,6 +23,7 @@ class GameHandler2 {
     await doc.set({
       'gameMode':mode.name,
       'id': id,
+      'cardMoveEvents':[],
       'controllerId': null,
       'started': false,
       'currentTurnPlayerId': null,

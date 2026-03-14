@@ -1,0 +1,190 @@
+import 'dart:developer' as developer;
+import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
+import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/player.dart';
+import 'package:dominican_casino/models/playing_area_stack_model.dart';
+import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/repositories/game_repo.dart';
+import 'package:flutter/cupertino.dart' hide Action;
+import 'package:flutter/services.dart';
+
+class GeneralGameViewModel extends ChangeNotifier {
+  bool loading = true;
+  final GameRepo gameRepo;
+  final GameEngine gameEngine;
+  Player player;
+  String gid;
+  late GameState gameState;
+  GeneralGameViewModel({
+    required this.gameRepo,
+    required this.gameEngine,
+    required this.player,
+    required this.gid,
+  }) {
+    gameRepo.addListener(_onGameRepoChanged);
+  }
+
+  void _onGameRepoChanged() async {
+    developer.log(
+      "GameViewModel._onGameRepoChanged Me: $me, GameID: ${gameState.id}",
+    );
+    try {
+      gameState = gameRepo.gameState!;
+      HapticFeedback.mediumImpact();
+
+      cancelSelection();
+    } catch (e) {
+      developer.log("GameViewModel._onGameRepoChanged Error $e");
+      notifyListeners();
+    }
+  }
+
+  ///START VAR DECLARATIONS
+  ///
+  ///END GETTERS
+
+  //GAME VIEW MODEL UPDATES UI... THAT'S IT!
+  //GAME ENGINE +GAME RULES IS SOURCE OF TRUTH
+  //WHAT THINGS MUST THE UI KNOW FOR UPDATE
+
+  //  CURR GAME STATE...
+
+  //      GAME STATUS: waiting, playing, roundComplete, gameOver
+  //      CARD MOVE EVENTS
+  //
+  //      CURR SCORE
+  //      LAST ROUND SCORE
+
+  //      CURR PLAYER TURN
+  //      LAST TO TAKE CARD
+
+  //      PLAYING AREA CARDS
+  List<PlayingCardModel> get playingAreaCards => gameState.playingArea;
+  //      PLAYING AREA STACKS
+  List<PlayingAreaStackModel> get playingAreaStacks =>
+      gameState.playingAreaStacks;
+
+  //      MY CURR HAND
+  //      MY COLLECTED CARDS
+  String get me => player.id;
+  String get joinedAsPlayer {
+    return (me == gameState.player1) ? 'player1' : 'player2';
+  }
+
+  bool get isMyTurn => gameState.currentTurnPlayerId == me;
+
+  List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
+  List<PlayingCardModel> get myCollectedCards =>
+      gameState.playersDeck[me] ?? [];
+
+  //      EXTRA POINTS
+
+  //      OPPONENTS HAND
+  //      OPPONENTS COLLECTED CARDS
+
+  //      POSSIBLE ACTIONS:
+  CurrentCardSelection get cardSelection => CurrentCardSelection(
+    pid: me,
+    selectedCard: selectedCard,
+    selectedCards: selectedCards,
+    selectedStacks: selectedStacks,
+  );
+  List<PlayAction> get possiblePlayActions =>
+      gameEngine.getAvailableActions(gameState, cardSelection);
+
+  void performPlayAction(PlayAction action) {
+    gameEngine.performPlayAction(gameState, cardSelection, action);
+  }
+
+  //IN GAME ACTION
+  InGameAction get inGameAction => gameEngine.getInGameAction(gameState, me);
+
+  void performInGameAction(InGameAction action) {
+    gameEngine.performInGameAction(gameState, action, me);
+  }
+
+  //OUT OF GAME ACTIONS
+  Future<bool> loadGame() async {
+    try {
+      gameState = await gameRepo.fs.loadGame(gid);
+      loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      developer.log("GenGameViewModel.loadGame Error: $e");
+    }
+    return false;
+  }
+
+  Future<bool> joinGame() async {
+    try {
+      await gameRepo.fs.joinGame(gid, me, player.toJson());
+      notifyListeners();
+      return true;
+    } catch (e) {
+      developer.log("GameViewModel.joiningGame Error: $e");
+    }
+    return false;
+  }
+
+  Future<void> leaveGame() async {
+    await gameRepo.fs.leaveGame(gameState.id, me);
+    notifyListeners();
+  }
+
+  ///CARD SELECTION START
+  ///
+  PlayingCardModel? selectedCard;
+  List<PlayingCardModel> selectedCards = [];
+  List<PlayingAreaStackModel> selectedStacks = [];
+  bool get anySelected =>
+      selectedCard != null ||
+      selectedCards.isNotEmpty ||
+      selectedStacks.isNotEmpty;
+
+  void cancelSelection() {
+    selectedCards = [];
+    selectedCard = null;
+    selectedStacks = [];
+    notifyListeners();
+  }
+
+  void selectCard(PlayingCardModel card) {
+    if (selectedCard == card) {
+      selectedCard = null;
+    } else {
+      selectedCard = card;
+    }
+    notifyListeners();
+  }
+
+  void selectCardToStack(PlayingCardModel card) {
+    if (selectedCards.contains(card)) {
+      selectedCards.remove(card);
+    } else {
+      selectedCards.add(card);
+    }
+
+    notifyListeners();
+  }
+
+  void selectStack(PlayingAreaStackModel stack) {
+    if (selectedStacks.contains(stack)) {
+      selectedStacks.remove(stack);
+    } else {
+      selectedStacks.add(stack);
+    }
+    if (selectedStacks.length > 1) selectedCard = null;
+    notifyListeners();
+  }
+
+  ///
+  ///CARD SELECTION FINISH
+
+  @override
+  void dispose() {
+    gameRepo.removeListener(_onGameRepoChanged);
+    super.dispose();
+  }
+}

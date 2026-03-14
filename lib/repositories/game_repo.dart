@@ -11,7 +11,6 @@ class GameRepo extends ChangeNotifier {
   GameState? gameState;
   final FirestoreService fs;
   StreamSubscription<GameState?>? _sub;
-
   GameRepo({required this.fs});
 
   //LISTENS TO GAME CHANGES. NOTIFIES VIEW MODEL
@@ -32,25 +31,13 @@ class GameRepo extends ChangeNotifier {
         );
   }
 
-  //LISTENS TO GAME CHANGES. NOTIFIES VIEW MODEL
-
-  //GENERAL ACTIONS
-
-  Future<bool> loadGame(String gid) async {
+  Future<bool> joinGame(
+    String gid,
+    String pid,
+    Map<String, dynamic> playerInfo,
+  ) async {
     try {
-      gameState = await fs.loadGame(gid);
-      developer.log("GameRepo.loadGame Success: ${gameState!.id}");
-
-      return true;
-    } catch (e) {
-      developer.log("GameRepo.loadGame Error: $e");
-      return false;
-    }
-  }
-
-  Future<bool> joinGame(String gid, String pid, Map<String, dynamic> playerInfo) async {
-    try {
-      if (gameState == null) await loadGame(gid);
+      if (gameState == null) await fs.loadGame(gid);
       await fs.joinGame(gameState!.id, pid, playerInfo);
       return true;
     } catch (e) {
@@ -58,6 +45,8 @@ class GameRepo extends ChangeNotifier {
       return false;
     }
   }
+
+  ///TODO::PRUNE ALL::
 
   Future<void> startGame() async {
     try {
@@ -163,14 +152,6 @@ class GameRepo extends ChangeNotifier {
     PlayingCardModel takingCard,
   ) async {
     await fs.takeStack(gameState!.id, playerId, stack, takingCard);
-  }
-
-  // Future<void> leaveGame(String playerId) async {
-  //   gameState = null;
-  // }
-
-  Future<void> endGame() async {
-    await fs.deleteGame(gameState!.id);
   }
 
   //GENERAL ACTIONS

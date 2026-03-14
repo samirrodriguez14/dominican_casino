@@ -7,32 +7,32 @@ import 'package:flutter/cupertino.dart';
 
 class GamesViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
-  GamesViewModel({required AppRepo appRepo}): _appRepo = appRepo; 
-  
+  GamesViewModel({required AppRepo appRepo}) : _appRepo = appRepo;
+
   Future<String?> newGame(GameMode mode) async {
     try {
-      String gid = await _createGame(mode);
+      String gid = await _appRepo.fs.createGame(mode);
       String? pid = _appRepo.player?.id;
       Player? playersInfo = _appRepo.player;
       if (pid != null && playersInfo != null) {
-        _joinGame(gid, pid, playersInfo);
         return gid;
       }
+      developer.log("game $gid, player $pid");
     } catch (e) {
       developer.log("Error");
     }
     return null;
   }
 
-  Future<String> _createGame(GameMode mode) async {
-    return await _appRepo.fs.createGame(mode);
+  Future<void> deleteGame(String gameId) async {
+    await _appRepo.fs.deleteGame(gameId);
   }
 
-  Future<String?> _joinGame(
-    String gameId,
-    String pid,
-    Player playersInfo,
-  ) async {
-    return await _appRepo.fs.joinGame(gameId, pid, playersInfo.toJson());
-  }
+  // Future<String?> _joinGame(
+  //   String gameId,
+  //   String pid,
+  //   Player playersInfo,
+  // ) async {
+  //   return await _appRepo.fs.joinGame(gameId, pid, playersInfo.toJson());
+  // }
 }
