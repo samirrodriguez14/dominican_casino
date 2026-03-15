@@ -9,7 +9,7 @@ class CardMoveAnimator {
     required Widget child,
     double cardWidth = 46,
     double cardHeight = 64,
-    Duration duration = const Duration(milliseconds: 500),
+    Duration duration = const Duration(milliseconds: 1000),
     double beginRotation = 0.0,
   }) async {
     final overlay = Overlay.of(context);
