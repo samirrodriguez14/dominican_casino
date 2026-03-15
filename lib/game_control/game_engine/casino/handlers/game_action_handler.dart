@@ -117,11 +117,11 @@ class CasinoGameActionHandler {
     if (gameState.started) {
       if (handsEmpty) {
         if (gameState.controllerId == pid) {
-          if (gameState.deck.length == 52) {
+          if (gameState.deck.length == 12) {
             //DEAL NEW HAND
             return InGameAction.deal;
           }
-          if (gameState.deck.length < 52 && gameState.deck.isNotEmpty) {
+          if (gameState.deck.length < 12 && gameState.deck.isNotEmpty) {
             //DEAl SAME HAND
             return InGameAction.dealSame;
           }

@@ -135,8 +135,12 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
               transform: isSelected
                   ? Matrix4.translationValues(0, -12, 0)
                   : Matrix4.identity(),
-              child: PlayingAreaStack(stack: stack, isSelected: isSelected),
-            ),
+              child:
+              Opacity(
+                opacity: vm.stackContainsCardHidded(stack.cards) ? 0.0 : 1.0,
+                child: 
+               PlayingAreaStack(stack: stack, isSelected: isSelected),
+            ),)
           );
         }),
 

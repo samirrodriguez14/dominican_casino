@@ -23,7 +23,7 @@ class GameStateHandler {
     );
 
     gameState.round = completedRound;
-
+    gameState.roundStatus = RoundStatus.completed;
     // if game is not over, prepare next round
     if (gameState.winnerId == null || gameState.winnerId!.isEmpty) {
       final nextRoundId = completedRound.id + 1;

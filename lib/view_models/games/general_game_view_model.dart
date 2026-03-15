@@ -209,6 +209,15 @@ class GeneralGameViewModel extends ChangeNotifier {
     return hiddenCardIds.contains(card.id);
   }
 
+  bool stackContainsCardHidded(List<PlayingCardModel> cards) {
+    for (var card in cards) {
+      if (hiddenCardIds.contains(card.id)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   final Map<String, GlobalKey> cardKeys = {};
   final Set<String> hiddenCardIds = {};
 

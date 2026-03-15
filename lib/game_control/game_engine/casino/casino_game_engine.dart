@@ -1,4 +1,6 @@
+import 'package:dominican_casino/game_control/game_engine/casino/handlers/event_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_action_handler.dart';
+import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_state_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/rules_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/play_action_handler.dart';
@@ -32,17 +34,40 @@ class CasinoGameEngine extends GameEngine {
     if (!validateTurn(gameState, action)) {
       throw Exception("Not your turn");
     }
+
+    ///HANDLE ACTION [CasinoPlayActionHandler]
     gameState = CasinoPlayActionHandler.handleAction(
       gameState,
       action,
       currentCardSelection,
     );
+   
+   
+    //HANDLE NEXT ROUND [GameStateHandler]
+    if (GameStateHandler.roundEnded(gameState)) {
+      gameState = GameStateHandler.handleRoundEnded(gameState);
+    }
+
+    //HANDLE NEXT PLAYER [GameStateHandler]
+    //SET NEXT PLAYER TURN only a handccard was used
+    if (currentCardSelection.selectedCard != null) {
+      gameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
+        gameState,
+        action.performedById,
+      );
+    }
+
+    //HANDLE EVENTS [EventStateHandler]
+    ///HANDLE MOVE EVENTS
+    final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
+    
+    gameState.cardMoveEvents = cardMoveEvents;
     //SEND CHANGES
     final nextgameState = await gameService.updateGame(gameState);
     return nextgameState;
   }
 
-  //FORWARD TO VALIDATE ACTION ON GAME RULE
+  //FORWARD TO VALIDATE ACTION [GAME RULE HANDLER]
   @override
   bool validateAction(
     GameState gameState,

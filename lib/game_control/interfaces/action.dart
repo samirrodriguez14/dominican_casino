@@ -5,13 +5,13 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 //people join as Ready.
 //A random dealer is selected...
 
-//Deal [Start of each round] (gives n cards to each player) 
+//Deal [Start of each round] (gives n cards to each player)
 // deals m card to table. (casino deals 4) (tresydos deals 1)
 
 //DealSame [In vetween rounds]
 // for casino, deals 4 cards to players. tresy dos doesn't use this
 
-//Set ready. After each round each player gets to set their state to Ready.. 
+//Set ready. After each round each player gets to set their state to Ready..
 //if everyone's ready and round complete,
 //     automatically create new deck.
 //     select new dealer.
@@ -20,8 +20,11 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 //NoAction. players that can't controll or deal will have this option.
 
 enum InGameAction { start, share, deal, dealSame, setReady, waiting, noAction }
-enum OutGameAction {create, load, join, leave, delete }
-enum PlayActionEnum { play, takeCard, takeStack, add, pair, addTake, addPair}
+
+enum OutGameAction { create, load, join, leave, delete }
+
+enum PlayActionEnum { play, takeCard, takeStack, add, pair, addTake, addPair }
+
 abstract class PlayAction {
   String performedById;
   PlayAction({required this.performedById});
@@ -36,32 +39,39 @@ class TakeCardAction extends PlayAction {
   PlayingCardModel usedCard;
   PlayingCardModel targetCard;
 
-  TakeCardAction({required this.usedCard, required this.targetCard, required super.performedById});
+  TakeCardAction({
+    required this.usedCard,
+    required this.targetCard,
+    required super.performedById,
+  });
 }
 
 class TakeStackAction extends PlayAction {
   PlayingCardModel usedCard;
   PlayingAreaStackModel targetStack;
 
-  TakeStackAction({required this.usedCard, required this.targetStack, required super.performedById});
+  TakeStackAction({
+    required this.usedCard,
+    required this.targetStack,
+    required super.performedById,
+  });
 }
 
 class AddTableCardsAction extends PlayAction {
   List<PlayingCardModel> targetCards;
-  List<PlayingAreaStackModel> targetStacks;
   AddTableCardsAction({
     required this.targetCards,
-    required this.targetStacks, required super.performedById,
+    required super.performedById,
   });
 }
+
 class AddCardsAction extends PlayAction {
   PlayingCardModel usedCard;
   List<PlayingCardModel> targetCards;
-  List<PlayingAreaStackModel> targetStacks;
   AddCardsAction({
-   required this.usedCard,
+    required this.usedCard,
     required this.targetCards,
-    required this.targetStacks, required super.performedById,
+    required super.performedById,
   });
 }
 
@@ -72,6 +82,7 @@ class PairCardsAction extends PlayAction {
   PairCardsAction({
     this.usedCard,
     required this.targetCards,
-    required this.targetStacks, required super.performedById,
+    required this.targetStacks,
+    required super.performedById,
   });
 }
