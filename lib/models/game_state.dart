@@ -125,7 +125,7 @@ class GameState {
     'player1': player1,
     'player2': player2,
     'winnerId': winnerId,
-    'round': null,
+    'round': round?.toJson(),
     'roundIndex': roundIndex,
     'roundStatus': roundStatusTo(roundStatus),
     'roundReady': roundReady,
@@ -167,7 +167,7 @@ class GameState {
           .map((e) => PlayingCardModel.fromMap(Map<String, dynamic>.from(e)))
           .toList();
     });
-    // final round = Round.fromJson(m['round']);
+    final round = Round.fromJson(m['round']);
 
     final roundIndex = (m['roundIndex'] as int?) ?? 1;
     final roundStatus = roundStatusFrom(m['roundStatus'] as String?);
@@ -205,7 +205,7 @@ class GameState {
       winnerId: m['winnerId'] as String?,
       extraPoints: m['extraPoints'],
       extraPointsHolderId: m['extraPointsHolderId'],
-      round: null,
+      round: round,
       roundIndex: roundIndex,
       roundStatus: roundStatus,
       roundReady: roundReady,

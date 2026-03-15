@@ -94,6 +94,15 @@ class CasinoRulesHandler {
         ),
       );
     }
+    if (canPairAndTakeAction(gameState, currentCardSelection)) ;
+    available.add(
+      PairAndTakeCardsAction(
+        usedCard: currentCardSelection.selectedCard!,
+        targetCards: currentCardSelection.selectedCards,
+        targetStacks: currentCardSelection.selectedStacks,
+        performedById: performedBy,
+      ),
+    );
 
     return available;
   }
@@ -123,6 +132,8 @@ class CasinoRulesHandler {
         return canAddAndPairAction(gameState, currentCardSelection);
       case AddAndTakeAction _:
         return canAddAndTakeAction(gameState, currentCardSelection);
+      case PairAndTakeCardsAction _:
+        return canPairAndTakeAction(gameState, currentCardSelection);
       default:
     }
     return false;
@@ -450,6 +461,46 @@ class CasinoRulesHandler {
     final totals = possibleTotals(selectedCards);
 
     return cardVals.any(totals.contains);
+  }
+
+  static bool canPairAndTakeAction(
+    GameState gameState,
+    CurrentCardSelection currentCardSelection,
+  ) {
+    final selectedCard = currentCardSelection.selectedCard;
+    final selectedCards = currentCardSelection.selectedCards;
+    final selectedStacks = currentCardSelection.selectedStacks;
+    final pid = currentCardSelection.pid;
+
+    if (gameState.currentTurnPlayerId != pid) {
+      return false;
+    }
+
+    if (selectedCard == null) {
+      return false;
+    }
+
+    if (selectedCards.isEmpty && selectedStacks.isEmpty) {
+      return false;
+    }
+
+    final cardVals = possibleCardValues(selectedCard);
+
+    for (final v in cardVals) {
+      final allCardsMatch = selectedCards.every(
+        (c) => possibleValuesForTableCard(c).contains(v),
+      );
+
+      if (!allCardsMatch) continue;
+
+      final allStacksMatch = selectedStacks.every((s) => s.stackValue == v);
+
+      if (!allStacksMatch) continue;
+
+      return true;
+    }
+
+    return false;
   }
 
   /// --------- HELPERS --------- ///

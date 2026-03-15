@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/event_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_action_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_state_handler.dart';
@@ -11,6 +13,7 @@ class CasinoGameEngine extends GameEngine {
   //Orchestrator
   CasinoGameEngine({required super.gameService});
 
+  //DONE FOR NOW!!!
   @override
   List<PlayAction> getAvailableActions(
     GameState gameState,
@@ -36,20 +39,25 @@ class CasinoGameEngine extends GameEngine {
     }
 
     ///HANDLE ACTION [CasinoPlayActionHandler]
+    ///DONE!!!! FOR NOW
     gameState = CasinoPlayActionHandler.handleAction(
       gameState,
       action,
       currentCardSelection,
     );
-   
-   
+
     //HANDLE NEXT ROUND [GameStateHandler]
+    developer.log("Checking if round ended");
+
     if (GameStateHandler.roundEnded(gameState)) {
+      developer.log("round ended");
+
       gameState = GameStateHandler.handleRoundEnded(gameState);
     }
 
     //HANDLE NEXT PLAYER [GameStateHandler]
     //SET NEXT PLAYER TURN only a handccard was used
+    //WORKS FOR NOW
     if (currentCardSelection.selectedCard != null) {
       gameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
         gameState,
@@ -60,7 +68,7 @@ class CasinoGameEngine extends GameEngine {
     //HANDLE EVENTS [EventStateHandler]
     ///HANDLE MOVE EVENTS
     final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
-    
+
     gameState.cardMoveEvents = cardMoveEvents;
     //SEND CHANGES
     final nextgameState = await gameService.updateGame(gameState);

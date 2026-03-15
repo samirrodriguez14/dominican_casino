@@ -31,6 +31,8 @@ class EventHandler {
         return generateAddAndPairCardsEvents(a);
       case AddAndTakeAction a:
         return generateAddAndTakeCardsEvent(a);
+      case PairAndTakeCardsAction a:
+        return generatePairAndTakeCardsEvent(a);
     }
     return [];
   }
@@ -364,6 +366,68 @@ class EventHandler {
         performedBy: a.performedById,
       );
       allEvents.add(tableToCaptured);
+    }
+
+    return allEvents;
+  }
+
+  static List<CardMoveEvent> generatePairAndTakeCardsEvent(
+    PairAndTakeCardsAction a,
+  ) {
+    final Zone hand = Zone(
+      type: ZoneType.playerHand,
+      holderId: a.performedById,
+    );
+
+    final Zone table = Zone(
+      type: ZoneType.table,
+      holderId: ZoneType.table.name,
+    );
+
+    final Zone captured = Zone(
+      type: ZoneType.playerDeck,
+      holderId: a.performedById,
+    );
+
+    final List<CardMoveEvent> allEvents = [];
+
+    // 2. played card gets captured
+    allEvents.add(
+      CardMoveEvent(
+        id: _uuid.v4().substring(0, 8),
+        from: hand,
+        to: captured,
+        card: a.usedCard,
+        performedBy: a.performedById,
+      ),
+    );
+
+    // 3. loose cards get captured
+    for (final card in a.targetCards) {
+      allEvents.add(
+        CardMoveEvent(
+          id: _uuid.v4().substring(0, 8),
+          from: table,
+          to: captured,
+          card: card,
+          performedBy: a.performedById,
+        ),
+      );
+    }
+
+    // 4. stack cards get captured
+    for (final stack in a.targetStacks) {
+      for (final card in stack.cards) {
+        allEvents.add(
+          CardMoveEvent(
+            id: _uuid.v4().substring(0, 8),
+            from: table,
+            to: captured,
+            card: card,
+            performedBy: a.performedById,
+          ),
+        );
+      }
     }
 
     return allEvents;

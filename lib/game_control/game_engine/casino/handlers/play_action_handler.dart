@@ -32,6 +32,8 @@ class CasinoPlayActionHandler {
         return handleAddAndPairAction(nextState, a);
       case AddAndTakeAction a:
         return handleAddAndTakeAction(nextState, a);
+      case PairAndTakeCardsAction a:
+        return handlePairAndTakeAction(nextState, a);
     }
     return nextState;
   }
@@ -287,6 +289,39 @@ class CasinoPlayActionHandler {
     g.playersDeck[pid]!.addAll(takenCards);
 
     // track last taker if you use that for leftover table cards later
+    g.lastTookCardId = pid;
+
+    return g;
+  }
+
+  static GameState handlePairAndTakeAction(
+    GameState g,
+    PairAndTakeCardsAction a,
+  ) {
+    final pid = a.performedById;
+    final takenCards = <PlayingCardModel>[];
+
+    // remove used card from hand
+    g.hands[pid]?.removeWhere((c) => c == a.usedCard);
+    takenCards.add(a.usedCard);
+
+    // remove selected loose cards from table
+    for (final card in a.targetCards) {
+      g.playingArea.removeWhere((c) => c == card);
+      takenCards.add(card);
+    }
+
+    // remove selected stacks from table
+    for (final stack in a.targetStacks) {
+      g.playingAreaStacks.removeWhere((s) => s == stack);
+      takenCards.addAll(stack.cards);
+    }
+
+    // add all taken cards to player's deck
+    g.playersDeck.putIfAbsent(pid, () => []);
+    g.playersDeck[pid]!.addAll(takenCards);
+
+    // track last taker
     g.lastTookCardId = pid;
 
     return g;

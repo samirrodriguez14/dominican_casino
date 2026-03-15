@@ -7,10 +7,10 @@ class GameStateHandler {
   //Handle AfterPlay Checks
   //Check round ended?
   //Hanlde Scores
-  static GameState handleRoundEnded(GameState gameState) {
-    if (!roundEnded(gameState)) return gameState;
 
-    _handleScores(gameState);
+  static GameState handleRoundEnded(GameState gameState) {
+
+    gameState = _handleScores(gameState);
 
     // complete current round
     final completedRound = Round(
@@ -63,10 +63,11 @@ class GameStateHandler {
       handsEmptyVals.add(entry.value.isEmpty);
     }
     bool handsEmpty = handsEmptyVals.every((v) => v);
+
     return gameState.started && gameState.deck.isEmpty && handsEmpty;
   }
 
-  static void _handleScores(GameState gameState) {
+  static GameState _handleScores(GameState gameState) {
     final p1 = gameState.player1 as String;
     final p2 = gameState.player2 as String;
 
@@ -107,6 +108,7 @@ class GameStateHandler {
     gameState.extraPoints = 0;
     gameState.extraPointsHolderId = '';
     // gameState.winnerId = winner;
+    return gameState;
   }
 
   static Map<String, dynamic> _createScoreMap(

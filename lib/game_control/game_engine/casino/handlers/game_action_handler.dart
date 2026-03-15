@@ -2,6 +2,7 @@ import 'package:dominican_casino/game_control/game_engine/casino/handlers/event_
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_state_handler.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/game_service.dart';
 
 class CasinoGameActionHandler {
@@ -103,6 +104,7 @@ class CasinoGameActionHandler {
     }
     bool allJoined =
         allJoinedVals.length >= maxPlayers && allJoinedVals.every((v) => v);
+
     if (!gameState.started) {
       if (allJoined && gameState.controllerId == pid) {
         return InGameAction.start;
@@ -117,11 +119,10 @@ class CasinoGameActionHandler {
     if (gameState.started) {
       if (handsEmpty) {
         if (gameState.controllerId == pid) {
-          if (gameState.deck.length == 12) {
+          if (gameState.roundStatus == RoundStatus.completed) {
             //DEAL NEW HAND
             return InGameAction.deal;
-          }
-          if (gameState.deck.length < 12 && gameState.deck.isNotEmpty) {
+          } else if (gameState.roundStatus == RoundStatus.playing) {
             //DEAl SAME HAND
             return InGameAction.dealSame;
           }
@@ -136,6 +137,51 @@ class CasinoGameActionHandler {
         return InGameAction.noAction;
       }
     }
+
     return InGameAction.noAction;
+  }
+
+  static InGameAction newGetInGameAction(GameState gameState, String pid) {
+
+    switch (gameState.gameStatus) {
+      case GameStatus.waitingForPlayers:
+        return InGameAction.share; //For now... I'll change it to waiting...
+
+      case GameStatus.readyToStart:
+        if (gameState.controllerId == pid) {
+          return InGameAction.start;
+        } else {
+          return InGameAction.waiting;
+        }
+
+      case GameStatus.started:
+      //While game is running
+        switch (gameState.roundStatus) {
+          //If in the middle of the round...
+          case RoundStatus.dealing:
+            if (gameState.controllerId == pid) {
+              return InGameAction.dealSame;
+            } else {
+              return InGameAction.waiting;
+            }
+            //If playing.. no action
+          case RoundStatus.playing:
+            return InGameAction.noAction;
+            //If completed.. new deal
+          case RoundStatus.completed:
+            if (gameState.controllerId == pid) {
+              return InGameAction.deal;
+            } else {
+              return InGameAction.waiting;
+            }
+        }
+      case GameStatus.gameOver:
+        return InGameAction.noAction;
+      // case GameStatus.error:
+      //   return InGameAction.noAction;
+      //handled by default...
+      default:
+        return InGameAction.noAction;
+    }
   }
 }
