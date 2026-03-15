@@ -1,7 +1,7 @@
-import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/ui/game/widgets/cards/playing_card_back.dart';
+import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:flutter/cupertino.dart';
 
 class CardDeck extends StatelessWidget {

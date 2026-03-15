@@ -3,7 +3,7 @@ import 'package:dominican_casino/ui/game/popups/button_instructions.dart';
 import 'package:dominican_casino/ui/game/widgets/action_icon_button.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games/game_view_model.dart';
-import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

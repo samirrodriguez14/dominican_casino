@@ -1,10 +1,10 @@
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
-import 'package:dominican_casino/ui/game/decks/card_deck.dart';
+import 'package:dominican_casino/ui/cards/card_deck.dart';
 import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
-import 'package:dominican_casino/ui/game/widgets/cards/playing_area_stack.dart';
-import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_opponent_area.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -151,12 +151,15 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
               transform: isSelected
                   ? Matrix4.translationValues(0, -12, 0)
                   : Matrix4.identity(),
-              child: PlayingCard(
+              child: Opacity(
+                opacity: vm.isCardHidden(c) ? 0.0 : 1.0,
+                child: PlayingCard(
                   key: vm.keyForCard(c.id),
 
-                playingCardModel: c,
-                isSelected: isSelected,
-                width: 70,
+                  playingCardModel: c,
+                  isSelected: isSelected,
+                  width: 70,
+                ),
               ),
             ),
           );

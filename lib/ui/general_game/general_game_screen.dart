@@ -3,10 +3,13 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/animations/deal_annimator.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
+import 'package:dominican_casino/game_control/interfaces/zone.dart';
+import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/general_game/areas/casino/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/decks/gen_game_control.dart';
@@ -156,15 +159,28 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
   Future<void> _tryPlayEvents() async {
     if (!mounted || _isAnimating) return;
+
     final events = vm.gameState.cardMoveEvents;
-    _isAnimating = true;
     final newEvents = events
         .where((e) => !vm.lastPlayedIds.contains(e.id))
         .toList();
+
+    if (newEvents.isEmpty) return;
+
+    _isAnimating = true;
+
+    for (final event in newEvents) {
+      vm.hiddenCardIds.add(event.card.id);
+    }
+    vm.notifyListeners();
+
     for (final event in newEvents) {
       vm.lastPlayedIds.add(event.id);
       await _playEvent(event);
+      vm.hiddenCardIds.remove(event.card.id);
+      vm.notifyListeners();
     }
+
     _isAnimating = false;
   }
 
@@ -173,22 +189,71 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
     final fromKey = vm.keyForZone(event.from);
     final toKey = vm.keyForZone(event.to);
-  final cardKey = vm.keyForCard(event.card.id);
 
-    if (fromKey == null || toKey == null) return;
+    if (toKey == null) return;
+    if (fromKey == null) return;
+    if (toKey.currentContext == null) return;
 
-    await CardMoveAnimator.animateExistingCard(
+    await CardMoveAnimator.animateCardMove(
       context: context,
       vsync: this,
-      cardKey: cardKey,
+      fromKey: fromKey,
       toKey: toKey,
       beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
-      overlayCard: PlayingCard(
-        
-        key: vm.keyForCard(event.card.id),
-        playingCardModel: event.card,
-        isSelected: false,
+      cardWidth: 46,
+      cardHeight: 64,
+      child: AnimatedMoveCard(
+        card: event.card,
+        faceUp: shouldShowFrontForEvent(event),
+        width: 46,
       ),
     );
+  }
+
+  bool shouldShowFrontForEvent(CardMoveEvent event) {
+    final myPid = vm.me;
+
+    // Table and stacks are always face up
+    if (event.from.type == ZoneType.table ||
+        event.to.type == ZoneType.table ||
+        event.from.type == ZoneType.stack ||
+        event.to.type == ZoneType.stack) {
+      return true;
+    }
+
+    // My hand is face up to me
+    if (event.from.type == ZoneType.playerHand &&
+        event.from.holderId == myPid) {
+      return true;
+    }
+
+    if (event.to.type == ZoneType.playerHand && event.to.holderId == myPid) {
+      return true;
+    }
+
+    // Everything else stays face down
+    return false;
+  }
+}
+
+class AnimatedMoveCard extends StatelessWidget {
+  final PlayingCardModel card;
+  final bool faceUp;
+  final double width;
+
+  const AnimatedMoveCard({
+    super.key,
+    required this.card,
+    required this.faceUp,
+    this.width = 46,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!faceUp) {
+      return PlayingCardBack(width: width);
+    }
+
+    return PlayingCard(playingCardModel: card, isSelected: false, width: width);
   }
 }

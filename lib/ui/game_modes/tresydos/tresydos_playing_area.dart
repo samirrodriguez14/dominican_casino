@@ -2,8 +2,8 @@ import 'dart:math' as math;
 
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/ui/game/areas/opponent_area.dart';
-import 'package:dominican_casino/ui/game/decks/card_deck.dart';
-import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/card_deck.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:uuid/uuid.dart';
 

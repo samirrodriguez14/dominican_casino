@@ -195,9 +195,13 @@ class GeneralGameViewModel extends ChangeNotifier {
     super.dispose();
   }
 
+  bool isCardHidden(PlayingCardModel card) {
+    return hiddenCardIds.contains(card.id);
+  }
+
   final Map<String, GlobalKey> cardKeys = {};
-  final Set<String> animatingCardIds = {};
-  
+  final Set<String> hiddenCardIds = {};
+
   GlobalKey keyForCard(String cardId) {
     return cardKeys.putIfAbsent(cardId, () => GlobalKey());
   }

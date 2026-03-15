@@ -1,12 +1,12 @@
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/game/areas/opponent_area.dart';
-import 'package:dominican_casino/ui/game/decks/card_deck.dart';
+import 'package:dominican_casino/ui/cards/card_deck.dart';
 import 'package:dominican_casino/ui/game/game_screen.dart';
 import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
 import 'package:dominican_casino/view_models/games/game_view_model.dart';
-import 'package:dominican_casino/ui/game/widgets/cards/playing_area_stack.dart';
-import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';

@@ -1,6 +1,6 @@
 import 'package:dominican_casino/ui/game/widgets/action_icon_button.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -54,12 +54,15 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                               transform: isSelected
                                   ? Matrix4.translationValues(0, -12, 0)
                                   : Matrix4.identity(),
-                              child: PlayingCard(
-                                key: vm.keyForCard(c.id),
+                              child: Opacity(
+                                opacity: vm.isCardHidden(c) ? 0.0 : 1.0,
+                                child: PlayingCard(
+                                  key: vm.keyForCard(c.id),
 
-                                playingCardModel: c,
-                                width: 90,
-                                isSelected: isSelected,
+                                  playingCardModel: c,
+                                  width: 90,
+                                  isSelected: isSelected,
+                                ),
                               ),
                             ),
                           ),
