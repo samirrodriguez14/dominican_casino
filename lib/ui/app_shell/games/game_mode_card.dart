@@ -1,6 +1,6 @@
 import 'package:dominican_casino/data/games_instructions.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';

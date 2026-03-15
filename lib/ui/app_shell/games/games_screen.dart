@@ -4,7 +4,6 @@ import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 
-enum GameMode { tresydos, casino, casinoNew, robaito }
 
 class GamesScreen extends StatelessWidget {
   const GamesScreen({super.key});

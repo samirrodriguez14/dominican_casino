@@ -1,6 +1,5 @@
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/lobby_game.dart';
-import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 
 abstract class GameService {
   //STREAM GAMES

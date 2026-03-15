@@ -1,8 +1,8 @@
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:flutter/cupertino.dart';
 
 class GamesViewModel extends ChangeNotifier {

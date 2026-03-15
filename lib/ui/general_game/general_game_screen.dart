@@ -1,12 +1,12 @@
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/ui/animations/animated_move_card.dart';
 import 'package:dominican_casino/ui/animations/deal_annimator.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
-import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';

@@ -1,6 +1,6 @@
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
-import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:flutter/cupertino.dart';
 
 class GameModeCarousel extends StatefulWidget {

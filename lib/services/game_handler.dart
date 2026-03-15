@@ -1,9 +1,9 @@
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/deck.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:uuid/uuid.dart';
 
 class GameHandler2 {
@@ -21,9 +21,10 @@ class GameHandler2 {
     final doc = _games.doc(id);
 
     await doc.set({
-      'gameMode':mode.name,
+      'gameStatus': GameStatus.waitingForPlayers,
+      'gameMode': mode.name,
       'id': id,
-      'cardMoveEvents':[],
+      'cardMoveEvents': [],
       'controllerId': null,
       'started': false,
       'currentTurnPlayerId': null,
@@ -40,6 +41,7 @@ class GameHandler2 {
       'extraPoints': 0,
       'extraPointsHolderId': '',
       'winnerId': null,
+      'round':null,
       'roundIndex': 1,
       'roundStatus': 'playing',
       'roundReady': {},

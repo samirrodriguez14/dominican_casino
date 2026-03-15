@@ -1,33 +1,17 @@
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
-import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
+import 'package:dominican_casino/models/round.dart';
 
 import 'playing_card_model.dart';
 
-enum RoundStatus { playing, completed, dealing }
+enum GameStatus { waitingForPlayers, readyToStart, started, gameOver, error }
 
-RoundStatus roundStatusFrom(String? s) {
-  switch (s) {
-    case 'completed':
-      return RoundStatus.completed;
-    case 'dealing':
-      return RoundStatus.dealing;
-    case 'playing':
-    default:
-      return RoundStatus.playing;
-  }
+GameStatus gameStatusFrom(String? s) {
+  if (s == null) return GameStatus.error;
+  return GameStatus.values.firstWhere((g) => g.name == s);
 }
 
-String roundStatusTo(RoundStatus s) {
-  switch (s) {
-    case RoundStatus.completed:
-      return 'completed';
-    case RoundStatus.dealing:
-      return 'dealing';
-    case RoundStatus.playing:
-      return 'playing';
-  }
-}
+enum GameMode { tresydos, casino, casinoNew, robaito }
 
 GameMode gameModeFrom(String? s) {
   switch (s) {
@@ -58,6 +42,7 @@ String gameModeTo(GameMode s) {
 
 class GameState {
   final GameMode gameMode;
+  final GameStatus gameStatus;
   final String id;
   final String controllerId;
   bool started;
@@ -77,12 +62,14 @@ class GameState {
   final String? player2;
   final Map<String, dynamic>? playersInfo;
   final String? winnerId;
+  final Round? round;
   final int roundIndex;
   final RoundStatus roundStatus;
   final Map<String, bool> roundReady;
   final Map<String, dynamic> roundScores;
 
   GameState({
+    required this.gameStatus,
     required this.gameMode,
     required this.id,
     required this.controllerId,
@@ -98,6 +85,7 @@ class GameState {
     required this.playersDeck,
     required this.lastTookCardId,
     required this.cardMoveEvents,
+    required this.round,
     this.winnerId,
     this.player1,
     this.player2,
@@ -112,6 +100,7 @@ class GameState {
        roundScores = roundScores ?? const {};
 
   Map<String, dynamic> toJson() => {
+    'gameStatus': gameStatus.name,
     'cardMoveEvents': cardMoveEvents.map((e) => e.toJson()).toList(),
     'id': id,
     'gameMode': gameModeTo(gameMode),
@@ -136,7 +125,7 @@ class GameState {
     'player1': player1,
     'player2': player2,
     'winnerId': winnerId,
-
+    'round': round?.toJson(),
     'roundIndex': roundIndex,
     'roundStatus': roundStatusTo(roundStatus),
     'roundReady': roundReady,
@@ -145,6 +134,7 @@ class GameState {
 
   static GameState fromMap(Map<String, dynamic> m) {
     final gameMode = gameModeFrom(m['gameMode']);
+    final gameStatus = gameStatusFrom(m['gameStatus']);
     final playing = (m['playingArea'] as List<dynamic>? ?? [])
         .map((e) => PlayingCardModel.fromMap(Map<String, dynamic>.from(e)))
         .toList();
@@ -177,6 +167,7 @@ class GameState {
           .map((e) => PlayingCardModel.fromMap(Map<String, dynamic>.from(e)))
           .toList();
     });
+    final round = Round.fromJson(m['round']);
 
     final roundIndex = (m['roundIndex'] as int?) ?? 1;
     final roundStatus = roundStatusFrom(m['roundStatus'] as String?);
@@ -194,6 +185,7 @@ class GameState {
             .toList() ??
         [];
     return GameState(
+      gameStatus: gameStatus,
       gameMode: gameMode,
       cardMoveEvents: cardMoveEvents,
       id: (m['id'] as String?) ?? '',
@@ -213,6 +205,7 @@ class GameState {
       winnerId: m['winnerId'] as String?,
       extraPoints: m['extraPoints'],
       extraPointsHolderId: m['extraPointsHolderId'],
+      round: round,
       roundIndex: roundIndex,
       roundStatus: roundStatus,
       roundReady: roundReady,

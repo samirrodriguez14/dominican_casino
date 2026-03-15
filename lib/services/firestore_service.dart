@@ -4,7 +4,6 @@ import 'package:dominican_casino/models/lobby_game.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/services/game_handler.dart';
 import 'package:dominican_casino/services/game_service.dart';
-import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:rxdart/rxdart.dart';
 import '../models/playing_card_model.dart';
 import '../models/game_state.dart';

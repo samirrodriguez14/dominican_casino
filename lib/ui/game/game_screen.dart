@@ -1,9 +1,9 @@
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
-import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/ui/widgets/game_controll.dart';
 import 'package:dominican_casino/ui/game/popups/button_instructions.dart';
 import 'package:dominican_casino/ui/game/popups/game_completed.dart';
