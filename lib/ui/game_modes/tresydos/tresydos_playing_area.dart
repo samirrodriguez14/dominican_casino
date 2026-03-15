@@ -5,6 +5,7 @@ import 'package:dominican_casino/ui/game/areas/opponent_area.dart';
 import 'package:dominican_casino/ui/game/decks/card_deck.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:uuid/uuid.dart';
 
 // ignore: must_be_immutable
 class TresydosPlayingArea extends StatefulWidget {
@@ -16,7 +17,13 @@ class TresydosPlayingArea extends StatefulWidget {
 }
 
 class TresydosPlayingAreaState extends State<TresydosPlayingArea> {
-  final currrentCard = PlayingCardModel(suit: 'spades', rank: "3");
+  static final Uuid _uuid = const Uuid();
+
+  final currrentCard = PlayingCardModel(
+    id: _uuid.v4().substring(0, 8),
+    suit: 'spades',
+    rank: "3",
+  );
   @override
   Widget build(BuildContext context) {
     return Column(

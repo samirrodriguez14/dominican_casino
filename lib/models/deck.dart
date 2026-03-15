@@ -1,7 +1,11 @@
 import 'dart:math';
+import 'package:uuid/uuid.dart';
+
 import 'playing_card_model.dart';
 
 class Deck {
+  static final Uuid _uuid = const Uuid();
+
   static List<PlayingCardModel> standard() {
     bool isSpecial(String rank, String suit) {
       if (rank == 'A') return true;
@@ -32,7 +36,12 @@ class Deck {
     return [
       for (var s in suits)
         for (var r in ranks)
-          PlayingCardModel(suit: s, rank: r, isSpecial: isSpecial(r, s)),
+          PlayingCardModel(
+            id: _uuid.v4().substring(0, 8),
+            suit: s,
+            rank: r,
+            isSpecial: isSpecial(r, s),
+          ),
     ];
   }
 

@@ -64,6 +64,7 @@ class FirestoreService extends GameService {
   @override
   Future<String> newCreateGame(GameState gState) =>
       gameHandler.createGame(gState.gameMode);
+  
   @override
   Future<GameState> updateGame(GameState gState) async {
     //Updating game
@@ -97,6 +98,9 @@ class FirestoreService extends GameService {
     }
     return g;
   }
+
+
+
 
   Future<void> startGame(String gameId) async =>
       await gameHandler.startGame(gameId);

@@ -18,6 +18,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
   Widget build(BuildContext context) {
     final highlightTurn = vm.isMyTurn;
     return Container(
+      key: vm.myHandKey,
       decoration: AppStyle.theme.playerSectionBox(
         highlightColor: AppStyle.theme.turnHighlight,
         highlight: highlightTurn,
@@ -54,6 +55,8 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                                   ? Matrix4.translationValues(0, -12, 0)
                                   : Matrix4.identity(),
                               child: PlayingCard(
+                                key: vm.keyForCard(c.id),
+
                                 playingCardModel: c,
                                 width: 90,
                                 isSelected: isSelected,
@@ -96,15 +99,13 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                   return Padding(
                     padding: const EdgeInsets.only(right: 5),
                     child: CupertinoButton(
-                    
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      onPressed: ()=>vm.performPlayAction(vm.possiblePlayActions[index]),
-                      child: 
-                      Container(
+                      onPressed: () =>
+                          vm.performPlayAction(vm.possiblePlayActions[index]),
+                      child: Container(
                         decoration: AppStyle.theme.raisedSurfaceBox(),
-                        child: 
-                      Text(vm.possiblePlayActions[index].toString()),
-                      )
+                        child: Text(vm.possiblePlayActions[index].toString()),
+                      ),
                     ),
                   );
                 },

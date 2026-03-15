@@ -1,29 +1,29 @@
-import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card_back.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/view_models/games/game_view_model.dart';
+import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-class OpponentArea extends StatefulWidget {
-  const OpponentArea({super.key});
+class GenOpponentArea extends StatefulWidget {
+  const GenOpponentArea({super.key});
   @override
-  State<StatefulWidget> createState() => OpponentAreaState();
+  State<StatefulWidget> createState() => GenOpponentAreaState();
 }
 
-class OpponentAreaState extends State<OpponentArea> {
-  bool get highlightTurn => context.select((GameViewModel vm) => vm.isOppTurn);
-  String? get opp => context.select((GameViewModel vm) => vm.opp);
-  Player? get oppInfo => context.select((GameViewModel vm) => vm.oppInfo);
+class GenOpponentAreaState extends State<GenOpponentArea> {
+
+  bool get highlightTurn => context.select((GeneralGameViewModel vm) => !vm.isMyTurn);
+  String? get opp => context.select((GeneralGameViewModel vm) => vm.opp);
+  // Player? get oppInfo => context.select((GeneralGameViewModel vm) => vm.oppInfo);
   int get deckCount =>
-      context.select((GameViewModel vm) => vm.oppHandCardsTotal);
-  int get score => context.select((GameViewModel vm) => vm.oppScore);
+      context.select((GeneralGameViewModel vm) => vm.oppHandCard.length);
+  int get score => context.select((GeneralGameViewModel vm) => 0);
 
   int get extraPoints =>
-      context.select((GameViewModel vm) => vm.oppExtraPoints);
+      context.select((GeneralGameViewModel vm) => 0);
   List<PlayingCardModel> get collectedCards =>
-      context.select((GameViewModel vm) => vm.oppCollectedCards);
+      context.select((GeneralGameViewModel vm) => vm.oppCollectedCards);
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +42,7 @@ class OpponentAreaState extends State<OpponentArea> {
         children: [
           Text(
             opponentJoined
-                ? "Opponent: ${oppInfo?.name}"
+                ? "Opponent: ..."
                 : "Waiting for opponent...",
             style: AppStyle.theme.mutedText,
           ),

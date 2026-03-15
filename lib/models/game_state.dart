@@ -62,7 +62,7 @@ class GameState {
   final String controllerId;
   bool started;
   String? currentTurnPlayerId;
-  List<CardMoveEvent> cardMoveEvents =[];
+  List<CardMoveEvent> cardMoveEvents = [];
   final List<PlayingCardModel> playingArea;
   final List<PlayingAreaStackModel> playingAreaStacks;
 
@@ -112,6 +112,7 @@ class GameState {
        roundScores = roundScores ?? const {};
 
   Map<String, dynamic> toJson() => {
+    'cardMoveEvents': cardMoveEvents.map((e) => e.toJson()).toList(),
     'id': id,
     'gameMode': gameModeTo(gameMode),
     'controllerId': controllerId,
@@ -187,10 +188,11 @@ class GameState {
     });
 
     final roundScores = Map<String, dynamic>.from(m['roundScores'] ?? {});
-   final cardMoveEvents = (m['cardMoveEvents'] as List?)
-        ?.map((e) => CardMoveEvent.fromDto(e))
-        .toList() ??
-    [];
+    final cardMoveEvents =
+        (m['cardMoveEvents'] as List?)
+            ?.map((e) => CardMoveEvent.fromDto(e))
+            .toList() ??
+        [];
     return GameState(
       gameMode: gameMode,
       cardMoveEvents: cardMoveEvents,

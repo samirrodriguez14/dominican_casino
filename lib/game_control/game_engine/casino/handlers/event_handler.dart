@@ -2,13 +2,16 @@ import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:uuid/uuid.dart';
 
 class EventHandler {
+  static final Uuid _uuid = const Uuid();
   
   static List<CardMoveEvent> generatePlayEvents(PlayCardAction a) {
     Zone from = Zone(type: ZoneType.playerHand, holderId: a.performedById);
     Zone to = Zone(type: ZoneType.table, holderId: ZoneType.table.name);
     final fromHandtoTable = CardMoveEvent(
+      id: _uuid.v4().substring(0, 8),
       from: from,
       to: to,
       card: a.usedCard,
@@ -28,8 +31,9 @@ class EventHandler {
         type: ZoneType.gameDeck,
         holderId: ZoneType.gameDeck.name,
       );
-      Zone to = Zone(type: ZoneType.playerDeck, holderId: pid);
+      Zone to = Zone(type: ZoneType.playerHand, holderId: pid);
       final fromDeckToHand = CardMoveEvent(
+        id: _uuid.v4().substring(0, 8),
         from: from,
         to: to,
         card: card,
@@ -52,6 +56,7 @@ class EventHandler {
       );
       Zone to = Zone(type: ZoneType.table, holderId: ZoneType.table.name);
       final fromDeckToHand = CardMoveEvent(
+        id: _uuid.v4().substring(0, 8),
         from: from,
         to: to,
         card: card,

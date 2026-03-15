@@ -1,9 +1,12 @@
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/animations/deal_annimator.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/areas/casino/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/decks/gen_game_control.dart';
@@ -20,7 +23,12 @@ class GeneralGameScreen extends StatefulWidget {
   State<GeneralGameScreen> createState() => GeneralGameScreenState();
 }
 
-class GeneralGameScreenState extends State<GeneralGameScreen> {
+class GeneralGameScreenState extends State<GeneralGameScreen>
+    with TickerProviderStateMixin {
+  GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
+  GeneralGameViewModel? _boundVm;
+  bool _isAnimating = false;
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +42,24 @@ class GeneralGameScreenState extends State<GeneralGameScreen> {
       }
       if (mounted) context.go('/home');
       developer.log("GameScreenInit: $ok");
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final newVm = context.read<GeneralGameViewModel>();
+    if (_boundVm != newVm) {
+      _boundVm?.removeListener(_onVmChanged);
+      _boundVm = newVm;
+      _boundVm?.addListener(_onVmChanged);
+    }
+  }
+
+  void _onVmChanged() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tryPlayEvents();
     });
   }
 
@@ -74,26 +100,25 @@ class GeneralGameScreenState extends State<GeneralGameScreen> {
                 ),
                 Column(
                   children: [
-                    const  SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                        Expanded(
-                          child: (vm.gameState.gameMode == GameMode.casinoNew)
-                              ? Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                  ),
-                                  child: NewCasinoPlayingArea(),
-                                )
-                              :
-                               Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 0,
-                                  ),
-                                  child:null,
-                                ),
-                        ),
-                        const SizedBox(height: 10),
-                        GenPlayerArea(),
+                    Expanded(
+                      child: (vm.gameState.gameMode == GameMode.casinoNew)
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                              child: NewCasinoPlayingArea(),
+                            )
+                          : Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 0,
+                              ),
+                              child: null,
+                            ),
+                    ),
+                    const SizedBox(height: 10),
+                    GenPlayerArea(),
 
                     const SizedBox(height: 16),
                   ],
@@ -125,6 +150,44 @@ class GeneralGameScreenState extends State<GeneralGameScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _tryPlayEvents() async {
+    if (!mounted || _isAnimating) return;
+    final events = vm.gameState.cardMoveEvents;
+    _isAnimating = true;
+    final newEvents = events
+        .where((e) => !vm.lastPlayedIds.contains(e.id))
+        .toList();
+    for (final event in newEvents) {
+      vm.lastPlayedIds.add(event.id);
+      await _playEvent(event);
+    }
+    _isAnimating = false;
+  }
+
+  Future<void> _playEvent(CardMoveEvent event) async {
+    final myPid = vm.me;
+
+    final fromKey = vm.keyForZone(event.from);
+    final toKey = vm.keyForZone(event.to);
+  final cardKey = vm.keyForCard(event.card.id);
+
+    if (fromKey == null || toKey == null) return;
+
+    await CardMoveAnimator.animateExistingCard(
+      context: context,
+      vsync: this,
+      cardKey: cardKey,
+      toKey: toKey,
+      beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
+      overlayCard: PlayingCard(
+        
+        key: vm.keyForCard(event.card.id),
+        playingCardModel: event.card,
+        isSelected: false,
       ),
     );
   }

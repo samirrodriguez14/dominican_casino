@@ -29,7 +29,7 @@ class CardDeck extends StatelessWidget {
         children: [
           Column(
             children: [
-              Text(title, style: AppStyle.theme.mutedText,),
+              Text(title, style: AppStyle.theme.mutedText),
               Stack(
                 alignment: Alignment.topCenter,
                 children: [

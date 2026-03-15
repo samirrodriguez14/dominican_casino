@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
@@ -82,6 +83,12 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   //      OPPONENTS HAND
   //      OPPONENTS COLLECTED CARDS
+  String? get opp =>
+      gameState.player1 == me ? gameState.player2 : gameState.player1;
+
+  List<PlayingCardModel> get oppHandCard => gameState.hands[opp] ?? [];
+  List<PlayingCardModel> get oppCollectedCards =>
+      gameState.playersDeck[opp] ?? [];
 
   //      POSSIBLE ACTIONS:
   CurrentCardSelection get cardSelection => CurrentCardSelection(
@@ -186,5 +193,37 @@ class GeneralGameViewModel extends ChangeNotifier {
   void dispose() {
     gameRepo.removeListener(_onGameRepoChanged);
     super.dispose();
+  }
+
+  final Map<String, GlobalKey> cardKeys = {};
+  final Set<String> animatingCardIds = {};
+  
+  GlobalKey keyForCard(String cardId) {
+    return cardKeys.putIfAbsent(cardId, () => GlobalKey());
+  }
+
+  final Set<String> lastPlayedIds = {};
+
+  final GlobalKey deckKey = GlobalKey();
+  final GlobalKey tableKey = GlobalKey();
+  final GlobalKey myDeckKey = GlobalKey();
+  final GlobalKey oppDeckKey = GlobalKey();
+  final GlobalKey myHandKey = GlobalKey();
+  final GlobalKey oppHandKey = GlobalKey();
+
+  GlobalKey? keyForZone(Zone zone) {
+    final myPid = me;
+    switch (zone.type) {
+      case ZoneType.gameDeck:
+        return deckKey;
+      case ZoneType.table:
+        return tableKey;
+      case ZoneType.playerDeck:
+        return zone.holderId == myPid ? myDeckKey : oppDeckKey;
+      case ZoneType.playerHand:
+        return zone.holderId == myPid ? myHandKey : oppHandKey;
+      case ZoneType.stack:
+        return tableKey;
+    }
   }
 }

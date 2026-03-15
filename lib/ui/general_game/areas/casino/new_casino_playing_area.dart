@@ -5,6 +5,7 @@ import 'package:dominican_casino/ui/game/decks/card_deck.dart';
 import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/game/widgets/cards/playing_card.dart';
+import 'package:dominican_casino/ui/general_game/areas/gen_opponent_area.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -25,10 +26,11 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
       opacity: (vm.inGameAction != InGameAction.noAction) ? 0.5 : 1,
       child: Column(
         children: [
-          // Padding(
-          //   padding: const EdgeInsets.symmetric(horizontal: 0),
-          //   child: const OpponentArea(),
-          // ),
+          //OPP CARDS
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0),
+            child: GenOpponentArea(key: vm.oppHandKey),
+          ),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -40,6 +42,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                   children: [
                     AppStyle.theme.dottedBox(
                       child: CardDeck(
+                        key: vm.deckKey,
                         title: "Dealing",
                         cardWidth: 55,
                         cards: vm.gameState.deck,
@@ -50,7 +53,9 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                   ],
                 ),
 
+                //TABLE AREA PLAYING CARDS
                 Expanded(
+                  key: vm.tableKey,
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
                       // horizontal: 12,
@@ -61,15 +66,16 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
 
                   //   ],
                 ),
+                //COLLECTED CARDS AREAS
                 Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     AppStyle.theme.dottedBox(
-                      // color: vm.lastTakeOpp ? AppStyle.theme.border : null,
                       child: CardDeck(
+                        key: vm.oppDeckKey,
                         title: "Opp's Deck",
                         cardWidth: 55,
-                        cards: [], // vm.oppCollectedCards,
+                        cards: vm.oppCollectedCards,
                         extraPoints: 0, //vm.oppExtraPoints,
                         onTap: () {
                           HapticFeedback.mediumImpact();
@@ -77,7 +83,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                             context: context,
                             title: "Opponent's Collected Cards",
                             content: CollectedCardsStrip(
-                              cards: [], // vm.oppCollectedCards,
+                              cards: vm.oppCollectedCards,
                             ),
                           );
                         },
@@ -85,8 +91,8 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                     ),
 
                     AppStyle.theme.dottedBox(
-                      // color: vm.lastTakeMe ? AppStyle.theme.border : null,
                       child: CardDeck(
+                        key: vm.myDeckKey,
                         title: 'My Deck',
                         cardWidth: 55,
                         cards: vm.myCollectedCards,
@@ -146,6 +152,8 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                   ? Matrix4.translationValues(0, -12, 0)
                   : Matrix4.identity(),
               child: PlayingCard(
+                  key: vm.keyForCard(c.id),
+
                 playingCardModel: c,
                 isSelected: isSelected,
                 width: 70,
