@@ -1,4 +1,4 @@
-import 'package:dominican_casino/ui/game/widgets/action_icon_button.dart';
+import 'package:dominican_casino/ui/widgets/action_icon_button.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';

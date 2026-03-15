@@ -26,15 +26,25 @@ class GeneralGameViewModel extends ChangeNotifier {
     gameRepo.addListener(_onGameRepoChanged);
   }
 
-  void _onGameRepoChanged() async {
-    developer.log(
-      "GameViewModel._onGameRepoChanged Me: $me, GameID: ${gameState.id}",
-    );
+  void _onGameRepoChanged() {
     try {
-      gameState = gameRepo.gameState!;
+      final nextState = gameRepo.gameState!;
+      final incomingEvents = nextState.cardMoveEvents
+          .where((e) => !lastPlayedIds.contains(e.id))
+          .toList();
+
+      for (final event in incomingEvents) {
+        hiddenCardIds.add(event.card.id);
+      }
+
+      gameState = nextState;
       HapticFeedback.mediumImpact();
 
-      cancelSelection();
+      selectedCards = [];
+      selectedCard = null;
+      selectedStacks = [];
+
+      notifyListeners();
     } catch (e) {
       developer.log("GameViewModel._onGameRepoChanged Error $e");
       notifyListeners();
