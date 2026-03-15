@@ -57,7 +57,7 @@ class GameState {
   final Map<String, dynamic> scores;
    int extraPoints;
    String extraPointsHolderId;
-  final String lastTookCardId;
+  String lastTookCardId;
   final String? player1;
   final String? player2;
   final Map<String, dynamic>? playersInfo;

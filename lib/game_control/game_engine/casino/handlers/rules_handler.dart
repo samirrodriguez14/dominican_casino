@@ -75,6 +75,25 @@ class CasinoRulesHandler {
         ),
       );
     }
+    if (canAddAndPairAction(gameState, currentCardSelection)) {
+      available.add(
+        AddAndPairCardsAction(
+          usedCard: currentCardSelection.selectedCard!,
+          targetCards: currentCardSelection.selectedCards,
+          targetStacks: currentCardSelection.selectedStacks,
+          performedById: performedBy,
+        ),
+      );
+    }
+    if (canAddAndTakeAction(gameState, currentCardSelection)) {
+      available.add(
+        AddAndTakeAction(
+          usedCard: currentCardSelection.selectedCard!,
+          targetCards: currentCardSelection.selectedCards,
+          performedById: performedBy,
+        ),
+      );
+    }
 
     return available;
   }
@@ -100,6 +119,10 @@ class CasinoRulesHandler {
         return canPairAllAction(gameState, currentCardSelection);
       case PairTableCardsAction _:
         return canPairAllTableAction(gameState, currentCardSelection);
+      case AddAndPairCardsAction _:
+        return canAddAndPairAction(gameState, currentCardSelection);
+      case AddAndTakeAction _:
+        return canAddAndTakeAction(gameState, currentCardSelection);
       default:
     }
     return false;
@@ -326,12 +349,107 @@ class CasinoRulesHandler {
   }
 
   ///VALIDATE COMBO ACTIONS BASED ON CARD SELECTION AND GAMESTATE
-  static bool canAddAndPairAction() {
+  static bool canAddAndPairAction(
+    GameState gameState,
+    CurrentCardSelection currentCardSelection,
+  ) {
+    final selectedCard = currentCardSelection.selectedCard;
+    final selectedCards = currentCardSelection.selectedCards;
+    final selectedStacks = currentCardSelection.selectedStacks;
+    final pid = currentCardSelection.pid;
+
+    final myHandCards = gameState.hands[pid] ?? [];
+    final playingAreaCards = gameState.playingArea;
+    final playingAreaStacks = gameState.playingAreaStacks;
+
+    if (gameState.currentTurnPlayerId != pid) {
+      return false;
+    }
+
+    if (selectedCard == null) {
+      return false;
+    }
+
+    final handVals = possibleValuesInHand(myHandCards, selectedCard);
+    final selectedVals = possibleCardValues(selectedCard);
+
+    Set<int> addTotals;
+
+    // add to loose cards
+    if (selectedCards.isNotEmpty && selectedStacks.isEmpty) {
+      addTotals = possibleTotals(selectedCards);
+    }
+    // add to one unpaired stack
+    else if (selectedStacks.length == 1 &&
+        !selectedStacks.first.paired &&
+        selectedCards.isEmpty) {
+      addTotals = {selectedStacks.first.stackValue};
+    } else {
+      return false;
+    }
+
+    final potentialValues = <int>{};
+    for (final sv in selectedVals) {
+      for (final t in addTotals) {
+        potentialValues.add(sv + t);
+      }
+    }
+
+    // Search the rest of the table for matching value after the add
+    for (final v in potentialValues) {
+      bool existsOnTable = false;
+
+      // other loose cards on table
+      for (final c in playingAreaCards) {
+        if (selectedCards.contains(c)) continue;
+
+        if (possibleValuesForTableCard(c).contains(v)) {
+          existsOnTable = true;
+          break;
+        }
+      }
+
+      // other stacks on table
+      if (!existsOnTable) {
+        for (final s in playingAreaStacks) {
+          if (selectedStacks.contains(s)) continue;
+
+          if (s.stackValue == v) {
+            existsOnTable = true;
+            break;
+          }
+        }
+      }
+
+      final existsInHand = handVals.contains(v);
+
+      if (existsOnTable && existsInHand) {
+        return true;
+      }
+    }
+
     return false;
   }
 
-  static bool canAddAndTakeAction() {
-    return false;
+  static bool canAddAndTakeAction(
+    GameState gameState,
+    CurrentCardSelection currentCardSelection,
+  ) {
+    final selectedCard = currentCardSelection.selectedCard;
+    final selectedCards = currentCardSelection.selectedCards;
+
+    if (selectedCard == null) {
+      return false;
+    }
+
+    if (selectedCards.isEmpty) {
+      return false;
+    }
+
+    final cardVals = possibleCardValues(selectedCard);
+    final totals = possibleTotals(selectedCards);
+
+    return cardVals.any(totals.contains);
   }
 
   /// --------- HELPERS --------- ///

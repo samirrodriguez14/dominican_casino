@@ -96,3 +96,24 @@ class PairTableCardsAction extends PlayAction {
     required super.performedById,
   });
 }
+
+class AddAndPairCardsAction extends PlayAction {
+  PlayingCardModel usedCard;
+  List<PlayingCardModel> targetCards;
+  List<PlayingAreaStackModel> targetStacks;
+  AddAndPairCardsAction({
+    required this.usedCard,
+    required this.targetCards,
+    required this.targetStacks,
+    required super.performedById,
+  });
+}
+class AddAndTakeAction extends PlayAction {
+  PlayingCardModel usedCard;
+  List<PlayingCardModel> targetCards;
+  AddAndTakeAction({
+    required this.usedCard,
+    required this.targetCards,
+    required super.performedById,
+  });
+}

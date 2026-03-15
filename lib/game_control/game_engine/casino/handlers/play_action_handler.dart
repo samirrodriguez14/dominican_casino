@@ -28,6 +28,10 @@ class CasinoPlayActionHandler {
         return handlePairCardsAction(nextState, a);
       case PairTableCardsAction a:
         return handlePairTableCardsAction(nextState, a);
+      case AddAndPairCardsAction a:
+        return handleAddAndPairAction(nextState, a);
+      case AddAndTakeAction a:
+        return handleAddAndTakeAction(nextState, a);
     }
     return nextState;
   }
@@ -193,6 +197,107 @@ class CasinoPlayActionHandler {
     g.playingAreaStacks.add(newStack);
 
     return g;
+  }
+
+  static GameState handleAddAndPairAction(
+    GameState g,
+    AddAndPairCardsAction a,
+  ) {
+    final pid = a.performedById;
+    final pairCards = <PlayingCardModel>[];
+
+    // remove used card from hand
+    g.hands[pid]?.removeWhere((c) => c == a.usedCard);
+    pairCards.add(a.usedCard);
+
+    // determine add base value
+    int addBaseValue = 0;
+
+    // remove selected loose cards being added to
+    if (a.targetCards.isNotEmpty && a.targetStacks.isEmpty) {
+      for (final card in a.targetCards) {
+        g.playingArea.removeWhere((c) => c == card);
+        pairCards.add(card);
+      }
+      addBaseValue = _calculateStackValue(a.targetCards);
+    }
+    // remove selected stack being added to
+    else if (a.targetStacks.length == 1 && a.targetCards.isEmpty) {
+      final targetStack = a.targetStacks.first;
+      g.playingAreaStacks.removeWhere((s) => s == targetStack);
+      pairCards.addAll(targetStack.cards);
+      addBaseValue = targetStack.stackValue;
+    } else {
+      throw Exception(
+        'AddAndPairCardsAction must target either loose cards or exactly one stack.',
+      );
+    }
+
+    // resulting value after adding usedCard
+    final pairValue = addBaseValue + a.usedCard.valueLow;
+
+    // absorb all remaining loose table cards matching pairValue
+    final matchingLooseCards = g.playingArea.where((card) {
+      return _possibleValuesForTableCard(card).contains(pairValue);
+    }).toList();
+
+    for (final card in matchingLooseCards) {
+      g.playingArea.removeWhere((c) => c == card);
+      pairCards.add(card);
+    }
+
+    // absorb all remaining stacks matching pairValue
+    final matchingStacks = g.playingAreaStacks.where((stack) {
+      return stack.stackValue == pairValue;
+    }).toList();
+
+    for (final stack in matchingStacks) {
+      g.playingAreaStacks.removeWhere((s) => s == stack);
+      pairCards.addAll(stack.cards);
+    }
+
+    final newStack = PlayingAreaStackModel(
+      cards: pairCards,
+      stackValue: pairValue,
+      paired: true,
+      id: _uuid.v4().substring(0, 8),
+    );
+
+    g.playingAreaStacks.add(newStack);
+
+    return g;
+  }
+
+  static GameState handleAddAndTakeAction(GameState g, AddAndTakeAction a) {
+    final pid = a.performedById;
+    final takenCards = <PlayingCardModel>[];
+
+    // remove used card from hand
+    g.hands[pid]?.removeWhere((c) => c == a.usedCard);
+    takenCards.add(a.usedCard);
+
+    // remove selected loose cards from table
+    for (final card in a.targetCards) {
+      g.playingArea.removeWhere((c) => c == card);
+      takenCards.add(card);
+    }
+
+    // add all taken cards to player's deck
+    g.playersDeck.putIfAbsent(pid, () => []);
+    g.playersDeck[pid]!.addAll(takenCards);
+
+    // track last taker if you use that for leftover table cards later
+    g.lastTookCardId = pid;
+
+    return g;
+  }
+
+  static Set<int> _possibleValuesForTableCard(PlayingCardModel card) {
+    if (card.valueLow != card.valueHigh) {
+      return {card.valueLow, card.valueHigh};
+    }
+
+    return {card.valueLow};
   }
 
   static int _resolvePairTableValue(PairTableCardsAction a) {

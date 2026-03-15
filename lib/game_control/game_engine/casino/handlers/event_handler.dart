@@ -22,9 +22,15 @@ class EventHandler {
       case AddCardsAction a:
         return generateAddCardsEvents(a);
       case AddTableCardsAction a:
-        return generateAddTableCardsEvent(a);
+        return generateAddTableCardsEvents(a);
       case PairCardsAction a:
-        return generatePairCardsEvent(a);
+        return generatePairCardsEvents(a);
+      case PairTableCardsAction a:
+        return generatePairTableCardsEvents(a);
+      case AddAndPairCardsAction a:
+        return generateAddAndPairCardsEvents(a);
+      case AddAndTakeAction a:
+        return generateAddAndTakeCardsEvent(a);
     }
     return [];
   }
@@ -152,7 +158,9 @@ class EventHandler {
     return allEvents;
   }
 
-  static List<CardMoveEvent> generateAddTableCardsEvent(AddTableCardsAction a) {
+  static List<CardMoveEvent> generateAddTableCardsEvents(
+    AddTableCardsAction a,
+  ) {
     final Zone table = Zone(
       type: ZoneType.table,
       holderId: ZoneType.table.name,
@@ -173,7 +181,7 @@ class EventHandler {
     return allEvents;
   }
 
-  static List<CardMoveEvent> generatePairCardsEvent(PairCardsAction a) {
+  static List<CardMoveEvent> generatePairCardsEvents(PairCardsAction a) {
     final Zone hand = Zone(
       type: ZoneType.playerHand,
       holderId: a.performedById,
@@ -225,7 +233,7 @@ class EventHandler {
     return allEvents;
   }
 
-  static List<CardMoveEvent> generatePairTableCardsEvent(
+  static List<CardMoveEvent> generatePairTableCardsEvents(
     PairTableCardsAction a,
   ) {
     final Zone table = Zone(
@@ -259,6 +267,103 @@ class EventHandler {
         );
         allEvents.add(stackToTable);
       }
+    }
+
+    return allEvents;
+  }
+
+  static List<CardMoveEvent> generateAddAndPairCardsEvents(
+    AddAndPairCardsAction a,
+  ) {
+    final Zone hand = Zone(
+      type: ZoneType.playerHand,
+      holderId: a.performedById,
+    );
+
+    final Zone table = Zone(
+      type: ZoneType.table,
+      holderId: ZoneType.table.name,
+    );
+
+    final List<CardMoveEvent> allEvents = [];
+
+    // 1. Hand card goes to table
+    final handToTable = CardMoveEvent(
+      id: _uuid.v4().substring(0, 8),
+      from: hand,
+      to: table,
+      card: a.usedCard,
+      performedBy: a.performedById,
+    );
+    allEvents.add(handToTable);
+
+    // 2. Cards that were selected as the add target reorganize
+    for (final card in a.targetCards) {
+      final tableToTable = CardMoveEvent(
+        id: _uuid.v4().substring(0, 8),
+        from: table,
+        to: table,
+        card: card,
+        performedBy: a.performedById,
+      );
+      allEvents.add(tableToTable);
+    }
+
+    // 3. Cards from the selected stack reorganize
+    for (final stack in a.targetStacks) {
+      for (final card in stack.cards) {
+        final stackToTable = CardMoveEvent(
+          id: _uuid.v4().substring(0, 8),
+          from: table,
+          to: table,
+          card: card,
+          performedBy: a.performedById,
+        );
+        allEvents.add(stackToTable);
+      }
+    }
+
+    return allEvents;
+  }
+
+  static List<CardMoveEvent> generateAddAndTakeCardsEvent(AddAndTakeAction a) {
+    final Zone hand = Zone(
+      type: ZoneType.playerHand,
+      holderId: a.performedById,
+    );
+
+    final Zone table = Zone(
+      type: ZoneType.table,
+      holderId: ZoneType.table.name,
+    );
+
+    final Zone captured = Zone(
+      type: ZoneType.playerDeck,
+      holderId: a.performedById,
+    );
+
+    final List<CardMoveEvent> allEvents = [];
+
+    // 2. Played card gets captured
+    final tableToCapturedPlayed = CardMoveEvent(
+      id: _uuid.v4().substring(0, 8),
+      from: hand,
+      to: captured,
+      card: a.usedCard,
+      performedBy: a.performedById,
+    );
+    allEvents.add(tableToCapturedPlayed);
+
+    // 3. Captured loose cards
+    for (final card in a.targetCards) {
+      final tableToCaptured = CardMoveEvent(
+        id: _uuid.v4().substring(0, 8),
+        from: table,
+        to: captured,
+        card: card,
+        performedBy: a.performedById,
+      );
+      allEvents.add(tableToCaptured);
     }
 
     return allEvents;
