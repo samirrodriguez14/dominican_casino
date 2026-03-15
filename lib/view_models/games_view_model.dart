@@ -11,13 +11,13 @@ class GamesViewModel extends ChangeNotifier {
 
   Future<String?> newGame(GameMode mode) async {
     try {
-      String gid = await _appRepo.fs.createGame(mode);
       String? pid = _appRepo.player?.id;
       Player? playersInfo = _appRepo.player;
       if (pid != null && playersInfo != null) {
+        String gid = await _appRepo.createNewGame(mode, pid);
+        developer.log("game $gid, player $pid");
         return gid;
       }
-      developer.log("game $gid, player $pid");
     } catch (e) {
       developer.log("Error Creating Game");
     }

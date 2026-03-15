@@ -94,15 +94,16 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canPairAndTakeAction(gameState, currentCardSelection)) ;
-    available.add(
-      PairAndTakeCardsAction(
-        usedCard: currentCardSelection.selectedCard!,
-        targetCards: currentCardSelection.selectedCards,
-        targetStacks: currentCardSelection.selectedStacks,
-        performedById: performedBy,
-      ),
-    );
+    if (canPairAndTakeAction(gameState, currentCardSelection)) {
+      available.add(
+        PairAndTakeCardsAction(
+          usedCard: currentCardSelection.selectedCard!,
+          targetCards: currentCardSelection.selectedCards,
+          targetStacks: currentCardSelection.selectedStacks,
+          performedById: performedBy,
+        ),
+      );
+    }
 
     return available;
   }
@@ -373,10 +374,6 @@ class CasinoRulesHandler {
     final playingAreaCards = gameState.playingArea;
     final playingAreaStacks = gameState.playingAreaStacks;
 
-    if (gameState.currentTurnPlayerId != pid) {
-      return false;
-    }
-
     if (selectedCard == null) {
       return false;
     }
@@ -470,11 +467,6 @@ class CasinoRulesHandler {
     final selectedCard = currentCardSelection.selectedCard;
     final selectedCards = currentCardSelection.selectedCards;
     final selectedStacks = currentCardSelection.selectedStacks;
-    final pid = currentCardSelection.pid;
-
-    if (gameState.currentTurnPlayerId != pid) {
-      return false;
-    }
 
     if (selectedCard == null) {
       return false;

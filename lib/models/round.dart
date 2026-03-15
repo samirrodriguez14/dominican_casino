@@ -27,13 +27,11 @@ String roundStatusTo(RoundStatus s) {
 class Round {
   int id; // index
   RoundStatus roundStatus;
-  Map<String, bool> roundReady;
   Map<String, dynamic> roundScores;
 
   Round({
     required this.id,
     required this.roundStatus,
-    required this.roundReady,
     required this.roundScores,
   });
 
@@ -41,23 +39,14 @@ class Round {
     return {
       'id': id,
       'roundStatus': roundStatusTo(roundStatus),
-      'roundReady': roundReady,
       'roundScores': roundScores,
     };
   }
 
   static Round fromJson(Map<String, dynamic> m) {
-    final readyRaw = Map<String, dynamic>.from(m['roundReady'] ?? {});
-    final ready = <String, bool>{};
-
-    readyRaw.forEach((k, v) {
-      ready[k] = v == true;
-    });
-
     return Round(
       id: (m['id'] as int?) ?? 1,
       roundStatus: roundStatusFrom(m['roundStatus'] as String?),
-      roundReady: ready,
       roundScores: Map<String, dynamic>.from(m['roundScores'] ?? {}),
     );
   }

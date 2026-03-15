@@ -4,47 +4,8 @@ import 'package:dominican_casino/models/round.dart';
 
 class GameStateHandler {
   //USE TO MAKE CHANGES TO THE GAME STATTE...
-  //Handle AfterPlay Checks
-  //Check round ended?
-  //Hanlde Scores
-
-  static GameState handleRoundEnded(GameState gameState) {
-
-    gameState = _handleScores(gameState);
-
-    // complete current round
-    final completedRound = Round(
-      id: gameState.round?.id ?? 1,
-      roundStatus: RoundStatus.completed,
-      roundReady: Map<String, bool>.from(gameState.round?.roundReady ?? {}),
-      roundScores: Map<String, dynamic>.from(
-        gameState.round?.roundScores ?? {},
-      ),
-    );
-
-    gameState.round = completedRound;
-    gameState.roundStatus = RoundStatus.completed;
-    // if game is not over, prepare next round
-    if (gameState.winnerId == null || gameState.winnerId!.isEmpty) {
-      final nextRoundId = completedRound.id + 1;
-
-      gameState.round = Round(
-        id: nextRoundId,
-        roundStatus: RoundStatus.dealing,
-        roundReady: {
-          for (final pid in gameState.playersInfo?.keys ?? <String>[])
-            pid: false,
-        },
-        roundScores: {},
-      );
-    }
-
-    return gameState;
-  }
-
-  //Check game finished
-  //Handle winning
   //UPDATING GAMESTATE CURRENTPLAYER ID
+
   static String getNextPlayerId(GameState gameState, String pid) {
     final players = gameState.playersInfo?.keys.toList() ?? [];
 
@@ -55,6 +16,36 @@ class GameStateHandler {
 
     final nextIndex = (index + 1) % players.length;
     return players[nextIndex];
+  }
+
+  ///UPDATING ROUND AND GAME STATUS ON ROUND ENDED
+  ///
+  static GameState handleRoundEnded(GameState gameState) {
+    gameState = _handleScores(gameState);
+
+    // complete current round
+    final completedRound = Round(
+      id: gameState.round.id,
+      roundStatus: RoundStatus.completed,
+      roundScores: Map<String, dynamic>.from(
+        gameState.round.roundScores,
+      ),
+    );
+
+    gameState.round = completedRound;
+    // if game is not over, prepare next round
+    if (gameState.winnerId == null || gameState.winnerId!.isEmpty) {
+      final nextRoundId = completedRound.id + 1;
+
+      gameState.round = Round(
+        id: nextRoundId,
+        roundStatus: RoundStatus.dealing,
+
+        roundScores: {},
+      );
+    }
+
+    return gameState;
   }
 
   static bool roundEnded(GameState gameState) {
@@ -96,9 +87,8 @@ class GameStateHandler {
         (totalScores[p2] ?? 0) + (roundScores[p2]['total'] as int);
 
     gameState.round = Round(
-      id: gameState.round?.id ?? 1,
+      id: gameState.round.id,
       roundStatus: RoundStatus.completed,
-      roundReady: Map<String, bool>.from(gameState.round?.roundReady ?? {}),
       roundScores: roundScores,
     );
 

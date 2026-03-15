@@ -17,12 +17,15 @@ class CasinoGameActionHandler {
     switch (inGameAction) {
       case InGameAction.start:
         gameState.started = true;
-        gameService.updateGame(gameState);
+        gameState.gameStatus = GameStatus.inProgress;
+        gameState.round.roundStatus = RoundStatus.dealing;
+        await gameService.updateGame(gameState);
 
       case InGameAction.share:
       case InGameAction.deal:
         //INITIAL DEAL
         final newGameState = _dealCardsAction(gameState, pid);
+        newGameState.round.roundStatus = RoundStatus.playing;
         newGameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
           gameState,
           pid,
@@ -31,6 +34,7 @@ class CasinoGameActionHandler {
         break;
       case InGameAction.dealSame:
         final newGameState = _dealSameAction(gameState, pid);
+        newGameState.round.roundStatus = RoundStatus.playing;
         await gameService.updateGame(newGameState);
         break;
       default:
@@ -85,64 +89,6 @@ class CasinoGameActionHandler {
   }
 
   static InGameAction getInGameAction(GameState gameState, String pid) {
-    // bool allReady = false;
-    // for (var entry in gameState.roundReady.entries) {
-    //   allReady = entry.value;
-    // }
-    int maxPlayers = 2;
-    List<bool> handsEmptyVals = [];
-    for (var entry in gameState.hands.entries) {
-      handsEmptyVals.add(entry.value.isEmpty);
-    }
-    bool handsEmpty = handsEmptyVals.every((v) => v);
-
-    List<bool> allJoinedVals = [];
-    if (gameState.playersInfo != null) {
-      for (var entry in gameState.playersInfo!.entries) {
-        allJoinedVals.add(entry.key != "");
-      }
-    }
-    bool allJoined =
-        allJoinedVals.length >= maxPlayers && allJoinedVals.every((v) => v);
-
-    if (!gameState.started) {
-      if (allJoined && gameState.controllerId == pid) {
-        return InGameAction.start;
-      }
-      if (allJoined) {
-        return InGameAction.waiting;
-      }
-      if (!allJoined) {
-        return InGameAction.share;
-      }
-    }
-    if (gameState.started) {
-      if (handsEmpty) {
-        if (gameState.controllerId == pid) {
-          if (gameState.roundStatus == RoundStatus.completed) {
-            //DEAL NEW HAND
-            return InGameAction.deal;
-          } else if (gameState.roundStatus == RoundStatus.playing) {
-            //DEAl SAME HAND
-            return InGameAction.dealSame;
-          }
-        }
-        if (gameState.roundReady[pid] != null && !gameState.roundReady[pid]!) {
-          //SET STATUS READY
-          return InGameAction.setReady;
-        }
-        return InGameAction.waiting;
-      }
-      if (!handsEmpty) {
-        return InGameAction.noAction;
-      }
-    }
-
-    return InGameAction.noAction;
-  }
-
-  static InGameAction newGetInGameAction(GameState gameState, String pid) {
-
     switch (gameState.gameStatus) {
       case GameStatus.waitingForPlayers:
         return InGameAction.share; //For now... I'll change it to waiting...
@@ -154,9 +100,9 @@ class CasinoGameActionHandler {
           return InGameAction.waiting;
         }
 
-      case GameStatus.started:
-      //While game is running
-        switch (gameState.roundStatus) {
+      case GameStatus.inProgress:
+        //While game is running
+        switch (gameState.round.roundStatus) {
           //If in the middle of the round...
           case RoundStatus.dealing:
             if (gameState.controllerId == pid) {
@@ -164,10 +110,10 @@ class CasinoGameActionHandler {
             } else {
               return InGameAction.waiting;
             }
-            //If playing.. no action
+          //If playing.. no action
           case RoundStatus.playing:
             return InGameAction.noAction;
-            //If completed.. new deal
+          //If completed.. new deal
           case RoundStatus.completed:
             if (gameState.controllerId == pid) {
               return InGameAction.deal;

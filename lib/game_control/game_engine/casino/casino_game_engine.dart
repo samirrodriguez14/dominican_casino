@@ -95,6 +95,19 @@ class CasinoGameEngine extends GameEngine {
 
   @override
   InGameAction getInGameAction(GameState gameState, String pid) {
+    int maxPlayers = 2;
+    List<bool> allJoinedVals = [];
+    if (gameState.playersInfo != null) {
+      for (var entry in gameState.playersInfo!.entries) {
+        allJoinedVals.add(entry.key != "");
+      }
+    }
+    bool allJoined =
+        allJoinedVals.length >= maxPlayers && allJoinedVals.every((v) => v);
+    if (allJoined && gameState.gameStatus != GameStatus.inProgress) {
+      gameState.gameStatus = GameStatus.readyToStart;
+      gameService.updateGame(gameState);
+    }
     return CasinoGameActionHandler.getInGameAction(gameState, pid);
   }
 

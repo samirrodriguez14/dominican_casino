@@ -232,11 +232,11 @@ class GameViewModel extends ChangeNotifier {
         oppCollectedCards = g.playersDeck[opp] ?? [];
 
         // round state
-        roundIndex = g.roundIndex;
-        roundStatus = g.roundStatus;
+        roundIndex = 0;//g.roundIndex;
+        roundStatus = RoundStatus.completed;// g.roundStatus;
 
-        roundReady = Map<String, bool>.from(g.roundReady);
-        roundScores = Map<String, dynamic>.from(g.roundScores);
+        roundReady = {}; //Map<String, bool>.from(g.roundReady);
+        roundScores = {};// Map<String, dynamic>.from(g.roundScores);
 
         _extraPoints = g.extraPoints;
         extraPointsHolderId = g.extraPointsHolderId;

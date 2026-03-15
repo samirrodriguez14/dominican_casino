@@ -12,7 +12,6 @@ import 'package:uuid/uuid.dart';
 enum AppStatus { notReady, appReady, inGame, appError }
 
 class AppRepo extends ChangeNotifier {
-
   Theme _appTheme = Theme.feltWaltnut;
   Theme get appTheme => _appTheme;
   AppTheme get selectedTheme => themeFromEnum(_appTheme);
@@ -35,6 +34,13 @@ class AppRepo extends ChangeNotifier {
     player = await _loadPlayer();
     developer.log("AppRepo: player ${player?.id}");
     if (player != null) appStatus = AppStatus.appReady;
+  }
+
+  Future<String> createNewGame(GameMode mode, String pid) async {
+    String gid = _uuid.v4().substring(0, 8);
+    GameState gameState = GameState.create(gid, pid, mode);
+    gid = await fs.newCreateGame(gameState);
+    return gid;
   }
 
   Future<void> deleteGame(String gameId) async {
@@ -85,5 +91,4 @@ class AppRepo extends ChangeNotifier {
     }
     return null;
   }
-
 }

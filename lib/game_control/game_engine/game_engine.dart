@@ -20,12 +20,12 @@ class CurrentCardSelection {
 abstract class GameEngine {
   GameService gameService;
   GameEngine({required this.gameService});
-  
   //GET PLAY ACTIONS
   List<PlayAction> getAvailableActions(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   );
+
   //VALIDATE PLAY ACTIONS
   bool validateAction(
     GameState state,
