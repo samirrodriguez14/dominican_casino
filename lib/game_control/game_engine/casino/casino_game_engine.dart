@@ -40,7 +40,7 @@ class CasinoGameEngine extends GameEngine {
           a,
         );
       case TakeCardAction a:
-        return await CasinoPlayActionHandler.handleTakeCardAction(gameState, a);
+        return await CasinoPlayActionHandler.handleTakeCardAction(gameState, gameService, a);
       case AddCardsAction a:
         return await CasinoPlayActionHandler.handleAddCardsAction(gameState, a);
       case PairCardsAction a:

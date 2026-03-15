@@ -31,11 +31,38 @@ class CasinoPlayActionHandler {
   }
 
   static Future<GameState> handleTakeCardAction(
-    GameState g,
-    PlayAction a,
-  ) async {
-    throw UnimplementedError();
-  }
+  GameState nextState,
+  GameService gameService,
+  TakeCardAction a,
+) async {
+  final pid = a.performedById;
+
+  // REMOVE USED CARD FROM PLAYER HAND
+  nextState.hands[pid]?.removeWhere((card) => card == a.usedCard);
+
+  // REMOVE TARGET CARD FROM PLAYING AREA
+  nextState.playingArea.removeWhere((card) => card == a.targetCard);
+
+  // ADD BOTH CARDS TO PLAYER'S WON/CAPTURED CARDS
+  nextState.playersDeck.putIfAbsent(pid, () => []);
+  nextState.playersDeck[pid]!.addAll([
+    a.usedCard,
+    a.targetCard,
+  ]);
+
+  // SET NEXT PLAYER TURN
+  nextState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
+    nextState,
+    pid,
+  );
+
+  // HANDLE MOVE EVENTS
+  nextState.cardMoveEvents = EventHandler.generateTakeCardEvents(a);
+
+  // SEND CHANGES
+  nextState = await gameService.updateGame(nextState);
+  return nextState;
+}
 
   static Future<GameState> handleAddCardsAction(
     GameState g,

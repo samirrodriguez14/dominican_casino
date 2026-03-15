@@ -3,8 +3,7 @@ import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_state.dart';
 
 class CasinoRulesHandler {
- 
- ///GET ALL AVAILABLE ACTIONS BASED ON CARD SELECTION AND GAME STATE
+  ///GET ALL AVAILABLE ACTIONS BASED ON CARD SELECTION AND GAME STATE
   static List<PlayAction> getAvailableActions(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
@@ -30,12 +29,21 @@ class CasinoRulesHandler {
         ),
       );
     }
+    if (canTakeCard(gameState, currentCardSelection)) {
+      available.add(
+        TakeCardAction(
+          usedCard: currentCardSelection.selectedCard!,
+          targetCard: currentCardSelection.selectedCards[0],
+          performedById: performedBy,
+        ),
+      );
+    }
 
     return available;
   }
 
-///VALIDATE ACTION BASED ON CARD SELECTION AND GAMESTATE
- static bool validateAction(
+  ///VALIDATE ACTION BASED ON CARD SELECTION AND GAMESTATE
+  static bool validateAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
     PlayAction action,
@@ -54,7 +62,7 @@ class CasinoRulesHandler {
     return false;
   }
 
-///VALIDATE SPECIFIC ACTION BASED ON CARD SELECTION AND GAMESTATE
+  ///VALIDATE SPECIFIC ACTION BASED ON CARD SELECTION AND GAMESTATE
   static bool canPlayAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
@@ -88,16 +96,41 @@ class CasinoRulesHandler {
     return true;
   }
 
-  static bool canTakeCard(
-    GameState gameState,
-    CurrentCardSelection currentCardSelection,
-  ) {
-    return true;
+ static bool canTakeCard(
+  GameState gameState,
+  CurrentCardSelection currentCardSelection,
+) {
+  final selectedCard = currentCardSelection.selectedCard;
+  final selectedCards = currentCardSelection.selectedCards;
+  final pid = currentCardSelection.pid;
+
+  // Must be this player's turn
+  if (gameState.currentTurnPlayerId != pid) {
+    return false;
   }
+
+  // Must have a card from hand selected
+  if (selectedCard == null) {
+    return false;
+  }
+
+  // Must select exactly one table card
+  if (selectedCards.length != 1) {
+    return false;
+  }
+
+  final targetCard = selectedCards.first;
+
+  // Optional safety: target must actually be on table
+  if (!gameState.playingArea.contains(targetCard)) {
+    return false;
+  }
+
+  // Basic Casino rule: values must match
+  return selectedCard.valueLow == targetCard.valueLow;
+}
 
   static bool canTakeStack() {
     return true;
   }
-
-
 }

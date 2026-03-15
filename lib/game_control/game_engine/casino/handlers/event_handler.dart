@@ -20,6 +20,46 @@ class EventHandler {
     return [fromHandtoTable];
   }
 
+ 
+ static List<CardMoveEvent> generateTakeCardEvents(TakeCardAction a) {
+  final Zone hand = Zone(
+    type: ZoneType.playerHand,
+    holderId: a.performedById,
+  );
+
+  final Zone table = Zone(
+    type: ZoneType.table,
+    holderId: ZoneType.table.name,
+  );
+
+  final Zone captured = Zone(
+    type: ZoneType.playerDeck,
+    holderId: a.performedById,
+  );
+
+  final handToCaptured = CardMoveEvent(
+    id: _uuid.v4().substring(0, 8),
+    from: hand,
+    to: captured,
+    card: a.usedCard,
+    performedBy: a.performedById,
+  );
+
+  final tableToCaptured = CardMoveEvent(
+    id: _uuid.v4().substring(0, 8),
+    from: table,
+    to: captured,
+    card: a.targetCard,
+    performedBy: a.performedById,
+  );
+
+  return [
+    handToCaptured,
+    tableToCaptured,
+  ];
+}
+ 
+ 
   static List<CardMoveEvent> generateDealToHandEvent(
     List<PlayingCardModel> cards,
     String pid,

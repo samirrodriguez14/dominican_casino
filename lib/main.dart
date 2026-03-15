@@ -8,7 +8,7 @@ import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/felt_walnut_theme.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
-import 'package:dominican_casino/view_models/games/games_view_model.dart';
+import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:dominican_casino/view_models/home_view_model.dart';
 import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';
