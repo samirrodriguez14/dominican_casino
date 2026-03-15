@@ -56,6 +56,25 @@ class CasinoRulesHandler {
         ),
       );
     }
+    if (canPairAllAction(gameState, currentCardSelection)) {
+      available.add(
+        PairCardsAction(
+          usedCard: currentCardSelection.selectedCard!,
+          targetCards: currentCardSelection.selectedCards,
+          targetStacks: currentCardSelection.selectedStacks,
+          performedById: performedBy,
+        ),
+      );
+    }
+    if (canPairAllTableAction(gameState, currentCardSelection)) {
+      available.add(
+        PairTableCardsAction(
+          targetCards: currentCardSelection.selectedCards,
+          targetStacks: currentCardSelection.selectedStacks,
+          performedById: performedBy,
+        ),
+      );
+    }
 
     return available;
   }
@@ -77,6 +96,10 @@ class CasinoRulesHandler {
         return canTakeCard(gameState, currentCardSelection);
       case TakeStackAction _:
         return canTakeStack(gameState, currentCardSelection);
+      case PairCardsAction _:
+        return canPairAllAction(gameState, currentCardSelection);
+      case PairTableCardsAction _:
+        return canPairAllTableAction(gameState, currentCardSelection);
       default:
     }
     return false;
@@ -185,10 +208,6 @@ class CasinoRulesHandler {
     return false;
   }
 
-  static bool canAddAndPairAction() {
-    return true;
-  }
-
   static bool canAddTableAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
@@ -209,6 +228,109 @@ class CasinoRulesHandler {
         if (handVals.contains(t)) return true;
       }
     }
+    return false;
+  }
+
+  static bool canPairAllAction(
+    GameState gameState,
+    CurrentCardSelection currentCardSelection,
+  ) {
+    final selectedCard = currentCardSelection.selectedCard;
+    final selectedCards = currentCardSelection.selectedCards;
+    final selectedStacks = currentCardSelection.selectedStacks;
+    final pid = currentCardSelection.pid;
+
+    final myHandCards = gameState.hands[pid] ?? [];
+
+    if (gameState.currentTurnPlayerId != pid) {
+      return false;
+    }
+
+    if (selectedCard == null) {
+      return false;
+    }
+
+    if (selectedCards.isEmpty && selectedStacks.isEmpty) {
+      return false;
+    }
+
+    final cardVals = possibleCardValues(selectedCard);
+    final handVals = possibleValuesInHand(myHandCards, selectedCard);
+
+    for (final v in cardVals) {
+      final allCardsMatch = selectedCards.every(
+        (c) => possibleValuesForTableCard(c).contains(v),
+      );
+
+      if (!allCardsMatch) continue;
+
+      final allStacksMatch = selectedStacks.every((s) => s.stackValue == v);
+
+      if (!allStacksMatch) continue;
+
+      if (handVals.contains(v)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  static bool canPairAllTableAction(
+    GameState gameState,
+    CurrentCardSelection currentCardSelection,
+  ) {
+    final selectedCard = currentCardSelection.selectedCard;
+    final selectedCards = currentCardSelection.selectedCards;
+    final selectedStacks = currentCardSelection.selectedStacks;
+    final pid = currentCardSelection.pid;
+
+    final myHandCards = gameState.hands[pid] ?? [];
+
+    if (gameState.currentTurnPlayerId != pid) {
+      return false;
+    }
+
+    // table-only pair
+    if (selectedCard != null) {
+      return false;
+    }
+
+    final totalSelected = selectedCards.length + selectedStacks.length;
+    if (totalSelected < 2) {
+      return false;
+    }
+
+    final handVals = possibleValuesInHand(myHandCards, null);
+
+    final sets = <Set<int>>[];
+
+    for (final card in selectedCards) {
+      sets.add(possibleValuesForTableCard(card));
+    }
+
+    for (final stack in selectedStacks) {
+      sets.add({stack.stackValue});
+    }
+
+    if (sets.isEmpty) {
+      return false;
+    }
+
+    final commonVals = intersectAll(sets);
+    if (commonVals.isEmpty) {
+      return false;
+    }
+
+    return commonVals.any(handVals.contains);
+  }
+
+  ///VALIDATE COMBO ACTIONS BASED ON CARD SELECTION AND GAMESTATE
+  static bool canAddAndPairAction() {
+    return false;
+  }
+
+  static bool canAddAndTakeAction() {
     return false;
   }
 

@@ -23,6 +23,8 @@ class EventHandler {
         return generateAddCardsEvents(a);
       case AddTableCardsAction a:
         return generateAddTableCardsEvent(a);
+      case PairCardsAction a:
+        return generatePairCardsEvent(a);
     }
     return [];
   }
@@ -166,6 +168,97 @@ class EventHandler {
         performedBy: a.performedById,
       );
       allEvents.add(targetTableToTable);
+    }
+
+    return allEvents;
+  }
+
+  static List<CardMoveEvent> generatePairCardsEvent(PairCardsAction a) {
+    final Zone hand = Zone(
+      type: ZoneType.playerHand,
+      holderId: a.performedById,
+    );
+
+    final Zone table = Zone(
+      type: ZoneType.table,
+      holderId: ZoneType.table.name,
+    );
+
+    final List<CardMoveEvent> allEvents = [];
+
+    // 1. Hand card goes to table
+    final handToTable = CardMoveEvent(
+      id: _uuid.v4().substring(0, 8),
+      from: hand,
+      to: table,
+      card: a.usedCard,
+      performedBy: a.performedById,
+    );
+    allEvents.add(handToTable);
+
+    // 2. Loose table cards reorganize into the pair
+    for (final card in a.targetCards) {
+      final tableToTable = CardMoveEvent(
+        id: _uuid.v4().substring(0, 8),
+        from: table,
+        to: table,
+        card: card,
+        performedBy: a.performedById,
+      );
+      allEvents.add(tableToTable);
+    }
+
+    // 3. Cards inside selected stacks reorganize into the pair
+    for (final stack in a.targetStacks) {
+      for (final card in stack.cards) {
+        final stackToTable = CardMoveEvent(
+          id: _uuid.v4().substring(0, 8),
+          from: table,
+          to: table,
+          card: card,
+          performedBy: a.performedById,
+        );
+        allEvents.add(stackToTable);
+      }
+    }
+
+    return allEvents;
+  }
+
+  static List<CardMoveEvent> generatePairTableCardsEvent(
+    PairTableCardsAction a,
+  ) {
+    final Zone table = Zone(
+      type: ZoneType.table,
+      holderId: ZoneType.table.name,
+    );
+
+    final List<CardMoveEvent> allEvents = [];
+
+    // Loose table cards reorganize into the pair
+    for (final card in a.targetCards) {
+      final tableToTable = CardMoveEvent(
+        id: _uuid.v4().substring(0, 8),
+        from: table,
+        to: table,
+        card: card,
+        performedBy: a.performedById,
+      );
+      allEvents.add(tableToTable);
+    }
+
+    // Cards inside selected stacks reorganize into the new pair
+    for (final stack in a.targetStacks) {
+      for (final card in stack.cards) {
+        final stackToTable = CardMoveEvent(
+          id: _uuid.v4().substring(0, 8),
+          from: table,
+          to: table,
+          card: card,
+          performedBy: a.performedById,
+        );
+        allEvents.add(stackToTable);
+      }
     }
 
     return allEvents;

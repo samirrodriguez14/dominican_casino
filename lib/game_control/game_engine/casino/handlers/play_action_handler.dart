@@ -20,14 +20,14 @@ class CasinoPlayActionHandler {
         return handleTakeCardAction(nextState, a);
       case TakeStackAction a:
         return handleTakeStackAction(nextState, a);
-
       case AddCardsAction a:
         return handleAddCardsAction(nextState, a);
-
       case AddTableCardsAction a:
         return handleAddTableCardsAction(nextState, a);
       case PairCardsAction a:
-        return CasinoPlayActionHandler.handlePairCardsAction(nextState, a);
+        return handlePairCardsAction(nextState, a);
+      case PairTableCardsAction a:
+        return handlePairTableCardsAction(nextState, a);
     }
     return nextState;
   }
@@ -126,8 +126,87 @@ class CasinoPlayActionHandler {
     return g;
   }
 
-  static GameState handlePairCardsAction(GameState g, PlayAction a) {
-    throw UnimplementedError();
+  static GameState handlePairCardsAction(GameState g, PairCardsAction a) {
+    final pid = a.performedById;
+    final usedCard = a.usedCard;
+
+    final pairCards = <PlayingCardModel>[];
+
+    // remove used card from player's hand
+    g.hands[pid]?.removeWhere((c) => c == usedCard);
+
+    // the used card becomes part of the pair stack
+    pairCards.add(usedCard);
+
+    // remove selected loose cards from table
+    for (final card in a.targetCards) {
+      g.playingArea.removeWhere((c) => c == card);
+      pairCards.add(card);
+    }
+
+    // remove selected stacks from table and merge their cards
+    for (final stack in a.targetStacks) {
+      g.playingAreaStacks.removeWhere((s) => s == stack);
+      pairCards.addAll(stack.cards);
+    }
+
+    final newStack = PlayingAreaStackModel(
+      cards: pairCards,
+      stackValue: a.usedCard.valueHigh,
+      paired: true,
+      id: _uuid.v4().substring(0, 8),
+    );
+
+    g.playingAreaStacks.add(newStack);
+
+    return g;
+  }
+
+  static GameState handlePairTableCardsAction(
+    GameState g,
+    PairTableCardsAction a,
+  ) {
+    final pairCards = <PlayingCardModel>[];
+
+    // remove selected loose cards from table
+    for (final card in a.targetCards) {
+      g.playingArea.removeWhere((c) => c == card);
+      pairCards.add(card);
+    }
+
+    // remove selected stacks from table and merge their cards
+    for (final stack in a.targetStacks) {
+      g.playingAreaStacks.removeWhere((s) => s == stack);
+      pairCards.addAll(stack.cards);
+    }
+
+    // determine pair value from the selection
+    final pairValue = _resolvePairTableValue(a);
+
+    final newStack = PlayingAreaStackModel(
+      cards: pairCards,
+      stackValue: pairValue,
+      paired: true,
+      id: _uuid.v4().substring(0, 8),
+    );
+
+    g.playingAreaStacks.add(newStack);
+
+    return g;
+  }
+
+  static int _resolvePairTableValue(PairTableCardsAction a) {
+    if (a.targetStacks.isNotEmpty) {
+      return a.targetStacks.first.stackValue;
+    }
+
+    if (a.targetCards.isNotEmpty) {
+      return a.targetCards.first.valueHigh;
+    }
+
+    throw Exception(
+      'PairTableCardsAction requires targetCards or targetStacks.',
+    );
   }
 
   static int _calculateStackValue(List<PlayingCardModel> cards) {
