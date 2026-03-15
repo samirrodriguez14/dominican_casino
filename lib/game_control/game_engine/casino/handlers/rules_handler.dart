@@ -442,7 +442,7 @@ class CasinoRulesHandler {
       return false;
     }
 
-    if (selectedCards.isEmpty) {
+    if (selectedCards.length < 2) {
       return false;
     }
 
