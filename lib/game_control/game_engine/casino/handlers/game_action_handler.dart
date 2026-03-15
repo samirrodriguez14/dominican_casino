@@ -5,7 +5,6 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/services/game_service.dart';
 
 class CasinoGameActionHandler {
-
   static Future<void> handleGameAction(
     GameService gameService,
     GameState gameState,
@@ -28,7 +27,7 @@ class CasinoGameActionHandler {
           pid,
         );
         await gameService.updateGame(newGameState);
-
+        break;
       case InGameAction.dealSame:
         final newGameState = _dealSameAction(gameState, pid);
         await gameService.updateGame(newGameState);
@@ -89,16 +88,21 @@ class CasinoGameActionHandler {
     // for (var entry in gameState.roundReady.entries) {
     //   allReady = entry.value;
     // }
-    bool handsEmpty = true;
+    int maxPlayers = 2;
+    List<bool> handsEmptyVals = [];
     for (var entry in gameState.hands.entries) {
-      handsEmpty = entry.value.isEmpty;
+      handsEmptyVals.add(entry.value.isEmpty);
     }
-    bool allJoined = false;
+    bool handsEmpty = handsEmptyVals.every((v) => v);
+
+    List<bool> allJoinedVals = [];
     if (gameState.playersInfo != null) {
       for (var entry in gameState.playersInfo!.entries) {
-        allJoined = entry.key != "";
+        allJoinedVals.add(entry.key != "");
       }
     }
+    bool allJoined =
+        allJoinedVals.length >= maxPlayers && allJoinedVals.every((v) => v);
     if (!gameState.started) {
       if (allJoined && gameState.controllerId == pid) {
         return InGameAction.start;
@@ -111,25 +115,27 @@ class CasinoGameActionHandler {
       }
     }
     if (gameState.started) {
-      if (handsEmpty && gameState.controllerId == pid) {
-        if (gameState.deck.length == 52) {
-          //DEAL NEW HAND
-          return InGameAction.deal;
+      if (handsEmpty) {
+        if (gameState.controllerId == pid) {
+          if (gameState.deck.length == 52) {
+            //DEAL NEW HAND
+            return InGameAction.deal;
+          }
+          if (gameState.deck.length < 52 && gameState.deck.isNotEmpty) {
+            //DEAl SAME HAND
+            return InGameAction.dealSame;
+          }
         }
-        if (gameState.deck.length < 52) {
-          //DEAl SAME HAND
-          return InGameAction.dealSame;
+        if (gameState.roundReady[pid] != null && !gameState.roundReady[pid]!) {
+          //SET STATUS READY
+          return InGameAction.setReady;
         }
+        return InGameAction.waiting;
       }
       if (!handsEmpty) {
         return InGameAction.noAction;
       }
-      if (gameState.roundReady[pid] != null && !gameState.roundReady[pid]!) {
-        //SET STATUS READY
-        return InGameAction.setReady;
-      }
     }
     return InGameAction.noAction;
   }
-
 }

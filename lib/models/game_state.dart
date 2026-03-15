@@ -44,7 +44,7 @@ class GameState {
   final GameMode gameMode;
   final GameStatus gameStatus;
   final String id;
-  final String controllerId;
+  String controllerId;
   bool started;
   String? currentTurnPlayerId;
   List<CardMoveEvent> cardMoveEvents = [];
@@ -55,16 +55,16 @@ class GameState {
   final Map<String, List<PlayingCardModel>> hands;
   final Map<String, List<PlayingCardModel>> playersDeck;
   final Map<String, dynamic> scores;
-  final int extraPoints;
-  final String extraPointsHolderId;
+   int extraPoints;
+   String extraPointsHolderId;
   final String lastTookCardId;
   final String? player1;
   final String? player2;
   final Map<String, dynamic>? playersInfo;
-  final String? winnerId;
-  final Round? round;
-  final int roundIndex;
-  final RoundStatus roundStatus;
+   String? winnerId;
+  Round? round;
+  int roundIndex;
+  RoundStatus roundStatus;
   final Map<String, bool> roundReady;
   final Map<String, dynamic> roundScores;
 
@@ -85,7 +85,7 @@ class GameState {
     required this.playersDeck,
     required this.lastTookCardId,
     required this.cardMoveEvents,
-    required this.round,
+    this.round,
     this.winnerId,
     this.player1,
     this.player2,
@@ -125,7 +125,7 @@ class GameState {
     'player1': player1,
     'player2': player2,
     'winnerId': winnerId,
-    'round': round?.toJson(),
+    'round': null,
     'roundIndex': roundIndex,
     'roundStatus': roundStatusTo(roundStatus),
     'roundReady': roundReady,
@@ -167,7 +167,7 @@ class GameState {
           .map((e) => PlayingCardModel.fromMap(Map<String, dynamic>.from(e)))
           .toList();
     });
-    final round = Round.fromJson(m['round']);
+    // final round = Round.fromJson(m['round']);
 
     final roundIndex = (m['roundIndex'] as int?) ?? 1;
     final roundStatus = roundStatusFrom(m['roundStatus'] as String?);
@@ -205,7 +205,7 @@ class GameState {
       winnerId: m['winnerId'] as String?,
       extraPoints: m['extraPoints'],
       extraPointsHolderId: m['extraPointsHolderId'],
-      round: round,
+      round: null,
       roundIndex: roundIndex,
       roundStatus: roundStatus,
       roundReady: roundReady,

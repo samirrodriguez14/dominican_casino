@@ -21,7 +21,7 @@ class GameHandler2 {
     final doc = _games.doc(id);
 
     await doc.set({
-      'gameStatus': GameStatus.waitingForPlayers,
+      'gameStatus': GameStatus.waitingForPlayers.name,
       'gameMode': mode.name,
       'id': id,
       'cardMoveEvents': [],

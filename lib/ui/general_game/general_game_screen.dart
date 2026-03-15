@@ -168,11 +168,6 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     _isAnimating = true;
 
     for (final event in newEvents) {
-      vm.hiddenCardIds.add(event.card.id);
-    }
-    vm.notifyListeners();
-
-    for (final event in newEvents) {
       vm.lastPlayedIds.add(event.id);
       await _playEvent(event);
       vm.hiddenCardIds.remove(event.card.id);
@@ -198,12 +193,11 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       fromKey: fromKey,
       toKey: toKey,
       beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
-      cardWidth: 46,
-      cardHeight: 64,
+      cardWidth: 55,
       child: AnimatedMoveCard(
         card: event.card,
         faceUp: shouldShowFrontForEvent(event),
-        width: 46,
+        width: 55,
       ),
     );
   }
@@ -218,8 +212,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         event.to.type == ZoneType.stack) {
       return true;
     }
-    if (event.from.type == ZoneType.playerHand &&
-        event.from.holderId == myPid) {
+    if (event.from.type == ZoneType.playerHand) {
       return true;
     }
     if (event.to.type == ZoneType.playerHand && event.to.holderId == myPid) {
@@ -228,5 +221,3 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     return false;
   }
 }
-
-

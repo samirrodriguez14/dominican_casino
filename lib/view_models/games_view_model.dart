@@ -19,7 +19,7 @@ class GamesViewModel extends ChangeNotifier {
       }
       developer.log("game $gid, player $pid");
     } catch (e) {
-      developer.log("Error");
+      developer.log("Error Creating Game");
     }
     return null;
   }

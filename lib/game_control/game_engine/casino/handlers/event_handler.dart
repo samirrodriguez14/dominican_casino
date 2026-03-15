@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 
 class EventHandler {
   static final Uuid _uuid = const Uuid();
-  
+
   static List<CardMoveEvent> generatePlayEvents(PlayCardAction a) {
     Zone from = Zone(type: ZoneType.playerHand, holderId: a.performedById);
     Zone to = Zone(type: ZoneType.table, holderId: ZoneType.table.name);
@@ -20,54 +20,41 @@ class EventHandler {
     return [fromHandtoTable];
   }
 
- 
-static List<CardMoveEvent> generateTakeCardEvents(TakeCardAction a) {
-  final Zone hand = Zone(
-    type: ZoneType.playerHand,
-    holderId: a.performedById,
-  );
+  static List<CardMoveEvent> generateTakeCardEvents(TakeCardAction a) {
+    final Zone hand = Zone(
+      type: ZoneType.playerHand,
+      holderId: a.performedById,
+    );
 
-  final Zone table = Zone(
-    type: ZoneType.table,
-    holderId: ZoneType.table.name,
-  );
+    final Zone table = Zone(
+      type: ZoneType.table,
+      holderId: ZoneType.table.name,
+    );
 
-  final Zone captured = Zone(
-    type: ZoneType.playerDeck,
-    holderId: a.performedById,
-  );
+    final Zone captured = Zone(
+      type: ZoneType.playerDeck,
+      holderId: a.performedById,
+    );
 
-  final handToTable = CardMoveEvent(
-    id: _uuid.v4().substring(0, 8),
-    from: hand,
-    to: table,
-    card: a.usedCard,
-    performedBy: a.performedById,
-  );
+    final playedTableToCaptured = CardMoveEvent(
+      id: _uuid.v4().substring(0, 8),
+      from: hand,
+      to: captured,
+      card: a.usedCard,
+      performedBy: a.performedById,
+    );
 
-  final playedTableToCaptured = CardMoveEvent(
-    id: _uuid.v4().substring(0, 8),
-    from: table,
-    to: captured,
-    card: a.usedCard,
-    performedBy: a.performedById,
-  );
+    final targetTableToCaptured = CardMoveEvent(
+      id: _uuid.v4().substring(0, 8),
+      from: table,
+      to: captured,
+      card: a.targetCard,
+      performedBy: a.performedById,
+    );
 
-  final targetTableToCaptured = CardMoveEvent(
-    id: _uuid.v4().substring(0, 8),
-    from: table,
-    to: captured,
-    card: a.targetCard,
-    performedBy: a.performedById,
-  );
+    return [targetTableToCaptured, playedTableToCaptured];
+  }
 
-  return [
-    handToTable,
-    playedTableToCaptured,
-    targetTableToCaptured,
-  ];
-}
- 
   static List<CardMoveEvent> generateDealToHandEvent(
     List<PlayingCardModel> cards,
     String pid,

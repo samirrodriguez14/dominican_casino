@@ -26,30 +26,20 @@ class CasinoGameEngine extends GameEngine {
     CurrentCardSelection currentCardSelection,
     PlayAction action,
   ) async {
-    if (!validateAction(gameState,currentCardSelection, action)) {
+    if (!validateAction(gameState, currentCardSelection, action)) {
       throw Exception("Invalid Move");
     }
     if (!validateTurn(gameState, action)) {
       throw Exception("Not your turn");
     }
-    switch (action) {
-      case PlayCardAction a:
-        return await CasinoPlayActionHandler.handlePlayCardAction(
-          gameState,
-          gameService,
-          a,
-        );
-      case TakeCardAction a:
-        return await CasinoPlayActionHandler.handleTakeCardAction(gameState, gameService, a);
-      case AddCardsAction a:
-        return await CasinoPlayActionHandler.handleAddCardsAction(gameState, a);
-      case PairCardsAction a:
-        return await CasinoPlayActionHandler.handlePairCardsAction(
-          gameState,
-          a,
-        );
-    }
-    throw Exception("Action Type Error: Doesn't exist");
+    gameState = CasinoPlayActionHandler.handleAction(
+      gameState,
+      action,
+      currentCardSelection,
+    );
+    //SEND CHANGES
+    final nextgameState = await gameService.updateGame(gameState);
+    return nextgameState;
   }
 
   //FORWARD TO VALIDATE ACTION ON GAME RULE
@@ -59,7 +49,11 @@ class CasinoGameEngine extends GameEngine {
     CurrentCardSelection currentCardSelection,
     PlayAction action,
   ) {
-    return CasinoRulesHandler.validateAction(gameState, currentCardSelection, action);
+    return CasinoRulesHandler.validateAction(
+      gameState,
+      currentCardSelection,
+      action,
+    );
   }
 
   bool validateTurn(GameState gameState, PlayAction action) {

@@ -55,17 +55,10 @@ class _GenGameControlState extends State<GenGameControl> {
 
   Function() actionAction(InGameAction action, GeneralGameViewModel vm) {
     switch (action) {
-      case InGameAction.start:
-        return () => vm.performInGameAction(action);
       case InGameAction.share:
         return () => _shareAction(vm.gid);
-      case InGameAction.deal:
+      default:
         return () => vm.performInGameAction(action);
-      case InGameAction.dealSame:
-      case InGameAction.setReady:
-      case InGameAction.waiting:
-      case InGameAction.noAction:
-        return () => {};
     }
   }
 
