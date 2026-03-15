@@ -44,6 +44,10 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: vm.myHandCards.map((c) {
+                        if (vm.animatingCardIds.contains(c.id)) {
+                          return SizedBox();
+                        }
+
                         final isSelected = vm.selectedCard == c;
                         return Padding(
                           padding: const EdgeInsets.only(right: 5),
@@ -56,7 +60,6 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                                   : Matrix4.identity(),
                               child: PlayingCard(
                                 key: vm.keyForCard(c.id),
-
                                 playingCardModel: c,
                                 width: 90,
                                 isSelected: isSelected,

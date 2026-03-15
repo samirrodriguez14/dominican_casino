@@ -168,14 +168,17 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     _isAnimating = false;
   }
 
-  Future<void> _playEvent(CardMoveEvent event) async {
-    final myPid = vm.me;
+Future<void> _playEvent(CardMoveEvent event) async {
+  final myPid = vm.me;
+  final toKey = vm.keyForZone(event.to);
 
-    final fromKey = vm.keyForZone(event.from);
-    final toKey = vm.keyForZone(event.to);
+  if (toKey == null) return;
+
   final cardKey = vm.keyForCard(event.card.id);
 
-    if (fromKey == null || toKey == null) return;
+  if (cardKey.currentContext != null) {
+    vm.animatingCardIds.add(event.card.id);
+    vm.notifyListeners();
 
     await CardMoveAnimator.animateExistingCard(
       context: context,
@@ -183,12 +186,23 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       cardKey: cardKey,
       toKey: toKey,
       beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
-      overlayCard: PlayingCard(
-        
-        key: vm.keyForCard(event.card.id),
-        playingCardModel: event.card,
-        isSelected: false,
-      ),
+      overlayCard: PlayingCard( playingCardModel: event.card, isSelected: false,),
     );
+
+    vm.animatingCardIds.remove(event.card.id);
+    vm.notifyListeners();
+    return;
   }
+
+  final fromKey = vm.keyForZone(event.from);
+  if (fromKey == null) return;
+
+  await CardMoveAnimator.animateCardMove(
+    context: context,
+    vsync: this,
+    fromKey: fromKey,
+    toKey: toKey,
+    beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
+  );
+}
 }

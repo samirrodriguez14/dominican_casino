@@ -12,21 +12,22 @@ class GenOpponentArea extends StatefulWidget {
 }
 
 class GenOpponentAreaState extends State<GenOpponentArea> {
-
-  bool get highlightTurn => context.select((GeneralGameViewModel vm) => !vm.isMyTurn);
+  bool get highlightTurn =>
+      context.select((GeneralGameViewModel vm) => !vm.isMyTurn);
   String? get opp => context.select((GeneralGameViewModel vm) => vm.opp);
   // Player? get oppInfo => context.select((GeneralGameViewModel vm) => vm.oppInfo);
   int get deckCount =>
       context.select((GeneralGameViewModel vm) => vm.oppHandCard.length);
   int get score => context.select((GeneralGameViewModel vm) => 0);
 
-  int get extraPoints =>
-      context.select((GeneralGameViewModel vm) => 0);
+  int get extraPoints => context.select((GeneralGameViewModel vm) => 0);
   List<PlayingCardModel> get collectedCards =>
       context.select((GeneralGameViewModel vm) => vm.oppCollectedCards);
 
   @override
   Widget build(BuildContext context) {
+    GeneralGameViewModel vm = context.read<GeneralGameViewModel>();
+
     bool opponentJoined = opp != null && opp != "";
 
     return Container(
@@ -41,9 +42,7 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            opponentJoined
-                ? "Opponent: ..."
-                : "Waiting for opponent...",
+            opponentJoined ? "Opponent: ..." : "Waiting for opponent...",
             style: AppStyle.theme.mutedText,
           ),
           const SizedBox(height: 8),
@@ -51,17 +50,19 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
           AppStyle.theme.dottedBox(
             child: SizedBox(
               height: 80, // reserve card height
-              child:
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        deckCount,
-                        (index) => Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: PlayingCardBack(width: 55),
-                        ),
-                      ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  deckCount,
+                  (index) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: PlayingCardBack(
+                      key: vm.keyForCard(vm.oppHandCard[index].id),
+                      width: 55,
                     ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
