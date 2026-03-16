@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/game_pill_data.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -22,6 +23,8 @@ class GamePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final joined = game.containsPlayer(myPid);
     final myTurn = game.isMyTurn(myPid);
+    final isGameOver = game.gameStatus == GameStatus.gameOver;
+    final didWin = game.winnerId == myPid;
 
     final bg = AppStyle.theme.surface;
     final border = joined
@@ -33,7 +36,7 @@ class GamePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: myTurn ? AppStyle.theme.border : bg,
+        color: myTurn && !isGameOver ? AppStyle.theme.border : bg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: border.withValues(alpha: 0.6)),
         boxShadow: const [
@@ -50,7 +53,7 @@ class GamePill extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (myTurn) ...[
+                if (myTurn && !isGameOver) ...[
                   Text("You're Up!", style: AppStyle.theme.title),
                   const SizedBox(height: 6),
                 ],
@@ -70,47 +73,50 @@ class GamePill extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Row(
-                children: [
-                  CupertinoButton(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+              if (isGameOver)
+                _resultTile(didWin)
+              else
+                Row(
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      color: AppStyle.theme.surfaceAlt,
+                      onPressed: onEnter,
+                      child: Text(enterLabel, style: AppStyle.theme.title),
                     ),
-                    color: AppStyle.theme.surfaceAlt,
-                    onPressed: onEnter,
-                    child: Text(enterLabel, style: AppStyle.theme.title),
-                  ),
-                  const SizedBox(width: 8),
-                  CupertinoButton(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
+                    const SizedBox(width: 8),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      color: AppStyle.theme.muted,
+                      onPressed: onShare,
+                      child: Icon(
+                        CupertinoIcons.share_up,
+                        size: 18,
+                        color: AppStyle.theme.border,
+                      ),
                     ),
-                    color: AppStyle.theme.muted,
-                    onPressed: onShare,
-                    child: Icon(
-                      CupertinoIcons.share_up,
-                      size: 18,
-                      color: AppStyle.theme.border,
+                    const SizedBox(width: 8),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      color: AppStyle.theme.danger,
+                      onPressed: joined ? onDelete : null,
+                      child: Icon(
+                        CupertinoIcons.trash,
+                        size: 18,
+                        color: AppStyle.theme.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  CupertinoButton(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    color: AppStyle.theme.danger,
-                    onPressed: joined ? onDelete : null,
-                    child: Icon(
-                      CupertinoIcons.trash,
-                      size: 18,
-                      color: AppStyle.theme.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
 
               const SizedBox(height: 6),
 
@@ -119,7 +125,6 @@ class GamePill extends StatelessWidget {
                 children: [
                   Text("ID: ${game.id}", style: AppStyle.theme.mutedText),
                   const SizedBox(width: 10),
-
                   _modeBadge(),
                 ],
               ),
@@ -141,6 +146,30 @@ class GamePill extends StatelessWidget {
         ),
       ),
       child: Text(game.gameMode.name, style: AppStyle.theme.mutedText),
+    );
+  }
+
+  Widget _resultTile(bool didWin) {
+    final statusColor = didWin
+        ? AppStyle.theme.turnHighlight
+        : CupertinoColors.systemRed;
+
+    return Container(
+      width: 42,
+      height: 42,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: statusColor),
+      ),
+      child: Text(
+        didWin ? "W" : "L",
+        style: AppStyle.theme.title.copyWith(
+          fontSize: 18,
+          color: statusColor,
+        ),
+      ),
     );
   }
 

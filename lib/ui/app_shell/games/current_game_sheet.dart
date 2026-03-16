@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/game_pill_data.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
@@ -167,7 +168,8 @@ class _CurrentGamesBody extends StatelessWidget {
             if (!ok) return;
             await vm.deleteGame(g.id);
           },
-          onShare: () async {
+          onShare:g.gameStatus ==GameStatus.waitingForPlayers?
+           () async {
             final link = "https://dominican-casino.web.app/join/${g.id}";
             final message =
                 '''
@@ -176,7 +178,7 @@ class _CurrentGamesBody extends StatelessWidget {
                 ''';
 
             await SharePlus.instance.share(ShareParams(text: message));
-          },
+          }: ()=>{},
         );
       },
     );

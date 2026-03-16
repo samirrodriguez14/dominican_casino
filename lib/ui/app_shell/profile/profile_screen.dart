@@ -1,12 +1,29 @@
-import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/profile/game_history.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final vm = context.read<ProfileViewModel>();
+      final pid = vm.player?.id;
+      if (pid != null) {
+        vm.startListening(pid);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,10 +41,7 @@ class ProfileScreen extends StatelessWidget {
                   alignment: Alignment.bottomRight,
                   children: const [
                     ClipOval(
-                      child: Icon(
-                        CupertinoIcons.profile_circled,
-                        size: 150,
-                      ),
+                      child: Icon(CupertinoIcons.profile_circled, size: 150),
                     ),
                     Icon(CupertinoIcons.pencil_circle, size: 50),
                   ],
@@ -51,7 +65,10 @@ class ProfileScreen extends StatelessWidget {
             snap: true,
             snapSizes: const [0.15, 0.8],
             builder: (context, scrollController) {
-              return _GameHistorySheet(scrollController: scrollController);
+              return _GameHistorySheet(
+                scrollController: scrollController,
+                vm: vm,
+              );
             },
           ),
         ],
@@ -61,8 +78,8 @@ class ProfileScreen extends StatelessWidget {
 }
 
 class _GameHistorySheet extends StatelessWidget {
-  const _GameHistorySheet({required this.scrollController});
-
+  const _GameHistorySheet({required this.scrollController, required this.vm});
+  final ProfileViewModel vm;
   final ScrollController scrollController;
 
   @override
@@ -95,10 +112,7 @@ class _GameHistorySheet extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          Text(
-            "Game History",
-            style: AppStyle.theme.mutedText,
-          ),
+          Text("Game History", style: AppStyle.theme.mutedText),
 
           const SizedBox(height: 10),
 
@@ -106,17 +120,11 @@ class _GameHistorySheet extends StatelessWidget {
             child: ListView.separated(
               controller: scrollController,
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-              itemCount: 8,
+              itemCount: vm.games.length,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
-                final won = i % 2 == 0;
-                final mode = GameMode.values[i % GameMode.values.length];
-
-                return GameHistoryTile(
-                  opponent: "Opponent ${i + 1}",
-                  mode: mode,
-                  won: won,
-                );
+                
+                return GamePill(game: vm.games[i], myPid: vm.player?.id ?? "");
               },
             ),
           ),
@@ -136,19 +144,19 @@ Widget _buildNameSelectionButton(ProfileViewModel vm) {
       children: [
         Icon(CupertinoIcons.person, size: 30, color: AppStyle.theme.border),
         const SizedBox(width: 8),
-        Text(vm.name, style: AppStyle.theme.body.copyWith(fontSize: 24)),
+        Text(
+          vm.player?.name ?? "",
+          style: AppStyle.theme.body.copyWith(fontSize: 24),
+        ),
         const SizedBox(width: 6),
         Icon(CupertinoIcons.pencil, size: 30, color: AppStyle.theme.muted),
       ],
     ),
   );
-
-
-
 }
 
 Future<void> _changeName(BuildContext context, ProfileViewModel vm) async {
-  final controller = TextEditingController(text: vm.name);
+  final controller = TextEditingController(text: vm.player?.name);
 
   final newName =
       await showCupertinoDialog<String>(
@@ -157,9 +165,10 @@ Future<void> _changeName(BuildContext context, ProfileViewModel vm) async {
           return _showCupertinoDialog(context, controller);
         },
       ) ??
-      vm.name;
+      vm.player?.name ??
+      "";
 
-  if (newName != vm.name) {
+  if (newName != vm.player?.name) {
     await vm.updatePlayerName(newName);
   }
 }

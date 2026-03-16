@@ -46,7 +46,7 @@ void startListening(String pid) {
 
   _sub = _appRepo.fs.listenGames(pid).listen(
     (list) {
-      games = list;
+      games = list.where((g) => g.gameStatus != GameStatus.gameOver).toList();
       loading = false;
       error = null;
       notifyListeners();
