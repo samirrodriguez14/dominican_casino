@@ -156,7 +156,8 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   Future<void> leaveGame() async {
     gameState.cardMoveEvents = [];
-    await gameRepo.fs.deleteGame(gameState.id);
+    gameState.gameStatus = GameStatus.gameOver;
+    await gameRepo.fs.updateGame(gameState);
     notifyListeners();
   }
 
