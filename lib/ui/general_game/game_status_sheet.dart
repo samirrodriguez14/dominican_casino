@@ -18,7 +18,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     final vm = context.watch<GeneralGameViewModel>();
     final gameState = vm.gameState;
 
-    final playerIds = (gameState.playersInfo?.keys ?? <String>[]).toList();
+    final playerIds = (gameState.playersInfo.keys).toList();
     final totalScores = gameState.scores;
     final roundScores = gameState.round.roundScores;
 
@@ -106,30 +106,36 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                                     spacing: 8,
                                     runSpacing: 8,
                                     children: [
-                                      _MiniScoreChip(
-                                        label: "A",
-                                        value: "${scoreMap['A'] ?? 0}",
-                                      ),
-                                      _MiniScoreChip(
-                                        label: "2♠",
-                                        value: "${scoreMap['2♠'] ?? 0}",
-                                      ),
-                                      _MiniScoreChip(
-                                        label: "10♦",
-                                        value: "${scoreMap['10♦'] ?? 0}",
-                                      ),
-                                      _MiniScoreChip(
-                                        label: "Pi",
-                                        value: "${scoreMap['pi'] ?? 0}",
-                                      ),
-                                      _MiniScoreChip(
-                                        label: "Carta",
-                                        value: "${scoreMap['carta'] ?? 0}",
-                                      ),
-                                      _MiniScoreChip(
-                                        label: "Virao",
-                                        value: "${scoreMap['virao'] ?? 0}",
-                                      ),
+                                      if (scoreMap['A'] != 0)
+                                        _MiniScoreChip(
+                                          label: "A",
+                                          value: "${scoreMap['A'] ?? 0}",
+                                        ),
+                                      if (scoreMap['2♠'] != 0)
+                                        _MiniScoreChip(
+                                          label: "2♠",
+                                          value: "${scoreMap['2♠'] ?? 0}",
+                                        ),
+                                      if (scoreMap['10♦'] != 0)
+                                        _MiniScoreChip(
+                                          label: "10♦",
+                                          value: "${scoreMap['10♦'] ?? 0}",
+                                        ),
+                                      if (scoreMap['pi'] != 0)
+                                        _MiniScoreChip(
+                                          label: "Pi",
+                                          value: "${scoreMap['pi'] ?? 0}",
+                                        ),
+                                      if (scoreMap['carta'] != 0)
+                                        _MiniScoreChip(
+                                          label: "Carta",
+                                          value: "${scoreMap['carta'] ?? 0}",
+                                        ),
+                                      if (scoreMap['virao'] != 0)
+                                        _MiniScoreChip(
+                                          label: "Virao",
+                                          value: "${scoreMap['virao'] ?? 0}",
+                                        ),
                                       _MiniScoreChip(
                                         label: "Total",
                                         value: "${scoreMap['total'] ?? 0}",

@@ -10,6 +10,7 @@ import 'package:flutter/cupertino.dart';
 class GameRepo extends ChangeNotifier {
   GameState? gameState;
   final FirestoreService fs;
+  Set<String> lastPlayedIds = {};
   StreamSubscription<GameState?>? _sub;
   GameRepo({required this.fs});
 

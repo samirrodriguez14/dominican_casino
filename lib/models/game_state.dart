@@ -61,7 +61,7 @@ class GameState {
   String lastTookCardId;
   final String? player1;
   final String? player2;
-  final Map<String, dynamic>? playersInfo;
+  final Map<String, dynamic> playersInfo;
   String? winnerId;
   Round round;
 

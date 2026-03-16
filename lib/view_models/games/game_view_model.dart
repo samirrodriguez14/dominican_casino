@@ -231,13 +231,6 @@ class GameViewModel extends ChangeNotifier {
         oppHandCardsTotal = g.hands[opp]?.length ?? 0;
         oppCollectedCards = g.playersDeck[opp] ?? [];
 
-        // round state
-        roundIndex = 0;//g.roundIndex;
-        roundStatus = RoundStatus.completed;// g.roundStatus;
-
-        roundReady = {}; //Map<String, bool>.from(g.roundReady);
-        roundScores = {};// Map<String, dynamic>.from(g.roundScores);
-
         _extraPoints = g.extraPoints;
         extraPointsHolderId = g.extraPointsHolderId;
 
@@ -246,7 +239,7 @@ class GameViewModel extends ChangeNotifier {
 
         final p1 = g.player1 ?? '';
         final p2 = g.player2 ?? '';
-        _oppInfo = Player.fromDto(g.playersInfo?[opp] ?? {});
+        _oppInfo = Player.fromDto(g.playersInfo[opp] ?? {});
         bothPlayersReady =
             (p1.isNotEmpty &&
             p2.isNotEmpty &&

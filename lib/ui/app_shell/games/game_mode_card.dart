@@ -94,11 +94,11 @@ class GameModeCard extends StatelessWidget {
     switch (mode) {
       case GameMode.tresydos:
         final gid = await vm.newGame(mode);
-        if (gid != null && context.mounted) context.go('/game/$gid');
+        if (gid != null && context.mounted) context.go('/gengame/$gid');
         break;
       case GameMode.casino:
         final gid = await vm.newGame(mode);
-        if (gid != null && context.mounted) context.go('/game/$gid');
+        if (gid != null && context.mounted) context.go('/gengame/$gid');
         break;
       case GameMode.robaito:
 

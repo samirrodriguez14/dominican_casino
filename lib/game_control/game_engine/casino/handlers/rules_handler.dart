@@ -30,6 +30,15 @@ class CasinoRulesHandler {
         ),
       );
     }
+    if (canAddStackAction(gameState, currentCardSelection)) {
+      available.add(
+        AddCardStackAction(
+          usedCard: currentCardSelection.selectedCard!,
+          targetStacks: currentCardSelection.selectedStacks,
+          performedById: performedBy,
+        ),
+      );
+    }
     if (canAddTableAction(gameState, currentCardSelection)) {
       available.add(
         AddTableCardsAction(
@@ -119,6 +128,8 @@ class CasinoRulesHandler {
         return canPlayAction(gameState, currentCardSelection);
       case AddCardsAction _:
         return canAddAction(gameState, currentCardSelection);
+      case AddCardStackAction _:
+        return canAddStackAction(gameState, currentCardSelection);
       case AddTableCardsAction _:
         return canAddTableAction(gameState, currentCardSelection);
       case TakeCardAction _:
@@ -238,6 +249,31 @@ class CasinoRulesHandler {
           }
         }
         return false;
+      }
+    }
+    return false;
+  }
+
+  static bool canAddStackAction(
+    GameState gameState,
+    CurrentCardSelection currentCardSelection,
+  ) {
+    final selectedCard = currentCardSelection.selectedCard;
+    final selectedCards = currentCardSelection.selectedCards;
+    final selectedStacks = currentCardSelection.selectedStacks;
+    final pid = currentCardSelection.pid;
+    final myHandCards = gameState.hands[pid] ?? [];
+    if (selectedCard != null) {
+      // values of the selectedCard (A => [1,14])
+      final cardVals = possibleCardValues(selectedCard);
+      // values in hand excluding selectedCard
+      final handVals = possibleValuesInHand(myHandCards, selectedCard);
+      // selectedCard + selectedCards(sum) must equal some other card in hand
+      if (selectedCards.isEmpty && selectedStacks.length == 1) {
+        for (final cv in cardVals) {
+          final needed = cv + selectedStacks[0].stackValue;
+          if (handVals.contains(needed)) return true;
+        }
       }
     }
     return false;

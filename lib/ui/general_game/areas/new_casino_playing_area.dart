@@ -36,7 +36,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Column(
-                  mainAxisAlignment: (vm.inGameAction != InGameAction.noAction)
+                  mainAxisAlignment: (vm.gameState.controllerId ==vm.me)
                       ? MainAxisAlignment.end
                       : MainAxisAlignment.start,
                   children: [
@@ -76,7 +76,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                         title: "Opp's Deck",
                         cardWidth: 55,
                         cards: vm.oppCollectedCards,
-                        extraPoints: 0, //vm.oppExtraPoints,
+                        extraPoints: vm.oppExtraPoints,
                         onTap: () {
                           HapticFeedback.mediumImpact();
                           showAppPopup(
@@ -96,7 +96,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                         title: 'My Deck',
                         cardWidth: 55,
                         cards: vm.myCollectedCards,
-                        extraPoints: 0, // vm.myExtraPoints,
+                        extraPoints: vm.myExtraPoints,
                         onTap: () {
                           HapticFeedback.mediumImpact();
                           showAppPopup(

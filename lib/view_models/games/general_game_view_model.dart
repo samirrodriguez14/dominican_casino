@@ -30,7 +30,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     try {
       final nextState = gameRepo.gameState!;
       final incomingEvents = nextState.cardMoveEvents
-          .where((e) => !lastPlayedIds.contains(e.id))
+          .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
           .toList();
 
       for (final event in incomingEvents) {
@@ -38,7 +38,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       }
 
       gameState = nextState;
-      HapticFeedback.mediumImpact();
+      HapticFeedback.heavyImpact();
 
       selectedCards = [];
       selectedCard = null;
@@ -83,6 +83,8 @@ class GeneralGameViewModel extends ChangeNotifier {
     return (me == gameState.player1) ? 'player1' : 'player2';
   }
 
+  int get myExtraPoints =>
+      (gameState.extraPointsHolderId == player.id) ? gameState.extraPoints : 0;
   bool get isMyTurn => gameState.currentTurnPlayerId == me;
 
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
@@ -93,8 +95,14 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   //      OPPONENTS HAND
   //      OPPONENTS COLLECTED CARDS
-  String? get opp =>
-      gameState.player1 == me ? gameState.player2 : gameState.player1;
+  String? get opp {
+    return (gameState.playersInfo.length > 1)
+        ? gameState.playersInfo.entries.firstWhere((p) => p.key != me).key
+        : null;
+  }
+
+  int get oppExtraPoints =>
+      opp == gameState.extraPointsHolderId ? gameState.extraPoints : 0;
 
   List<PlayingCardModel> get oppHandCard => gameState.hands[opp] ?? [];
   List<PlayingCardModel> get oppCollectedCards =>
@@ -146,7 +154,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   Future<void> leaveGame() async {
-    gameState.cardMoveEvents=[];
+    gameState.cardMoveEvents = [];
     await gameRepo.fs.leaveGame(gameState.id, me);
     notifyListeners();
   }
@@ -225,8 +233,6 @@ class GeneralGameViewModel extends ChangeNotifier {
   GlobalKey keyForCard(String cardId) {
     return cardKeys.putIfAbsent(cardId, () => GlobalKey());
   }
-
-  final Set<String> lastPlayedIds = {};
 
   final GlobalKey deckKey = GlobalKey();
   final GlobalKey tableKey = GlobalKey();

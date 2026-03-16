@@ -22,6 +22,8 @@ class CasinoPlayActionHandler {
         return handleTakeStackAction(nextState, a);
       case AddCardsAction a:
         return handleAddCardsAction(nextState, a);
+      case AddCardStackAction a:
+        return handleAddCardStackAction(nextState, a);
       case AddTableCardsAction a:
         return handleAddTableCardsAction(nextState, a);
       case PairCardsAction a:
@@ -98,6 +100,37 @@ class CasinoPlayActionHandler {
     for (final card in a.targetCards) {
       g.playingArea.removeWhere((c) => c == card);
       stackCards.add(card);
+    }
+
+    final newStack = PlayingAreaStackModel(
+      id: _uuid.v4().substring(0, 8),
+      cards: stackCards,
+      stackValue: _calculateStackValue(stackCards),
+      paired: false,
+    );
+
+    g.playingAreaStacks.add(newStack);
+
+    return g;
+  }
+
+  static GameState handleAddCardStackAction(GameState g, AddCardStackAction a) {
+    final pid = a.performedById;
+    final usedCard = a.usedCard;
+
+    final stackCards = <PlayingCardModel>[];
+
+    // remove used hand card
+    g.hands[pid]?.removeWhere((c) => c.id == usedCard.id);
+    stackCards.add(usedCard);
+
+    // remove selected table stacks
+    final targetStackIds = a.targetStacks.map((s) => s.id).toSet();
+    g.playingAreaStacks.removeWhere((s) => targetStackIds.contains(s.id));
+
+    // add cards from removed stacks
+    for (final stack in a.targetStacks) {
+      stackCards.addAll(stack.cards);
     }
 
     final newStack = PlayingAreaStackModel(

@@ -21,6 +21,8 @@ class EventHandler {
         return generateTakeStackEvents(a);
       case AddCardsAction a:
         return generateAddCardsEvents(a);
+      case AddCardStackAction a:
+        return generateAddCardStackEvents(a);
       case AddTableCardsAction a:
         return generateAddTableCardsEvents(a);
       case PairCardsAction a:
@@ -146,39 +148,79 @@ class EventHandler {
     );
     allEvents.add(playedTableToCaptured);
 
-    for (var card in a.targetCards) {
-      final targetTableToTable = CardMoveEvent(
-        id: _uuid.v4().substring(0, 8),
-        from: table,
-        to: table,
-        card: card,
-        performedBy: a.performedById,
-      );
-      allEvents.add(targetTableToTable);
-    }
+    // for (var card in a.targetCards) {
+    //   final targetTableToTable = CardMoveEvent(
+    //     id: _uuid.v4().substring(0, 8),
+    //     from: table,
+    //     to: table,
+    //     card: card,
+    //     performedBy: a.performedById,
+    //   );
+    //   allEvents.add(targetTableToTable);
+    // }
 
     return allEvents;
   }
 
+static List<CardMoveEvent> generateAddCardStackEvents(AddCardStackAction a) {
+  final Zone hand = Zone(
+    type: ZoneType.playerHand,
+    holderId: a.performedById,
+  );
+
+  final Zone table = Zone(
+    type: ZoneType.table,
+    holderId: ZoneType.table.name,
+  );
+
+  final List<CardMoveEvent> allEvents = [];
+
+  // used hand card -> table
+  final playedHandToTable = CardMoveEvent(
+    id: _uuid.v4().substring(0, 8),
+    from: hand,
+    to: table,
+    card: a.usedCard,
+    performedBy: a.performedById,
+  );
+  allEvents.add(playedHandToTable);
+
+  // // cards from stacks -> table (merge animation)
+  // for (final stack in a.targetStacks) {
+  //   for (final card in stack.cards) {
+  //     final stackCardToTable = CardMoveEvent(
+  //       id: _uuid.v4().substring(0, 8),
+  //       from: table,
+  //       to: table,
+  //       card: card,
+  //       performedBy: a.performedById,
+  //     );
+  //     allEvents.add(stackCardToTable);
+  //   }
+  // }
+
+  return allEvents;
+}
+
   static List<CardMoveEvent> generateAddTableCardsEvents(
     AddTableCardsAction a,
   ) {
-    final Zone table = Zone(
-      type: ZoneType.table,
-      holderId: ZoneType.table.name,
-    );
+    // final Zone table = Zone(
+    //   type: ZoneType.table,
+    //   holderId: ZoneType.table.name,
+    // );
 
     final List<CardMoveEvent> allEvents = [];
-    for (var card in a.targetCards) {
-      final targetTableToTable = CardMoveEvent(
-        id: _uuid.v4().substring(0, 8),
-        from: table,
-        to: table,
-        card: card,
-        performedBy: a.performedById,
-      );
-      allEvents.add(targetTableToTable);
-    }
+    // for (var card in a.targetCards) {
+    //   final targetTableToTable = CardMoveEvent(
+    //     id: _uuid.v4().substring(0, 8),
+    //     from: table,
+    //     to: table,
+    //     card: card,
+    //     performedBy: a.performedById,
+    //   );
+    //   allEvents.add(targetTableToTable);
+    // }
 
     return allEvents;
   }
@@ -207,30 +249,30 @@ class EventHandler {
     allEvents.add(handToTable);
 
     // 2. Loose table cards reorganize into the pair
-    for (final card in a.targetCards) {
-      final tableToTable = CardMoveEvent(
-        id: _uuid.v4().substring(0, 8),
-        from: table,
-        to: table,
-        card: card,
-        performedBy: a.performedById,
-      );
-      allEvents.add(tableToTable);
-    }
+    // for (final card in a.targetCards) {
+    //   final tableToTable = CardMoveEvent(
+    //     id: _uuid.v4().substring(0, 8),
+    //     from: table,
+    //     to: table,
+    //     card: card,
+    //     performedBy: a.performedById,
+    //   );
+    //   allEvents.add(tableToTable);
+    // }
 
-    // 3. Cards inside selected stacks reorganize into the pair
-    for (final stack in a.targetStacks) {
-      for (final card in stack.cards) {
-        final stackToTable = CardMoveEvent(
-          id: _uuid.v4().substring(0, 8),
-          from: table,
-          to: table,
-          card: card,
-          performedBy: a.performedById,
-        );
-        allEvents.add(stackToTable);
-      }
-    }
+    // // 3. Cards inside selected stacks reorganize into the pair
+    // for (final stack in a.targetStacks) {
+    //   for (final card in stack.cards) {
+    //     final stackToTable = CardMoveEvent(
+    //       id: _uuid.v4().substring(0, 8),
+    //       from: table,
+    //       to: table,
+    //       card: card,
+    //       performedBy: a.performedById,
+    //     );
+    //     allEvents.add(stackToTable);
+    //   }
+    // }
 
     return allEvents;
   }
@@ -238,38 +280,38 @@ class EventHandler {
   static List<CardMoveEvent> generatePairTableCardsEvents(
     PairTableCardsAction a,
   ) {
-    final Zone table = Zone(
-      type: ZoneType.table,
-      holderId: ZoneType.table.name,
-    );
+    // final Zone table = Zone(
+    //   type: ZoneType.table,
+    //   holderId: ZoneType.table.name,
+    // );
 
     final List<CardMoveEvent> allEvents = [];
 
     // Loose table cards reorganize into the pair
-    for (final card in a.targetCards) {
-      final tableToTable = CardMoveEvent(
-        id: _uuid.v4().substring(0, 8),
-        from: table,
-        to: table,
-        card: card,
-        performedBy: a.performedById,
-      );
-      allEvents.add(tableToTable);
-    }
+    // for (final card in a.targetCards) {
+    //   final tableToTable = CardMoveEvent(
+    //     id: _uuid.v4().substring(0, 8),
+    //     from: table,
+    //     to: table,
+    //     card: card,
+    //     performedBy: a.performedById,
+    //   );
+    //   allEvents.add(tableToTable);
+    // }
 
     // Cards inside selected stacks reorganize into the new pair
-    for (final stack in a.targetStacks) {
-      for (final card in stack.cards) {
-        final stackToTable = CardMoveEvent(
-          id: _uuid.v4().substring(0, 8),
-          from: table,
-          to: table,
-          card: card,
-          performedBy: a.performedById,
-        );
-        allEvents.add(stackToTable);
-      }
-    }
+    // for (final stack in a.targetStacks) {
+    //   for (final card in stack.cards) {
+    //     final stackToTable = CardMoveEvent(
+    //       id: _uuid.v4().substring(0, 8),
+    //       from: table,
+    //       to: table,
+    //       card: card,
+    //       performedBy: a.performedById,
+    //     );
+    //     allEvents.add(stackToTable);
+    //   }
+    // }
 
     return allEvents;
   }
@@ -300,16 +342,16 @@ class EventHandler {
     allEvents.add(handToTable);
 
     // 2. Cards that were selected as the add target reorganize
-    for (final card in a.targetCards) {
-      final tableToTable = CardMoveEvent(
-        id: _uuid.v4().substring(0, 8),
-        from: table,
-        to: table,
-        card: card,
-        performedBy: a.performedById,
-      );
-      allEvents.add(tableToTable);
-    }
+    // for (final card in a.targetCards) {
+    //   final tableToTable = CardMoveEvent(
+    //     id: _uuid.v4().substring(0, 8),
+    //     from: table,
+    //     to: table,
+    //     card: card,
+    //     performedBy: a.performedById,
+    //   );
+    //   allEvents.add(tableToTable);
+    // }
 
     // 3. Cards from the selected stack reorganize
     for (final stack in a.targetStacks) {
@@ -484,7 +526,7 @@ class EventHandler {
 
   static List<CardMoveEvent> generateSettleEndRoundEvents(GameState gameState) {
     final lastTaker = gameState.lastTookCardId.trim();
-    final playerIds = (gameState.playersInfo?.keys ?? <String>[])
+    final playerIds = (gameState.playersInfo.keys)
         .where((e) => e.trim().isNotEmpty)
         .toList();
 

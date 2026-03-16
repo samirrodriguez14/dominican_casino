@@ -8,7 +8,7 @@ class GameStateHandler {
   //UPDATING GAMESTATE CURRENTPLAYER ID
 
   static String getNextPlayerId(GameState gameState, String pid) {
-    final players = gameState.playersInfo?.keys.toList() ?? [];
+    final players = gameState.playersInfo.keys.toList();
 
     if (players.isEmpty) return "";
 
@@ -20,7 +20,7 @@ class GameStateHandler {
   }
 
   static String getNextControllerId(GameState gameState) {
-    final players = (gameState.playersInfo?.keys ?? []).toList();
+    final players = (gameState.playersInfo.keys).toList();
 
     if (players.isEmpty) return '';
 
@@ -43,6 +43,28 @@ class GameStateHandler {
     return allHandsEmpty && deckStillHasCards;
   }
 
+  static GameState handleExtraPoints(GameState g, String currentPid) {
+    final holder = g.extraPointsHolderId;
+    int points = g.extraPoints;
+    if (g.playingArea.isNotEmpty || g.playingAreaStacks.isNotEmpty) return g;
+
+    if (points == 0 || holder == "") {
+      g.extraPointsHolderId = currentPid;
+      g.extraPoints = 1;
+      return g;
+    }
+    if (holder == currentPid) {
+      g.extraPoints = points + 1;
+    } else {
+      g.extraPoints = points - 1;
+      if (g.extraPoints == 0) {
+        g.extraPointsHolderId = "";
+      }
+    }
+
+    return g;
+  }
+
   ///UPDATING ROUND AND GAME STATUS ON ROUND ENDED
   ///
   static GameState handleRoundEnded(GameState gameState) {
@@ -54,9 +76,12 @@ class GameStateHandler {
       gameState.round.roundScores,
     );
 
-    if (gameState.winnerId == null) {
-      gameState.round.id += 1;
+    if (gameState.winnerId != "") {
+      gameState.gameStatus = GameStatus.gameOver;
+      return gameState;
     }
+
+    gameState.round.id += 1;
 
     return gameState;
   }
@@ -98,7 +123,7 @@ class GameStateHandler {
     final roundScores = <String, dynamic>{};
     final totalScores = Map<String, dynamic>.from(gameState.scores);
 
-    final playerIds = (gameState.playersInfo?.keys ?? <String>[]).toList();
+    final playerIds = (gameState.playersInfo.keys).toList();
 
     for (final pid in playerIds) {
       final playerDeck = gameState.playersDeck[pid] ?? [];
@@ -215,7 +240,7 @@ class GameStateHandler {
     }
 
     final lastTaker = gameState.lastTookCardId.trim();
-    final playerIds = (gameState.playersInfo?.keys ?? <String>[])
+    final playerIds = (gameState.playersInfo.keys)
         .where((e) => e.trim().isNotEmpty)
         .toList();
 
@@ -248,7 +273,7 @@ class GameStateHandler {
 
     gameState.hands.clear();
 
-    for (final playerId in gameState.playersInfo?.keys ?? <String>[]) {
+    for (final playerId in gameState.playersInfo.keys) {
       gameState.hands[playerId] = [];
       gameState.playersDeck[playerId] = [];
     }
@@ -261,7 +286,7 @@ class GameStateHandler {
     gameState.currentTurnPlayerId = '';
     gameState.controllerId = pid;
 
-    gameState.round.roundStatus = RoundStatus.dealing;
+    gameState.round.roundStatus = RoundStatus.readyToDeal;
 
     return gameState;
   }

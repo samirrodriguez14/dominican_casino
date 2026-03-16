@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/ui/animations/animated_move_card.dart';
 import 'package:dominican_casino/ui/animations/deal_annimator.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
@@ -10,7 +11,8 @@ import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
-import 'package:dominican_casino/ui/widgets/gen_game_control.dart';
+import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
+import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -69,19 +71,22 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     final vm = context.watch<GeneralGameViewModel>();
     if (vm.loading) {
       return CupertinoPageScaffold(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CupertinoActivityIndicator(),
-              Text("taking too long?"),
-              CupertinoButton(
-                child: Text("Home"),
-                onPressed: () {
-                  context.go('/landing');
-                },
-              ),
-            ],
+        child: SafeArea(
+          top: false,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CupertinoActivityIndicator(),
+                Text("taking too long?"),
+                CupertinoButton(
+                  child: Text("Home"),
+                  onPressed: () {
+                    context.go('/landing');
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -92,45 +97,46 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       child: CupertinoPageScaffold(
         child: DecoratedBox(
           decoration: AppStyle.theme.tableBackground(),
-          child: SafeArea(
-            child: Stack(
+          child:  Stack(
               children: [
                 Padding(
-                  padding: EdgeInsetsGeometry.symmetric(vertical: 24),
+                  padding: EdgeInsetsGeometry.symmetric(vertical: 48),
                   child: CasinoBoard(child: Container()),
                 ),
                 Column(
                   children: [
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 40),
 
                     Expanded(
-                      child: (vm.gameState.gameMode == GameMode.casinoNew)
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                              ),
-                              child: NewCasinoPlayingArea(),
-                            )
-                          : Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 0,
-                              ),
-                              child: null,
-                            ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 30),
+                        child: _selectPlayingArea(vm.gameState.gameMode),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     GenPlayerArea(),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 48),
                   ],
                 ),
                 DraggableScrollableSheet(
-                  initialChildSize: 0.08,
-                  minChildSize: 0.08,
-                  maxChildSize: 0.40,
+                  initialChildSize:
+                      (vm.gameState.round.roundStatus == RoundStatus.completed)
+                      ? 0.4
+                      : 0.10,
+                  minChildSize:
+                      (vm.gameState.round.roundStatus == RoundStatus.completed)
+                      ? 0.4
+                      : 0.1,
+                  maxChildSize: 0.41,
                   snap: true,
                   // expand: false,
-                  snapSizes: const [0.08, .40],
+                  snapSizes: [
+                    (vm.gameState.round.roundStatus == RoundStatus.completed)
+                        ? 0.4
+                        : 0.10,
+                    .41,
+                  ],
                   builder: (context, scrollController) {
                     return GameStatusSheet(scrollController: scrollController);
                   },
@@ -149,10 +155,22 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                 ),
               ],
             ),
-          ),
+          
         ),
       ),
     );
+  }
+
+  Widget? _selectPlayingArea(GameMode mode) {
+    switch (mode) {
+      case GameMode.tresydos:
+        return NewTresydosPlayingArea();
+      case GameMode.casino:
+      case GameMode.casinoNew:
+        return NewCasinoPlayingArea();
+      case GameMode.robaito:
+    }
+    return null;
   }
 
   Future<void> _tryPlayEvents() async {
@@ -160,7 +178,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
     final events = vm.gameState.cardMoveEvents;
     final newEvents = events
-        .where((e) => !vm.lastPlayedIds.contains(e.id))
+        .where((e) => !vm.gameRepo.lastPlayedIds.contains(e.id))
         .toList();
 
     if (newEvents.isEmpty) return;
@@ -168,7 +186,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     _isAnimating = true;
 
     for (final event in newEvents) {
-      vm.lastPlayedIds.add(event.id);
+      vm.gameRepo.lastPlayedIds.add(event.id);
       await _playEvent(event);
       vm.hiddenCardIds.remove(event.card.id);
       vm.notifyListeners();

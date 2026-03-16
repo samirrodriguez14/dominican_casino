@@ -1,11 +1,11 @@
-enum RoundStatus { dealing, playing, completed, readyToDeal }
+enum RoundStatus { playing, completed, readyToDeal }
 
 RoundStatus roundStatusFrom(String? s) {
   switch (s) {
     case 'completed':
       return RoundStatus.completed;
-    case 'dealing':
-      return RoundStatus.dealing;
+    // case 'dealing':
+    //   return RoundStatus.dealing;
     case 'playing':
       return RoundStatus.playing;
     case 'readyToDeal':
@@ -19,8 +19,8 @@ String roundStatusTo(RoundStatus s) {
   switch (s) {
     case RoundStatus.completed:
       return 'completed';
-    case RoundStatus.dealing:
-      return 'dealing';
+    // case RoundStatus.dealing:
+    //   return 'dealing';
     case RoundStatus.playing:
       return 'playing';
     case RoundStatus.readyToDeal:

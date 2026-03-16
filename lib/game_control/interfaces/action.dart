@@ -19,7 +19,16 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 
 //NoAction. players that can't controll or deal will have this option.
 
-enum InGameAction { start, share, deal, dealSame, setReady, waiting, noAction, shuffle }
+enum InGameAction {
+  start,
+  share,
+  deal,
+  dealSame,
+  setReady,
+  waiting,
+  noAction,
+  shuffle,
+}
 
 enum OutGameAction { create, load, join, leave, delete }
 
@@ -71,6 +80,15 @@ class AddCardsAction extends PlayAction {
   AddCardsAction({
     required this.usedCard,
     required this.targetCards,
+    required super.performedById,
+  });
+}
+class AddCardStackAction extends PlayAction {
+  PlayingCardModel usedCard;
+  List<PlayingAreaStackModel> targetStacks;
+  AddCardStackAction({
+    required this.usedCard,
+    required this.targetStacks,
     required super.performedById,
   });
 }

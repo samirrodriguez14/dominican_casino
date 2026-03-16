@@ -84,7 +84,7 @@ Widget _buildPlayControls(BuildContext context, GeneralGameViewModel vm) {
 
   return SizedBox(
     height: 42,
-    child: actions.isEmpty
+    child: actions.isEmpty || !vm.isMyTurn
         ? Center(
             child: _TurnIndicator(isMyTurn: isMyTurn),
           )

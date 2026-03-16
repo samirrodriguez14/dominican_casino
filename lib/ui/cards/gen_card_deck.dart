@@ -44,7 +44,7 @@ class CardDeck extends StatelessWidget {
                           PlayingCard(
                             playingCardModel: cards[i],
                             isSelected: false,
-                            width: 50,
+                            width: cardWidth,
                           ),
                         ],
                       );

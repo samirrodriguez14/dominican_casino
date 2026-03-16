@@ -25,66 +25,58 @@ class CasinoGameEngine extends GameEngine {
     );
   }
 
-@override
-Future<GameState> performPlayAction(
-  GameState gameState,
-  CurrentCardSelection currentCardSelection,
-  PlayAction action,
-) async {
-  if (!validateAction(gameState, currentCardSelection, action)) {
-    throw Exception("Invalid Move");
-  }
-  if (!validateTurn(gameState, action)) {
-    throw Exception("Not your turn");
-  }
+  ///PERFORM ACTION AND HANDLE END GAME
+  @override
+  Future<GameState> performPlayAction(
+    GameState gameState,
+    CurrentCardSelection currentCardSelection,
+    PlayAction action,
+  ) async {
+    if (!validateAction(gameState, currentCardSelection, action)) {
+      throw Exception("Invalid Move");
+    }
+    if (!validateTurn(gameState, action)) {
+      throw Exception("Not your turn");
+    }
 
-  // HANDLE ACTION
-  gameState = CasinoPlayActionHandler.handleAction(
-    gameState,
-    action,
-    currentCardSelection,
-  );
+    // HANDLE ACTION
+    gameState = CasinoPlayActionHandler.handleAction(
+      gameState,
+      action,
+      currentCardSelection,
+    );
 
-  // NEXT PLAYER TURN
-  if (currentCardSelection.selectedCard != null) {
-    gameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
+    // NEXT PLAYER TURN
+    if (currentCardSelection.selectedCard != null) {
+      gameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
+        gameState,
+        action.performedById,
+      );
+    }
+    gameState = GameStateHandler.handleExtraPoints(
       gameState,
       action.performedById,
     );
-  }
-
-  // MOVE EVENTS
-  final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
-  gameState.cardMoveEvents.addAll(cardMoveEvents);
-
-  // SAVE NORMAL MOVE
-  gameState = await gameService.updateGame(gameState);
-
-  // SAME-ROUND DEAL
-  if (GameStateHandler.shouldDealSameRound(gameState)) {
-    developer.log("same round deal");
-    gameState = CasinoGameActionHandler.dealSameAction(gameState, action.performedById );
+    // MOVE EVENTS
+    final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
+    gameState.cardMoveEvents = cardMoveEvents;
+    // SAVE NORMAL MOVE
     gameState = await gameService.updateGame(gameState);
+    // // ROUND END
+    // else
+    if (GameStateHandler.roundEnded(gameState)) {
+      developer.log("round ended");
+      gameState = GameStateHandler.settleEndOfRoundIfNeeded(gameState);
+      final settlementEvents = EventHandler.generateSettleEndRoundEvents(
+        gameState,
+      );
+      gameState.cardMoveEvents.addAll(settlementEvents);
+      gameState = GameStateHandler.handleRoundEnded(gameState);
+      gameState = await gameService.updateGame(gameState);
+    }
+
+    return gameState;
   }
-
-  // ROUND END
-  else if (GameStateHandler.roundEnded(gameState)) {
-    developer.log("round ended");
-
-    gameState = GameStateHandler.settleEndOfRoundIfNeeded(gameState);
-
-    final settlementEvents = EventHandler.generateSettleEndRoundEvents(
-      gameState,
-    );
-    gameState.cardMoveEvents.addAll(settlementEvents);
-
-    gameState = GameStateHandler.handleRoundEnded(gameState);
-
-    gameState = await gameService.updateGame(gameState);
-  }
-
-  return gameState;
-}
 
   //FORWARD TO VALIDATE ACTION [GAME RULE HANDLER]
   @override
@@ -108,14 +100,14 @@ Future<GameState> performPlayAction(
   InGameAction getInGameAction(GameState gameState, String pid) {
     int maxPlayers = 2;
     List<bool> allJoinedVals = [];
-    if (gameState.playersInfo != null) {
-      for (var entry in gameState.playersInfo!.entries) {
-        allJoinedVals.add(entry.key != "");
-      }
+    for (var entry in gameState.playersInfo.entries) {
+      allJoinedVals.add(entry.key != "");
     }
     bool allJoined =
         allJoinedVals.length >= maxPlayers && allJoinedVals.every((v) => v);
-    if (allJoined && gameState.gameStatus != GameStatus.inProgress) {
+    if (allJoined &&
+        gameState.gameStatus != GameStatus.inProgress &&
+        gameState.gameStatus != GameStatus.gameOver) {
       gameState.gameStatus = GameStatus.readyToStart;
       gameService.updateGame(gameState);
     }

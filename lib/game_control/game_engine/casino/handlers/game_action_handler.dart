@@ -6,7 +6,6 @@ import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/game_service.dart';
 
 class CasinoGameActionHandler {
-  
   static Future<void> handleGameAction(
     GameService gameService,
     GameState gameState,
@@ -19,7 +18,7 @@ class CasinoGameActionHandler {
       case InGameAction.start:
         gameState.started = true;
         gameState.gameStatus = GameStatus.inProgress;
-        gameState.round.roundStatus = RoundStatus.completed;
+        gameState.round.roundStatus = RoundStatus.readyToDeal;
         await gameService.updateGame(gameState);
         return;
 
@@ -55,12 +54,12 @@ class CasinoGameActionHandler {
   }
 
   static GameState dealSameAction(GameState gameState, String pid) {
-    final playerCount = gameState.playersInfo?.length ?? 0;
+    final playerCount = gameState.playersInfo.length;
     final neededCards = (playerCount * 4);
     if (gameState.deck.length < neededCards) {
       throw Exception('Not enough cards in deck to deal.');
     }
-    for (final entry in gameState.playersInfo!.entries) {
+    for (final entry in gameState.playersInfo.entries) {
       final dealtCards = gameState.deck.sublist(0, 4);
       gameState.deck.removeRange(0, 4);
       gameState.hands[entry.key] = List.of(dealtCards);
@@ -73,14 +72,14 @@ class CasinoGameActionHandler {
   }
 
   static GameState _dealCardsAction(GameState gameState, String pid) {
-    final playerCount = gameState.playersInfo?.length ?? 0;
+    final playerCount = gameState.playersInfo.length;
     final neededCards = (playerCount * 4) + 4;
 
     if (gameState.deck.length < neededCards) {
       throw Exception('Not enough cards in deck to deal.');
     }
 
-    for (final entry in gameState.playersInfo!.entries) {
+    for (final entry in gameState.playersInfo.entries) {
       final dealtCards = gameState.deck.sublist(0, 4);
       gameState.deck.removeRange(0, 4);
       gameState.hands[entry.key] = List.of(dealtCards);
@@ -117,23 +116,27 @@ class CasinoGameActionHandler {
                 ? InGameAction.shuffle
                 : InGameAction.waiting;
 
-          case RoundStatus.dealing:
-            return gameState.controllerId == pid
-                ? InGameAction.deal
-                : InGameAction.waiting;
-
-          case RoundStatus.playing:
-            return InGameAction.noAction;
+          // case RoundStatus.dealing:
+          //   return gameState.controllerId == pid
+          //       ? InGameAction.deal
+          //       : InGameAction.waiting;
 
           case RoundStatus.readyToDeal:
             return gameState.controllerId == pid
                 ? InGameAction.deal
                 : InGameAction.waiting;
+
+          case RoundStatus.playing:
+            if (GameStateHandler.shouldDealSameRound(gameState)) {
+              return gameState.controllerId == pid
+                  ? InGameAction.dealSame
+                  : InGameAction.waiting;
+            }
+            return InGameAction.noAction;
         }
 
       case GameStatus.gameOver:
-        return InGameAction.noAction;
-
+        return InGameAction.waiting;
       default:
         return InGameAction.noAction;
     }
