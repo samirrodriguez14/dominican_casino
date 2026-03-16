@@ -5,6 +5,7 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -32,15 +33,55 @@ class AppRepo extends ChangeNotifier {
   Future<void> loadApp() async {
     developer.log("AppRepo: Loading player");
     player = await _loadPlayer();
+    if (player != null) {
+      player!.token = await getDeviceToken();
+    }
     developer.log("AppRepo: player ${player?.id}");
     if (player != null) appStatus = AppStatus.appReady;
   }
 
   Future<String> createNewGame(GameMode mode, String pid) async {
     String gid = _uuid.v4().substring(0, 8);
+    player?.token = await getDeviceToken();
     GameState gameState = GameState.create(gid, pid, mode);
     gid = await fs.newCreateGame(gameState);
     return gid;
+  }
+
+  Future<String?> getDeviceToken() async {
+    final messaging = FirebaseMessaging.instance;
+
+    final settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false, // use full permission while testing
+    );
+    developer.log('Auth status: ${settings.authorizationStatus}');
+    if (settings.authorizationStatus != AuthorizationStatus.authorized &&
+        settings.authorizationStatus != AuthorizationStatus.provisional) {
+      developer.log(
+        'Notification permission not granted: ${settings.authorizationStatus}',
+      );
+      return null;
+    }
+
+    String? apnsToken;
+    for (int i = 0; i < 20; i++) {
+      apnsToken = await messaging.getAPNSToken();
+      if (apnsToken != null) break;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    if (apnsToken == null) {
+      developer.log('APNS token not ready yet');
+      return null;
+    }
+
+    final fcmToken = await messaging.getToken();
+    // developer.log('APNS token: $apnsToken');
+    developer.log('FCM token: $fcmToken');
+    return fcmToken;
   }
 
   Future<void> deleteGame(String gameId) async {

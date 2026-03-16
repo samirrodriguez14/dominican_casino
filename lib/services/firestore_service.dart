@@ -1,12 +1,37 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/services/game_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/game_state.dart';
 
 class FirestoreService extends GameService {
   final CollectionReference _games = FirebaseFirestore.instance.collection(
     'games',
   );
+  final FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  Future<String?> getDeviceToken() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    NotificationSettings settings = await messaging.requestPermission();
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      String? token = await messaging.getToken();
+      print("FCM Token: $token");
+      return token;
+    }
+
+    return null;
+  }
+
+  Future<void> saveToken(String pid, String gid) async {
+    String? token = await FirebaseMessaging.instance.getToken();
+
+    if (token != null) {
+      await _games.doc(gid).update({'playersInfo.$pid. ': token});
+    }
+  }
+
   @override
   Stream<List<GamePillData>> listenGames(String pid) {
     return _games.where('playersInfo.$pid.id', isEqualTo: pid).snapshots().map((

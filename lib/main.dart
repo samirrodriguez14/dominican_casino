@@ -23,11 +23,11 @@ void main() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    );
+    );;
   } catch (e) {
     devloper.log("Eror initializing Firebase");
   }
-
+  
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   runApp(

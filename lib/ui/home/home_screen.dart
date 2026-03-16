@@ -167,7 +167,7 @@ class HomeScreenState extends State<HomeScreen>{
                         vertical: 10,
                       ),
                       onPressed: () {
-                        context.go('/instructions');
+                        context.push('/instructions');
                       },
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
