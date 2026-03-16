@@ -177,7 +177,7 @@ class _CurrentGamesBody extends StatelessWidget {
           enterEnabled:
               !LobbyBody.isFull(g) || LobbyBody.joined(g, myUid ?? ""),
           enterLabel: "Enter",
-          onEnter: () => context.go('/game/${g.id}'),
+          onEnter: () => context.go('/gengame/${g.id}'),
           onDelete: () async {
             final ok = await vm.confirmDelete(context, g.id);
             if (!ok) return;

@@ -475,6 +475,10 @@ class CasinoRulesHandler {
     if (selectedCards.isEmpty && selectedStacks.isEmpty) {
       return false;
     }
+    if ((selectedCards.isEmpty && selectedStacks.length < 2) ||
+        (selectedCards.length < 2 && selectedStacks.isEmpty)) {
+      return false;
+    }
 
     final cardVals = possibleCardValues(selectedCard);
 

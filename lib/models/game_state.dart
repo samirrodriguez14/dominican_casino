@@ -52,7 +52,7 @@ class GameState {
   final List<PlayingCardModel> playingArea;
   final List<PlayingAreaStackModel> playingAreaStacks;
 
-  final List<PlayingCardModel> deck;
+  List<PlayingCardModel> deck;
   final Map<String, List<PlayingCardModel>> hands;
   final Map<String, List<PlayingCardModel>> playersDeck;
   final Map<String, dynamic> scores;
@@ -91,7 +91,7 @@ class GameState {
 
   factory GameState.create(String gid, String pid, GameMode mode) {
     final round = Round(
-      id: 1,
+      id: 0,
       roundStatus: RoundStatus.completed,
       roundScores: {},
     );

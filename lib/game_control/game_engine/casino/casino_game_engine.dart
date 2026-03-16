@@ -25,55 +25,66 @@ class CasinoGameEngine extends GameEngine {
     );
   }
 
-  @override
-  Future<GameState> performPlayAction(
-    GameState gameState,
-    CurrentCardSelection currentCardSelection,
-    PlayAction action,
-  ) async {
-    if (!validateAction(gameState, currentCardSelection, action)) {
-      throw Exception("Invalid Move");
-    }
-    if (!validateTurn(gameState, action)) {
-      throw Exception("Not your turn");
-    }
-
-    ///HANDLE ACTION [CasinoPlayActionHandler]
-    ///DONE!!!! FOR NOW
-    gameState = CasinoPlayActionHandler.handleAction(
-      gameState,
-      action,
-      currentCardSelection,
-    );
-
-    //HANDLE NEXT ROUND [GameStateHandler]
-    developer.log("Checking if round ended");
-
-    if (GameStateHandler.roundEnded(gameState)) {
-      developer.log("round ended");
-
-      gameState = GameStateHandler.handleRoundEnded(gameState);
-    }
-
-    //HANDLE NEXT PLAYER [GameStateHandler]
-    //SET NEXT PLAYER TURN only a handccard was used
-    //WORKS FOR NOW
-    if (currentCardSelection.selectedCard != null) {
-      gameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
-        gameState,
-        action.performedById,
-      );
-    }
-
-    //HANDLE EVENTS [EventStateHandler]
-    ///HANDLE MOVE EVENTS
-    final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
-
-    gameState.cardMoveEvents = cardMoveEvents;
-    //SEND CHANGES
-    final nextgameState = await gameService.updateGame(gameState);
-    return nextgameState;
+@override
+Future<GameState> performPlayAction(
+  GameState gameState,
+  CurrentCardSelection currentCardSelection,
+  PlayAction action,
+) async {
+  if (!validateAction(gameState, currentCardSelection, action)) {
+    throw Exception("Invalid Move");
   }
+  if (!validateTurn(gameState, action)) {
+    throw Exception("Not your turn");
+  }
+
+  // HANDLE ACTION
+  gameState = CasinoPlayActionHandler.handleAction(
+    gameState,
+    action,
+    currentCardSelection,
+  );
+
+  // NEXT PLAYER TURN
+  if (currentCardSelection.selectedCard != null) {
+    gameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
+      gameState,
+      action.performedById,
+    );
+  }
+
+  // MOVE EVENTS
+  final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
+  gameState.cardMoveEvents.addAll(cardMoveEvents);
+
+  // SAVE NORMAL MOVE
+  gameState = await gameService.updateGame(gameState);
+
+  // SAME-ROUND DEAL
+  if (GameStateHandler.shouldDealSameRound(gameState)) {
+    developer.log("same round deal");
+    gameState = CasinoGameActionHandler.dealSameAction(gameState, action.performedById );
+    gameState = await gameService.updateGame(gameState);
+  }
+
+  // ROUND END
+  else if (GameStateHandler.roundEnded(gameState)) {
+    developer.log("round ended");
+
+    gameState = GameStateHandler.settleEndOfRoundIfNeeded(gameState);
+
+    final settlementEvents = EventHandler.generateSettleEndRoundEvents(
+      gameState,
+    );
+    gameState.cardMoveEvents.addAll(settlementEvents);
+
+    gameState = GameStateHandler.handleRoundEnded(gameState);
+
+    gameState = await gameService.updateGame(gameState);
+  }
+
+  return gameState;
+}
 
   //FORWARD TO VALIDATE ACTION [GAME RULE HANDLER]
   @override

@@ -16,22 +16,22 @@ class Deck {
     }
 
     final suits = ['♠', '♥', '♦', '♣'];
-    // final ranks = [
-    //   'A',
-    //   '2',
-    //   '3',
-    //   '4',
-    //   '5',
-    //   '6',
-    //   '7',
-    //   '8',
-    //   '9',
-    //   '10',
-    //   'J',
-    //   'Q',
-    //   'K',
-    // ];
-    final ranks = ['A','2','3'];//Uncomment for test round
+    final ranks = [
+      'A',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+      '10',
+      'J',
+      'Q',
+      'K',
+    ];
+    // final ranks = ['A','2','3'];//Uncomment for test round
 
     return [
       for (var s in suits)

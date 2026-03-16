@@ -6,43 +6,55 @@ import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/game_service.dart';
 
 class CasinoGameActionHandler {
+  
   static Future<void> handleGameAction(
     GameService gameService,
     GameState gameState,
     InGameAction inGameAction,
     String pid,
   ) async {
-    //Clean cardMove events to send in new Update
     gameState.cardMoveEvents = [];
+
     switch (inGameAction) {
       case InGameAction.start:
         gameState.started = true;
         gameState.gameStatus = GameStatus.inProgress;
-        gameState.round.roundStatus = RoundStatus.dealing;
+        gameState.round.roundStatus = RoundStatus.completed;
         await gameService.updateGame(gameState);
+        return;
+
+      case InGameAction.shuffle:
+        final newGameState = GameStateHandler.shuffleAction(gameState, pid);
+        await gameService.updateGame(newGameState);
+        return;
 
       case InGameAction.share:
       case InGameAction.deal:
-        //INITIAL DEAL
         final newGameState = _dealCardsAction(gameState, pid);
         newGameState.round.roundStatus = RoundStatus.playing;
         newGameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
-          gameState,
+          newGameState,
           pid,
         );
         await gameService.updateGame(newGameState);
-        break;
+        return;
+
       case InGameAction.dealSame:
-        final newGameState = _dealSameAction(gameState, pid);
+        final newGameState = dealSameAction(gameState, pid);
         newGameState.round.roundStatus = RoundStatus.playing;
+        newGameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
+          newGameState,
+          pid,
+        );
         await gameService.updateGame(newGameState);
-        break;
+        return;
+
       default:
         return;
     }
   }
 
-  static GameState _dealSameAction(GameState gameState, String pid) {
+  static GameState dealSameAction(GameState gameState, String pid) {
     final playerCount = gameState.playersInfo?.length ?? 0;
     final neededCards = (playerCount * 4);
     if (gameState.deck.length < neededCards) {
@@ -91,41 +103,37 @@ class CasinoGameActionHandler {
   static InGameAction getInGameAction(GameState gameState, String pid) {
     switch (gameState.gameStatus) {
       case GameStatus.waitingForPlayers:
-        return InGameAction.share; //For now... I'll change it to waiting...
+        return InGameAction.share;
 
       case GameStatus.readyToStart:
-        if (gameState.controllerId == pid) {
-          return InGameAction.start;
-        } else {
-          return InGameAction.waiting;
-        }
+        return gameState.controllerId == pid
+            ? InGameAction.start
+            : InGameAction.waiting;
 
       case GameStatus.inProgress:
-        //While game is running
         switch (gameState.round.roundStatus) {
-          //If in the middle of the round...
+          case RoundStatus.completed:
+            return gameState.controllerId == pid
+                ? InGameAction.shuffle
+                : InGameAction.waiting;
+
           case RoundStatus.dealing:
-            if (gameState.controllerId == pid) {
-              return InGameAction.dealSame;
-            } else {
-              return InGameAction.waiting;
-            }
-          //If playing.. no action
+            return gameState.controllerId == pid
+                ? InGameAction.deal
+                : InGameAction.waiting;
+
           case RoundStatus.playing:
             return InGameAction.noAction;
-          //If completed.. new deal
-          case RoundStatus.completed:
-            if (gameState.controllerId == pid) {
-              return InGameAction.deal;
-            } else {
-              return InGameAction.waiting;
-            }
+
+          case RoundStatus.readyToDeal:
+            return gameState.controllerId == pid
+                ? InGameAction.deal
+                : InGameAction.waiting;
         }
+
       case GameStatus.gameOver:
         return InGameAction.noAction;
-      // case GameStatus.error:
-      //   return InGameAction.noAction;
-      //handled by default...
+
       default:
         return InGameAction.noAction;
     }

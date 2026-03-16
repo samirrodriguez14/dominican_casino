@@ -80,6 +80,8 @@ class _GenGameControlState extends State<GenGameControl> {
         return CupertinoIcons.stop;
       case InGameAction.waiting:
         return CupertinoIcons.lock;
+      case InGameAction.shuffle:
+        return CupertinoIcons.square_on_square;
     }
   }
 

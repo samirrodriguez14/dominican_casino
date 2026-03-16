@@ -1,3 +1,4 @@
+import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/round.dart';
@@ -18,34 +19,69 @@ class GameStateHandler {
     return players[nextIndex];
   }
 
+  static String getNextControllerId(GameState gameState) {
+    final players = (gameState.playersInfo?.keys ?? []).toList();
+
+    if (players.isEmpty) return '';
+
+    final currentIndex = players.indexOf(gameState.controllerId);
+
+    if (currentIndex == -1) {
+      return players.first;
+    }
+
+    final nextIndex = (currentIndex + 1) % players.length;
+    return players[nextIndex];
+  }
+
+  ///UPDATING SAME ROUND
+  ///
+  static bool shouldDealSameRound(GameState gameState) {
+    final allHandsEmpty = gameState.hands.entries.every((p) => p.value.isEmpty);
+    final deckStillHasCards = gameState.deck.isNotEmpty;
+
+    return allHandsEmpty && deckStillHasCards;
+  }
+
   ///UPDATING ROUND AND GAME STATUS ON ROUND ENDED
   ///
   static GameState handleRoundEnded(GameState gameState) {
     gameState = _handleScores(gameState);
-
-    // complete current round
-    final completedRound = Round(
-      id: gameState.round.id,
-      roundStatus: RoundStatus.completed,
-      roundScores: Map<String, dynamic>.from(
-        gameState.round.roundScores,
-      ),
+    gameState.round.roundStatus = RoundStatus.completed;
+    gameState.controllerId = getNextControllerId(gameState);
+    gameState.winnerId = _handleWinner(
+      gameState.scores,
+      gameState.round.roundScores,
     );
 
-    gameState.round = completedRound;
-    // if game is not over, prepare next round
-    if (gameState.winnerId == null || gameState.winnerId!.isEmpty) {
-      final nextRoundId = completedRound.id + 1;
-
-      gameState.round = Round(
-        id: nextRoundId,
-        roundStatus: RoundStatus.dealing,
-
-        roundScores: {},
-      );
+    if (gameState.winnerId == null) {
+      gameState.round.id += 1;
     }
 
     return gameState;
+  }
+
+  static String? _handleWinner(
+    Map<String, dynamic> prevScore,
+    Map<String, dynamic> roundScore,
+  ) {
+    final playerIds = roundScore.keys.toList();
+
+    playerIds.sort((a, b) {
+      final aScore = prevScore[a] ?? 0;
+      final bScore = prevScore[b] ?? 0;
+      return bScore.compareTo(aScore);
+    });
+
+    for (final pid in playerIds) {
+      final prev = prevScore[pid] ?? 0;
+      final roundTotal = roundScore[pid]['total'] ?? 0;
+      if (prev + roundTotal >= 21) {
+        return pid;
+      }
+    }
+
+    return null;
   }
 
   static bool roundEnded(GameState gameState) {
@@ -59,51 +95,35 @@ class GameStateHandler {
   }
 
   static GameState _handleScores(GameState gameState) {
-    final p1 = gameState.player1 as String;
-    final p2 = gameState.player2 as String;
-
-    final p1Deck = gameState.playersDeck[p1] ?? [];
-    final p2Deck = gameState.playersDeck[p2] ?? [];
-
     final roundScores = <String, dynamic>{};
-
-    roundScores[p1] = _createScoreMap(
-      p1Deck,
-      gameState.extraPointsHolderId == p1 ? gameState.extraPoints : 0,
-    );
-
-    roundScores[p2] = _createScoreMap(
-      p2Deck,
-      gameState.extraPointsHolderId == p2 ? gameState.extraPoints : 0,
-    );
-
     final totalScores = Map<String, dynamic>.from(gameState.scores);
 
-    // final winner = _handleWinner(totalScores, roundScores, p1, p2);
+    final playerIds = (gameState.playersInfo?.keys ?? <String>[]).toList();
 
-    totalScores[p1] =
-        (totalScores[p1] ?? 0) + (roundScores[p1]['total'] as int);
-    totalScores[p2] =
-        (totalScores[p2] ?? 0) + (roundScores[p2]['total'] as int);
+    for (final pid in playerIds) {
+      final playerDeck = gameState.playersDeck[pid] ?? [];
 
-    gameState.round = Round(
-      id: gameState.round.id,
-      roundStatus: RoundStatus.completed,
-      roundScores: roundScores,
-    );
+      roundScores[pid] = _createScoreMap(
+        playerDeck,
+        gameState.extraPointsHolderId == pid ? gameState.extraPoints : 0,
+        gameState.scores[pid] ?? 0,
+      );
 
+      totalScores[pid] =
+          (totalScores[pid] ?? 0) + (roundScores[pid]['total'] as int);
+    }
+
+    gameState.round.roundScores = roundScores;
     gameState.scores.clear();
     gameState.scores.addAll(totalScores);
 
-    gameState.extraPoints = 0;
-    gameState.extraPointsHolderId = '';
-    // gameState.winnerId = winner;
     return gameState;
   }
 
   static Map<String, dynamic> _createScoreMap(
     List<PlayingCardModel> playerDeck,
     int extraPoints,
+    int prevScore,
   ) {
     final scoresMap = <String, dynamic>{
       'A': 0,
@@ -143,7 +163,106 @@ class GameStateHandler {
       scoresMap['pi'] = 1;
     }
 
-    scoresMap['total'] = totalScore + extraPoints;
+    totalScore += extraPoints;
+    scoresMap['total'] = totalScore;
+
+    // Apply endgame restrictions here
+
+    // if score == 20, player needs pi
+    if (prevScore == 20) {
+      if ((scoresMap['pi'] as int) == 0) {
+        scoresMap['A'] = 0;
+        scoresMap['10♦'] = 0;
+        scoresMap['2♠'] = 0;
+        scoresMap['carta'] = 0;
+        scoresMap['virao'] = 0;
+        scoresMap['total'] = 0;
+      }
+    }
+    // if score == 18 or 19, player only keeps carta + pi
+    else if (prevScore == 18 || prevScore == 19) {
+      if ((scoresMap['carta'] as int) == 0) {
+        scoresMap['A'] = 0;
+        scoresMap['10♦'] = 0;
+        scoresMap['2♠'] = 0;
+        scoresMap['virao'] = 0;
+        scoresMap['total'] = (scoresMap['pi'] as int);
+      }
+    }
+    // if score == 17, player only keeps carta + pi, and needs both
+    else if (prevScore == 17) {
+      final hasCarta = (scoresMap['carta'] as int) > 0;
+      final hasPi = (scoresMap['pi'] as int) > 0;
+
+      if (!hasCarta || !hasPi) {
+        scoresMap['A'] = 0;
+        scoresMap['10♦'] = 0;
+        scoresMap['2♠'] = 0;
+        scoresMap['virao'] = 0;
+        scoresMap['total'] =
+            (scoresMap['pi'] as int) + (scoresMap['carta'] as int);
+      }
+    }
+
     return scoresMap;
+  }
+
+  static GameState settleEndOfRoundIfNeeded(GameState gameState) {
+    if (!roundEnded(gameState)) gameState;
+
+    if (gameState.playingArea.isEmpty && gameState.playingAreaStacks.isEmpty) {
+      gameState;
+    }
+
+    final lastTaker = gameState.lastTookCardId.trim();
+    final playerIds = (gameState.playersInfo?.keys ?? <String>[])
+        .where((e) => e.trim().isNotEmpty)
+        .toList();
+
+    final receiver = lastTaker.isNotEmpty
+        ? lastTaker
+        : (playerIds.isNotEmpty ? playerIds.first : '');
+
+    if (receiver.isEmpty) gameState;
+
+    final leftovers = <PlayingCardModel>[];
+    leftovers.addAll(gameState.playingArea);
+
+    for (final stack in gameState.playingAreaStacks) {
+      leftovers.addAll(stack.cards);
+    }
+
+    gameState.playersDeck.putIfAbsent(receiver, () => []);
+    gameState.playersDeck[receiver]!.addAll(leftovers);
+
+    gameState.playingArea.clear();
+    gameState.playingAreaStacks.clear();
+    return gameState;
+  }
+
+  static GameState shuffleAction(GameState gameState, String pid) {
+    gameState.deck = Deck.shuffle(Deck.standard());
+
+    gameState.playingArea.clear();
+    gameState.playingAreaStacks.clear();
+
+    gameState.hands.clear();
+
+    for (final playerId in gameState.playersInfo?.keys ?? <String>[]) {
+      gameState.hands[playerId] = [];
+      gameState.playersDeck[playerId] = [];
+    }
+
+    gameState.extraPoints = 0;
+    gameState.extraPointsHolderId = '';
+    gameState.lastTookCardId = '';
+    gameState.cardMoveEvents = [];
+
+    gameState.currentTurnPlayerId = '';
+    gameState.controllerId = pid;
+
+    gameState.round.roundStatus = RoundStatus.dealing;
+
+    return gameState;
   }
 }

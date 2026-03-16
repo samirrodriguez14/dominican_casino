@@ -481,4 +481,54 @@ class EventHandler {
     }
     return events;
   }
+
+  static List<CardMoveEvent> generateSettleEndRoundEvents(GameState gameState) {
+    final lastTaker = gameState.lastTookCardId.trim();
+    final playerIds = (gameState.playersInfo?.keys ?? <String>[])
+        .where((e) => e.trim().isNotEmpty)
+        .toList();
+
+    final receiverId = lastTaker.isNotEmpty
+        ? lastTaker
+        : (playerIds.isNotEmpty ? playerIds.first : '');
+
+    if (receiverId.isEmpty) return [];
+
+    final List<CardMoveEvent> events = [];
+
+    final Zone table = Zone(
+      type: ZoneType.table,
+      holderId: ZoneType.table.name,
+    );
+
+    final Zone to = Zone(type: ZoneType.playerDeck, holderId: receiverId);
+
+    for (final card in gameState.playingArea) {
+      events.add(
+        CardMoveEvent(
+          id: _uuid.v4().substring(0, 8),
+          from: table,
+          to: to,
+          card: card,
+          performedBy: receiverId,
+        ),
+      );
+    }
+
+    for (final stack in gameState.playingAreaStacks) {
+      for (final card in stack.cards) {
+        events.add(
+          CardMoveEvent(
+            id: _uuid.v4().substring(0, 8),
+            from: table,
+            to: to,
+            card: card,
+            performedBy: receiverId,
+          ),
+        );
+      }
+    }
+
+    return events;
+  }
 }

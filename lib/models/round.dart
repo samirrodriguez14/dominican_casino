@@ -1,5 +1,4 @@
-
-enum RoundStatus { dealing, playing, completed }
+enum RoundStatus { dealing, playing, completed, readyToDeal }
 
 RoundStatus roundStatusFrom(String? s) {
   switch (s) {
@@ -8,8 +7,11 @@ RoundStatus roundStatusFrom(String? s) {
     case 'dealing':
       return RoundStatus.dealing;
     case 'playing':
-    default:
       return RoundStatus.playing;
+    case 'readyToDeal':
+      return RoundStatus.readyToDeal;
+    default:
+      return RoundStatus.readyToDeal;
   }
 }
 
@@ -21,6 +23,8 @@ String roundStatusTo(RoundStatus s) {
       return 'dealing';
     case RoundStatus.playing:
       return 'playing';
+    case RoundStatus.readyToDeal:
+      return 'readyToDeal';
   }
 }
 
@@ -28,7 +32,6 @@ class Round {
   int id; // index
   RoundStatus roundStatus;
   Map<String, dynamic> roundScores;
-
   Round({
     required this.id,
     required this.roundStatus,

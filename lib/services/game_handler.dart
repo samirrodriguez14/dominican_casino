@@ -971,6 +971,8 @@ class GameHandler2 {
     );
     return (score + roundScore[player]['total']) >= 21;
   }
+
+
 }
 
 ///
