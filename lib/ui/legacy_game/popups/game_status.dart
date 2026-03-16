@@ -1,6 +1,6 @@
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/view_models/games/game_view_model.dart';
+import 'package:dominican_casino/ui/legacy_game/game_view_model.dart';
 import 'package:flutter/material.dart';
 
 class GameStatusContent extends StatelessWidget {
@@ -48,8 +48,8 @@ class GameStatusContent extends StatelessWidget {
         ? vm.roundIndex + 1
         : vm.roundIndex;
 
-    final String player1Id = g?.player1 ?? '';
-    final String player2Id = g?.player2 ?? '';
+    final String player1Id = '';
+    final String player2Id ='';
 
     final Map<String, dynamic> roundScores =
         (vm.roundScores as Map?)?.cast<String, dynamic>() ?? const {};

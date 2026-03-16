@@ -8,13 +8,10 @@ import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/services/game_service.dart';
 import 'package:dominican_casino/ui/app_shell/app_shell.dart';
-import 'package:dominican_casino/ui/game/game_screen.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/general_game/general_game_screen.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
-import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
-import 'package:dominican_casino/view_models/games/game_view_model.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -55,38 +52,16 @@ class _MyAppState extends State<App> {
           path: '/instructions',
           builder: (context, state) => const InstructionsScreen(),
         ),
-        GoRoute(
-          path: '/lobby',
-          builder: (context, state) => const LobbyScreen(),
-        ),
-
+   
         GoRoute(
           path: '/join/:gameId',
           redirect: (context, state) async {
             final gameId = state.pathParameters['gameId']!;
-            return '/gengame/$gameId';
+            return '/game/$gameId';
           },
         ),
-
         GoRoute(
           path: '/game/:gameId',
-          builder: (context, state) {
-            final gameId = state.pathParameters['gameId']!;
-            final player = context.read<AppRepo>().player;
-            if (player == null) return HomeScreen();
-            return ChangeNotifierProvider(
-              create: (_) => GameViewModel(
-                gid: gameId,
-                player: player,
-                // pid: player.id,
-                gameRepo: context.read<GameRepo>(),
-              ),
-              child: GameScreen(),
-            );
-          },
-        ),
-        GoRoute(
-          path: '/gengame/:gameId',
           builder: (context, state) {
             final gameId = state.pathParameters['gameId']!;
             final player = context.read<AppRepo>().player;

@@ -79,9 +79,9 @@ class GeneralGameViewModel extends ChangeNotifier {
   //      MY CURR HAND
   //      MY COLLECTED CARDS
   String get me => player.id;
-  String get joinedAsPlayer {
-    return (me == gameState.player1) ? 'player1' : 'player2';
-  }
+  // String get joinedAsPlayer {
+  //   return (me == gameState.player1) ? 'player1' : 'player2';
+  // }
 
   int get myExtraPoints =>
       (gameState.extraPointsHolderId == player.id) ? gameState.extraPoints : 0;
@@ -144,7 +144,8 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   Future<bool> joinGame() async {
     try {
-      await gameRepo.fs.joinGame(gid, me, player.toJson());
+      gameState.playersInfo[player.id] = player.toJson();
+      await gameRepo.fs.updateGame(gameState);
       notifyListeners();
       return true;
     } catch (e) {
@@ -155,7 +156,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   Future<void> leaveGame() async {
     gameState.cardMoveEvents = [];
-    await gameRepo.fs.leaveGame(gameState.id, me);
+    await gameRepo.fs.deleteGame(gameState.id);
     notifyListeners();
   }
 

@@ -39,11 +39,7 @@ class GameViewModel extends ChangeNotifier {
   ///MY INFO
 
   String get me => player.id;
-  String get joinedAsPlayer {
-    if (g == null) return 'player2';
-    return (me == g!.player1) ? 'player1' : 'player2';
-  }
-
+  String get joinedAsPlayer =>"";
   GameMode? get gameMode => g?.gameMode;
 
   bool get lastTakeMe => _lastTookCardId == me && me != "";
@@ -60,10 +56,10 @@ class GameViewModel extends ChangeNotifier {
   int get myExtraPoints => (extraPointsHolderId == me) ? _extraPoints : 0;
 
   ///OPPONENT INFO
-  String? get opp {
-    if (g == null) return null;
-    return joinedAsPlayer == 'player1' ? g!.player2 : g!.player1;
-  }
+  String? get opp =>"";
+    // if (g == null) return null;
+    // return joinedAsPlayer == 'player1' ? g!.player2 : g!.player1;
+  
 
   Player? _oppInfo;
 
@@ -122,8 +118,8 @@ class GameViewModel extends ChangeNotifier {
       roundStatus == RoundStatus.completed &&
       bothPlayersReady;
 
-  bool get bothPlayersJoined =>
-      gameRepo.gameState?.player1 != "" && gameRepo.gameState?.player2 != "";
+  bool get bothPlayersJoined => false;
+      // gameRepo.gameState?.player1 != "" && gameRepo.gameState?.player2 != "";
 
   bool get handsNotNull {
     if (g == null || opp == null) return false;
@@ -143,9 +139,9 @@ class GameViewModel extends ChangeNotifier {
         oppHand.isEmpty;
   }
 
-  bool get waitingOnOpponent =>
-      ((g?.player1 != null || g?.player1 != "") &&
-      (g?.player2 == null || g?.player2 == ""));
+  bool get waitingOnOpponent =>true;
+      // ((g?.player1 != null || g?.player1 != "") &&
+      // (g?.player2 == null || g?.player2 == ""));
 
   ///END GETTERS
 
@@ -206,7 +202,7 @@ class GameViewModel extends ChangeNotifier {
 
   Future<bool> joinGame() async {
     try {
-      await gameRepo.joinGame(gid, me, player.toJson());
+      // await gameRepo.joinGame(gid, me, player.toJson());
       notifyListeners();
       return true;
     } catch (e) {
@@ -237,8 +233,8 @@ class GameViewModel extends ChangeNotifier {
         _lastTookCardId = g.lastTookCardId;
         iAmReadyForNextRound = roundReady[me] == true;
 
-        final p1 = g.player1 ?? '';
-        final p2 = g.player2 ?? '';
+        final p1 = '';
+        final p2 =  '';
         _oppInfo = Player.fromDto(g.playersInfo[opp] ?? {});
         bothPlayersReady =
             (p1.isNotEmpty &&
@@ -286,21 +282,21 @@ class GameViewModel extends ChangeNotifier {
 
   ///GENERAL ACTIONS START
   ///
-  Future<void> startGame() async {
-    await gameRepo.startGame();
-  }
+  // Future<void> startGame() async {
+  //   await gameRepo.startGame();
+  // }
 
-  Future<void> pressContinue() async {
-    await gameRepo.setRoundReady(me);
-  }
+  // Future<void> pressContinue() async {
+  //   await gameRepo.setRoundReady(me);
+  // }
 
-  Future<void> startNextRound() async {
-    await gameRepo.dealNextRound(me);
-  }
+  // Future<void> startNextRound() async {
+  //   await gameRepo.dealNextRound(me);
+  // }
 
-  Future<void> redealSameRound() async {
-    await gameRepo.dealSameRound();
-  }
+  // Future<void> redealSameRound() async {
+  //   await gameRepo.dealSameRound();
+  // }
 
   Future<void> leaveGame() async {
     if (g != null) {
@@ -346,43 +342,43 @@ class GameViewModel extends ChangeNotifier {
 
 
 
-//PLAYING ACTIONS
-  void playAction(PlayingCardModel card) {
-    gameRepo.makePlay(me, card);
-  }
+// //PLAYING ACTIONS
+//   void playAction(PlayingCardModel card) {
+//     gameRepo.makePlay(me, card);
+//   }
 
-  void takeCardAction(PlayingCardModel card, PlayingCardModel takingCard) {
-    gameRepo.takeCard(me, card, takingCard);
-  }
+//   void takeCardAction(PlayingCardModel card, PlayingCardModel takingCard) {
+//     gameRepo.takeCard(me, card, takingCard);
+//   }
 
-  void stackCardsActon(
-    PlayingAreaStackModel stack,
-    List<String?> cardStackIds,
-  ) {
-    gameRepo.stackCards(me, selectedCard, cardStackIds, stack);
-  }
+//   void stackCardsActon(
+//     PlayingAreaStackModel stack,
+//     List<String?> cardStackIds,
+//   ) {
+//     gameRepo.stackCards(me, selectedCard, cardStackIds, stack);
+//   }
 
-  void pairCardsAction(PlayingAreaStackModel stack, List<String?> cardStackId) {
-    gameRepo.pairStacks(me, cardStackId, selectedCard, stack);
-  }
+//   void pairCardsAction(PlayingAreaStackModel stack, List<String?> cardStackId) {
+//     gameRepo.pairStacks(me, cardStackId, selectedCard, stack);
+//   }
 
-  void stackAndPairStacks(
-    PlayingAreaStackModel stack,
-    List<String?> cardStackId,
-  ) {
-    gameRepo.stackAndPairStacks(me, cardStackId, selectedCard, stack);
-  }
+//   void stackAndPairStacks(
+//     PlayingAreaStackModel stack,
+//     List<String?> cardStackId,
+//   ) {
+//     gameRepo.stackAndPairStacks(me, cardStackId, selectedCard, stack);
+//   }
 
-  void takeStackAction(PlayingAreaStackModel stack, PlayingCardModel card) {
-    gameRepo.takeStack(me, stack, card);
-  }
+//   void takeStackAction(PlayingAreaStackModel stack, PlayingCardModel card) {
+//     gameRepo.takeStack(me, stack, card);
+//   }
 
-  void addAndTakeCardsAction(
-    List<PlayingCardModel> takingCards,
-    PlayingCardModel card,
-  ) {
-    gameRepo.addAndTakeCards(me, card, takingCards);
-  }
+//   void addAndTakeCardsAction(
+//     List<PlayingCardModel> takingCards,
+//     PlayingCardModel card,
+//   ) {
+//     gameRepo.addAndTakeCards(me, card, takingCards);
+//   }
 
   ///
   ///GENERAL ACTIONS FINISH
@@ -442,7 +438,7 @@ class GameViewModel extends ChangeNotifier {
   void performPlayOnTable() {
     if (selectedCard == null) return;
 
-    playAction(selectedCard!); // pass card
+    // playAction(selectedCard!); // pass card
     selectedCard = null;
     notifyListeners();
   }
@@ -479,7 +475,7 @@ class GameViewModel extends ChangeNotifier {
         cardStackIds.add(s.id);
       }
 
-      stackCardsActon(stack, cardStackIds);
+      // stackCardsActon(stack, cardStackIds);
     }
 
     selectedCard = null;
@@ -552,7 +548,7 @@ class GameViewModel extends ChangeNotifier {
         cardStackIds.add(s.id);
       }
 
-      pairCardsAction(stack, cardStackIds);
+      // pairCardsAction(stack, cardStackIds);
 
       selectedCard = null;
       selectedCards = [];
@@ -606,7 +602,7 @@ class GameViewModel extends ChangeNotifier {
         }
       }
 
-      pairCardsAction(stack, cardStackIds);
+      // pairCardsAction(stack, cardStackIds);
     }
 
     selectedCard = null;
@@ -693,7 +689,7 @@ class GameViewModel extends ChangeNotifier {
       }
     }
 
-    pairCardsAction(stack, cardStackIds);
+    // pairCardsAction(stack, cardStackIds);
 
     selectedCard = null;
     selectedCards = [];
@@ -704,13 +700,13 @@ class GameViewModel extends ChangeNotifier {
   void performTakeCards() {
     if (selectedCard == null) return;
     if (selectedStacks.length == 1) {
-      takeStackAction(selectedStacks[0], selectedCard!);
+      // takeStackAction(selectedStacks[0], selectedCard!);
     } else if (selectedCards.length == 1) {
-      takeCardAction(selectedCard!, selectedCards[0]);
+      // takeCardAction(selectedCard!, selectedCards[0]);
     } else if (selectedCards.length > 1) {
       //Create stack of selected cards and takestackaction
       if (possibleTotals(selectedCards).contains(selectedCard!.valueHigh)) {
-        addAndTakeCardsAction(selectedCards, selectedCard!);
+        // addAndTakeCardsAction(selectedCards, selectedCard!);
       }
     }
     selectedCard = null;

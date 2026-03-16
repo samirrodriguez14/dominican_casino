@@ -166,7 +166,6 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       case GameMode.tresydos:
         return NewTresydosPlayingArea();
       case GameMode.casino:
-      case GameMode.casinoNew:
         return NewCasinoPlayingArea();
       case GameMode.robaito:
     }

@@ -1,53 +1,41 @@
+import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
-class LobbyGamePill extends StatelessWidget {
-  const LobbyGamePill({
+class GamePill extends StatelessWidget {
+  const GamePill({
     super.key,
-    required this.title,
-    required this.subtitle,
-    required this.pid,
-    required this.player1,
-    required this.player2,
-    required this.statusText,
-    required this.statusIsFull,
-    required this.enterEnabled,
-    required this.enterLabel,
-    required this.onEnter,
-    required this.onDelete,
-    required this.joined,
-    required this.onShare,
-    required this.myTurn,
+    required this.game,
+    required this.myPid,
+    this.onEnter,
+    this.onDelete,
+    this.onShare,
   });
 
-  final String title;
-  final String subtitle;
-  final String pid;
-  final String player1;
-  final String player2;
-  final String statusText;
-  final bool statusIsFull;
-  final bool myTurn;
-  final bool enterEnabled;
-  final bool joined;
-  final String enterLabel;
+  final GamePillData game;
+  final String myPid;
   final VoidCallback? onEnter;
-  final VoidCallback onDelete;
-  final VoidCallback onShare;
+  final VoidCallback? onDelete;
+  final VoidCallback? onShare;
 
   @override
   Widget build(BuildContext context) {
+    final joined = game.containsPlayer(myPid);
+    final myTurn = game.isMyTurn(myPid);
+
     final bg = AppStyle.theme.surface;
     final border = joined
         ? AppStyle.theme.turnHighlight
         : AppStyle.theme.surfaceAlt;
+
+    final enterLabel = joined ? 'Enter' : 'Join';
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: myTurn ? AppStyle.theme.border : bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border.withValues(alpha: (0.6))),
+        border: Border.all(color: border.withValues(alpha: 0.6)),
         boxShadow: const [
           BoxShadow(
             blurRadius: 14,
@@ -62,19 +50,23 @@ class LobbyGamePill extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (myTurn) Text("You're Up!"),
-                const SizedBox(height: 6),
+                if (myTurn) ...[
+                  Text("You're Up!", style: AppStyle.theme.title),
+                  const SizedBox(height: 6),
+                ],
 
-                _playerRow(player1),
-                const SizedBox(height: 6),
-                _playerRow(player2),
+                const SizedBox(height: 10),
+
+                ...game.playerNames.map(
+                  (name) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: _playerRow(name),
+                  ),
+                ),
               ],
             ),
           ),
-
           const SizedBox(width: 10),
-
-          // Actions
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -85,10 +77,8 @@ class LobbyGamePill extends StatelessWidget {
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    color: enterEnabled
-                        ? AppStyle.theme.surfaceAlt
-                        : AppStyle.theme.border,
-                    onPressed: onEnter, // null disables
+                    color: AppStyle.theme.surfaceAlt,
+                    onPressed: onEnter,
                     child: Text(enterLabel, style: AppStyle.theme.title),
                   ),
                   const SizedBox(width: 8),
@@ -98,7 +88,7 @@ class LobbyGamePill extends StatelessWidget {
                       vertical: 8,
                     ),
                     color: AppStyle.theme.muted,
-                    onPressed: statusIsFull ? null : onShare,
+                    onPressed: onShare,
                     child: Icon(
                       CupertinoIcons.share_up,
                       size: 18,
@@ -121,9 +111,18 @@ class LobbyGamePill extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
 
-              Text("gameId: $title", style: AppStyle.theme.mutedText),
+              const SizedBox(height: 6),
+
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("ID: ${game.id}", style: AppStyle.theme.mutedText),
+                  const SizedBox(width: 10),
+
+                  _modeBadge(),
+                ],
+              ),
             ],
           ),
         ],
@@ -131,8 +130,22 @@ class LobbyGamePill extends StatelessWidget {
     );
   }
 
+  Widget _modeBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppStyle.theme.surfaceAlt,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: AppStyle.theme.border.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Text(game.gameMode.name, style: AppStyle.theme.mutedText),
+    );
+  }
+
   Widget _playerRow(String name) {
-    final open = name == "Open";
+    final open = name == 'Open' || name == 'Waiting...' || name == 'Unknown';
 
     return Row(
       children: [
@@ -143,7 +156,7 @@ class LobbyGamePill extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(
-          open ? "Waiting..." : name,
+          open ? 'Waiting...' : name,
           style: open ? AppStyle.theme.mutedText : AppStyle.theme.title,
         ),
       ],

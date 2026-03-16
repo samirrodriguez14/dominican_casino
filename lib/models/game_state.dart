@@ -12,7 +12,7 @@ GameStatus gameStatusFrom(String? s) {
   return GameStatus.values.firstWhere((g) => g.name == s);
 }
 
-enum GameMode { tresydos, casino, casinoNew, robaito }
+enum GameMode { tresydos, casino, robaito }
 
 GameMode gameModeFrom(String? s) {
   switch (s) {
@@ -20,8 +20,6 @@ GameMode gameModeFrom(String? s) {
       return GameMode.tresydos;
     case 'casino':
       return GameMode.casino;
-    case 'casinoNew':
-      return GameMode.casinoNew;
     case 'robaito':
     default:
       return GameMode.robaito;
@@ -36,8 +34,6 @@ String gameModeTo(GameMode s) {
       return 'casino';
     case GameMode.robaito:
       return 'robaito';
-    case GameMode.casinoNew:
-      return 'casinoNew';
   }
 }
 
@@ -59,8 +55,6 @@ class GameState {
   int extraPoints;
   String extraPointsHolderId;
   String lastTookCardId;
-  final String? player1;
-  final String? player2;
   final Map<String, dynamic> playersInfo;
   String? winnerId;
   Round round;
@@ -84,8 +78,7 @@ class GameState {
     required this.cardMoveEvents,
     required this.round,
     required this.winnerId,
-    required this.player1,
-    required this.player2,
+
     required this.playersInfo,
   });
 
@@ -113,8 +106,7 @@ class GameState {
       lastTookCardId: '',
       cardMoveEvents: [],
       playersInfo: {},
-      player1: "",
-      player2: "",
+
       winnerId: "",
       round: round,
     );
@@ -142,9 +134,6 @@ class GameState {
     'extraPoints': extraPoints,
     'extraPointsHolderId': extraPointsHolderId,
     'lastTookCardId': lastTookCardId,
-
-    'player1': player1,
-    'player2': player2,
     'winnerId': winnerId,
     'round': round.toJson(),
   };
@@ -205,8 +194,6 @@ class GameState {
       hands: hands,
       playersDeck: playersDeck,
       lastTookCardId: (m['lastTookCardId'] as String?) ?? '',
-      player1: m['player1'] as String?,
-      player2: m['player2'] as String?,
       playersInfo: m['playersInfo'],
       winnerId: m['winnerId'] as String?,
       extraPoints: m['extraPoints'],

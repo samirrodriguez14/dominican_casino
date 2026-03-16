@@ -4,17 +4,17 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
-import 'package:dominican_casino/ui/game/popups/button_instructions.dart';
-import 'package:dominican_casino/ui/game/popups/game_completed.dart';
-import 'package:dominican_casino/ui/game/popups/game_status.dart';
-import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
-import 'package:dominican_casino/ui/game/popups/round_completed.dart';
-import 'package:dominican_casino/ui/game/areas/player_area.dart';
-import 'package:dominican_casino/ui/game/areas/casino_playing_area.dart';
+import 'package:dominican_casino/ui/legacy_game/popups/button_instructions.dart';
+import 'package:dominican_casino/ui/legacy_game/popups/game_completed.dart';
+import 'package:dominican_casino/ui/legacy_game/popups/game_status.dart';
+import 'package:dominican_casino/ui/legacy_game/popups/players_deck_content.dart';
+import 'package:dominican_casino/ui/legacy_game/popups/round_completed.dart';
+import 'package:dominican_casino/ui/legacy_game/areas/player_area.dart';
+import 'package:dominican_casino/ui/legacy_game/areas/casino_playing_area.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/game/areas/tresydos_playing_area.dart';
-import 'package:dominican_casino/ui/widgets/game_controll.dart';
-import 'package:dominican_casino/view_models/games/game_view_model.dart';
+import 'package:dominican_casino/ui/legacy_game/areas/tresydos_playing_area.dart';
+import 'package:dominican_casino/ui/legacy_game/game_controll.dart';
+import 'package:dominican_casino/ui/legacy_game/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -90,7 +90,7 @@ class GameScreenState extends State<GameScreen> {
           subtitle: 'Review scores before continuing',
           content: RoundCompletedContent(vm: vm),
           primaryText: 'Continue',
-          onPrimary: () => vm.pressContinue(),
+          // onPrimary: () => vm.pressContinue(),
           barrierDismissible: false,
         );
       });

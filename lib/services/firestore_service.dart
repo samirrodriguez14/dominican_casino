@@ -1,36 +1,20 @@
-import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dominican_casino/models/lobby_game.dart';
-import 'package:dominican_casino/models/playing_area_stack_model.dart';
-import 'package:dominican_casino/services/game_handler.dart';
+import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/services/game_service.dart';
-import 'package:rxdart/rxdart.dart';
-import '../models/playing_card_model.dart';
 import '../models/game_state.dart';
 
 class FirestoreService extends GameService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
   final CollectionReference _games = FirebaseFirestore.instance.collection(
     'games',
   );
-
-  final GameHandler2 gameHandler;
-
-  FirestoreService()
-    : gameHandler = GameHandler2(db: FirebaseFirestore.instance);
-
-  ///START STREAMS
-  ///
   @override
-  Stream<List<LobbyGame>> listenGames(String pid) {
-    final p1 = _games.where('player1', isEqualTo: pid).snapshots();
-    final p2 = _games.where('player2', isEqualTo: pid).snapshots();
-
-    return Rx.combineLatest2(p1, p2, (a, b) {
-      final docs = [...a.docs, ...b.docs];
-      return docs.map((d) {
+  Stream<List<GamePillData>> listenGames(String pid) {
+    return _games.where('playersInfo.$pid.id', isEqualTo: pid).snapshots().map((
+      snapshot,
+    ) {
+      return snapshot.docs.map((d) {
         final data = d.data() as Map<String, dynamic>;
-        return LobbyGame.fromDoc(d.id, data);
+        return GamePillData.fromDoc(d.id, data);
       }).toList();
     });
   }
@@ -46,19 +30,11 @@ class FirestoreService extends GameService {
     });
   }
 
-  ///
-  ///END STREAMS
-
-  ///GAME HANDLE START
-  ///
   @override
   Future<GameState> loadGame(String gid) async {
     final snap = await _games.doc(gid).get();
     return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
   }
-
-  @override
-  Future<String> createGame(GameMode mode) => gameHandler.createGame(mode);
 
   @override
   Future<String> newCreateGame(GameState gState) async {
@@ -69,11 +45,8 @@ class FirestoreService extends GameService {
 
   @override
   Future<GameState> updateGame(GameState gState) async {
-    //Updating game
-
     await _games.doc(gState.id).set(gState.toJson());
     final snap = await _games.doc(gState.id).get();
-
     return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
   }
 
@@ -81,227 +54,4 @@ class FirestoreService extends GameService {
   Future<void> deleteGame(String gameId) async {
     await _games.doc(gameId).delete();
   }
-
-  @override
-  Future<String?> joinGame(
-    String gameId,
-    String pid,
-    Map<String, dynamic> playerInfo,
-  ) async {
-    String? g;
-    try {
-      g = await gameHandler.joinGame(
-        gameId: gameId,
-        pid: pid,
-        playerInfo: playerInfo,
-      );
-    } catch (e) {
-      developer.log("Service.fs.joinGame Error $e");
-    }
-    return g;
-  }
-
-  Future<void> startGame(String gameId) async =>
-      await gameHandler.startGame(gameId);
-
-  Future<void> leaveGame(String gameId, String pid) async =>
-      await gameHandler.leaveGame(gameId, pid);
-
-  ///
-  ///GAME HANDLE END
-
-  ///ROUND CONTROLLERS
-  ///
-
-  Future<void> dealSameRound(String gameId) async =>
-      await gameHandler.dealSameRound(gameId);
-
-  Future<void> dealNextRound(String gameId, String playerId) async {
-    final doc = _games.doc(gameId);
-    developer.log("SERVICE docPath=${_games.doc(gameId).path}");
-    await _db
-        .runTransaction((tx) async {
-          await gameHandler.dealNextRound(tx, doc, playerId);
-        })
-        .catchError((e, st) {
-          developer.log("setRoundReady tx FAILED: $e\n$st");
-          throw e;
-        });
-  }
-
-  Future<void> setRoundReady(String gameId, String playerId) async {
-    final doc = _games.doc(gameId);
-    developer.log("SERVICE docPath=${_games.doc(gameId).path}");
-    await _db
-        .runTransaction((tx) async {
-          await gameHandler.setRoundReady(tx, doc, playerId);
-          developer.log("setRoundReady SUCCESS");
-        })
-        .catchError((e, st) {
-          developer.log("setRoundReady tx FAILED: $e\n$st");
-          throw e;
-        });
-  }
-
-  ///
-  ///ROUND CONTROLLERS
-
-  ///PlayHandle START
-  ///
-  Future<void> playCard(
-    String gameId,
-    String playerId,
-    PlayingCardModel card,
-  ) async {
-    final doc = _games.doc(gameId);
-    developer.log("SERVICE docPath=${_games.doc(gameId).path}");
-    await _db
-        .runTransaction((tx) async {
-          await gameHandler.playCard(tx, doc, card, playerId);
-        })
-        .catchError((e, st) {
-          developer.log("runTransaction failed: $e\n$st");
-          throw e;
-        });
-  }
-
-  Future<void> takeCard(
-    String gameId,
-    String playerId,
-    PlayingCardModel card,
-    PlayingCardModel takingCard,
-  ) async {
-    final doc = _games.doc(gameId);
-    developer.log("SERVICE docPath=${_games.doc(gameId).path}");
-
-    await _db
-        .runTransaction((tx) async {
-          await gameHandler.takeCard(tx, doc, card, takingCard, playerId);
-        })
-        .catchError((e, st) {
-          developer.log("runTransaction failed: $e\n$st");
-          throw e;
-        });
-  }
-
-  Future<void> addAndTakeCards(
-    String gameId,
-    String playerId,
-    PlayingCardModel card,
-    List<PlayingCardModel> takingCards,
-  ) async {
-    final doc = _games.doc(gameId);
-    developer.log("SERVICE docPath=${_games.doc(gameId).path}");
-
-    await _db
-        .runTransaction((tx) async {
-          await gameHandler.addAndTakeCards(
-            tx,
-            doc,
-            card,
-            takingCards,
-            playerId,
-          );
-        })
-        .catchError((e, st) {
-          developer.log("runTransaction failed: $e\n$st");
-          throw e;
-        });
-  }
-
-  Future<void> stackCard(
-    String gameId,
-    String playerId,
-    PlayingCardModel? playerCard,
-    List<String?> cardStackIds,
-
-    PlayingAreaStackModel cardStack,
-  ) async {
-    final doc = _games.doc(gameId);
-    await _db
-        .runTransaction((tx) async {
-          await gameHandler.stackCards(
-            tx,
-            doc,
-            playerId,
-            playerCard,
-            cardStackIds,
-            cardStack,
-          );
-        })
-        .catchError((e, st) {
-          developer.log("runTransaction failed: $e\n$st");
-          throw e;
-        });
-  }
-
-  Future<void> pairStack(
-    String gameId,
-    String playerId,
-    List<String?> cardStackIds,
-    PlayingCardModel? playerCard,
-    PlayingAreaStackModel cardStack,
-  ) async {
-    final doc = _games.doc(gameId);
-    await _db
-        .runTransaction((tx) async {
-          await gameHandler.pairStacks(
-            tx,
-            doc,
-            playerId,
-            cardStackIds,
-            playerCard,
-            cardStack,
-          );
-        })
-        .catchError((e, st) {
-          developer.log("runTransaction failed: $e\n$st");
-          throw e;
-        });
-  }
-
-  Future<void> stackAndPairStacks(
-    String gameId,
-    String playerId,
-    List<String?> cardStackIds,
-    PlayingCardModel? playerCard,
-    PlayingAreaStackModel cardStack,
-  ) async {
-    final doc = _games.doc(gameId);
-    await _db
-        .runTransaction((tx) async {
-          await gameHandler.pairStacks(
-            tx,
-            doc,
-            playerId,
-            cardStackIds,
-            playerCard,
-            cardStack,
-          );
-        })
-        .catchError((e, st) {
-          developer.log("runTransaction failed: $e\n$st");
-          throw e;
-        });
-  }
-
-  Future<void> takeStack(
-    String gameId,
-    String playerId,
-    PlayingAreaStackModel stack,
-    PlayingCardModel card,
-  ) async {
-    final doc = _games.doc(gameId);
-    await _db
-        .runTransaction((tx) async {
-          await gameHandler.takeStack(tx, doc, stack, card, playerId);
-        })
-        .catchError((e, st) {
-          developer.log("runTransaction failed: $e\n$st");
-          throw e;
-        });
-  }
-
-  ///
-  ///PLAY HANDLE END
 }

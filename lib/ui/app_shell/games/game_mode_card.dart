@@ -81,8 +81,6 @@ class GameModeCard extends StatelessWidget {
         return CupertinoIcons.plus_app;
       case GameMode.robaito:
         return CupertinoIcons.app_fill;
-      case GameMode.casinoNew:
-        return CupertinoIcons.plus_app_fill;
     }
   }
 
@@ -94,19 +92,14 @@ class GameModeCard extends StatelessWidget {
     switch (mode) {
       case GameMode.tresydos:
         final gid = await vm.newGame(mode);
-        if (gid != null && context.mounted) context.go('/gengame/$gid');
+        if (gid != null && context.mounted) context.go('/game/$gid');
         break;
       case GameMode.casino:
         final gid = await vm.newGame(mode);
-        if (gid != null && context.mounted) context.go('/gengame/$gid');
+        if (gid != null && context.mounted) context.go('/game/$gid');
         break;
       case GameMode.robaito:
-
         break;
-      case GameMode.casinoNew:
-        final gid = await vm.newGame(GameMode.casinoNew);
-        context.go('/gengame/$gid');
-
     }
   }
 
@@ -118,8 +111,6 @@ class GameModeCard extends StatelessWidget {
         return "Casino";
       case GameMode.robaito:
         return "Robaito";
-      case GameMode.casinoNew:
-        return "Casino New";
     }
   }
 
@@ -131,8 +122,6 @@ class GameModeCard extends StatelessWidget {
         return "Classic Dominican Casino Game";
       case GameMode.robaito:
         return "well.. take from the teammate";
-      case GameMode.casinoNew:
-        return "New Casino mode";
     }
   }
 }
@@ -145,8 +134,6 @@ String gameModePlayers(GameMode mode) {
       return "2 Players";
     case GameMode.robaito:
       return "2-4 players";
-    case GameMode.casinoNew:
-      return "2 Players";
   }
 }
 

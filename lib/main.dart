@@ -10,7 +10,6 @@ import 'package:dominican_casino/style/felt_walnut_theme.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:dominican_casino/view_models/home_view_model.dart';
-import 'package:dominican_casino/view_models/lobby_view_model.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
@@ -52,9 +51,6 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (context) => GamesViewModel(appRepo: context.read<AppRepo>()),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => LobbyViewModel(appRepo: context.read<AppRepo>()),
         ),
         ChangeNotifierProvider(
           create: (context) => HomeViewModel(appRepo: context.read<AppRepo>()),

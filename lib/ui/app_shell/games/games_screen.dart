@@ -117,7 +117,7 @@ class GamesScreen extends StatelessWidget {
                 Navigator.pop(context);
 
                 if (gameId.isNotEmpty) {
-                  context.go('/gengame/$gameId');
+                  context.go('/game/$gameId');
                 }
               },
             ),

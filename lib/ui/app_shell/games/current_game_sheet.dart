@@ -1,9 +1,8 @@
-
+import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/lobby/lobby_screen.dart';
-import 'package:dominican_casino/ui/lobby/widgets/lobby_game_pill.dart';
-import 'package:dominican_casino/view_models/lobby_view_model.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
+import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -25,14 +24,14 @@ class _CurrentGamesSheetState extends State<CurrentGamesSheet> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final pid = context.read<AppRepo>().player?.id;
       if (pid != null) {
-        context.read<LobbyViewModel>().startListening(pid);
+        context.read<GamesViewModel>().startListening(pid);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<LobbyViewModel>();
+    final vm = context.watch<GamesViewModel>();
 
     return Container(
       decoration: BoxDecoration(
@@ -77,7 +76,7 @@ class _CurrentGamesSheetState extends State<CurrentGamesSheet> {
 class _CurrentGamesBody extends StatelessWidget {
   const _CurrentGamesBody({required this.vm, required this.scrollController});
 
-  final LobbyViewModel vm;
+  final GamesViewModel vm;
   final ScrollController scrollController;
 
   @override
@@ -129,11 +128,9 @@ class _CurrentGamesBody extends StatelessWidget {
 
     final myUid = vm.userId;
 
-    final myGames = vm.games.where((g) {
-      final p1 = (g.player1 ?? '').trim();
-      final p2 = (g.player2 ?? '').trim();
-      return p1 == myUid || p2 == myUid;
-    }).toList();
+    final myGames = myUid == null
+        ? <GamePillData>[]
+        : vm.games.where((g) => g.containsPlayer(myUid)).toList();
 
     if (myGames.isEmpty) {
       return ListView(
@@ -160,24 +157,11 @@ class _CurrentGamesBody extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
         final g = myGames[i];
-        final p1Info = g.playersInfo?[g.player1 ?? ""] ?? {};
-        final p2Info = g.playersInfo?[g.player2 ?? ""] ?? {};
-        final myTurn = myUid != null && g.currentTurnPlayerId == myUid;
 
-        return LobbyGamePill(
-          title: _shortId(g.id),
-          subtitle: "",
-          pid: myUid ?? "",
-          myTurn: myTurn,
-          player1: g.player1?.isNotEmpty == true ? "${p1Info['name']}" : "Open",
-          player2: g.player2?.isNotEmpty == true ? "${p2Info['name']}" : "Open",
-          statusText: "IN GAME",
-          statusIsFull: LobbyBody.isFull(g),
-          joined: LobbyBody.joined(g, myUid ?? ""),
-          enterEnabled:
-              !LobbyBody.isFull(g) || LobbyBody.joined(g, myUid ?? ""),
-          enterLabel: "Enter",
-          onEnter: () => context.go('/gengame/${g.id}'),
+        return GamePill(
+          game: g,
+          myPid: myUid ?? '',
+          onEnter: () => context.go('/game/${g.id}'),
           onDelete: () async {
             final ok = await vm.confirmDelete(context, g.id);
             if (!ok) return;
@@ -185,10 +169,11 @@ class _CurrentGamesBody extends StatelessWidget {
           },
           onShare: () async {
             final link = "https://dominican-casino.web.app/join/${g.id}";
-            final message = '''
-Join my Dominican Casino game!
-$link
-''';
+            final message =
+                '''
+                Join my Dominican Casino game!
+                $link
+                ''';
 
             await SharePlus.instance.share(ShareParams(text: message));
           },
@@ -196,6 +181,4 @@ $link
       },
     );
   }
-
-  String _shortId(String id) => id.length <= 6 ? id : id.substring(0, 6);
 }

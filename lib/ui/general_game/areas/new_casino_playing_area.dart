@@ -2,7 +2,7 @@ import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/cards/card_deck.dart';
-import 'package:dominican_casino/ui/game/popups/players_deck_content.dart';
+import 'package:dominican_casino/ui/legacy_game/popups/players_deck_content.dart';
 import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_opponent_area.dart';

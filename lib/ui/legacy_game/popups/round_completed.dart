@@ -1,5 +1,5 @@
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/view_models/games/game_view_model.dart';
+import 'package:dominican_casino/ui/legacy_game/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 
 class RoundCompletedContent extends StatelessWidget {
@@ -36,8 +36,8 @@ class RoundCompletedContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final int roundIndex = vm.roundIndex;
 
-    final String player1Id = vm.g?.player1 ?? '';
-    final String player2Id = vm.g?.player2 ?? '';
+    final String player1Id = '';
+    final String player2Id = '';
 
     final Map<String, dynamic> roundScores =
         (vm.roundScores as Map?)?.cast<String, dynamic>() ?? const {};

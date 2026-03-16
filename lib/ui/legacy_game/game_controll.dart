@@ -5,7 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 // import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:dominican_casino/view_models/games/game_view_model.dart';
+import 'package:dominican_casino/ui/legacy_game/game_view_model.dart';
 import 'package:share_plus/share_plus.dart';
 
 class GameControlDeck extends StatefulWidget {
@@ -43,7 +43,7 @@ class _GameControlDeckState extends State<GameControlDeck> {
       } else if (canStart) {
         actionIcon = CupertinoIcons.play_arrow_solid;
         actionLabel = "Start";
-        onAction = () async => await vm.startGame();
+        // onAction = () async => await vm.startGame();
       } else {
         actionIcon = CupertinoIcons.lock;
         actionLabel = isController ? "Waiting…" : "Locked";
@@ -53,9 +53,9 @@ class _GameControlDeckState extends State<GameControlDeck> {
       if (canRedeal) {
         actionIcon = CupertinoIcons.refresh_thick;
         actionLabel = "Redeal";
-        onAction = (vm.canStartNextRound)
-            ? () => vm.startNextRound()
-            : () => vm.redealSameRound();
+        // onAction = (vm.canStartNextRound)
+            // ? () => vm.startNextRound()
+            // : () => vm.redealSameRound();
       } else {
         actionIcon = CupertinoIcons.lock;
         actionLabel = "Waiting…";
