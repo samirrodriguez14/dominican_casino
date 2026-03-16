@@ -2,31 +2,95 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
-class GameHistorySection extends StatelessWidget {
-  const GameHistorySection({
+class GameHistorySheet extends StatelessWidget {
+  const GameHistorySheet({
     super.key,
+    required this.scrollController,
     required this.selectedMode,
     required this.onModeChanged,
   });
 
+  final ScrollController scrollController;
   final GameMode? selectedMode;
   final ValueChanged<GameMode?> onModeChanged;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: AppStyle.theme.surfaceBox(),
-      margin: EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppStyle.theme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 18,
+            offset: Offset(0, -4),
+            color: Color(0x22000000),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          Container(
+            width: 42,
+            height: 5,
+            decoration: BoxDecoration(
+              color: AppStyle.theme.muted.withValues(alpha: .45),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text("Game History", style: AppStyle.theme.mutedText),
+          const SizedBox(height: 8),
+
+          Expanded(
+            child: GameHistorySection(
+              scrollController: scrollController,
+              selectedMode: selectedMode,
+              onModeChanged: onModeChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+class GameHistorySection extends StatelessWidget {
+  const GameHistorySection({
+    super.key,
+    required this.scrollController,
+    required this.selectedMode,
+    required this.onModeChanged,
+  });
+
+  final ScrollController scrollController;
+  final GameMode? selectedMode;
+  final ValueChanged<GameMode?> onModeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final games = List.generate(6, (index) {
+      final won = index % 2 == 0;
+      final mode = GameMode.values[index % GameMode.values.length];
+      final opponent = "Opponent ${index + 1}";
+      return (won: won, mode: mode, opponent: opponent);
+    });
+
+    final filteredGames = selectedMode == null
+        ? games
+        : games.where((g) => g.mode == selectedMode).toList();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
+      decoration: AppStyle.theme.surfaceBox(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Game History",
-            style: AppStyle.theme.title.copyWith(fontSize: 26),
+            "Review your recent matches.",
+            style: AppStyle.theme.mutedText,
           ),
-          const SizedBox(height: 6),
-          Text("Review your recent matches.", style: AppStyle.theme.mutedText),
           const SizedBox(height: 16),
 
           _HistoryFilters(
@@ -37,23 +101,23 @@ class GameHistorySection extends StatelessWidget {
           const SizedBox(height: 16),
 
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: List.generate(6, (index) {
-                  final won = index % 2 == 0;
-                  final mode = GameMode.values[index % GameMode.values.length];
-                  final opponent = "Opponent ${index + 1}";
+            child: ListView.builder(
+              controller: scrollController,
+              itemCount: filteredGames.length,
+              itemBuilder: (context, index) {
+                final game = filteredGames[index];
 
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: index == 7 ? 0 : 10),
-                    child: GameHistoryTile(
-                      opponent: opponent,
-                      mode: mode,
-                      won: won,
-                    ),
-                  );
-                }),
-              ),
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index == filteredGames.length - 1 ? 0 : 10,
+                  ),
+                  child: GameHistoryTile(
+                    opponent: game.opponent,
+                    mode: game.mode,
+                    won: game.won,
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -61,7 +125,6 @@ class GameHistorySection extends StatelessWidget {
     );
   }
 }
-
 class _HistoryFilters extends StatelessWidget {
   const _HistoryFilters({
     required this.selectedMode,
@@ -123,11 +186,6 @@ class GameHistoryTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: AppStyle.theme.raisedSurfaceBox(),
-      //  BoxDecoration(
-      //   color: AppStyle.theme.surface,
-      //   borderRadius: BorderRadius.circular(AppStyle.theme.radius),
-      //   border: Border.all(color: AppStyle.theme.border),
-      // ),
       child: Row(
         children: [
           Container(
@@ -231,30 +289,3 @@ class _FilterChip extends StatelessWidget {
     );
   }
 }
-
-// class _FutureFilterChip extends StatelessWidget {
-//   const _FutureFilterChip({required this.label, required this.icon});
-
-//   final String label;
-//   final IconData icon;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-//       decoration: BoxDecoration(
-//         color: AppStyle.theme.surface,
-//         borderRadius: BorderRadius.circular(999),
-//         border: Border.all(color: AppStyle.theme.border),
-//       ),
-//       child: Row(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           Icon(icon, size: 14, color: AppStyle.theme.muted),
-//           const SizedBox(width: 6),
-//           Text(label, style: AppStyle.theme.mutedText),
-//         ],
-//       ),
-//     );
-//   }
-// }
