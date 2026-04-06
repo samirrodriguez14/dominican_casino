@@ -3,7 +3,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/general_handlers/game_action_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tredos_play_action_handler.dart';
+import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tres_dos_play_action_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tres_dos_game_state_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tres_dos_rules_handler.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
@@ -112,7 +112,14 @@ class TresDosGameEngine extends GameEngine {
     InGameAction action,
     String pid,
   ) async {
-    await GameActionHandler.handleGameAction(gameService, state, action, pid);
+    await GameActionHandler.handleGameAction(
+      gameService,
+      state,
+      action,
+      5,
+      1,
+      pid,
+    );
     return state;
   }
 }

@@ -3,6 +3,8 @@ import 'dart:developer' as developer;
 
 import 'package:app_links/app_links.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
+import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
+import 'package:dominican_casino/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
@@ -52,25 +54,38 @@ class _MyAppState extends State<App> {
           path: '/instructions',
           builder: (context, state) => const InstructionsScreen(),
         ),
-   
+
         GoRoute(
-          path: '/join/:gameId',
+          path: '/join/:gameId/:gameMode',
           redirect: (context, state) async {
             final gameId = state.pathParameters['gameId']!;
-            return '/game/$gameId';
+            final gameMode = state.pathParameters['gameMode']!;
+
+            return '/game/$gameId/$gameMode';
           },
         ),
         GoRoute(
-          path: '/game/:gameId',
+          path: '/game/:gameId/:gameMode',
           builder: (context, state) {
             final gameId = state.pathParameters['gameId']!;
+            final gameMode = state.pathParameters['gameMode']!;
             final player = context.read<AppRepo>().player;
             if (player == null) return HomeScreen();
             GameService gameService = FirestoreService();
+            GameEngine engine;
+            switch (gameMode) {
+              case "casino":
+                engine = CasinoGameEngine(gameService: gameService);
+              case "tresydos":
+                engine = TresDosGameEngine(gameService: gameService);
+              default:
+                engine = CasinoGameEngine(gameService: gameService);
+            }
+
             return ChangeNotifierProvider(
               create: (_) => GeneralGameViewModel(
                 gid: gameId,
-                gameEngine: CasinoGameEngine(gameService:gameService),
+                gameEngine: engine,
                 player: player,
                 gameRepo: context.read<GameRepo>(),
               ),

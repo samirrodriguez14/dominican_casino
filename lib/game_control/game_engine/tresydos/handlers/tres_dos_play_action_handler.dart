@@ -3,7 +3,6 @@ import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_state.dart';
 
 class TresDosPlayActionHandler {
-
   static GameState handleAction(
     GameState nextState,
     PlayAction a,
@@ -34,12 +33,12 @@ class TresDosPlayActionHandler {
     final pid = a.performedById;
     // REMOVE TARGET CARD FROM PLAYING AREA
     nextState.playingArea.removeWhere((card) => card == a.targetCard);
+    nextState.deck.removeWhere((card) => card == a.targetCard);
 
     // ADD CARD TO PLAYER'S WON/CAPTURED CARDS
-    nextState.playersDeck.putIfAbsent(pid, () => []);
-    nextState.playersDeck[pid]!.addAll([a.usedCard, a.targetCard]);
+    nextState.hands.putIfAbsent(pid, () => []);
+    nextState.hands[pid]!.add(a.targetCard);
 
     return nextState;
   }
-
 }

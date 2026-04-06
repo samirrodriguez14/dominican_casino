@@ -123,6 +123,8 @@ class CasinoGameEngine extends GameEngine {
       gameService,
       state,
       action,
+      4,
+      4,
       pid,
     );
     return state;

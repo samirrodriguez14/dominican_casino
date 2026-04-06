@@ -62,6 +62,7 @@ class TresydosPlayingAreaState extends State<TresydosPlayingArea> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       CardDeck(
+                        back: true,
                         title: 'Take',
                         cards: [],
                         cardWidth: widget.width,

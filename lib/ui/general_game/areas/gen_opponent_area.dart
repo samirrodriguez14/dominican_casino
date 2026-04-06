@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
@@ -31,7 +32,7 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
     bool opponentJoined = opp != null && opp != "";
 
     return Container(
-      width: double.infinity,
+      // width: double.infinity,
       padding: const EdgeInsets.all(12),
       // decoration: AppStyle.theme.playerSectionBox(
       //   highlightColor: AppStyle.theme.turnHighlight,
@@ -49,21 +50,56 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
 
           AppStyle.theme.dottedBox(
             child: SizedBox(
-              height: 90, // reserve card height
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  deckCount,
-                  (index) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: Opacity(
-                      opacity: vm.isCardHidden(vm.oppHandCard[index])
-                          ? 0.0
-                          : 1.0,
-                      child: PlayingCardBack(width: 60),
+              height: 80, // reserve card height
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final cards = vm.oppHandCard;
+                  const cardWidth = 50.0;
+
+                  if (cards.isEmpty) return const SizedBox.shrink();
+
+                  final count = cards.length;
+                  final gap = count == 1
+                      ? 0.0
+                      : ((constraints.maxWidth - cardWidth) / (count - 1))
+                            .clamp(12.0, 55.0);
+
+                  final totalWidth = cardWidth + ((count - 1) * gap);
+
+                  return SizedBox(
+                    width: constraints.maxWidth,
+                    height: 80,
+                    child: Center(
+                      child: SizedBox(
+                        width: totalWidth,
+                        height: 80,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            for (int i = 0; i < count; i++)
+                              Positioned(
+                                left: i * gap,
+                                child: Opacity(
+                                  opacity: vm.isCardHidden(cards[i])
+                                      ? 0.0
+                                      : 1.0,
+                                  child:
+                                      (vm.gameState.round.roundStatus ==
+                                          .completed)
+                                      ? PlayingCard(
+                                          playingCardModel: cards[i],
+                                          isSelected: false,
+                                          width: cardWidth,
+                                        )
+                                      : PlayingCardBack(width: cardWidth),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),

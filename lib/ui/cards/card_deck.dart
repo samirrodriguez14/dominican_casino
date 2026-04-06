@@ -6,6 +6,8 @@ import 'package:flutter/cupertino.dart';
 
 class CardDeck extends StatelessWidget {
   final List<PlayingCardModel> cards;
+  final bool back;
+  final bool? selectedTopCard;
   final int extraPoints;
   final double cardWidth;
   final String title;
@@ -18,6 +20,8 @@ class CardDeck extends StatelessWidget {
     required this.extraPoints,
     required this.title,
     required this.onTap,
+    this.back = true,
+    this.selectedTopCard,
   });
   @override
   Widget build(BuildContext context) {
@@ -29,7 +33,7 @@ class CardDeck extends StatelessWidget {
         children: [
           Column(
             children: [
-              Text(title, style: AppStyle.theme.mutedText,),
+              Text(title, style: AppStyle.theme.mutedText),
               Stack(
                 alignment: Alignment.topCenter,
                 children: [
@@ -44,7 +48,7 @@ class CardDeck extends StatelessWidget {
                           PlayingCard(
                             playingCardModel: cards[i],
                             isSelected: false,
-                            width: cardWidth-2,
+                            width: cardWidth - 2,
                           ),
                         ],
                       );
@@ -70,7 +74,13 @@ class CardDeck extends StatelessWidget {
                     return Column(
                       children: [
                         SizedBox(height: ((deckCount / 8).ceil() - i) * 2),
-                        PlayingCardBack(width: cardWidth),
+                        (!back)
+                            ? PlayingCard(
+                                width: cardWidth,
+                                playingCardModel: cards[0],
+                                isSelected: selectedTopCard ?? false ,
+                              )
+                            : PlayingCardBack(width: cardWidth),
                       ],
                     );
                   }),

@@ -23,7 +23,6 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
         highlight: highlightTurn,
         joined: false,
       ),
-      width: double.infinity,
       padding: const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,37 +35,77 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
             height: 150,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: vm.myHandCards.map((c) {
-                        final isSelected = vm.selectedCard == c;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 5),
-                          child: GestureDetector(
-                            onTap: () => vm.selectCard(c),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              transform: isSelected
-                                  ? Matrix4.translationValues(0, -12, 0)
-                                  : Matrix4.identity(),
-                              child: Opacity(
-                                opacity: vm.isCardHidden(c) ? 0.0 : 1.0,
-                                child: PlayingCard(
-                                  key: vm.keyForCard(c.id),
+                final cards = vm.myHandCards;
+                const cardWidth = 100.0;
+                const selectedLift = 12.0;
 
-                                  playingCardModel: c,
-                                  width: 90,
-                                  isSelected: isSelected,
+                if (cards.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                final count = cards.length;
+
+                const idealGap = 8.0;
+
+                final idealTotalWidth =
+                    (count * cardWidth) + ((count - 1) * idealGap);
+
+                // Compute actual gap
+                double gap;
+                if (idealTotalWidth <= 1200) {
+                  // Spread across available width
+                  gap = count == 1
+                      ? 0
+                      : (constraints.maxWidth - (count * cardWidth)) /
+                            (count - 1);
+                } else {
+                  // Not enough room, overlap
+                  gap = (constraints.maxWidth - cardWidth) / (count - 1);
+                }
+
+                gap = gap.clamp(60.0,100);
+
+                final totalWidth = cardWidth + ((count - 1) * gap);
+
+                return SizedBox(
+                  width: constraints.maxWidth,
+                  height: 150,
+                  child: Center(
+                    child: SizedBox(
+                      width: totalWidth,
+                      height: 150,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          for (int i = 0; i < count; i++)
+                            Positioned(
+                              left: i * gap,
+                              top: vm.selectedCard == cards[i]
+                                  ? 0
+                                  : selectedLift,
+                              child: GestureDetector(
+                                onTap: () => vm.selectCard(cards[i]),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  transform: vm.selectedCard == cards[i]
+                                      ? Matrix4.translationValues(0, -12, 0)
+                                      : Matrix4.identity(),
+                                  child: Opacity(
+                                    opacity: vm.isCardHidden(cards[i])
+                                        ? 0.0
+                                        : 1.0,
+                                    child: PlayingCard(
+                                      key: vm.keyForCard(cards[i].id),
+                                      playingCardModel: cards[i],
+                                      width: cardWidth,
+                                      isSelected: vm.selectedCard == cards[i],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -78,45 +117,44 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
     );
   }
 
-Widget _buildPlayControls(BuildContext context, GeneralGameViewModel vm) {
-  final actions = vm.possiblePlayActions;
-  final isMyTurn = vm.isMyTurn;
+  Widget _buildPlayControls(BuildContext context, GeneralGameViewModel vm) {
+    final actions = vm.possiblePlayActions;
+    final isMyTurn = vm.isMyTurn;
 
-  return SizedBox(
-    height: 42,
-    child: actions.isEmpty || !vm.isMyTurn
-        ? Center(
-            child: _TurnIndicator(isMyTurn: isMyTurn),
-          )
-        : LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(actions.length, (index) {
-                      final action = actions[index];
-                      final isPrimary = index == 0;
+    return SizedBox(
+      height: 42,
+      child: actions.isEmpty || !vm.isMyTurn
+          ? Center(child: _TurnIndicator(isMyTurn: isMyTurn))
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(actions.length, (index) {
+                        final action = actions[index];
+                        final isPrimary = index == 0;
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: _ActionChipButton(
-                          label: _actionLabel(action),
-                          icon: _actionIcon(action),
-                          primary: isPrimary,
-                          onTap: () => vm.performPlayAction(action),
-                        ),
-                      );
-                    }),
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: _ActionChipButton(
+                            label: _actionLabel(action),
+                            icon: _actionIcon(action),
+                            primary: isPrimary,
+                            onTap: () => vm.performPlayAction(action),
+                          ),
+                        );
+                      }),
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
-  );
-}
+                );
+              },
+            ),
+    );
+  }
+
   String _actionLabel(dynamic action) {
     final name = action.runtimeType.toString();
 
@@ -151,6 +189,7 @@ Widget _buildPlayControls(BuildContext context, GeneralGameViewModel vm) {
     }
   }
 }
+
 class _TurnIndicator extends StatelessWidget {
   const _TurnIndicator({required this.isMyTurn});
 
@@ -176,16 +215,14 @@ class _TurnIndicator extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             isMyTurn ? "Your Turn" : "Opponent Turn",
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
         ],
       ),
     );
   }
 }
+
 class _ActionChipButton extends StatelessWidget {
   const _ActionChipButton({
     required this.label,

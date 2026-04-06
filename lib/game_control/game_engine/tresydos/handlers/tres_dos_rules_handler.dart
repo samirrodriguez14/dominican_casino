@@ -23,13 +23,13 @@ class TresDosRulesHandler {
     if (canTakeCard(gameState, currentCardSelection)) {
       available.add(
         TakeCardAction(
-          usedCard: currentCardSelection.selectedCard!,
+          usedCard: currentCardSelection.selectedCards[0],
           targetCard: currentCardSelection.selectedCards[0],
           performedById: performedBy,
         ),
       );
     }
-    
+
     return available;
   }
 
@@ -42,10 +42,10 @@ class TresDosRulesHandler {
     switch (action) {
       case PlayCardAction _:
         return canPlayAction(gameState, currentCardSelection);
-     
+
       case TakeCardAction _:
         return canTakeCard(gameState, currentCardSelection);
-    
+
       default:
     }
     return false;
@@ -56,10 +56,10 @@ class TresDosRulesHandler {
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
-    if (currentCardSelection.selectedCard != null &&
-        currentCardSelection.selectedCards.isEmpty &&
+    if (currentCardSelection.selectedCards.isEmpty &&
         currentCardSelection.selectedStacks.isEmpty) {
-      return true;
+      return gameState.hands[currentCardSelection.pid]?.length == 6 &&
+          currentCardSelection.selectedCard != null;
     }
     return false;
   }
@@ -83,10 +83,6 @@ class TresDosRulesHandler {
     }
 
     // Must select exactly one table card
-    return selectedCards.length != 1;
+    return selectedCards.length == 1 && gameState.hands[pid]?.length != 6;
   }
-
-
-
- 
 }

@@ -51,26 +51,6 @@ class GeneralGameViewModel extends ChangeNotifier {
     }
   }
 
-  ///START VAR DECLARATIONS
-  ///
-  ///END GETTERS
-
-  //GAME VIEW MODEL UPDATES UI... THAT'S IT!
-  //GAME ENGINE +GAME RULES IS SOURCE OF TRUTH
-  //WHAT THINGS MUST THE UI KNOW FOR UPDATE
-
-  //  CURR GAME STATE...
-
-  //      GAME STATUS: waiting, playing, roundComplete, gameOver
-  //      CARD MOVE EVENTS
-  //
-  //      CURR SCORE
-  //      LAST ROUND SCORE
-
-  //      CURR PLAYER TURN
-  //      LAST TO TAKE CARD
-
-  //      PLAYING AREA CARDS
   List<PlayingCardModel> get playingAreaCards => gameState.playingArea;
   //      PLAYING AREA STACKS
   List<PlayingAreaStackModel> get playingAreaStacks =>
@@ -79,9 +59,6 @@ class GeneralGameViewModel extends ChangeNotifier {
   //      MY CURR HAND
   //      MY COLLECTED CARDS
   String get me => player.id;
-  // String get joinedAsPlayer {
-  //   return (me == gameState.player1) ? 'player1' : 'player2';
-  // }
 
   int get myExtraPoints =>
       (gameState.extraPointsHolderId == player.id) ? gameState.extraPoints : 0;
@@ -190,6 +167,18 @@ class GeneralGameViewModel extends ChangeNotifier {
       selectedCard = null;
     } else {
       selectedCard = card;
+    }
+    notifyListeners();
+  }
+
+  void selectCardToTake(PlayingCardModel card) {
+    if (selectedCards.contains(card)) {
+      selectedCards = [];
+    } else {
+      if (selectedCards.isNotEmpty) {
+        selectedCards = [];
+      }
+      selectedCards.add(card);
     }
     notifyListeners();
   }

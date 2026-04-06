@@ -10,6 +10,8 @@ class GameActionHandler {
     GameService gameService,
     GameState gameState,
     InGameAction inGameAction,
+    int cardsPerPlayer,
+    int cardsInPlayingArea,
     String pid,
   ) async {
     gameState.cardMoveEvents = [];
@@ -23,28 +25,27 @@ class GameActionHandler {
         return;
 
       case InGameAction.shuffle:
-        final newGameState = CasinoGameStateHandler.shuffleAction(gameState, pid);
+        final newGameState = CasinoGameStateHandler.shuffleAction(
+          gameState,
+          pid,
+        );
         await gameService.updateGame(newGameState);
         return;
 
       case InGameAction.share:
       case InGameAction.deal:
-        final newGameState = _dealCardsAction(gameState, pid);
+        final newGameState = _dealCardsAction(gameState, pid,cardsPerPlayer,cardsInPlayingArea );
         newGameState.round.roundStatus = RoundStatus.playing;
-        newGameState.currentTurnPlayerId = CasinoGameStateHandler.getNextPlayerId(
-          newGameState,
-          pid,
-        );
+        newGameState.currentTurnPlayerId =
+            CasinoGameStateHandler.getNextPlayerId(newGameState, pid);
         await gameService.updateGame(newGameState);
         return;
 
       case InGameAction.dealSame:
         final newGameState = dealSameAction(gameState, pid);
         newGameState.round.roundStatus = RoundStatus.playing;
-        newGameState.currentTurnPlayerId = CasinoGameStateHandler.getNextPlayerId(
-          newGameState,
-          pid,
-        );
+        newGameState.currentTurnPlayerId =
+            CasinoGameStateHandler.getNextPlayerId(newGameState, pid);
         await gameService.updateGame(newGameState);
         return;
 
@@ -71,17 +72,22 @@ class GameActionHandler {
     return gameState;
   }
 
-  static GameState _dealCardsAction(GameState gameState, String pid) {
+  static GameState _dealCardsAction(
+    GameState gameState,
+    String pid,
+    int cardsPerPlayer,
+    int cardsInPlayingArea,
+  ) {
     final playerCount = gameState.playersInfo.length;
-    final neededCards = (playerCount * 4) + 4;
+    final neededCards = (playerCount * cardsPerPlayer) + cardsInPlayingArea;
 
     if (gameState.deck.length < neededCards) {
       throw Exception('Not enough cards in deck to deal.');
     }
 
     for (final entry in gameState.playersInfo.entries) {
-      final dealtCards = gameState.deck.sublist(0, 4);
-      gameState.deck.removeRange(0, 4);
+      final dealtCards = gameState.deck.sublist(0, cardsPerPlayer);
+      gameState.deck.removeRange(0, cardsPerPlayer);
       gameState.hands[entry.key] = List.of(dealtCards);
 
       gameState.cardMoveEvents.addAll(
@@ -89,8 +95,8 @@ class GameActionHandler {
       );
     }
 
-    final tableCards = gameState.deck.sublist(0, 4);
-    gameState.deck.removeRange(0, 4);
+    final tableCards = gameState.deck.sublist(0, cardsInPlayingArea);
+    gameState.deck.removeRange(0, cardsInPlayingArea);
     gameState.playingArea.addAll(tableCards);
 
     gameState.cardMoveEvents.addAll(

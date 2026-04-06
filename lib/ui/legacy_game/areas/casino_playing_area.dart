@@ -41,6 +41,7 @@ class PlayingAreaState extends State<PlayingArea> {
                   children: [
                     AppStyle.theme.dottedBox(
                       child: CardDeck(
+                        back: true,
                         title: "Dealing",
                         cardWidth: 55,
                         cards: vm.g?.deck ?? [],
@@ -70,6 +71,7 @@ class PlayingAreaState extends State<PlayingArea> {
                     AppStyle.theme.dottedBox(
                       color: vm.lastTakeOpp ? AppStyle.theme.border : null,
                       child: CardDeck(
+                        back: true,
                         title: "Opp's Deck",
                         cardWidth: 55,
                         cards: vm.oppCollectedCards,
@@ -91,6 +93,7 @@ class PlayingAreaState extends State<PlayingArea> {
                       color: vm.lastTakeMe ? AppStyle.theme.border : null,
 
                       child: CardDeck(
+                        back: true,
                         title: 'My Deck',
                         cardWidth: 55,
                         cards: vm.myCollectedCards,
