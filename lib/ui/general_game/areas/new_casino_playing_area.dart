@@ -72,8 +72,13 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     AppStyle.theme.dottedBox(
+                      color: vm.gameState.lastTookCardId == vm.opp
+                          ? AppStyle.theme.border
+                          : null,
+
                       child: CardDeck(
                         key: vm.oppDeckKey,
+
                         title: "Opp's Deck",
                         cardWidth: tableCardWidth,
                         cards: vm.oppCollectedCards,
@@ -92,6 +97,9 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                     ),
 
                     AppStyle.theme.dottedBox(
+                      color: vm.gameState.lastTookCardId == vm.me
+                          ? AppStyle.theme.border
+                          : null,
                       child: CardDeck(
                         key: vm.myDeckKey,
                         title: 'My Deck',

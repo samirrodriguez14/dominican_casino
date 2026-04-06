@@ -3,7 +3,7 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/round.dart';
 
-class GameStateHandler {
+class CasinoGameStateHandler {
   //USE TO MAKE CHANGES TO THE GAME STATTE...
   //UPDATING GAMESTATE CURRENTPLAYER ID
 
@@ -290,4 +290,5 @@ class GameStateHandler {
 
     return gameState;
   }
+
 }

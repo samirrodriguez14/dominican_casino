@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/event_handler.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_action_handler.dart';
+import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
+import 'package:dominican_casino/game_control/game_engine/general_handlers/game_action_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_state_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/rules_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
@@ -48,12 +48,12 @@ class CasinoGameEngine extends GameEngine {
 
     // NEXT PLAYER TURN
     if (currentCardSelection.selectedCard != null) {
-      gameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
+      gameState.currentTurnPlayerId = CasinoGameStateHandler.getNextPlayerId(
         gameState,
         action.performedById,
       );
     }
-    gameState = GameStateHandler.handleExtraPoints(
+    gameState = CasinoGameStateHandler.handleExtraPoints(
       gameState,
       action.performedById,
     );
@@ -63,14 +63,14 @@ class CasinoGameEngine extends GameEngine {
     // SAVE NORMAL MOVE
     gameState = await gameService.updateGame(gameState);
     // // ROUND END
-    if (GameStateHandler.roundEnded(gameState)) {
+    if (CasinoGameStateHandler.roundEnded(gameState)) {
       developer.log("round ended");
-      gameState = GameStateHandler.settleEndOfRoundIfNeeded(gameState);
+      gameState = CasinoGameStateHandler.settleEndOfRoundIfNeeded(gameState);
       final settlementEvents = EventHandler.generateSettleEndRoundEvents(
         gameState,
       );
       gameState.cardMoveEvents.addAll(settlementEvents);
-      gameState = GameStateHandler.handleRoundEnded(gameState);
+      gameState = CasinoGameStateHandler.handleRoundEnded(gameState);
       gameState = await gameService.updateGame(gameState);
     }
 
@@ -110,7 +110,7 @@ class CasinoGameEngine extends GameEngine {
       gameState.gameStatus = GameStatus.readyToStart;
       gameService.updateGame(gameState);
     }
-    return CasinoGameActionHandler.getInGameAction(gameState, pid);
+    return GameActionHandler.getInGameAction(gameState, pid);
   }
 
   @override
@@ -119,7 +119,7 @@ class CasinoGameEngine extends GameEngine {
     InGameAction action,
     String pid,
   ) async {
-    await CasinoGameActionHandler.handleGameAction(
+    await GameActionHandler.handleGameAction(
       gameService,
       state,
       action,

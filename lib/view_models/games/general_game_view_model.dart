@@ -164,6 +164,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     gameState.cardMoveEvents = [];
     gameState.winnerId = opp;
     gameState.gameStatus = GameStatus.gameOver;
+    await gameRepo.fs.updateGame(gameState);
     notifyListeners();
   }
 

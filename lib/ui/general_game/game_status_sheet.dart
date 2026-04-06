@@ -38,15 +38,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
       child: Column(
         children: [
           const SizedBox(height: 10),
-          // Container(
-          //   width: 42,
-          //   height: 5,
-          //   decoration: BoxDecoration(
-          //     color: AppStyle.theme.muted.withValues(alpha: .45),
-          //     borderRadius: BorderRadius.circular(999),
-          //   ),
-          // ),
-          // const SizedBox(height: 8),
+
           Expanded(
             child: ListView(
               controller: widget.scrollController,
@@ -67,7 +59,8 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                     children: playerIds.map((pid) {
                       final score = totalScores[pid] ?? 0;
                       return _ScoreRow(
-                        label: _playerLabel(vm, pid),
+                        label:
+                            "${_playerLabel(vm, pid)} ${vm.gameState.controllerId == pid ? "(dealer)" : ""}",
                         value: "$score",
                       );
                     }).toList(),

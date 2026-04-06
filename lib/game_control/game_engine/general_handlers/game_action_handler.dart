@@ -1,11 +1,11 @@
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/event_handler.dart';
+import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_state_handler.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/game_service.dart';
 
-class CasinoGameActionHandler {
+class GameActionHandler {
   static Future<void> handleGameAction(
     GameService gameService,
     GameState gameState,
@@ -23,7 +23,7 @@ class CasinoGameActionHandler {
         return;
 
       case InGameAction.shuffle:
-        final newGameState = GameStateHandler.shuffleAction(gameState, pid);
+        final newGameState = CasinoGameStateHandler.shuffleAction(gameState, pid);
         await gameService.updateGame(newGameState);
         return;
 
@@ -31,7 +31,7 @@ class CasinoGameActionHandler {
       case InGameAction.deal:
         final newGameState = _dealCardsAction(gameState, pid);
         newGameState.round.roundStatus = RoundStatus.playing;
-        newGameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
+        newGameState.currentTurnPlayerId = CasinoGameStateHandler.getNextPlayerId(
           newGameState,
           pid,
         );
@@ -41,7 +41,7 @@ class CasinoGameActionHandler {
       case InGameAction.dealSame:
         final newGameState = dealSameAction(gameState, pid);
         newGameState.round.roundStatus = RoundStatus.playing;
-        newGameState.currentTurnPlayerId = GameStateHandler.getNextPlayerId(
+        newGameState.currentTurnPlayerId = CasinoGameStateHandler.getNextPlayerId(
           newGameState,
           pid,
         );
@@ -127,7 +127,7 @@ class CasinoGameActionHandler {
                 : InGameAction.waiting;
 
           case RoundStatus.playing:
-            if (GameStateHandler.shouldDealSameRound(gameState)) {
+            if (CasinoGameStateHandler.shouldDealSameRound(gameState)) {
               return gameState.controllerId == pid
                   ? InGameAction.dealSame
                   : InGameAction.waiting;
