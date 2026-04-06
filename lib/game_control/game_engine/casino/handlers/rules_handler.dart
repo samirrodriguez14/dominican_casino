@@ -291,7 +291,7 @@ class CasinoRulesHandler {
     final pid = currentCardSelection.pid;
 
     final myHandCards = gameState.hands[pid] ?? [];
-    if (selectedCards.isNotEmpty) {
+    if (selectedCards.length>1) {
       // values of the selectedCard (A => [1,14])
       final handVals = possibleValuesInHand(myHandCards, null);
       final totals = possibleTotals(selectedCards);

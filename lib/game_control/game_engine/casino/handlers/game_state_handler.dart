@@ -101,7 +101,7 @@ class GameStateHandler {
     for (final pid in playerIds) {
       final prev = prevScore[pid] ?? 0;
       final roundTotal = roundScore[pid]['total'] ?? 0;
-      if (prev + roundTotal >= 4) {
+      if (prev + roundTotal >= 21) {
         return pid;
       }
     }

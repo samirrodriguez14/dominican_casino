@@ -156,7 +156,6 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   Future<void> resign() async {
     if (opp == null) {
-      gameState.gameStatus = GameStatus.gameOver;
       await gameRepo.fs.deleteGame(gameState.id);
       notifyListeners();
       return;

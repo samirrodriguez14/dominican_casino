@@ -29,7 +29,6 @@ class PlayingCard extends StatelessWidget {
     final rank = playingCardModel.rank;
     final suit = _normalizeSuit(playingCardModel.suit);
     final suitColor = _suitColor(suit);
-
     final height = width * heightMultiplyer;
 
     final sel = selectedBorderColor ?? AppStyle.theme.turnHighlight;
@@ -47,21 +46,22 @@ class PlayingCard extends StatelessWidget {
 
           border: Border.all(
             color: isSelected ? sel : AppStyle.theme.cardBorder,
-            width: isSelected ? selectedBorderWidth : 1,
+            width: 1 ,
           ),
 
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: sel.withValues(alpha:(0.35)),
-                blurRadius: 18,
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 24,
                 spreadRadius: 2,
-                offset: const Offset(0, 8),
+                offset: const Offset(0, 12),
               ),
+
             BoxShadow(
-              color: AppStyle.theme.background.withValues(alpha:(0.15)),
-              blurRadius: 8,
-              offset: const Offset(2, 4),
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -91,10 +91,7 @@ class PlayingCard extends StatelessWidget {
             Center(
               child: Text(
                 suit,
-                style: TextStyle(
-                  fontSize: width * 0.50,
-                  color: suitColor,
-                ),
+                style: TextStyle(fontSize: width * 0.50, color: suitColor),
               ),
             ),
 
@@ -115,7 +112,10 @@ class PlayingCard extends StatelessWidget {
                         color: suitColor,
                       ),
                     ),
-                    Text(suit, style: TextStyle(fontSize: 16, color: suitColor)),
+                    Text(
+                      suit,
+                      style: TextStyle(fontSize: 16, color: suitColor),
+                    ),
                   ],
                 ),
               ),
@@ -126,29 +126,29 @@ class PlayingCard extends StatelessWidget {
     );
   }
 }
-  /// Allows either "hearts" or "♥"
-  String _normalizeSuit(String suit) {
-    switch (suit.toLowerCase()) {
-      case 'hearts':
-      case '♥':
-        return '♥';
-      case 'diamonds':
-      case '♦':
-        return '♦';
-      case 'spades':
-      case '♠':
-        return '♠';
-      case 'clubs':
-      case '♣':
-        return '♣';
-      default:
-        return suit;
-    }
-  }
 
-  Color _suitColor(String suit) {
-    return (suit == '♥' || suit == '♦')
-        ? AppStyle.theme.suitRed
-        : AppStyle.theme.suitBlack;
+/// Allows either "hearts" or "♥"
+String _normalizeSuit(String suit) {
+  switch (suit.toLowerCase()) {
+    case 'hearts':
+    case '♥':
+      return '♥';
+    case 'diamonds':
+    case '♦':
+      return '♦';
+    case 'spades':
+    case '♠':
+      return '♠';
+    case 'clubs':
+    case '♣':
+      return '♣';
+    default:
+      return suit;
   }
+}
 
+Color _suitColor(String suit) {
+  return (suit == '♥' || suit == '♦')
+      ? AppStyle.theme.suitRed
+      : AppStyle.theme.suitBlack;
+}

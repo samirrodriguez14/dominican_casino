@@ -19,7 +19,7 @@ class NewCasinoPlayingArea extends StatefulWidget {
 
 class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
   GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
-  final double tableCardWidth=60;
+  final double tableCardWidth = 60;
   @override
   Widget build(BuildContext context) {
     return Opacity(
@@ -37,7 +37,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
               children: [
                 //DEALING DECK
                 Column(
-                  mainAxisAlignment: (vm.gameState.controllerId ==vm.me)
+                  mainAxisAlignment: (vm.gameState.controllerId == vm.me)
                       ? MainAxisAlignment.end
                       : MainAxisAlignment.start,
                   children: [
@@ -136,12 +136,15 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
               transform: isSelected
                   ? Matrix4.translationValues(0, -12, 0)
                   : Matrix4.identity(),
-              child:
-              Opacity(
+              child: Opacity(
                 opacity: vm.stackContainsCardHidded(stack.cards) ? 0.0 : 1.0,
-                child: 
-               PlayingAreaStack(stack: stack, isSelected: isSelected),
-            ),)
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 150),
+                  scale: isSelected ? 1.06 : 1.0,
+                  child: PlayingAreaStack(stack: stack, isSelected: isSelected),
+                ),
+              ),
+            ),
           );
         }),
 
@@ -158,12 +161,15 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                   : Matrix4.identity(),
               child: Opacity(
                 opacity: vm.isCardHidden(c) ? 0.0 : 1.0,
-                child: PlayingCard(
-                  key: vm.keyForCard(c.id),
-
-                  playingCardModel: c,
-                  isSelected: isSelected,
-                  width: tableCardWidth,
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 150),
+                  scale: isSelected ? 1.06 : 1.0,
+                  child: PlayingCard(
+                    key: vm.keyForCard(c.id),
+                    playingCardModel: c,
+                    isSelected: isSelected,
+                    width: tableCardWidth,
+                  ),
                 ),
               ),
             ),

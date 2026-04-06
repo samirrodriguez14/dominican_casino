@@ -21,8 +21,8 @@ class PlayingAreaStack extends StatelessWidget {
     super.key,
     required this.stack,
     this.isSelected = false,
-    this.cardWidth = 52,
-    this.overlap = 18,
+    this.cardWidth = 59,
+    this.overlap = 30,
     this.onTap,
   });
 
@@ -55,11 +55,17 @@ class PlayingAreaStack extends StatelessWidget {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: stackColor.withValues(alpha: (0.60)),
-                blurRadius: 18,
-                spreadRadius: 1,
-                offset: const Offset(0, 8),
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 24,
+                spreadRadius: 2,
+                offset: const Offset(0, 12),
               ),
+
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Stack(

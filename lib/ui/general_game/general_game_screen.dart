@@ -65,6 +65,13 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
   void _onVmChanged() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (vm.gameState.gameStatus == .gameOver) {
+        showAppPopup(
+          context: context,
+          title: "Game Over",
+          content: GameStatusSheet(vm: vm),
+        );
+      }
       _tryPlayEvents();
     });
   }
@@ -126,25 +133,15 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
               ),
 
               // DraggableScrollableSheet(
-              //   initialChildSize:
-              //       (vm.gameState.round.roundStatus == RoundStatus.completed)
-              //       ? 0.4
-              //       : 0.10,
-              //   minChildSize:
-              //       (vm.gameState.round.roundStatus == RoundStatus.completed)
-              //       ? 0.4
-              //       : 0.1,
-              //   maxChildSize: 0.41,
-              //   snap: true,
-              //   // expand: false,
-              //   snapSizes: [
-              //     (vm.gameState.round.roundStatus == RoundStatus.completed)
-              //         ? 0.4
-              //         : 0.10,
-              //     .41,
-              //   ],
+              //   initialChildSize:  (vm.gameState.gameStatus == .gameOver) ? 0.4 : 0,
+              //   minChildSize: 0,
+              //   maxChildSize: (vm.gameState.gameStatus == .gameOver) ? 0.4 : 0,
+              //   snapSizes: [0, .4],
               //   builder: (context, scrollController) {
-              // return GameStatusSheet(scrollController: scrollController);
+              //     return GameStatusSheet(
+              //       scrollController: scrollController,
+              //       vm: vm,
+              //     );
               //   },
               // ),
               AnimatedAlign(
