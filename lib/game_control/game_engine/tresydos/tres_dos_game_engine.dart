@@ -47,8 +47,8 @@ class TresDosGameEngine extends GameEngine {
     );
 
     // NEXT PLAYER TURN
-    if (currentCardSelection.selectedCard != null) {
-      gameState.currentTurnPlayerId = TresDosGameStateHandler.getNextPlayerId(
+    if (gameState.hands[action.performedById]?.length == 5) {
+      gameState.currentTurnPlayerId = GameActionHandler.getNextPlayerId(
         gameState,
         action.performedById,
       );
@@ -65,8 +65,12 @@ class TresDosGameEngine extends GameEngine {
         gameState,
         action.performedById,
       );
-      gameState = await gameService.updateGame(gameState);
     }
+    //NO MORE CARDS IN DECK
+    if (TresDosGameStateHandler.shouldDealSameRound(gameState)) {
+      TresDosGameStateHandler.handleShuffleRound(gameState);
+    }
+    gameState = await gameService.updateGame(gameState);
     return gameState;
   }
 
@@ -117,6 +121,8 @@ class TresDosGameEngine extends GameEngine {
       state,
       action,
       5,
+      1,
+      0,
       1,
       pid,
     );

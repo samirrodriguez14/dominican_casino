@@ -1,4 +1,4 @@
-import 'package:dominican_casino/models/deck.dart';
+import 'package:dominican_casino/game_control/game_engine/general_handlers/game_action_handler.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/round.dart';
@@ -6,33 +6,6 @@ import 'package:dominican_casino/models/round.dart';
 class CasinoGameStateHandler {
   //USE TO MAKE CHANGES TO THE GAME STATTE...
   //UPDATING GAMESTATE CURRENTPLAYER ID
-
-  static String getNextPlayerId(GameState gameState, String pid) {
-    final players = gameState.playersInfo.keys.toList();
-
-    if (players.isEmpty) return "";
-
-    final index = players.indexOf(pid);
-    if (index == -1) return players.first;
-
-    final nextIndex = (index + 1) % players.length;
-    return players[nextIndex];
-  }
-
-  static String getNextControllerId(GameState gameState) {
-    final players = (gameState.playersInfo.keys).toList();
-
-    if (players.isEmpty) return '';
-
-    final currentIndex = players.indexOf(gameState.controllerId);
-
-    if (currentIndex == -1) {
-      return players.first;
-    }
-
-    final nextIndex = (currentIndex + 1) % players.length;
-    return players[nextIndex];
-  }
 
   ///UPDATING SAME ROUND
   ///
@@ -70,7 +43,7 @@ class CasinoGameStateHandler {
   static GameState handleRoundEnded(GameState gameState) {
     gameState = _handleScores(gameState);
     gameState.round.roundStatus = RoundStatus.completed;
-    gameState.controllerId = getNextControllerId(gameState);
+    gameState.controllerId = GameActionHandler.getNextControllerId(gameState);
     gameState.winnerId = _handleWinner(
       gameState.scores,
       gameState.round.roundScores,
@@ -262,32 +235,6 @@ class CasinoGameStateHandler {
 
     gameState.playingArea.clear();
     gameState.playingAreaStacks.clear();
-    return gameState;
-  }
-
-  static GameState shuffleAction(GameState gameState, String pid) {
-    gameState.deck = Deck.shuffle(Deck.standard());
-
-    gameState.playingArea.clear();
-    gameState.playingAreaStacks.clear();
-
-    gameState.hands.clear();
-
-    for (final playerId in gameState.playersInfo.keys) {
-      gameState.hands[playerId] = [];
-      gameState.playersDeck[playerId] = [];
-    }
-
-    gameState.extraPoints = 0;
-    gameState.extraPointsHolderId = '';
-    gameState.lastTookCardId = '';
-    gameState.cardMoveEvents = [];
-
-    gameState.currentTurnPlayerId = '';
-    gameState.controllerId = pid;
-
-    gameState.round.roundStatus = RoundStatus.readyToDeal;
-
     return gameState;
   }
 

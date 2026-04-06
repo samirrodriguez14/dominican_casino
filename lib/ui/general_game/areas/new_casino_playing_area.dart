@@ -29,7 +29,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
           //OPP CARDS
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 0),
-            child: GenOpponentArea(key: vm.oppHandKey),
+            child: GenOpponentArea(key: vm.oppHandKey, oppId: vm.oppIds.isNotEmpty? vm.oppIds.first:""),
           ),
           Expanded(
             child: Row(

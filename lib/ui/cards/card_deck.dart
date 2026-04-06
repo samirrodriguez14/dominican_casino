@@ -60,7 +60,7 @@ class CardDeck extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
-                        color: AppStyle.theme.surface,
+                        // color: AppStyle.theme.surface,
 
                         // border: Border.all(
                         //   color: AppStyle.theme.surfaceRaised,
@@ -70,6 +70,7 @@ class CardDeck extends StatelessWidget {
                       child: const Icon(CupertinoIcons.minus_circle_fill),
                     ),
                   ),
+                 
                   ...List.generate((deckCount / 8).ceil(), (i) {
                     return Column(
                       children: [
@@ -84,7 +85,7 @@ class CardDeck extends StatelessWidget {
                       ],
                     );
                   }),
-                  if (cards.isNotEmpty)
+                  if (cards.isNotEmpty && back)
                     Padding(
                       padding: EdgeInsetsGeometry.only(top: cardWidth),
                       child: Container(

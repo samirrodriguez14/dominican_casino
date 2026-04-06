@@ -38,14 +38,12 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                 final cards = vm.myHandCards;
                 const cardWidth = 100.0;
                 const selectedLift = 12.0;
-
                 if (cards.isEmpty) {
                   return const SizedBox.shrink();
                 }
-
                 final count = cards.length;
 
-                const idealGap = 8.0;
+                const idealGap = 12.0;
 
                 final idealTotalWidth =
                     (count * cardWidth) + ((count - 1) * idealGap);
@@ -63,7 +61,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                   gap = (constraints.maxWidth - cardWidth) / (count - 1);
                 }
 
-                gap = gap.clamp(60.0,100);
+                gap = gap.clamp(50.0,80);
 
                 final totalWidth = cardWidth + ((count - 1) * gap);
 

@@ -1,7 +1,9 @@
 import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_state_handler.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/game_service.dart';
 
@@ -12,6 +14,8 @@ class GameActionHandler {
     InGameAction inGameAction,
     int cardsPerPlayer,
     int cardsInPlayingArea,
+    int cardsPerPlayerRedeal,
+    int cardsInPlayingAreaRedeal,
     String pid,
   ) async {
     gameState.cardMoveEvents = [];
@@ -25,27 +29,32 @@ class GameActionHandler {
         return;
 
       case InGameAction.shuffle:
-        final newGameState = CasinoGameStateHandler.shuffleAction(
-          gameState,
-          pid,
-        );
+        final newGameState = shuffleAction(gameState, pid);
         await gameService.updateGame(newGameState);
         return;
 
       case InGameAction.share:
       case InGameAction.deal:
-        final newGameState = _dealCardsAction(gameState, pid,cardsPerPlayer,cardsInPlayingArea );
+        final newGameState = _dealCardsAction(
+          gameState,
+          pid,
+          cardsPerPlayer,
+          cardsInPlayingArea,
+        );
         newGameState.round.roundStatus = RoundStatus.playing;
-        newGameState.currentTurnPlayerId =
-            CasinoGameStateHandler.getNextPlayerId(newGameState, pid);
+        newGameState.currentTurnPlayerId = getNextPlayerId(newGameState, pid);
         await gameService.updateGame(newGameState);
         return;
 
       case InGameAction.dealSame:
-        final newGameState = dealSameAction(gameState, pid);
+        final newGameState = dealSameAction(
+          gameState,
+          pid,
+          cardsPerPlayerRedeal,
+          cardsInPlayingAreaRedeal,
+        );
         newGameState.round.roundStatus = RoundStatus.playing;
-        newGameState.currentTurnPlayerId =
-            CasinoGameStateHandler.getNextPlayerId(newGameState, pid);
+        newGameState.currentTurnPlayerId = getNextPlayerId(newGameState, pid);
         await gameService.updateGame(newGameState);
         return;
 
@@ -54,21 +63,34 @@ class GameActionHandler {
     }
   }
 
-  static GameState dealSameAction(GameState gameState, String pid) {
+  static GameState dealSameAction(
+    GameState gameState,
+    String pid,
+    int cardsPerPlayer,
+    int cardsInPlayingArea,
+  ) {
     final playerCount = gameState.playersInfo.length;
-    final neededCards = (playerCount * 4);
+    final neededCards = (playerCount * cardsPerPlayer);
     if (gameState.deck.length < neededCards) {
       throw Exception('Not enough cards in deck to deal.');
     }
     for (final entry in gameState.playersInfo.entries) {
-      final dealtCards = gameState.deck.sublist(0, 4);
-      gameState.deck.removeRange(0, 4);
+      final dealtCards = gameState.deck.sublist(0, cardsPerPlayer);
+      gameState.deck.removeRange(0, cardsPerPlayer);
       gameState.hands[entry.key] = List.of(dealtCards);
 
       gameState.cardMoveEvents.addAll(
         EventHandler.generateDealToHandEvent(dealtCards, entry.key, pid),
       );
     }
+    final cardsToTable = gameState.deck.sublist(0, cardsInPlayingArea);
+    gameState.deck.removeRange(0, cardsInPlayingArea);
+    gameState.playingArea.addAll(List.of(cardsToTable));
+
+    gameState.cardMoveEvents.addAll(
+      EventHandler.generateDealToTableEvent(cardsToTable, pid),
+    );
+
     return gameState;
   }
 
@@ -146,5 +168,68 @@ class GameActionHandler {
       default:
         return InGameAction.noAction;
     }
+  }
+
+  static GameState shuffleAction(
+    GameState gameState,
+    String pid, {
+    List<PlayingCardModel>? cards,
+  }) {
+    if (cards != null) {
+      gameState.deck = Deck.shuffle(cards);
+    } else {
+      gameState.deck = Deck.shuffle(Deck.standard());
+    }
+
+    gameState.playingArea.clear();
+    gameState.playingAreaStacks.clear();
+
+    gameState.hands.clear();
+
+    for (final playerId in gameState.playersInfo.keys) {
+      gameState.hands[playerId] = [];
+      gameState.playersDeck[playerId] = [];
+    }
+
+    gameState.extraPoints = 0;
+    gameState.extraPointsHolderId = '';
+    gameState.lastTookCardId = '';
+    gameState.cardMoveEvents = [];
+
+    gameState.currentTurnPlayerId = '';
+    gameState.controllerId = pid;
+
+    gameState.round.roundStatus = RoundStatus.readyToDeal;
+
+    return gameState;
+  }
+
+  static String getNextPlayerId(GameState gameState, String pid) {
+    final players = gameState.playersInfo.keys.toList();
+
+    players.sort((a, b) => a.compareTo(b));
+
+    if (players.isEmpty) return "";
+
+    final index = players.indexOf(pid);
+    if (index == -1) return players.first;
+
+    final nextIndex = (index + 1) % players.length;
+    return players[nextIndex];
+  }
+
+  static String getNextControllerId(GameState gameState) {
+    final players = (gameState.playersInfo.keys).toList();
+
+    if (players.isEmpty) return '';
+
+    final currentIndex = players.indexOf(gameState.controllerId);
+
+    if (currentIndex == -1) {
+      return players.first;
+    }
+
+    final nextIndex = (currentIndex + 1) % players.length;
+    return players[nextIndex];
   }
 }

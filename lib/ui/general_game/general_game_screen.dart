@@ -13,6 +13,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
+import 'package:dominican_casino/ui/general_game/game_info_sheet.dart';
 import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
@@ -241,37 +242,119 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   // }
 
   Widget _buildGameTopBar(BuildContext context, GeneralGameViewModel vm) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-      decoration: AppStyle.theme.raisedSurfaceBox(),
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.mediumImpact();
-          showAppPopup(
-            context: context,
-            title: "Game Status",
-            content: GameStatusSheet(vm: vm),
-          );
-        },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            // Center: Joined As
-            Icon(
-              Icons.remove_red_eye_sharp,
-              color: AppStyle.theme.cardBorder,
-              size: 18,
+    return Row(
+      mainAxisAlignment: .center,
+      spacing: 10,
+      children: [
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            showAppPopup(
+              context: context,
+              title: "Game Status",
+              content: GameStatusSheet(vm: vm),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            decoration: AppStyle.theme.raisedSurfaceBox(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Center: Joined As
+                Icon(
+                  Icons.remove_red_eye_sharp,
+                  color: AppStyle.theme.cardBorder,
+                  size: 18,
+                ),
+                SizedBox(width: 10),
+                Text(
+                  "Stat",
+                  style: AppStyle.theme.body,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            SizedBox(width: 10),
-            Text(
-              "Game Satus",
-              style: AppStyle.theme.body,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          ),
         ),
-      ),
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            showAppPopup(
+              context: context,
+              title: "Game Info",
+              content: GameInfoSheet(vm: vm),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: AppStyle.theme.raisedSurfaceBox(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Center: Joined As
+                Icon(
+                  CupertinoIcons.info,
+                  color: AppStyle.theme.cardBorder,
+                  size: 18,
+                ),
+                
+              ],
+            ),
+          ),
+        ),
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            showAppPopup(
+              context: context,
+              title: "Chat",
+              content: Text("Coming soon...."),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: AppStyle.theme.raisedSurfaceBox(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Center: Joined As
+                Icon(
+                  CupertinoIcons.chat_bubble,
+                  color: AppStyle.theme.cardBorder,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            vm.sortHandCards();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: AppStyle.theme.raisedSurfaceBox(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Center: Joined As
+                Icon(
+                  CupertinoIcons.arrow_up_arrow_down,
+                  color: AppStyle.theme.cardBorder,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

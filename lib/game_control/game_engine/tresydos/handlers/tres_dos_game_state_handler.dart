@@ -1,3 +1,4 @@
+import 'package:dominican_casino/game_control/game_engine/general_handlers/game_action_handler.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
@@ -43,25 +44,10 @@ class TresDosGameStateHandler {
     return players[nextIndex];
   }
 
-  static String getNextControllerId(GameState gameState) {
-    final players = (gameState.playersInfo.keys).toList();
-
-    if (players.isEmpty) return '';
-
-    final currentIndex = players.indexOf(gameState.controllerId);
-
-    if (currentIndex == -1) {
-      return players.first;
-    }
-
-    final nextIndex = (currentIndex + 1) % players.length;
-    return players[nextIndex];
-  }
-
   ///UPDATING SAME ROUND
   ///
   static bool shouldDealSameRound(GameState gameState) {
-    return gameState.playingArea.isEmpty;
+    return gameState.deck.isEmpty;
   }
 
   ///UPDATING ROUND AND GAME STATUS ON ROUND ENDED
@@ -69,14 +55,21 @@ class TresDosGameStateHandler {
   static GameState handleRoundEnded(GameState gameState, String performedBy) {
     gameState.scores[performedBy] = (gameState.scores[performedBy] ?? 0) + 1;
     gameState.round.roundStatus = RoundStatus.completed;
-    gameState.controllerId = getNextControllerId(gameState);
+    gameState.controllerId = GameActionHandler.getNextControllerId(gameState);
     bool won = gameState.scores[performedBy] >= 3;
     if (won) {
       gameState.winnerId = performedBy;
       gameState.gameStatus = GameStatus.gameOver;
       return gameState;
     }
+
     gameState.round.id += 1;
+    return gameState;
+  }
+
+  static GameState handleShuffleRound(GameState gameState) {
+    gameState.deck = Deck.shuffle(gameState.playingArea);
+    gameState.playingArea.clear();
     return gameState;
   }
 

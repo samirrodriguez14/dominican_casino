@@ -48,7 +48,7 @@ class CasinoGameEngine extends GameEngine {
 
     // NEXT PLAYER TURN
     if (currentCardSelection.selectedCard != null) {
-      gameState.currentTurnPlayerId = CasinoGameStateHandler.getNextPlayerId(
+      gameState.currentTurnPlayerId = GameActionHandler.getNextPlayerId(
         gameState,
         action.performedById,
       );
@@ -125,6 +125,8 @@ class CasinoGameEngine extends GameEngine {
       action,
       4,
       4,
+      4,
+      0,
       pid,
     );
     return state;

@@ -65,8 +65,14 @@ class GeneralGameViewModel extends ChangeNotifier {
   bool get isMyTurn => gameState.currentTurnPlayerId == me;
 
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
-  List<PlayingCardModel> get myCollectedCards =>
-      gameState.playersDeck[me] ?? [];
+  List<PlayingCardModel> get myCollectedCards {
+    return gameState.playersDeck[me] ?? [];
+  }
+
+  void sortHandCards() {
+    gameState.hands[me]?.sort((a, b) => b.valueHigh.compareTo(a.valueHigh));
+    notifyListeners();
+  }
 
   //      EXTRA POINTS
 
@@ -76,6 +82,29 @@ class GeneralGameViewModel extends ChangeNotifier {
     return (gameState.playersInfo.length > 1)
         ? gameState.playersInfo.entries.firstWhere((p) => p.key != me).key
         : null;
+  }
+
+  List<String> get oppIds {
+    return sortIds(me).sublist(1);
+  }
+
+  List<String> sortIds(String pid) {
+    final players = gameState.playersInfo.keys.toList();
+    final List<String> sortedPlayers = [];
+    players.sort((a, b) => a.compareTo(b));
+    final myIndex = players.indexOf(me);
+    if (myIndex != -1) {
+      players.add(players[myIndex]);
+    }
+    final rightSide = players.sublist(myIndex, players.length - 1);
+    players.removeRange(myIndex, players.length - 1);
+    sortedPlayers.addAll(rightSide);
+
+    final leftSide = players.sublist(0, myIndex);
+    players.removeRange(0, myIndex);
+    sortedPlayers.addAll(leftSide);
+
+    return sortedPlayers;
   }
 
   int get oppExtraPoints =>
@@ -171,14 +200,15 @@ class GeneralGameViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void selectCardToTake(PlayingCardModel card) {
+  void selectCardToTake(PlayingCardModel? card) {
     if (selectedCards.contains(card)) {
       selectedCards = [];
     } else {
       if (selectedCards.isNotEmpty) {
         selectedCards = [];
       }
-      selectedCards.add(card);
+
+      if (card != null) selectedCards.add(card);
     }
     notifyListeners();
   }

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/cards/card_deck.dart';
@@ -23,35 +25,48 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
         ? vm.playingAreaCards.last
         : null;
     bool isSelected = vm.selectedCards.contains(currentCard);
-    bool isSelectedDeck = vm.selectedCards.contains(vm.gameState.deck[0]);
+    bool isSelectedDeck =
+        vm.gameState.deck.isNotEmpty &&
+        vm.selectedCards.contains(vm.gameState.deck[0]);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        SizedBox(width: 350, child: GenOpponentArea()),
+        SizedBox(
+          width: 350,
+          child: GenOpponentArea(
+            oppId: vm.oppIds.isNotEmpty ? vm.oppIds[0] : "",
+          ),
+        ),
         Expanded(
           child: Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
-              // Positioned(
-              //   right: -140,
-              //   child: SizedBox(
-              //     width: 350,
-              //     child: Transform.rotate(
-              //       angle: math.pi / 2,
-              //       child: GenOpponentArea(),
-              //     ),
-              //   ),
-              // ),
-              // Positioned(
-              //   left: -140,
-              //   child: SizedBox(
-              //     width: 350,
-              //     child: Transform.rotate(
-              //       angle: -math.pi / 2,
-              //       child: GenOpponentArea(),
-              //     ),
-              //   ),
-              // ),
+              Positioned(
+                right: -145,
+                child: SizedBox(
+                  width: 350,
+                  child: Transform.rotate(
+                    angle: math.pi / 2,
+                    child: GenOpponentArea(
+                      oppId: vm.oppIds.length >= 2 ? vm.oppIds[1] : "",
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: -145,
+                child: SizedBox(
+                  width: 350,
+                  child: Transform.rotate(
+                    angle: -math.pi / 2,
+                    child: GenOpponentArea(
+                      oppId: vm.oppIds.length >= 3 ? vm.oppIds[2] : "",
+                    ),
+                  ),
+                ),
+              ),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -67,10 +82,12 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                           cardWidth: cardWidth,
                           extraPoints: 0,
                           onTap: () {
-                            vm.selectCardToTake(vm.gameState.deck[0]);
-                            setState(() {
-                              
-                            });
+                            vm.selectCardToTake(
+                              vm.gameState.deck.isNotEmpty
+                                  ? vm.gameState.deck[0]
+                                  : null,
+                            );
+                            setState(() {});
                           },
                         ),
                       ),
@@ -79,28 +96,28 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                   SizedBox(width: 12),
                   Column(
                     mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: .end,
                     children: [
                       Stack(
                         alignment: Alignment.center,
                         children: [
-                          if (vm.gameState.playingArea.length > 1)
-                            CardDeck(
-                              title: 'Discard',
-                              back: false,
-                              cards: vm.gameState.playingArea,
-                              cardWidth: cardWidth,
-                              extraPoints: 0,
-                              onTap: () => {},
-                            ),
+                          CardDeck(
+                            title: 'Discard',
+                            back: false,
+                            cards: (vm.gameState.playingArea.length > 1)
+                                ? vm.gameState.playingArea
+                                : [],
+                            cardWidth: cardWidth,
+                            extraPoints: 0,
+                            onTap: () => {},
+                          ),
                           if (currentCard != null)
                             GestureDetector(
                               onTap: () => vm.selectCardToTake(currentCard),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 150),
                                 transform: isSelected
-                                    ? Matrix4.translationValues(0, -12, 0)
-                                    : Matrix4.identity(),
+                                    ? Matrix4.translationValues(0, -8, 0)
+                                    : Matrix4.translationValues(0, 4, 0),
                                 child: Opacity(
                                   opacity: vm.isCardHidden(currentCard)
                                       ? 0.0

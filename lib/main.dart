@@ -25,7 +25,7 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );;
   } catch (e) {
-    devloper.log("Eror initializing Firebase");
+    devloper.log("Error initializing Firebase");
   }
   
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);

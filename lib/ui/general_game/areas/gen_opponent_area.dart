@@ -6,54 +6,50 @@ import 'package:dominican_casino/view_models/games/general_game_view_model.dart'
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
+// ignore: must_be_immutable
 class GenOpponentArea extends StatefulWidget {
-  const GenOpponentArea({super.key});
+  String oppId;
+  GenOpponentArea({super.key, required this.oppId});
   @override
   State<StatefulWidget> createState() => GenOpponentAreaState();
 }
 
 class GenOpponentAreaState extends State<GenOpponentArea> {
-  bool get highlightTurn =>
-      context.select((GeneralGameViewModel vm) => !vm.isMyTurn);
-  String? get opp => context.select((GeneralGameViewModel vm) => vm.opp);
-  // Player? get oppInfo => context.select((GeneralGameViewModel vm) => vm.oppInfo);
-  int get deckCount =>
-      context.select((GeneralGameViewModel vm) => vm.oppHandCard.length);
-  int get score => context.select((GeneralGameViewModel vm) => 0);
-
-  int get extraPoints => context.select((GeneralGameViewModel vm) => 0);
-  List<PlayingCardModel> get collectedCards =>
-      context.select((GeneralGameViewModel vm) => vm.oppCollectedCards);
+  String? get opp => widget.oppId;
 
   @override
   Widget build(BuildContext context) {
     GeneralGameViewModel vm = context.read<GeneralGameViewModel>();
-
+    bool highlightTurn =
+        vm.gameState.round.roundStatus == .playing &&
+        vm.gameState.currentTurnPlayerId == opp;
     bool opponentJoined = opp != null && opp != "";
+    List<PlayingCardModel> collectedCards = vm.gameState.hands[opp] ?? [];
+    String oppName = vm.gameState.playersInfo[opp]?['name'] ?? "";
 
     return Container(
-      // width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      // decoration: AppStyle.theme.playerSectionBox(
-      //   highlightColor: AppStyle.theme.turnHighlight,
-      //   highlight: highlightTurn,
-      //   joined: opponentJoined,
-      // ),
+      padding: const EdgeInsets.all(6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            opponentJoined ? "Opponent: ..." : "Waiting for opponent...",
+            opponentJoined ? "Opponent: $oppName" : "Waiting for opponent...",
             style: AppStyle.theme.mutedText,
           ),
           const SizedBox(height: 8),
 
           AppStyle.theme.dottedBox(
+            color: highlightTurn
+                ? AppStyle.theme.turnHighlight.withValues(alpha: 0.35)
+                : null,
+
             child: SizedBox(
               height: 80, // reserve card height
+              width: 80 * 3,
+
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final cards = vm.oppHandCard;
+                  final cards = collectedCards;
                   const cardWidth = 50.0;
 
                   if (cards.isEmpty) return const SizedBox.shrink();
