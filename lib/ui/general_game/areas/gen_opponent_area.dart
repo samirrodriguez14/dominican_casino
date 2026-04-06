@@ -49,7 +49,7 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
 
           AppStyle.theme.dottedBox(
             child: SizedBox(
-              height: 80, // reserve card height
+              height: 90, // reserve card height
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
@@ -60,7 +60,7 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
                       opacity: vm.isCardHidden(vm.oppHandCard[index])
                           ? 0.0
                           : 1.0,
-                      child: PlayingCardBack(width: 55),
+                      child: PlayingCardBack(width: 60),
                     ),
                   ),
                 ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/services/game_service.dart';
@@ -9,6 +11,27 @@ class FirestoreService extends GameService {
     'games',
   );
   final FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  // String? token;
+  // StreamSubscription<String>? _tokenRefreshSub;
+  // Future<void> initNotifications() async {
+  //   final messaging = FirebaseMessaging.instance;
+  //   final settings = await messaging.requestPermission(
+  //     alert: true,
+  //     badge: true,
+  //     sound: true,
+  //     provisional: false,
+  //   );
+  //   if (settings.authorizationStatus != AuthorizationStatus.authorized) return;
+  //   final token = await messaging.getToken();
+  //   if (token != null) {
+  //     await saveToken(token, "");
+  //   }
+  //   _tokenRefreshSub?.cancel();
+  //   _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
+  //     await saveToken(newToken, "");
+  //   });
+  // }
 
   Future<String?> getDeviceToken() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;

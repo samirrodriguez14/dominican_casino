@@ -1,12 +1,13 @@
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/round.dart';
-import 'package:dominican_casino/ui/animations/animated_move_card.dart';
-import 'package:dominican_casino/ui/animations/deal_annimator.dart';
+// import 'package:dominican_casino/models/round.dart';
+import 'package:dominican_casino/style/layouts/app_popup.dart';
+// import 'package:dominican_casino/ui/animations/animated_move_card.dart';
+// import 'package:dominican_casino/ui/animations/deal_annimator.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/game_control/interfaces/card_event.dart';
-import 'package:dominican_casino/game_control/interfaces/zone.dart';
+// import 'package:dominican_casino/game_control/interfaces/card_event.dart';
+// import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
@@ -16,6 +17,8 @@ import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -72,7 +75,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     if (vm.loading) {
       return CupertinoPageScaffold(
         child: SafeArea(
-          top: false,
+          // top: false,
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -97,65 +100,67 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       child: CupertinoPageScaffold(
         child: DecoratedBox(
           decoration: AppStyle.theme.tableBackground(),
-          child:  Stack(
-              children: [
-                Padding(
-                  padding: EdgeInsetsGeometry.symmetric(vertical: 48),
-                  child: CasinoBoard(child: Container()),
-                ),
-                Column(
-                  children: [
-                    const SizedBox(height: 40),
+          child: Stack(
+            children: [
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(vertical: 48),
+                child: CasinoBoard(child: Container()),
+              ),
+              Column(
+                children: [
+                  const SizedBox(height: 40),
 
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 30),
-                        child: _selectPlayingArea(vm.gameState.gameMode),
-                      ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 30),
+                      child: _selectPlayingArea(vm.gameState.gameMode),
                     ),
-                    const SizedBox(height: 10),
-                    GenPlayerArea(),
-
-                    const SizedBox(height: 48),
-                  ],
-                ),
-                DraggableScrollableSheet(
-                  initialChildSize:
-                      (vm.gameState.round.roundStatus == RoundStatus.completed)
-                      ? 0.4
-                      : 0.10,
-                  minChildSize:
-                      (vm.gameState.round.roundStatus == RoundStatus.completed)
-                      ? 0.4
-                      : 0.1,
-                  maxChildSize: 0.41,
-                  snap: true,
-                  // expand: false,
-                  snapSizes: [
-                    (vm.gameState.round.roundStatus == RoundStatus.completed)
-                        ? 0.4
-                        : 0.10,
-                    .41,
-                  ],
-                  builder: (context, scrollController) {
-                    return GameStatusSheet(scrollController: scrollController);
-                  },
-                ),
-                AnimatedAlign(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  alignment: vm.inGameAction != InGameAction.noAction
-                      ? Alignment.center
-                      : Alignment.centerRight,
-
-                  child: Padding(
-                    padding: EdgeInsetsGeometry.only(right: 18),
-                    child: GenGameControl(),
                   ),
+                  const SizedBox(height: 10),
+                  GenPlayerArea(),
+                  const SizedBox(height: 10),
+
+                  _buildGameTopBar(context, vm),
+                  const SizedBox(height: 24),
+                ],
+              ),
+
+              // DraggableScrollableSheet(
+              //   initialChildSize:
+              //       (vm.gameState.round.roundStatus == RoundStatus.completed)
+              //       ? 0.4
+              //       : 0.10,
+              //   minChildSize:
+              //       (vm.gameState.round.roundStatus == RoundStatus.completed)
+              //       ? 0.4
+              //       : 0.1,
+              //   maxChildSize: 0.41,
+              //   snap: true,
+              //   // expand: false,
+              //   snapSizes: [
+              //     (vm.gameState.round.roundStatus == RoundStatus.completed)
+              //         ? 0.4
+              //         : 0.10,
+              //     .41,
+              //   ],
+              //   builder: (context, scrollController) {
+              // return GameStatusSheet(scrollController: scrollController);
+              //   },
+              // ),
+              AnimatedAlign(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                alignment: vm.inGameAction != InGameAction.noAction
+                    ? Alignment.center
+                    : Alignment.centerRight,
+
+                child: Padding(
+                  padding: EdgeInsetsGeometry.only(right: 18),
+                  child: GenGameControl(),
                 ),
-              ],
-            ),
-          
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -186,55 +191,90 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
     for (final event in newEvents) {
       vm.gameRepo.lastPlayedIds.add(event.id);
-      await _playEvent(event);
+      // await _playEvent(event);
       vm.hiddenCardIds.remove(event.card.id);
-      vm.notifyListeners();
+      // vm.notifyListeners();
     }
 
     _isAnimating = false;
   }
 
-  Future<void> _playEvent(CardMoveEvent event) async {
-    final myPid = vm.me;
+  // Future<void> _playEvent(CardMoveEvent event) async {
+  //   final myPid = vm.me;
 
-    final fromKey = vm.keyForZone(event.from);
-    final toKey = vm.keyForZone(event.to);
+  //   final fromKey = vm.keyForZone(event.from);
+  //   final toKey = vm.keyForZone(event.to);
 
-    if (toKey == null) return;
-    if (fromKey == null) return;
-    if (toKey.currentContext == null) return;
+  //   if (toKey == null) return;
+  //   if (fromKey == null) return;
+  //   if (toKey.currentContext == null) return;
 
-    await CardMoveAnimator.animateCardMove(
-      context: context,
-      vsync: this,
-      fromKey: fromKey,
-      toKey: toKey,
-      beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
-      cardWidth: 55,
-      child: AnimatedMoveCard(
-        card: event.card,
-        faceUp: shouldShowFrontForEvent(event),
-        width: 55,
+  //   await CardMoveAnimator.animateCardMove(
+  //     context: context,
+  //     vsync: this,
+  //     fromKey: fromKey,
+  //     toKey: toKey,
+  //     beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
+  //     cardWidth: 55,
+  //     child: AnimatedMoveCard(
+  //       card: event.card,
+  //       faceUp: _shouldShowFrontForEvent(event),
+  //       width: 55,
+  //     ),
+  //   );
+  // }
+
+  // bool _shouldShowFrontForEvent(CardMoveEvent event) {
+  //   final myPid = vm.me;
+
+  //   // Table and stacks are always face up
+  //   if (event.from.type == ZoneType.table ||
+  //       event.to.type == ZoneType.table ||
+  //       event.from.type == ZoneType.stack ||
+  //       event.to.type == ZoneType.stack) {
+  //     return true;
+  //   }
+  //   if (event.from.type == ZoneType.playerHand) {
+  //     return true;
+  //   }
+  //   if (event.to.type == ZoneType.playerHand && event.to.holderId == myPid) {
+  //     return true;
+  //   }
+  //   return false;
+  // }
+
+  Widget _buildGameTopBar(BuildContext context, GeneralGameViewModel vm) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      decoration: AppStyle.theme.raisedSurfaceBox(),
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          showAppPopup(
+            context: context,
+            title: "Game Status",
+            content: GameStatusSheet(vm: vm),
+          );
+        },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // Center: Joined As
+            Icon(
+              Icons.remove_red_eye_sharp,
+              color: AppStyle.theme.cardBorder,
+              size: 18,
+            ),
+            SizedBox(width: 10),
+            Text(
+              "Game Satus",
+              style: AppStyle.theme.body,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  bool shouldShowFrontForEvent(CardMoveEvent event) {
-    final myPid = vm.me;
-
-    // Table and stacks are always face up
-    if (event.from.type == ZoneType.table ||
-        event.to.type == ZoneType.table ||
-        event.from.type == ZoneType.stack ||
-        event.to.type == ZoneType.stack) {
-      return true;
-    }
-    if (event.from.type == ZoneType.playerHand) {
-      return true;
-    }
-    if (event.to.type == ZoneType.playerHand && event.to.holderId == myPid) {
-      return true;
-    }
-    return false;
   }
 }

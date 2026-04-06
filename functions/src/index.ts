@@ -38,5 +38,18 @@ export const onTurnChange = onDocumentUpdated("games/{gid}", async (event) => {
     data: {
       gid: event.params.gid,
     },
+    android: {
+      notification: {
+        sound: "default",
+        channelId: "turns",
+      },
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: "default",
+        },
+      },
+    },
   });
 });

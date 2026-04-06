@@ -2,11 +2,11 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 class GameStatusSheet extends StatefulWidget {
-  const GameStatusSheet({super.key, required this.scrollController});
-  final ScrollController scrollController;
+  const GameStatusSheet({super.key, required this.vm, this.scrollController});
+  final GeneralGameViewModel vm;
+  final ScrollController? scrollController;
 
   @override
   State<GameStatusSheet> createState() => _GameStatusSheetState();
@@ -15,7 +15,7 @@ class GameStatusSheet extends StatefulWidget {
 class _GameStatusSheetState extends State<GameStatusSheet> {
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<GeneralGameViewModel>();
+    final vm = widget.vm;
     final gameState = vm.gameState;
 
     final playerIds = gameState.playersInfo.keys.toList();
@@ -23,6 +23,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     final roundScores = gameState.round.roundScores;
 
     return Container(
+      height: 250,
       decoration: BoxDecoration(
         color: AppStyle.theme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -37,24 +38,23 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
       child: Column(
         children: [
           const SizedBox(height: 10),
-          Container(
-            width: 42,
-            height: 5,
-            decoration: BoxDecoration(
-              color: AppStyle.theme.muted.withValues(alpha: .45),
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-          const SizedBox(height: 8),
+          // Container(
+          //   width: 42,
+          //   height: 5,
+          //   decoration: BoxDecoration(
+          //     color: AppStyle.theme.muted.withValues(alpha: .45),
+          //     borderRadius: BorderRadius.circular(999),
+          //   ),
+          // ),
+          // const SizedBox(height: 8),
           Expanded(
             child: ListView(
               controller: widget.scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
-                Center(
-                  child: Text("Match Details", style: AppStyle.theme.mutedText),
-                ),
+                 Text("Room ID: ${vm.gameState.id}",textAlign: TextAlign.center, style: AppStyle.theme.mutedText),
+              
                 const SizedBox(height: 16),
 
                 _SectionCard(
@@ -232,6 +232,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
       },
     );
   }
+
 }
 
 class _SectionCard extends StatelessWidget {

@@ -5,6 +5,7 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -49,7 +50,13 @@ class _GenGameControlState extends State<GenGameControl> {
             size: iconSize,
             color: AppStyle.theme.muted,
           ),
-          Text(inGameAction.name),
+          Text(inGameAction.name, style: AppStyle.theme.body),
+          SizedBox(height: 8),
+
+          Text(
+            inGameAction == .share ? "ID: ${vm.gameState.id}" : "",
+            style: AppStyle.theme.body,
+          ),
         ],
       ),
     );
@@ -101,11 +108,10 @@ class _GenGameControlState extends State<GenGameControl> {
   static Future<void> _shareAction(String? gid) async {
     if (gid == null) return;
     developer.log("sharing");
+    HapticFeedback.mediumImpact();
     final link = "https://dominican-casino.web.app/join/$gid";
-    final message =
-        '''Join my Dominican Casino game!
-               $link
-                ''';
+    final message = '''Join my Dominican Casino game!
+           $link''';
 
     await SharePlus.instance.share(ShareParams(text: message));
   }

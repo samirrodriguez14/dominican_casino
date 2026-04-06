@@ -77,7 +77,7 @@ class FeltWalnutTheme extends AppTheme {
       radius: 1.3,
       colors: [
         Color.fromARGB(255, 32, 111, 81),
-         Color.fromARGB(255, 17, 68, 49)],
+           Color.fromARGB(255, 10, 41, 29)],
     ),
   );
 

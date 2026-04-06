@@ -67,11 +67,7 @@ class AppRepo extends ChangeNotifier {
     }
 
     String? apnsToken;
-    for (int i = 0; i < 20; i++) {
-      apnsToken = await messaging.getAPNSToken();
-      if (apnsToken != null) break;
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
+    apnsToken = await messaging.getAPNSToken();
 
     if (apnsToken == null) {
       developer.log('APNS token not ready yet');

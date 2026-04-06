@@ -19,7 +19,7 @@ class NewCasinoPlayingArea extends StatefulWidget {
 
 class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
   GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
-
+  final double tableCardWidth=60;
   @override
   Widget build(BuildContext context) {
     return Opacity(
@@ -35,6 +35,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                //DEALING DECK
                 Column(
                   mainAxisAlignment: (vm.gameState.controllerId ==vm.me)
                       ? MainAxisAlignment.end
@@ -44,7 +45,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                       child: CardDeck(
                         key: vm.deckKey,
                         title: "Dealing",
-                        cardWidth: 55,
+                        cardWidth: tableCardWidth,
                         cards: vm.gameState.deck,
                         extraPoints: 0,
                         onTap: () {},
@@ -74,7 +75,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                       child: CardDeck(
                         key: vm.oppDeckKey,
                         title: "Opp's Deck",
-                        cardWidth: 55,
+                        cardWidth: tableCardWidth,
                         cards: vm.oppCollectedCards,
                         extraPoints: vm.oppExtraPoints,
                         onTap: () {
@@ -94,7 +95,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                       child: CardDeck(
                         key: vm.myDeckKey,
                         title: 'My Deck',
-                        cardWidth: 55,
+                        cardWidth: tableCardWidth,
                         cards: vm.myCollectedCards,
                         extraPoints: vm.myExtraPoints,
                         onTap: () {
@@ -162,7 +163,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
 
                   playingCardModel: c,
                   isSelected: isSelected,
-                  width: 70,
+                  width: tableCardWidth,
                 ),
               ),
             ),
