@@ -63,7 +63,6 @@ class CasinoGameEngine extends GameEngine {
     // SAVE NORMAL MOVE
     gameState = await gameService.updateGame(gameState);
     // // ROUND END
-    // else
     if (GameStateHandler.roundEnded(gameState)) {
       developer.log("round ended");
       gameState = GameStateHandler.settleEndOfRoundIfNeeded(gameState);

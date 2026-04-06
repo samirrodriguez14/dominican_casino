@@ -136,7 +136,7 @@ class CasinoGameActionHandler {
         }
 
       case GameStatus.gameOver:
-        return InGameAction.waiting;
+        return InGameAction.exit;
       default:
         return InGameAction.noAction;
     }

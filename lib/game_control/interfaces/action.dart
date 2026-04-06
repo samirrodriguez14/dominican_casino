@@ -28,6 +28,7 @@ enum InGameAction {
   waiting,
   noAction,
   shuffle,
+  exit,
 }
 
 enum OutGameAction { create, load, join, leave, delete }

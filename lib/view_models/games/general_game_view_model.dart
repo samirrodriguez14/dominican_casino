@@ -154,10 +154,17 @@ class GeneralGameViewModel extends ChangeNotifier {
     return false;
   }
 
-  Future<void> leaveGame() async {
+  Future<void> resign() async {
+    if (opp == null) {
+      gameState.gameStatus = GameStatus.gameOver;
+      await gameRepo.fs.deleteGame(gameState.id);
+      notifyListeners();
+      return;
+    }
+
     gameState.cardMoveEvents = [];
+    gameState.winnerId = opp;
     gameState.gameStatus = GameStatus.gameOver;
-    await gameRepo.fs.updateGame(gameState);
     notifyListeners();
   }
 

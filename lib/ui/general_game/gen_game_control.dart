@@ -1,7 +1,6 @@
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -51,12 +50,8 @@ class _GenGameControlState extends State<GenGameControl> {
             color: AppStyle.theme.muted,
           ),
           Text(inGameAction.name, style: AppStyle.theme.body),
-          SizedBox(height: 8),
-
-          Text(
-            inGameAction == .share ? "ID: ${vm.gameState.id}" : "",
-            style: AppStyle.theme.body,
-          ),
+          if (inGameAction == .share)
+            Text("ID: ${vm.gameState.id}", style: AppStyle.theme.body),
         ],
       ),
     );
@@ -66,14 +61,11 @@ class _GenGameControlState extends State<GenGameControl> {
     switch (action) {
       case InGameAction.share:
         return () => _shareAction(vm.gid);
+      case InGameAction.exit:
+        return () {
+          context.go('/landing');
+        };
       case InGameAction.waiting:
-        if (vm.gameState.gameStatus == GameStatus.gameOver) {
-          return () {
-            context.go('/landing');
-
-            vm.leaveGame();
-          };
-        }
         return () => {};
       default:
         return () => vm.performInGameAction(action);
@@ -97,11 +89,11 @@ class _GenGameControlState extends State<GenGameControl> {
       case InGameAction.noAction:
         return CupertinoIcons.stop;
       case InGameAction.waiting:
-        return (vm.gameState.gameStatus == GameStatus.gameOver)
-            ? CupertinoIcons.arrow_left_circle
-            : CupertinoIcons.lock;
+        return CupertinoIcons.lock;
       case InGameAction.shuffle:
         return CupertinoIcons.square_on_square;
+      case InGameAction.exit:
+        return CupertinoIcons.arrow_left_circle;
     }
   }
 

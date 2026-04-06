@@ -76,7 +76,7 @@ class GameStateHandler {
       gameState.round.roundScores,
     );
 
-    if (gameState.winnerId != "") {
+    if (gameState.winnerId != null && gameState.winnerId != "") {
       gameState.gameStatus = GameStatus.gameOver;
       return gameState;
     }
@@ -101,7 +101,7 @@ class GameStateHandler {
     for (final pid in playerIds) {
       final prev = prevScore[pid] ?? 0;
       final roundTotal = roundScore[pid]['total'] ?? 0;
-      if (prev + roundTotal >= 21) {
+      if (prev + roundTotal >= 4) {
         return pid;
       }
     }

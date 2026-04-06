@@ -53,8 +53,12 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
-                 Text("Room ID: ${vm.gameState.id}",textAlign: TextAlign.center, style: AppStyle.theme.mutedText),
-              
+                Text(
+                  "Room ID: ${vm.gameState.id}",
+                  textAlign: TextAlign.center,
+                  style: AppStyle.theme.mutedText,
+                ),
+
                 const SizedBox(height: 16),
 
                 _SectionCard(
@@ -153,7 +157,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                     children: [
                       CupertinoButton(
                         padding: EdgeInsets.zero,
-                        onPressed: () {
+                        onPressed: () async {
                           context.go('/landing');
                         },
                         child: const _ActionRow(
@@ -166,16 +170,20 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                       CupertinoButton(
                         padding: EdgeInsets.zero,
                         onPressed: () async {
-                          final shouldLeave = await _confirmLeaveGame(context);
+                          bool? shouldLeave = false;
+                          if (vm.opp == null) {
+                            shouldLeave = await _confirmExitEmptyGame(context);
+                          } else {
+                            shouldLeave = await _confirmResignGame(context);
+                          }
                           if (shouldLeave != true) return;
-
-                          await vm.leaveGame();
+                          await vm.resign();
                           if (context.mounted) {
                             context.go('/landing');
                           }
                         },
                         child: const _ActionRow(
-                          title: "Leave Game",
+                          title: "Leave/Resign",
                           subtitle: "Exit this match",
                           icon: CupertinoIcons.escape,
                           danger: true,
@@ -205,17 +213,15 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     return (info['name'] as String?) ?? pid;
   }
 
-  Future<bool?> _confirmLeaveGame(BuildContext context) {
+  Future<bool?> _confirmResignGame(BuildContext context) {
     return showCupertinoDialog<bool>(
       context: context,
       builder: (context) {
         return CupertinoAlertDialog(
-          title: const Text("Leave game?"),
+          title: const Text("Are you sure?"),
           content: const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text(
-              "You will leave this match and return to the lobby.",
-            ),
+            child: Text("Opponent will automatically win this match."),
           ),
           actions: [
             CupertinoDialogAction(
@@ -225,7 +231,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
             CupertinoDialogAction(
               isDestructiveAction: true,
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text("Leave"),
+              child: const Text("Resign"),
             ),
           ],
         );
@@ -233,6 +239,31 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     );
   }
 
+  Future<bool?> _confirmExitEmptyGame(BuildContext context) {
+    return showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) {
+        return CupertinoAlertDialog(
+          title: const Text("Exit Game?"),
+          content: const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text("This will delete the current Game."),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text("Cancel", style: AppStyle.theme.mutedText),
+            ),
+            CupertinoDialogAction(
+              isDestructiveAction: true,
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text("Resign"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _SectionCard extends StatelessWidget {
@@ -343,7 +374,9 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = danger ? AppStyle.theme.danger : AppStyle.theme.turnHighlight;
+    final accent = danger
+        ? AppStyle.theme.danger
+        : AppStyle.theme.turnHighlight;
 
     return Container(
       width: double.infinity,
@@ -367,11 +400,7 @@ class _ActionRow extends StatelessWidget {
               color: accent.withValues(alpha: .12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: accent,
-            ),
+            child: Icon(icon, size: 18, color: accent),
           ),
           const SizedBox(width: 12),
           Expanded(
