@@ -3,7 +3,6 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-// import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:dominican_casino/ui/legacy_game/game_view_model.dart';
 import 'package:share_plus/share_plus.dart';
@@ -39,7 +38,8 @@ class _GameControlDeckState extends State<GameControlDeck> {
       if (waitingOnOpponent) {
         actionIcon = CupertinoIcons.share;
         actionLabel = "Share";
-        onAction = () async => _shareAction(g?.id);
+        onAction = () async =>
+            _shareAction(g?.id, g?.gameMode.name ?? "Casino");
       } else if (canStart) {
         actionIcon = CupertinoIcons.play_arrow_solid;
         actionLabel = "Start";
@@ -54,8 +54,8 @@ class _GameControlDeckState extends State<GameControlDeck> {
         actionIcon = CupertinoIcons.refresh_thick;
         actionLabel = "Redeal";
         // onAction = (vm.canStartNextRound)
-            // ? () => vm.startNextRound()
-            // : () => vm.redealSameRound();
+        // ? () => vm.startNextRound()
+        // : () => vm.redealSameRound();
       } else {
         actionIcon = CupertinoIcons.lock;
         actionLabel = "Waiting…";
@@ -72,7 +72,6 @@ class _GameControlDeckState extends State<GameControlDeck> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-
           if (vm.canControlGame)
             _buildControlArea(
               onAction,
@@ -122,14 +121,12 @@ class _GameControlDeckState extends State<GameControlDeck> {
     );
   }
 
-  static Future<void> _shareAction(String? gid) async {
+  static Future<void> _shareAction(String? gid, String gameMode) async {
     if (gid == null) return;
     developer.log("sharing");
     final link = "https://dominican-casino.web.app/join/$gid";
-    final message =
-        '''Join my Dominican Casino game!
-               $link
-                ''';
+    final message = '''Join my Dominican $gameMode game!
+          $link ''';
 
     await SharePlus.instance.share(ShareParams(text: message));
   }

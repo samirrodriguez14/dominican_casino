@@ -60,7 +60,7 @@ class _GenGameControlState extends State<GenGameControl> {
   Function() actionAction(InGameAction action, GeneralGameViewModel vm) {
     switch (action) {
       case InGameAction.share:
-        return () => _shareAction(vm.gid);
+        return () => _shareAction(vm.gid, vm.gameState.gameMode.name);
       case InGameAction.exit:
         return () {
           context.go('/landing');
@@ -97,12 +97,12 @@ class _GenGameControlState extends State<GenGameControl> {
     }
   }
 
-  static Future<void> _shareAction(String? gid) async {
+  static Future<void> _shareAction(String? gid, String gameMode) async {
     if (gid == null) return;
     developer.log("sharing");
     HapticFeedback.mediumImpact();
     final link = "https://dominican-casino.web.app/join/$gid";
-    final message = '''Join my Dominican Casino game!
+    final message = '''Join my Dominican $gameMode game!
            $link''';
 
     await SharePlus.instance.share(ShareParams(text: message));

@@ -173,7 +173,7 @@ class _CurrentGamesBody extends StatelessWidget {
             final link = "https://dominican-casino.web.app/join/${g.id}";
             final message =
                 '''
-                Join my Dominican Casino game!
+                Join my Dominican ${gameModeTo(g.gameMode)} game!
                 $link
                 ''';
 
