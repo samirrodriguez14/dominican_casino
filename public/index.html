@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,124 +8,131 @@
 
   <style>
     body {
-      margin:0;
+      margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background:#071C14;
-      color:#F3ECE2;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      height:100vh;
+      background: #071C14;
+      color: #F3ECE2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
 
     .card {
       display: flex;
       flex-direction: column;
       align-items: center;
-      background:#1F1511;
-      border-radius:12px;
-      padding:40px 30px;
-      text-align:center;
-      width:250;
-      border:1px solid #5A4032;
-      box-shadow:0 10px 30px rgba(0,0,0,0.6);
+      background: #1F1511;
+      border-radius: 12px;
+      padding: 40px 30px;
+      text-align: center;
+      width: 250;
+      border: 1px solid #5A4032;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
     }
 
     h1 {
-      margin:0 0 10px;
-      font-size:22px;
-      font-weight:700;
+      margin: 0 0 10px;
+      font-size: 22px;
+      font-weight: 700;
     }
 
     p {
-      color:#C2B6A8;
-      margin-bottom:25px;
-      font-size:14px;
+      color: #C2B6A8;
+      margin-bottom: 25px;
+      font-size: 14px;
     }
 
     .btn {
-      display:block;
-      width:100%;
-      padding:14px;
-      border-radius:10px;
-      margin-top:12px;
-      text-decoration:none;
-      font-weight:600;
-      border:1px solid #5A4032;
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      margin-top: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid #5A4032;
     }
 
     .open {
-      background:#977A2F;
-      color:white;
+      background: #977A2F;
+      color: white;
     }
+
     .disabled {
-            background:#2A1D17;
+      background: #2A1D17;
 
     }
 
     .store {
-      background:#E3BE63;
-      color:#2A1D17;
+      background: #E3BE63;
+      color: #2A1D17;
     }
 
     .logo {
-      width:120px;
-      margin-bottom:16px;
-      opacity:.9;
+      width: 120px;
+      margin-bottom: 16px;
+      opacity: .9;
     }
 
     .game {
-      font-weight:700;
-      color:#E3BE63;
+      font-weight: 700;
+      color: #E3BE63;
     }
   </style>
 </head>
 
 <body>
 
-<div class="card">
+  <div class="card">
 
-  <img class="logo" src="/assets/images/logo_icon_wooden_transparent.png" alt="logo"/>
+    <img class="logo" src="/assets/images/logo_icon_wooden_transparent.png" alt="logo" />
 
-  <h1>Dominican Casino</h1>
+    <h1>Dominican Casino</h1>
 
-  <p>
-    Joining game <span class="game" id="gameId">...</span>
-  </p>
+    <p>
+      Joining <span class="game" id="gameType"> game <span class="game" id="gameId">...</span>
+    </p>
 
-  <a id="openBtn" class="btn open">Open App</a>
+    <a id="openBtn" class="btn open">Open App</a>
 
-  <a class="btn store"
-     href="https://apps.apple.com/app/id6760201593">
-     Download App
-  </a>
+    <a class="btn store" href="https://apps.apple.com/app/id6760201593">
+      Download App
+    </a>
 
-</div>
+  </div>
 
-<script>
+  <script>
 
-function getGameId() {
-  const parts = window.location.pathname.split("/");
-  if(parts.length >= 3 && parts[1]=='join') return parts[2];
-  return null;
-}
+    function getGameId() {
+      const parts = window.location.pathname.split("/");
+      if (parts.length >= 3 && parts[1] == 'join') return parts[2];
+      return null;
+    }
+    function getGameType() {
+      const parts = window.location.pathname.split("/");
+      if (parts.length >= 4 && parts[1] == 'join') return parts[3];
+      return null;
+    }
+    const gameId = getGameId();
+    const gameType = getGameType();
 
-const gameId = getGameId();
+    if (gameId) {
+      document.getElementById("gameId").innerText = gameId;
+      document.getElementById("gameType").innerText = gameType;
 
-if(gameId){
-  document.getElementById("gameId").innerText = gameId;
+      const openUrl =
+        "https://dominican-casino.web.app/join/" + gameId + "/" + gameType;
 
-  const openUrl =
-    "https://dominican-casino.web.app/join/" + gameId;
+      document.getElementById("openBtn").href = openUrl;
+    } else {
+      document.getElementById("openBtn").className = 'btn disabled';
+      document.getElementById("openBtn").innerText = 'Invalid Id';
 
-  document.getElementById("openBtn").href = openUrl;
-} else{
-    document.getElementById("openBtn").className = 'btn disabled';
-    document.getElementById("openBtn").innerText = 'Invalid Id';
+    }
 
-}
-
-</script>
+  </script>
 
 </body>
+
 </html>

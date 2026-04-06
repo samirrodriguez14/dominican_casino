@@ -249,14 +249,10 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         GestureDetector(
           onTap: () {
             HapticFeedback.mediumImpact();
-            showAppPopup(
-              context: context,
-              title: "Game Status",
-              content: GameStatusSheet(vm: vm),
-            );
+            vm.sortHandCards();
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: AppStyle.theme.raisedSurfaceBox(),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -264,15 +260,9 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
               children: [
                 // Center: Joined As
                 Icon(
-                  Icons.remove_red_eye_sharp,
+                  CupertinoIcons.arrow_up_arrow_down,
                   color: AppStyle.theme.cardBorder,
                   size: 18,
-                ),
-                SizedBox(width: 10),
-                Text(
-                  "Stat",
-                  style: AppStyle.theme.body,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -300,7 +290,6 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                   color: AppStyle.theme.cardBorder,
                   size: 18,
                 ),
-                
               ],
             ),
           ),
@@ -335,7 +324,11 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         GestureDetector(
           onTap: () {
             HapticFeedback.mediumImpact();
-            vm.sortHandCards();
+            showAppPopup(
+              context: context,
+              title: "Game Status",
+              content: GameStatusSheet(vm: vm),
+            );
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -346,7 +339,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
               children: [
                 // Center: Joined As
                 Icon(
-                  CupertinoIcons.arrow_up_arrow_down,
+                  Icons.keyboard_control_key_sharp,
                   color: AppStyle.theme.cardBorder,
                   size: 18,
                 ),

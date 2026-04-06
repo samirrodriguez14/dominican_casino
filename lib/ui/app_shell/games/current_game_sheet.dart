@@ -170,7 +170,7 @@ class _CurrentGamesBody extends StatelessWidget {
           },
           onShare:g.gameStatus ==GameStatus.waitingForPlayers?
            () async {
-            final link = "https://dominican-casino.web.app/join/${g.id}";
+            final link = "https://dominican-casino.web.app/join/${g.id}/${g.gameMode}";
             final message =
                 '''
                 Join my Dominican ${gameModeTo(g.gameMode)} game!

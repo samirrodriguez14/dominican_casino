@@ -124,7 +124,7 @@ class _GameControlDeckState extends State<GameControlDeck> {
   static Future<void> _shareAction(String? gid, String gameMode) async {
     if (gid == null) return;
     developer.log("sharing");
-    final link = "https://dominican-casino.web.app/join/$gid";
+    final link = "https://dominican-casino.web.app/join/$gid/$gameMode";
     final message = '''Join my Dominican $gameMode game!
           $link ''';
 
