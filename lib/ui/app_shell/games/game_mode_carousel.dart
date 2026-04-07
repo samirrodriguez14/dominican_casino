@@ -1,8 +1,8 @@
+import 'package:dominican_casino/data/games_instructions.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:go_router/go_router.dart';
 
 class GameModeCarousel extends StatefulWidget {
   const GameModeCarousel({super.key});
@@ -13,7 +13,7 @@ class GameModeCarousel extends StatefulWidget {
 
 class _GameModeCarouselState extends State<GameModeCarousel> {
   final PageController controller = PageController(
-    viewportFraction: 0.5,
+    viewportFraction: 0.7,
     initialPage: 1,
   );
 
@@ -40,7 +40,7 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
         itemCount: GameMode.values.length,
         itemBuilder: (context, index) {
           final diff = (page - index).abs();
-          final scale = (1 - (diff * 0.4)).clamp(0.1, 1.0);
+          final scale = (1 - (diff * 0.3)).clamp(0.1, 1.0);
           final mode = GameMode.values[index];
           return Center(
             child: Transform.scale(
@@ -53,12 +53,8 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
                     child: GameModeCard(mode: mode),
                   ),
                   const SizedBox(height: 16),
-
-                  Text(
-                    "or",
-                    style: AppStyle.theme.mutedText.copyWith(fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
+                  
+            
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     spacing: 16,
@@ -69,9 +65,8 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
                         borderRadius: BorderRadius.circular(
                           AppStyle.theme.radius,
                         ),
-                        onPressed: () =>
-                            _showJoinGameDialog(context, mode.name),
-                        child: Text("Join by Id", style: AppStyle.theme.title),
+                        onPressed: () => _showGameInfo(context, mode),
+                        child: Text("Tutorial", style: AppStyle.theme.title),
                       ),
                     ],
                   ),
@@ -84,43 +79,57 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
     );
   }
 
-  void _showJoinGameDialog(BuildContext context, String mode) {
-    final TextEditingController controller = TextEditingController();
 
-    showCupertinoDialog(
-      context: context,
-      builder: (context) {
-        return CupertinoAlertDialog(
-          title: const Text("Join Game"),
-          content: Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: CupertinoTextField(
-              controller: controller,
-              placeholder: "Enter Game ID",
-              textAlign: TextAlign.center,
-            ),
+}
+
+void _showGameInfo(BuildContext context, GameMode mode) {
+  final theme = AppStyle.theme;
+
+  showCupertinoModalPopup(
+    context: context,
+    builder: (context) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
+        decoration: BoxDecoration(
+          color: theme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.muted.withOpacity(.4),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Text("How to Play", style: theme.title),
+
+              const SizedBox(height: 12),
+
+              Text(
+                gamesData[mode.name].toString(),
+                style: theme.body,
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 18),
+
+              CupertinoButton.filled(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Got it"),
+              ),
+            ],
           ),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text("Cancel"),
-              onPressed: () => Navigator.pop(context),
-            ),
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              child: Text("Join", style: AppStyle.theme.title),
-              onPressed: () {
-                final gameId = controller.text.trim();
-
-                Navigator.pop(context);
-
-                if (gameId.isNotEmpty) {
-                  context.go('/game/$gameId/$mode');
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
 }

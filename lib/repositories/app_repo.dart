@@ -53,6 +53,7 @@ class AppRepo extends ChangeNotifier {
     GameState gameState = GameState.create(gid, pid, mode);
     if (local) {
       final localPlayer = LocalPlayer(gameRepo: gameRepo, mode:mode);
+      localPlayer.pid =  _uuid.v4().substring(0, 8);
       gameState.playersInfo[localPlayer.pid] = {
         "id": localPlayer.pid,
         "name": localPlayer.name,

@@ -83,7 +83,7 @@ class GamePillData {
     final value = raw?.toString();
     return GameStatus.values.firstWhere(
       (e) => e.name == value,
-      orElse: () => GameStatus.gameOver,
+      orElse: () => GameStatus.error,
     );
   }
 }

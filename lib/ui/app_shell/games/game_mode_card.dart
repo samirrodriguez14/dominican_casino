@@ -1,4 +1,3 @@
-import 'package:dominican_casino/data/games_instructions.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
@@ -45,24 +44,15 @@ class GameModeCard extends StatelessWidget {
 
           Row(
             children: [
-              Expanded(
-                child: CupertinoButton(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  color: theme.surface,
-                  borderRadius: BorderRadius.circular(theme.radius),
-                  onPressed: () => _showGameInfo(context, mode),
-                  child: Text("Info", style: theme.title),
-                ),
-              ),
-
               const SizedBox(width: 10),
               Expanded(
                 child: CupertinoButton(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   color: theme.surface,
                   borderRadius: BorderRadius.circular(theme.radius),
-                  onPressed: () => gameEnter(context, vm, mode, true),
-                  child: Text("Local", style: theme.title),
+                  onPressed: () => _showJoinGameDialog(context, mode.name),
+                  // onPressed: () => gameEnter(context, vm, mode, true),
+                  child: Text("Join By Id", style: theme.title),
                 ),
               ),
 
@@ -73,8 +63,8 @@ class GameModeCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   color: theme.border,
                   borderRadius: BorderRadius.circular(theme.radius),
-                  onPressed: () => gameEnter(context, vm, mode, false),
-                  child: Text("New", style: AppStyle.theme.title),
+                  onPressed: () => _showEnterGameDialog(context, vm, mode),
+                  child: Text("Play", style: AppStyle.theme.title),
                 ),
               ),
             ],
@@ -92,26 +82,6 @@ class GameModeCard extends StatelessWidget {
         return CupertinoIcons.plus_app;
       case GameMode.robaito:
         return CupertinoIcons.app_fill;
-    }
-  }
-
-  Future<void> gameEnter(
-    BuildContext context,
-    GamesViewModel vm,
-    GameMode mode,
-    bool local,
-  ) async {
-    switch (mode) {
-      case GameMode.tresydos:
-        final gid = await vm.newGame(mode, local);
-        if (gid != null && context.mounted) context.go('/game/$gid/tresydos');
-        break;
-      case GameMode.casino:
-        final gid = await vm.newGame(mode, local);
-        if (gid != null && context.mounted) context.go('/game/$gid/casino');
-        break;
-      case GameMode.robaito:
-        break;
     }
   }
 
@@ -149,54 +119,95 @@ String gameModePlayers(GameMode mode) {
   }
 }
 
-void _showGameInfo(BuildContext context, GameMode mode) {
-  final theme = AppStyle.theme;
+void _showJoinGameDialog(BuildContext context, String mode) {
+  final TextEditingController controller = TextEditingController();
 
-  showCupertinoModalPopup(
+  showCupertinoDialog(
     context: context,
     builder: (context) {
-      return Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
-        decoration: BoxDecoration(
-          color: theme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.muted.withOpacity(.4),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              Text("How to Play", style: theme.title),
-
-              const SizedBox(height: 12),
-
-              Text(
-                gamesData[mode.name].toString(),
-                style: theme.body,
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 18),
-
-              CupertinoButton.filled(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Got it"),
-              ),
-            ],
+      return CupertinoAlertDialog(
+        title: const Text("Join Game"),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: CupertinoTextField(
+            controller: controller,
+            placeholder: "Enter Game ID",
+            textAlign: TextAlign.center,
           ),
         ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: Text("Join", style: AppStyle.theme.title),
+            onPressed: () {
+              final gameId = controller.text.trim();
+
+              Navigator.pop(context);
+
+              if (gameId.isNotEmpty) {
+                context.go('/game/$gameId/$mode');
+              }
+            },
+          ),
+        ],
       );
     },
   );
+}
+
+void _showEnterGameDialog(
+  BuildContext context,
+  GamesViewModel vm,
+  GameMode mode,
+) {
+  showCupertinoDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) {
+      return CupertinoAlertDialog(
+        title: const Text("Start New Game"),
+
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: Text("Online", style: AppStyle.theme.title),
+            onPressed: () => gameEnter(context, vm, mode, false),
+          ),
+          
+          CupertinoDialogAction(
+            child: Text("Local", style: AppStyle.theme.title),
+            onPressed: () => gameEnter(context, vm, mode, true),
+          ),
+          CupertinoDialogAction(
+            child: const Text("Back"),
+            onPressed: () => context.pop(),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Future<void> gameEnter(
+  BuildContext context,
+  GamesViewModel vm,
+  GameMode mode,
+  bool local,
+) async {
+  switch (mode) {
+    case GameMode.tresydos:
+      final gid = await vm.newGame(mode, local);
+      if (gid != null && context.mounted) context.go('/game/$gid/tresydos');
+      break;
+    case GameMode.casino:
+      final gid = await vm.newGame(mode, local);
+      if (gid != null && context.mounted) context.go('/game/$gid/casino');
+      break;
+    case GameMode.robaito:
+      break;
+  }
 }

@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_state_handler.dart';
+import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
@@ -93,6 +93,8 @@ class LocalPlayer extends ChangeNotifier {
               InGameAction action = InGameAction.shuffle;
               await engine.performInGameAction(_gameState, action, pid);
             case RoundStatus.readyToDeal:
+              if (_gameState.controllerId != pid) return;
+
               engine.performInGameAction(_gameState, .deal, pid);
           }
         case GameStatus.gameOver:

@@ -1,5 +1,5 @@
 import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/game_state_handler.dart';
+import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
@@ -79,9 +79,9 @@ class GameActionHandler {
       gameState.deck.removeRange(0, cardsPerPlayer);
       gameState.hands[entry.key] = List.of(dealtCards);
 
-      gameState.cardMoveEvents.addAll(
-        EventHandler.generateDealToHandEvent(dealtCards, entry.key, pid),
-      );
+      // gameState.cardMoveEvents.addAll(
+      //   EventHandler.generateDealToHandEvent(dealtCards, entry.key, pid),
+      // );
     }
     final cardsToTable = gameState.deck.sublist(0, cardsInPlayingArea);
     gameState.deck.removeRange(0, cardsInPlayingArea);
@@ -112,9 +112,9 @@ class GameActionHandler {
       gameState.deck.removeRange(0, cardsPerPlayer);
       gameState.hands[entry.key] = List.of(dealtCards);
 
-      gameState.cardMoveEvents.addAll(
-        EventHandler.generateDealToHandEvent(dealtCards, entry.key, pid),
-      );
+      // gameState.cardMoveEvents.addAll(
+      //   EventHandler.generateDealToHandEvent(dealtCards, entry.key, pid),
+      // );
     }
 
     final tableCards = gameState.deck.sublist(0, cardsInPlayingArea);

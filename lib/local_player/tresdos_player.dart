@@ -6,15 +6,6 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 
 class TresdosPlayer {
-  static Map<String, double> scoreValsCasino = {
-    "Api": 1,
-    "Aheart": 1,
-    "Atrebol": 1,
-    "Acorazon": 1,
-    "pi": 1 / 7,
-    "10diamond": 2,
-    "2pi": 1,
-  };
 
   static Future<PossibleSelection> tresdosBestAction(
     String pid,
@@ -26,7 +17,9 @@ class TresdosPlayer {
     //CURRENT HAND
     final currentHand = gameState.hands[pid]!;
     //PLAYING AREA
-    final playingAreaCard = gameState.playingArea[0];
+    final playingAreaCard = gameState.playingArea.isNotEmpty
+        ? gameState.playingArea[0]
+        : null;
     final deckTopCard = gameState.deck[0];
 
     //IF I ONLY HAVE 5 CARDS, I MUST TAKE
@@ -34,7 +27,7 @@ class TresdosPlayer {
       return possibleTakeSelection(
         pid,
         currentHand,
-        playingAreaCard,
+        playingAreaCard!,
         deckTopCard,
       );
     }

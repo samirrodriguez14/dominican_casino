@@ -190,11 +190,11 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       vm.gameRepo.lastPlayedIds.add(event.id);
       await _playEvent(event);
       vm.hiddenCardIds.remove(event.card.id);
-      vm.notifyListeners();
     }
 
     _isAnimating = false;
     vm.hiddenCardIds.clear();
+    vm.notifyListeners();
   }
 
   Future<void> _playEvent(CardMoveEvent event) async {
