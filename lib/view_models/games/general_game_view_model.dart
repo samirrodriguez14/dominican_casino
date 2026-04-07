@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
@@ -17,6 +18,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   Player player;
   String gid;
   late GameState gameState;
+  List<CardMoveEvent> events = [];
   GeneralGameViewModel({
     required this.gameRepo,
     required this.gameEngine,
@@ -29,13 +31,18 @@ class GeneralGameViewModel extends ChangeNotifier {
   void _onGameRepoChanged() {
     try {
       final nextState = gameRepo.gameState!;
-      final incomingEvents = nextState.cardMoveEvents
-          .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
-          .toList();
+      // events.addAll(
+      //   nextState.cardMoveEvents
+      //       .where(
+      //         (e) =>
+      //             !gameRepo.lastPlayedIds.contains(e.id) && e.performedBy != me,
+      //       )
+      //       .toList(),
+      // );
 
-      for (final event in incomingEvents) {
-        hiddenCardIds.add(event.card.id);
-      }
+      // for (final event in events) {
+      //   hiddenCardIds.add(event.card.id);
+      // }
 
       gameState = nextState;
       HapticFeedback.heavyImpact();
@@ -123,8 +130,27 @@ class GeneralGameViewModel extends ChangeNotifier {
   List<PlayAction> get possiblePlayActions =>
       gameEngine.getAvailableActions(gameState, cardSelection);
 
-  void performPlayAction(PlayAction action) {
-    gameEngine.performPlayAction(gameState, cardSelection, action);
+  void performPlayAction(PlayAction action) async {
+    // Add the card to hiddenCardIds for animation
+    hiddenCardIds.clear();
+    if (cardSelection.selectedCard != null) {
+      hiddenCardIds.add(cardSelection.selectedCard!.id);
+    }
+    hiddenCardIds.addAll(cardSelection.selectedCards.map((e) => e.id));
+    for (var stack in cardSelection.selectedStacks) {
+      hiddenCardIds.addAll(stack.cards.map((e) => e.id));
+    }
+    notifyListeners();
+    // Simulate animation delay, then show the card in new location
+    // await Future.delayed(const Duration(milliseconds: 500));
+    gameState = await gameEngine.performPlayAction(
+      gameState,
+      cardSelection,
+      action,
+    );
+
+    hiddenCardIds.clear();
+    notifyListeners();
   }
 
   //IN GAME ACTION

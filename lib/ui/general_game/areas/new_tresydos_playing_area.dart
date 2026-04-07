@@ -106,10 +106,10 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                                 transform: isSelectedDeck
                                     ? Matrix4.translationValues(0, -18, 0)
                                     : Matrix4.translationValues(0, 4, 0),
-                                child: Opacity(
-                                  opacity: vm.isCardHidden(currentDeckCard)
-                                      ? 0.0
-                                      : 1.0,
+                                child: AnimatedScale(
+                                  scale: vm.isCardHidden(currentDeckCard) ? 0.0 : 1.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOut,
                                   child: PlayingCardBack(
                                     key: vm.keyForCard(currentDeckCard.id),
                                     width: cardWidth,
@@ -146,10 +146,10 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                                 transform: isSelected
                                     ? Matrix4.translationValues(18, 4, 0)
                                     : Matrix4.translationValues(0, 4, 0),
-                                child: Opacity(
-                                  opacity: vm.isCardHidden(currentCard)
-                                      ? 0.0
-                                      : 1.0,
+                                child: AnimatedScale(
+                                  scale: vm.isCardHidden(currentCard) ? 0.0 : 1.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOut,
                                   child: PlayingCard(
                                     key: vm.keyForCard(currentCard.id),
                                     playingCardModel: currentCard,

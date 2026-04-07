@@ -75,12 +75,11 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
                             for (int i = 0; i < count; i++)
                               Positioned(
                                 left: i * gap,
-                                child: Opacity(
-                                  opacity: vm.isCardHidden(cards[i])
-                                      ? 0.0
-                                      : 1.0,
-                                  child:
-                                      (vm.gameState.round.roundStatus ==
+                                child: AnimatedScale(
+                                  scale: vm.isCardHidden(cards[i]) ? 0.0 : 1.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOut,
+                                  child: (vm.gameState.round.roundStatus ==
                                           .completed)
                                       ? PlayingCard(
                                           playingCardModel: cards[i],

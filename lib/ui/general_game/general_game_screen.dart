@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:math';
 
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
@@ -177,7 +178,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   Future<void> _tryPlayEvents() async {
     if (!mounted || _isAnimating) return;
 
-    final events = vm.gameState.cardMoveEvents;
+    final events = vm.events;
     final newEvents = events
         .where((e) => !vm.gameRepo.lastPlayedIds.contains(e.id))
         .toList();
@@ -189,9 +190,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     for (final event in newEvents) {
       vm.gameRepo.lastPlayedIds.add(event.id);
       await _playEvent(event);
-      vm.hiddenCardIds.remove(event.card.id);
     }
-
     _isAnimating = false;
     vm.hiddenCardIds.clear();
     vm.notifyListeners();
@@ -199,6 +198,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
   Future<void> _playEvent(CardMoveEvent event) async {
     final myPid = vm.me;
+    final cardKey = vm.keyForCard(event.card.id);
 
     final fromKey = vm.keyForZone(event.from);
     final toKey = vm.keyForZone(event.to);
@@ -207,19 +207,19 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     if (fromKey == null) return;
     if (toKey.currentContext == null) return;
 
-    await CardMoveAnimator.animateCardMove(
-      context: context,
-      vsync: this,
-      fromKey: fromKey,
-      toKey: toKey,
-      beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
-      cardWidth: 55,
-      child: AnimatedMoveCard(
-        card: event.card,
-        faceUp: _shouldShowFrontForEvent(event),
-        width: 55,
-      ),
-    );
+    // await CardMoveAnimator.animateCardMove(
+    //   context: context,
+    //   vsync: this,
+    //   fromKey: fromKey,
+    //   toKey: toKey,
+    //   child: AnimatedMoveCard(
+    //     key: cardKey,
+    //     card: event.card,
+    //     faceUp: _shouldShowFrontForEvent(event),
+    //     width: 55,
+    //   ),
+    //   cardWidth: 55,
+    // );
   }
 
   bool _shouldShowFrontForEvent(CardMoveEvent event) {

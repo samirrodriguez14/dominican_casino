@@ -1,5 +1,5 @@
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/cards/playing_card.dart';
+import 'package:dominican_casino/ui/animations/animated_move_card.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -61,7 +61,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                   gap = (constraints.maxWidth - cardWidth) / (count - 1);
                 }
 
-                gap = gap.clamp(50.0,80);
+                gap = gap.clamp(50.0, 80);
 
                 final totalWidth = cardWidth + ((count - 1) * gap);
 
@@ -88,16 +88,21 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                                   transform: vm.selectedCard == cards[i]
                                       ? Matrix4.translationValues(0, -12, 0)
                                       : Matrix4.identity(),
-                                  child: Opacity(
-                                    opacity: vm.isCardHidden(cards[i])
-                                        ? 0.0
-                                        : 1.0,
-                                    child: PlayingCard(
+                                  child: AnimatedScale(
+                                    scale: vm.isCardHidden(cards[i]) ? 0.0 : 1.0,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                    child: AnimatedMoveCard(
                                       key: vm.keyForCard(cards[i].id),
-                                      playingCardModel: cards[i],
+                                      card: cards[i],
+                                      faceUp: true,
                                       width: cardWidth,
-                                      isSelected: vm.selectedCard == cards[i],
                                     ),
+                                    // PlayingCard(
+                                    //   playingCardModel: ,
+                                    //   width: cardWidth,
+                                    //   isSelected: vm.selectedCard == cards[i],
+                                    // ),
                                   ),
                                 ),
                               ),

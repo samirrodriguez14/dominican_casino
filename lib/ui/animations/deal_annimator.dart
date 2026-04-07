@@ -6,13 +6,25 @@ class CardMoveAnimator {
     required TickerProvider vsync,
     required GlobalKey fromKey,
     required GlobalKey toKey,
-    required Widget child,
-    double cardWidth = 46,
+    Widget? child,
+    GlobalKey? existingCardKey,
+    double? cardWidth,
     Duration duration = const Duration(milliseconds: 500),
     double beginRotation = 0.0,
   }) async {
+    //  await Future.delayed(Duration(seconds: 1));
+    // Determine which card widget to animate
+    final animatedChild = existingCardKey != null
+        ? (existingCardKey.currentWidget as Widget)
+        : (child ?? const SizedBox.shrink());
+
+    // Determine card dimensions
+    final width = cardWidth ?? 46.0;
+    if (child == null && existingCardKey == null) {
+      return;
+    }
     final overlay = Overlay.of(context);
-    final cardHeight = cardWidth * 1.4;
+    final cardHeight = width * 1.4;
     final fromBox = fromKey.currentContext?.findRenderObject() as RenderBox?;
     final toBox = toKey.currentContext?.findRenderObject() as RenderBox?;
     if (fromBox == null || toBox == null) return;
@@ -47,7 +59,7 @@ class CardMoveAnimator {
         builder: (_, _) {
           final p = pos.value;
           return Positioned(
-            left: p.dx - cardWidth / 2,
+            left: p.dx - width / 2,
             top: p.dy - cardHeight / 2,
             child: IgnorePointer(
               child: Transform.rotate(
@@ -55,9 +67,9 @@ class CardMoveAnimator {
                 child: Transform.scale(
                   scale: scale.value,
                   child: SizedBox(
-                    width: cardWidth,
+                    width: width,
                     height: cardHeight,
-                    child: child,
+                    child: animatedChild,
                   ),
                 ),
               ),
