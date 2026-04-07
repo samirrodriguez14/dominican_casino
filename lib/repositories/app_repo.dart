@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/local_player/local_player.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
+import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -40,10 +42,23 @@ class AppRepo extends ChangeNotifier {
     if (player != null) appStatus = AppStatus.appReady;
   }
 
-  Future<String> createNewGame(GameMode mode, String pid) async {
+  Future<String> createNewGame(
+    GameMode mode,
+    String pid,
+    GameRepo gameRepo,
+    bool local,
+  ) async {
     String gid = _uuid.v4().substring(0, 8);
     player?.token = await getDeviceToken();
     GameState gameState = GameState.create(gid, pid, mode);
+    if (local) {
+      final localPlayer = LocalPlayer(gameRepo: gameRepo, mode:mode);
+      gameState.playersInfo[localPlayer.pid] = {
+        "id": localPlayer.pid,
+        "name": localPlayer.name,
+        "token": "",
+      };
+    }
     gid = await fs.newCreateGame(gameState);
     return gid;
   }

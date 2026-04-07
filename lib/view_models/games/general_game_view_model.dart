@@ -29,13 +29,13 @@ class GeneralGameViewModel extends ChangeNotifier {
   void _onGameRepoChanged() {
     try {
       final nextState = gameRepo.gameState!;
-      // final incomingEvents = nextState.cardMoveEvents
-      //     .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
-      //     .toList();
+      final incomingEvents = nextState.cardMoveEvents
+          .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
+          .toList();
 
-      // for (final event in incomingEvents) {
-      //   hiddenCardIds.add(event.card.id);
-      // }
+      for (final event in incomingEvents) {
+        hiddenCardIds.add(event.card.id);
+      }
 
       gameState = nextState;
       HapticFeedback.heavyImpact();
@@ -43,7 +43,6 @@ class GeneralGameViewModel extends ChangeNotifier {
       selectedCards = [];
       selectedCard = null;
       selectedStacks = [];
-
       notifyListeners();
     } catch (e) {
       developer.log("GameViewModel._onGameRepoChanged Error $e");

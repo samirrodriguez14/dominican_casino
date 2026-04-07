@@ -23,11 +23,12 @@ void main() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    );;
+    );
+    ;
   } catch (e) {
     devloper.log("Error initializing Firebase");
   }
-  
+
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   runApp(
@@ -50,7 +51,10 @@ void main() async {
               ProfileViewModel(appRepo: context.read<AppRepo>()),
         ),
         ChangeNotifierProvider(
-          create: (context) => GamesViewModel(appRepo: context.read<AppRepo>()),
+          create: (context) => GamesViewModel(
+            appRepo: context.read<AppRepo>(),
+            gameRepo: context.read<GameRepo>(),
+          ),
         ),
         ChangeNotifierProvider(
           create: (context) => HomeViewModel(appRepo: context.read<AppRepo>()),

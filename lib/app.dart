@@ -76,8 +76,10 @@ class _MyAppState extends State<App> {
             switch (gameMode) {
               case "casino":
                 engine = CasinoGameEngine(gameService: gameService);
+                break;
               case "tresydos":
                 engine = TresDosGameEngine(gameService: gameService);
+                break;
               default:
                 engine = CasinoGameEngine(gameService: gameService);
             }

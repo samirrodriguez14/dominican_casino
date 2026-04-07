@@ -15,6 +15,10 @@ class CurrentCardSelection {
     required this.selectedCards,
     required this.selectedStacks,
   });
+  @override
+  String toString() {
+    return "$selectedCard, $selectedCards, $selectedStacks";
+  }
 }
 
 abstract class GameEngine {
@@ -27,7 +31,7 @@ abstract class GameEngine {
   );
 
   //VALIDATE PLAY ACTIONS
-  bool validateAction(
+  ValidateResult validateAction(
     GameState state,
     CurrentCardSelection cardSelection,
     PlayAction action,
@@ -48,4 +52,42 @@ abstract class GameEngine {
     InGameAction action,
     String pid,
   );
+}
+
+
+class ValidateResult {
+  bool result;
+  String reason;
+  ValidateResult({required this.reason, required this.result});
+
+  factory ValidateResult.notTurn() {
+    return ValidateResult(reason: "Not your turn", result: false);
+  }
+  factory ValidateResult.noSelectedCard() {
+    return ValidateResult(reason: "Must Have a selected Card", result: false);
+  }
+  factory ValidateResult.exactlyOneTable() {
+    return ValidateResult(
+      reason: "Must select exactly one table card",
+      result: false,
+    );
+  }
+  factory ValidateResult.mustBeOnTable() {
+    return ValidateResult(reason: "Must actually be on table", result: false);
+  }
+  factory ValidateResult.success() {
+    return ValidateResult(reason: "Valid action", result: true);
+  }
+  factory ValidateResult.failure(String reason) {
+    return ValidateResult(reason: reason, result: false);
+  }
+  factory ValidateResult.canTake(bool isValid) {
+    return ValidateResult(reason: "canTake", result: isValid);
+  }
+  factory ValidateResult.canTakeStack(bool isValid) {
+    return ValidateResult(reason: "canTakeStack", result: isValid);
+  }
+  factory ValidateResult.invalidSelection(String message) {
+    return ValidateResult(reason: message, result: false);
+  }
 }

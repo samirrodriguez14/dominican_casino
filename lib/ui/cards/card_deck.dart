@@ -78,7 +78,7 @@ class CardDeck extends StatelessWidget {
                         (!back)
                             ? PlayingCard(
                                 width: cardWidth,
-                                playingCardModel: cards[0],
+                                playingCardModel: cards[cards.length-2],
                                 isSelected: selectedTopCard ?? false ,
                               )
                             : PlayingCardBack(width: cardWidth),

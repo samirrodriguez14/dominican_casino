@@ -35,7 +35,7 @@ class TresDosPlayActionHandler {
     nextState.playingArea.removeWhere((card) => card == a.targetCard);
     nextState.deck.removeWhere((card) => card == a.targetCard);
 
-    // ADD CARD TO PLAYER'S WON/CAPTURED CARDS
+    // ADD CARD TO PLAYER'S HAND
     nextState.hands.putIfAbsent(pid, () => []);
     nextState.hands[pid]!.add(a.targetCard);
 

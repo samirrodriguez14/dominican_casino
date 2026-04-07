@@ -56,13 +56,24 @@ class GameModeCard extends StatelessWidget {
               ),
 
               const SizedBox(width: 10),
+              Expanded(
+                child: CupertinoButton(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  color: theme.surface,
+                  borderRadius: BorderRadius.circular(theme.radius),
+                  onPressed: () => gameEnter(context, vm, mode, true),
+                  child: Text("Local", style: theme.title),
+                ),
+              ),
+
+              const SizedBox(width: 10),
 
               Expanded(
                 child: CupertinoButton(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   color: theme.border,
                   borderRadius: BorderRadius.circular(theme.radius),
-                  onPressed: () => gameEnter(context, vm, mode),
+                  onPressed: () => gameEnter(context, vm, mode, false),
                   child: Text("New", style: AppStyle.theme.title),
                 ),
               ),
@@ -88,14 +99,15 @@ class GameModeCard extends StatelessWidget {
     BuildContext context,
     GamesViewModel vm,
     GameMode mode,
+    bool local,
   ) async {
     switch (mode) {
       case GameMode.tresydos:
-        final gid = await vm.newGame(mode);
+        final gid = await vm.newGame(mode, local);
         if (gid != null && context.mounted) context.go('/game/$gid/tresydos');
         break;
       case GameMode.casino:
-        final gid = await vm.newGame(mode);
+        final gid = await vm.newGame(mode, local);
         if (gid != null && context.mounted) context.go('/game/$gid/casino');
         break;
       case GameMode.robaito:

@@ -32,8 +32,13 @@ class CasinoGameEngine extends GameEngine {
     CurrentCardSelection currentCardSelection,
     PlayAction action,
   ) async {
-    if (!validateAction(gameState, currentCardSelection, action)) {
-      throw Exception("Invalid Move");
+    ValidateResult result = validateAction(
+      gameState,
+      currentCardSelection,
+      action,
+    );
+    if (!result.result) {
+      throw Exception("Invalid Move: ${result.reason}");
     }
     if (!validateTurn(gameState, action)) {
       throw Exception("Not your turn");
@@ -79,7 +84,7 @@ class CasinoGameEngine extends GameEngine {
 
   //FORWARD TO VALIDATE ACTION [GAME RULE HANDLER]
   @override
-  bool validateAction(
+  ValidateResult validateAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
     PlayAction action,

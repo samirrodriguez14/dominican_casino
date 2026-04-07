@@ -11,7 +11,7 @@ class TresDosRulesHandler {
     List<PlayAction> available = [];
     String performedBy = currentCardSelection.pid;
 
-    if (canPlayAction(gameState, currentCardSelection)) {
+    if (canPlayAction(gameState, currentCardSelection).result) {
       available.add(
         PlayCardAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -20,7 +20,7 @@ class TresDosRulesHandler {
       );
     }
 
-    if (canTakeCard(gameState, currentCardSelection)) {
+    if (canTakeCard(gameState, currentCardSelection).result) {
       available.add(
         TakeCardAction(
           usedCard: currentCardSelection.selectedCards[0],
@@ -34,7 +34,7 @@ class TresDosRulesHandler {
   }
 
   ///VALIDATE ACTION BASED ON CARD SELECTION AND GAMESTATE
-  static bool validateAction(
+  static ValidateResult validateAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
     PlayAction action,
@@ -48,23 +48,27 @@ class TresDosRulesHandler {
 
       default:
     }
-    return false;
+    return ValidateResult(reason: "", result: false);
   }
 
   ///VALIDATE SPECIFIC ACTION BASED ON CARD SELECTION AND GAMESTATE
-  static bool canPlayAction(
+  static ValidateResult canPlayAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
     if (currentCardSelection.selectedCards.isEmpty &&
         currentCardSelection.selectedStacks.isEmpty) {
-      return gameState.hands[currentCardSelection.pid]?.length == 6 &&
-          currentCardSelection.selectedCard != null;
+      return ValidateResult(
+        reason: "",
+        result:
+            gameState.hands[currentCardSelection.pid]?.length == 6 &&
+            currentCardSelection.selectedCard != null,
+      );
     }
-    return false;
+    return ValidateResult(reason: "reason", result: false);
   }
 
-  static bool canTakeCard(
+  static ValidateResult canTakeCard(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -74,15 +78,21 @@ class TresDosRulesHandler {
 
     // Must be this player's turn
     if (gameState.currentTurnPlayerId != pid) {
-      return false;
+      return ValidateResult(reason: "Not your turn", result: false);
     }
 
     // Must not have a card from hand selected
     if (selectedCard != null) {
-      return false;
+      return ValidateResult(
+        reason: "Must Not Selected Card From hand",
+        result: false,
+      );
     }
 
     // Must select exactly one table card
-    return selectedCards.length == 1 && gameState.hands[pid]?.length != 6;
+    return ValidateResult(
+      reason: "has table card",
+      result: selectedCards.length == 1 && gameState.hands[pid]?.length != 6,
+    );
   }
 }

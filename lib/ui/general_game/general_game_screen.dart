@@ -1,15 +1,14 @@
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/game_control/interfaces/card_event.dart';
+import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/models/game_state.dart';
-// import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
-// import 'package:dominican_casino/ui/animations/animated_move_card.dart';
-// import 'package:dominican_casino/ui/animations/deal_annimator.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
-// import 'package:dominican_casino/game_control/interfaces/card_event.dart';
-// import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/animations/animated_move_card.dart';
+import 'package:dominican_casino/ui/animations/deal_annimator.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
@@ -65,7 +64,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   }
 
   void _onVmChanged() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (vm.gameState.gameStatus == .gameOver) {
         showAppPopup(
           context: context,
@@ -73,7 +72,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
           content: GameStatusSheet(vm: vm),
         );
       }
-      _tryPlayEvents();
+      await _tryPlayEvents();
     });
   }
 
@@ -189,57 +188,58 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
     for (final event in newEvents) {
       vm.gameRepo.lastPlayedIds.add(event.id);
-      // await _playEvent(event);
+      await _playEvent(event);
       vm.hiddenCardIds.remove(event.card.id);
-      // vm.notifyListeners();
+      vm.notifyListeners();
     }
 
     _isAnimating = false;
+    vm.hiddenCardIds.clear();
   }
 
-  // Future<void> _playEvent(CardMoveEvent event) async {
-  //   final myPid = vm.me;
+  Future<void> _playEvent(CardMoveEvent event) async {
+    final myPid = vm.me;
 
-  //   final fromKey = vm.keyForZone(event.from);
-  //   final toKey = vm.keyForZone(event.to);
+    final fromKey = vm.keyForZone(event.from);
+    final toKey = vm.keyForZone(event.to);
 
-  //   if (toKey == null) return;
-  //   if (fromKey == null) return;
-  //   if (toKey.currentContext == null) return;
+    if (toKey == null) return;
+    if (fromKey == null) return;
+    if (toKey.currentContext == null) return;
 
-  //   await CardMoveAnimator.animateCardMove(
-  //     context: context,
-  //     vsync: this,
-  //     fromKey: fromKey,
-  //     toKey: toKey,
-  //     beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
-  //     cardWidth: 55,
-  //     child: AnimatedMoveCard(
-  //       card: event.card,
-  //       faceUp: _shouldShowFrontForEvent(event),
-  //       width: 55,
-  //     ),
-  //   );
-  // }
+    await CardMoveAnimator.animateCardMove(
+      context: context,
+      vsync: this,
+      fromKey: fromKey,
+      toKey: toKey,
+      beginRotation: event.performedBy == myPid ? -0.08 : 0.08,
+      cardWidth: 55,
+      child: AnimatedMoveCard(
+        card: event.card,
+        faceUp: _shouldShowFrontForEvent(event),
+        width: 55,
+      ),
+    );
+  }
 
-  // bool _shouldShowFrontForEvent(CardMoveEvent event) {
-  //   final myPid = vm.me;
+  bool _shouldShowFrontForEvent(CardMoveEvent event) {
+    final myPid = vm.me;
 
-  //   // Table and stacks are always face up
-  //   if (event.from.type == ZoneType.table ||
-  //       event.to.type == ZoneType.table ||
-  //       event.from.type == ZoneType.stack ||
-  //       event.to.type == ZoneType.stack) {
-  //     return true;
-  //   }
-  //   if (event.from.type == ZoneType.playerHand) {
-  //     return true;
-  //   }
-  //   if (event.to.type == ZoneType.playerHand && event.to.holderId == myPid) {
-  //     return true;
-  //   }
-  //   return false;
-  // }
+    // Table and stacks are always face up
+    if (event.from.type == ZoneType.table ||
+        event.to.type == ZoneType.table ||
+        event.from.type == ZoneType.stack ||
+        event.to.type == ZoneType.stack) {
+      return true;
+    }
+    if (event.from.type == ZoneType.playerHand) {
+      return true;
+    }
+    if (event.to.type == ZoneType.playerHand && event.to.holderId == myPid) {
+      return true;
+    }
+    return false;
+  }
 
   Widget _buildGameTopBar(BuildContext context, GeneralGameViewModel vm) {
     return Row(

@@ -4,6 +4,7 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/cards/card_deck.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_opponent_area.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -24,10 +25,13 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
     PlayingCardModel? currentCard = vm.playingAreaCards.isNotEmpty
         ? vm.playingAreaCards.last
         : null;
+    PlayingCardModel? currentDeckCard = vm.gameState.deck.isNotEmpty
+        ? vm.gameState.deck.last
+        : null;
     bool isSelected = vm.selectedCards.contains(currentCard);
     bool isSelectedDeck =
         vm.gameState.deck.isNotEmpty &&
-        vm.selectedCards.contains(vm.gameState.deck[0]);
+        vm.selectedCards.contains(currentDeckCard);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -74,22 +78,46 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      AppStyle.theme.dottedBox(
-                        color: isSelectedDeck ? AppStyle.theme.border : null,
-                        child: CardDeck(
-                          title: 'Deck',
-                          cards: vm.gameState.deck,
-                          cardWidth: cardWidth,
-                          extraPoints: 0,
-                          onTap: () {
-                            vm.selectCardToTake(
-                              vm.gameState.deck.isNotEmpty
-                                  ? vm.gameState.deck[0]
-                                  : null,
-                            );
-                            setState(() {});
-                          },
-                        ),
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          AppStyle.theme.dottedBox(
+                    
+                            child: CardDeck(
+                              title: 'Deck',
+                              cards: vm.gameState.deck,
+                              cardWidth: cardWidth,
+                              extraPoints: 0,
+                              onTap: () {
+                                vm.selectCardToTake(
+                                  vm.gameState.deck.isNotEmpty
+                                      ? vm.gameState.deck[0]
+                                      : null,
+                                );
+                                setState(() {});
+                              },
+                            ),
+                          ),
+                          if (currentDeckCard != null)
+                            GestureDetector(
+                              onTap: () => vm.selectCardToTake(currentDeckCard),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                transform: isSelectedDeck
+                                    ? Matrix4.translationValues(0, -18, 0)
+                                    : Matrix4.translationValues(0, 4, 0),
+                                child: Opacity(
+                                  opacity: vm.isCardHidden(currentDeckCard)
+                                      ? 0.0
+                                      : 1.0,
+                                  child: PlayingCardBack(
+                                    key: vm.keyForCard(currentDeckCard.id),
+                                    width: cardWidth,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
@@ -116,7 +144,7 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 150),
                                 transform: isSelected
-                                    ? Matrix4.translationValues(0, -8, 0)
+                                    ? Matrix4.translationValues(18, 4, 0)
                                     : Matrix4.translationValues(0, 4, 0),
                                 child: Opacity(
                                   opacity: vm.isCardHidden(currentCard)

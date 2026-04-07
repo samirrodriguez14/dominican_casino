@@ -13,7 +13,7 @@ class CasinoRulesHandler {
     List<PlayAction> available = [];
     String performedBy = currentCardSelection.pid;
 
-    if (canPlayAction(gameState, currentCardSelection)) {
+    if (canPlayAction(gameState, currentCardSelection).result) {
       available.add(
         PlayCardAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -21,7 +21,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canAddAction(gameState, currentCardSelection)) {
+    if (canAddAction(gameState, currentCardSelection).result) {
       available.add(
         AddCardsAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -30,7 +30,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canAddStackAction(gameState, currentCardSelection)) {
+    if (canAddStackAction(gameState, currentCardSelection).result) {
       available.add(
         AddCardStackAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -39,7 +39,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canAddTableAction(gameState, currentCardSelection)) {
+    if (canAddTableAction(gameState, currentCardSelection).result) {
       available.add(
         AddTableCardsAction(
           targetCards: currentCardSelection.selectedCards,
@@ -47,7 +47,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canTakeCard(gameState, currentCardSelection)) {
+    if (canTakeCard(gameState, currentCardSelection).result) {
       available.add(
         TakeCardAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -56,7 +56,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canTakeStack(gameState, currentCardSelection)) {
+    if (canTakeStack(gameState, currentCardSelection).result) {
       available.add(
         TakeStackAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -65,7 +65,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canPairAllAction(gameState, currentCardSelection)) {
+    if (canPairAllAction(gameState, currentCardSelection).result) {
       available.add(
         PairCardsAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -75,7 +75,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canPairAllTableAction(gameState, currentCardSelection)) {
+    if (canPairAllTableAction(gameState, currentCardSelection).result) {
       available.add(
         PairTableCardsAction(
           targetCards: currentCardSelection.selectedCards,
@@ -84,7 +84,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canAddAndPairAction(gameState, currentCardSelection)) {
+    if (canAddAndPairAction(gameState, currentCardSelection).result) {
       available.add(
         AddAndPairCardsAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -94,7 +94,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canAddAndTakeAction(gameState, currentCardSelection)) {
+    if (canAddAndTakeAction(gameState, currentCardSelection).result) {
       available.add(
         AddAndTakeAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -103,7 +103,7 @@ class CasinoRulesHandler {
         ),
       );
     }
-    if (canPairAndTakeAction(gameState, currentCardSelection)) {
+    if (canPairAndTakeAction(gameState, currentCardSelection).result) {
       available.add(
         PairAndTakeCardsAction(
           usedCard: currentCardSelection.selectedCard!,
@@ -118,7 +118,7 @@ class CasinoRulesHandler {
   }
 
   ///VALIDATE ACTION BASED ON CARD SELECTION AND GAMESTATE
-  static bool validateAction(
+  static ValidateResult validateAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
     PlayAction action,
@@ -148,23 +148,23 @@ class CasinoRulesHandler {
         return canPairAndTakeAction(gameState, currentCardSelection);
       default:
     }
-    return false;
+    return ValidateResult(reason: "no valid action", result: false);
   }
 
   ///VALIDATE SPECIFIC ACTION BASED ON CARD SELECTION AND GAMESTATE
-  static bool canPlayAction(
+  static ValidateResult canPlayAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
     if (currentCardSelection.selectedCard != null &&
         currentCardSelection.selectedCards.isEmpty &&
         currentCardSelection.selectedStacks.isEmpty) {
-      return true;
+      return ValidateResult.success();
     }
-    return false;
+    return ValidateResult.failure("Must select only one card from hand");
   }
 
-  static bool canTakeCard(
+  static ValidateResult canTakeCard(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -174,33 +174,33 @@ class CasinoRulesHandler {
 
     // Must be this player's turn
     if (gameState.currentTurnPlayerId != pid) {
-      return false;
+      return ValidateResult.notTurn();
     }
 
     // Must have a card from hand selected
     if (selectedCard == null) {
-      return false;
+      return ValidateResult.noSelectedCard();
     }
 
     // Must select exactly one table card
     if (selectedCards.length != 1) {
-      return false;
+      return ValidateResult.exactlyOneTable();
     }
 
     final targetCard = selectedCards.first;
 
     // Must actually be on table
     if (!gameState.playingArea.contains(targetCard)) {
-      return false;
+      return ValidateResult.mustBeOnTable();
     }
 
     final cardVals = possibleCardValues(selectedCard);
     final totals = possibleTotals(selectedCards);
 
-    return cardVals.any(totals.contains);
+    return ValidateResult.canTake(cardVals.any(totals.contains));
   }
 
-  static bool canTakeStack(
+  static ValidateResult canTakeStack(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -209,24 +209,24 @@ class CasinoRulesHandler {
     final pid = currentCardSelection.pid;
 
     if (gameState.currentTurnPlayerId != pid) {
-      return false;
+      return ValidateResult.notTurn();
     }
 
     if (selectedCard == null) {
-      return false;
+      return ValidateResult.noSelectedCard();
     }
 
     if (selectedStacks.length != 1) {
-      return false;
+      return ValidateResult.exactlyOneTable();
     }
 
     final cardVals = possibleCardValues(selectedCard);
     final selectedStacksValue = selectedStacks[0].stackValue;
 
-    return cardVals.contains(selectedStacksValue);
+    return ValidateResult.canTakeStack(cardVals.contains(selectedStacksValue));
   }
 
-  static bool canAddAction(
+  static ValidateResult canAddAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -245,16 +245,18 @@ class CasinoRulesHandler {
         for (final cv in cardVals) {
           for (final t in totals) {
             final needed = cv + t;
-            if (handVals.contains(needed)) return true;
+            if (handVals.contains(needed)) return ValidateResult.success();
           }
         }
-        return false;
+        return ValidateResult.failure(
+          "Card sum does not match any card in hand",
+        );
       }
     }
-    return false;
+    return ValidateResult.failure("Invalid card selection for add action");
   }
 
-  static bool canAddStackAction(
+  static ValidateResult canAddStackAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -272,37 +274,45 @@ class CasinoRulesHandler {
       if (selectedCards.isEmpty && selectedStacks.length == 1) {
         for (final cv in cardVals) {
           final needed = cv + selectedStacks[0].stackValue;
-          if (handVals.contains(needed)) return true;
+          if (handVals.contains(needed)) return ValidateResult.success();
         }
+        return ValidateResult.failure(
+          "Card sum does not match any card in hand",
+        );
       }
     }
-    return false;
+    return ValidateResult.failure("Invalid card selection for add stack action");
   }
 
-  static bool canAddTableAction(
+  static ValidateResult canAddTableAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
     if (currentCardSelection.selectedCard != null ||
         currentCardSelection.selectedStacks.isNotEmpty) {
-      return false;
+      return ValidateResult.failure(
+        "Cannot add table cards with hand or stack selection",
+      );
     }
     final selectedCards = currentCardSelection.selectedCards;
     final pid = currentCardSelection.pid;
 
     final myHandCards = gameState.hands[pid] ?? [];
-    if (selectedCards.length>1) {
+    if (selectedCards.length > 1) {
       // values of the selectedCard (A => [1,14])
       final handVals = possibleValuesInHand(myHandCards, null);
       final totals = possibleTotals(selectedCards);
       for (final t in totals) {
-        if (handVals.contains(t)) return true;
+        if (handVals.contains(t)) return ValidateResult.success();
       }
+      return ValidateResult.failure(
+        "Card sum does not match any card in hand",
+      );
     }
-    return false;
+    return ValidateResult.failure("Must select at least 2 table cards");
   }
 
-  static bool canPairAllAction(
+  static ValidateResult canPairAllAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -314,15 +324,15 @@ class CasinoRulesHandler {
     final myHandCards = gameState.hands[pid] ?? [];
 
     if (gameState.currentTurnPlayerId != pid) {
-      return false;
+      return ValidateResult.notTurn();
     }
 
     if (selectedCard == null) {
-      return false;
+      return ValidateResult.noSelectedCard();
     }
 
     if (selectedCards.isEmpty && selectedStacks.isEmpty) {
-      return false;
+      return ValidateResult.failure("Must select cards or stacks to pair");
     }
 
     final cardVals = possibleCardValues(selectedCard);
@@ -340,14 +350,16 @@ class CasinoRulesHandler {
       if (!allStacksMatch) continue;
 
       if (handVals.contains(v)) {
-        return true;
+        return ValidateResult.success();
       }
     }
 
-    return false;
+    return ValidateResult.failure(
+      "No matching card in hand to pair the selection",
+    );
   }
 
-  static bool canPairAllTableAction(
+  static ValidateResult canPairAllTableAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -359,17 +371,21 @@ class CasinoRulesHandler {
     final myHandCards = gameState.hands[pid] ?? [];
 
     if (gameState.currentTurnPlayerId != pid) {
-      return false;
+      return ValidateResult.notTurn();
     }
 
     // table-only pair
     if (selectedCard != null) {
-      return false;
+      return ValidateResult.failure(
+        "Cannot use hand card for table-only pair",
+      );
     }
 
     final totalSelected = selectedCards.length + selectedStacks.length;
     if (totalSelected < 2) {
-      return false;
+      return ValidateResult.failure(
+        "Must select at least 2 table cards or stacks",
+      );
     }
 
     final handVals = possibleValuesInHand(myHandCards, null);
@@ -385,19 +401,27 @@ class CasinoRulesHandler {
     }
 
     if (sets.isEmpty) {
-      return false;
+      return ValidateResult.failure("No valid selections");
     }
 
     final commonVals = intersectAll(sets);
     if (commonVals.isEmpty) {
-      return false;
+      return ValidateResult.failure(
+        "Selected cards do not have common value",
+      );
     }
 
-    return commonVals.any(handVals.contains);
+    if (commonVals.any(handVals.contains)) {
+      return ValidateResult.success();
+    }
+
+    return ValidateResult.failure(
+      "No matching card in hand to pair the selection",
+    );
   }
 
   ///VALIDATE COMBO ACTIONS BASED ON CARD SELECTION AND GAMESTATE
-  static bool canAddAndPairAction(
+  static ValidateResult canAddAndPairAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -411,7 +435,7 @@ class CasinoRulesHandler {
     final playingAreaStacks = gameState.playingAreaStacks;
 
     if (selectedCard == null) {
-      return false;
+      return ValidateResult.noSelectedCard();
     }
 
     final handVals = possibleValuesInHand(myHandCards, selectedCard);
@@ -429,7 +453,9 @@ class CasinoRulesHandler {
         selectedCards.isEmpty) {
       addTotals = {selectedStacks.first.stackValue};
     } else {
-      return false;
+      return ValidateResult.failure(
+        "Invalid selection for add and pair action",
+      );
     }
 
     final potentialValues = <int>{};
@@ -468,14 +494,16 @@ class CasinoRulesHandler {
       final existsInHand = handVals.contains(v);
 
       if (existsOnTable && existsInHand) {
-        return true;
+        return ValidateResult.success();
       }
     }
 
-    return false;
+    return ValidateResult.failure(
+      "No matching pair exists after add on table",
+    );
   }
 
-  static bool canAddAndTakeAction(
+  static ValidateResult canAddAndTakeAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -483,20 +511,26 @@ class CasinoRulesHandler {
     final selectedCards = currentCardSelection.selectedCards;
 
     if (selectedCard == null) {
-      return false;
+      return ValidateResult.noSelectedCard();
     }
 
     if (selectedCards.length < 2) {
-      return false;
+      return ValidateResult.failure("Must select at least 2 table cards");
     }
 
     final cardVals = possibleCardValues(selectedCard);
     final totals = possibleTotals(selectedCards);
 
-    return cardVals.any(totals.contains);
+    if (cardVals.any(totals.contains)) {
+      return ValidateResult.success();
+    }
+
+    return ValidateResult.failure(
+      "Card value does not match the sum of selected cards",
+    );
   }
 
-  static bool canPairAndTakeAction(
+  static ValidateResult canPairAndTakeAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   ) {
@@ -505,15 +539,17 @@ class CasinoRulesHandler {
     final selectedStacks = currentCardSelection.selectedStacks;
 
     if (selectedCard == null) {
-      return false;
+      return ValidateResult.noSelectedCard();
     }
 
     if (selectedCards.isEmpty && selectedStacks.isEmpty) {
-      return false;
+      return ValidateResult.failure("Must select cards or stacks to pair");
     }
     if ((selectedCards.isEmpty && selectedStacks.length < 2) ||
         (selectedCards.length < 2 && selectedStacks.isEmpty)) {
-      return false;
+      return ValidateResult.failure(
+        "Must select at least 2 items to pair and take",
+      );
     }
 
     final cardVals = possibleCardValues(selectedCard);
@@ -529,10 +565,12 @@ class CasinoRulesHandler {
 
       if (!allStacksMatch) continue;
 
-      return true;
+      return ValidateResult.success();
     }
 
-    return false;
+    return ValidateResult.failure(
+      "No matching card value found to pair and take",
+    );
   }
 
   /// --------- HELPERS --------- ///
