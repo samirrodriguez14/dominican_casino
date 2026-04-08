@@ -1,7 +1,6 @@
 import 'dart:developer' as developer;
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
@@ -18,7 +17,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   Player player;
   String gid;
   late GameState gameState;
-  List<CardMoveEvent> events = [];
+  bool isAnimating = false;
   GeneralGameViewModel({
     required this.gameRepo,
     required this.gameEngine,
@@ -28,31 +27,47 @@ class GeneralGameViewModel extends ChangeNotifier {
     gameRepo.addListener(_onGameRepoChanged);
   }
 
-  void _onGameRepoChanged() {
+  void _onGameRepoChanged() async {
+    // Prevent concurrent animations
+    if (isAnimating) return;
+
     try {
       final nextState = gameRepo.gameState!;
-      // events.addAll(
-      //   nextState.cardMoveEvents
-      //       .where(
-      //         (e) =>
-      //             !gameRepo.lastPlayedIds.contains(e.id) && e.performedBy != me,
-      //       )
-      //       .toList(),
-      // );
+      isAnimating = true;
 
-      // for (final event in events) {
-      //   hiddenCardIds.add(event.card.id);
-      // }
+      // Get new events from other players
+      final newEvents = nextState.cardMoveEvents
+          .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
+          .toList();
 
-      gameState = nextState;
-      HapticFeedback.heavyImpact();
+      if (newEvents.isNotEmpty) {
+        // Hide cards for animation
+        for (final event in newEvents) {
+          hiddenCardIds.add(event.card.id);
+          gameRepo.lastPlayedIds.add(event.id);
+        }
+        notifyListeners();
+        await Future.delayed(const Duration(milliseconds: 300));
 
-      selectedCards = [];
-      selectedCard = null;
-      selectedStacks = [];
-      notifyListeners();
+        gameState = nextState;
+        HapticFeedback.heavyImpact();
+        selectedCard = null;
+        selectedCards = [];
+        selectedStacks = [];
+        notifyListeners();
+
+        await Future.delayed(const Duration(milliseconds: 100));
+        hiddenCardIds.clear();
+        notifyListeners();
+      } else {
+        gameState = nextState;
+        notifyListeners();
+      }
+
+      isAnimating = false;
     } catch (e) {
       developer.log("GameViewModel._onGameRepoChanged Error $e");
+      isAnimating = false;
       notifyListeners();
     }
   }
@@ -130,9 +145,14 @@ class GeneralGameViewModel extends ChangeNotifier {
   List<PlayAction> get possiblePlayActions =>
       gameEngine.getAvailableActions(gameState, cardSelection);
 
-  void performPlayAction(PlayAction action) async {
-    // Add the card to hiddenCardIds for animation
+  Future<void> performPlayAction(PlayAction action) async {
+    // Prevent concurrent animations
+    if (isAnimating) return;
+    isAnimating = true;
+
+    // Hide the selected cards/stacks before the state transition so they animate out.
     hiddenCardIds.clear();
+
     if (cardSelection.selectedCard != null) {
       hiddenCardIds.add(cardSelection.selectedCard!.id);
     }
@@ -140,16 +160,26 @@ class GeneralGameViewModel extends ChangeNotifier {
     for (var stack in cardSelection.selectedStacks) {
       hiddenCardIds.addAll(stack.cards.map((e) => e.id));
     }
+
     notifyListeners();
-    // Simulate animation delay, then show the card in new location
-    // await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Update game state after the outbound animation.
     gameState = await gameEngine.performPlayAction(
       gameState,
       cardSelection,
       action,
     );
 
+    selectedCard = null;
+    selectedCards = [];
+    selectedStacks = [];
+    notifyListeners();
+
+    // Keep the moved cards hidden after the state update so they can animate in.
+    await Future.delayed(const Duration(milliseconds: 50));
     hiddenCardIds.clear();
+    isAnimating = false;
     notifyListeners();
   }
 

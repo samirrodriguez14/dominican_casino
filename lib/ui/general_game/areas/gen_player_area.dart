@@ -1,5 +1,5 @@
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/animations/animated_move_card.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -77,6 +77,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                         children: [
                           for (int i = 0; i < count; i++)
                             Positioned(
+                              key: ValueKey(cards[i].id),
                               left: i * gap,
                               top: vm.selectedCard == cards[i]
                                   ? 0
@@ -84,25 +85,23 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                               child: GestureDetector(
                                 onTap: () => vm.selectCard(cards[i]),
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 150),
+                                  duration: const Duration(milliseconds: 200),
                                   transform: vm.selectedCard == cards[i]
                                       ? Matrix4.translationValues(0, -12, 0)
                                       : Matrix4.identity(),
                                   child: AnimatedScale(
-                                    scale: vm.isCardHidden(cards[i]) ? 0.0 : 1.0,
-                                    duration: const Duration(milliseconds: 300),
+                                    scale: vm.isCardHidden(cards[i])
+                                        ? 0.0
+                                        : 1.0,
+                                    duration: const Duration(milliseconds: 400),
                                     curve: Curves.easeOut,
-                                    child: AnimatedMoveCard(
-                                      key: vm.keyForCard(cards[i].id),
-                                      card: cards[i],
-                                      faceUp: true,
+                                    child: PlayingCard(
+                                      playingCardModel: cards[i],
                                       width: cardWidth,
+                                      isSelected:
+                                          vm.cardSelection.selectedCard ==
+                                          cards[i],
                                     ),
-                                    // PlayingCard(
-                                    //   playingCardModel: ,
-                                    //   width: cardWidth,
-                                    //   isSelected: vm.selectedCard == cards[i],
-                                    // ),
                                   ),
                                 ),
                               ),
@@ -122,7 +121,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
 
   Widget _buildPlayControls(BuildContext context, GeneralGameViewModel vm) {
     final actions = vm.possiblePlayActions;
-    final isMyTurn = vm.isMyTurn;
+    final isMyTurn = vm.isMyTurn && !vm.isAnimating;
 
     return SizedBox(
       height: 42,

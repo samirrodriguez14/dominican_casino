@@ -61,8 +61,6 @@ class TresDosGameEngine extends GameEngine {
     // MOVE EVENTS
     final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
     gameState.cardMoveEvents = cardMoveEvents;
-    // SAVE NORMAL MOVE
-    gameState = await gameService.updateGame(gameState);
     // // ROUND END
     if (TresDosGameStateHandler.roundEnded(gameState, action.performedById)) {
       developer.log("round ended");

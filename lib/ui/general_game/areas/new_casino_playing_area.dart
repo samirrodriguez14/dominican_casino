@@ -1,8 +1,8 @@
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
-import 'package:dominican_casino/ui/animations/animated_move_card.dart';
 import 'package:dominican_casino/ui/cards/card_deck.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/legacy_game/popups/players_deck_content.dart';
 import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_opponent_area.dart';
@@ -138,59 +138,61 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
       runSpacing: 10,
       children: [
         ...vm.playingAreaStacks.map((stack) {
-          bool isSelected = vm.selectedStacks.contains(stack);
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => vm.selectStack(stack),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              transform: isSelected
-                  ? Matrix4.translationValues(0, -12, 0)
-                  : Matrix4.identity(),
-              child: AnimatedScale(
-                scale: vm.stackContainsCardHidded(stack.cards) ? 0.0 : 1.0,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
+          final isSelected = vm.selectedStacks.contains(stack);
+
+          return KeyedSubtree(
+            key: ValueKey('stack_${stack.id}'),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => vm.selectStack(stack),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                transform: isSelected
+                    ? Matrix4.translationValues(0, -12, 0)
+                    : Matrix4.identity(),
                 child: AnimatedScale(
-                  duration: const Duration(milliseconds: 150),
-                  scale: isSelected ? 1.06 : 1.0,
-                  child: PlayingAreaStack(stack: stack, isSelected: isSelected),
+                  scale: vm.stackContainsCardHidded(stack.cards) ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOut,
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 150),
+                    scale: isSelected ? 1.06 : 1.0,
+                    child: PlayingAreaStack(
+                      stack: stack,
+                      isSelected: isSelected,
+                    ),
+                  ),
                 ),
               ),
             ),
           );
         }),
-
         ...vm.playingAreaCards.map((c) {
-          bool isSelected = vm.selectedCards.contains(c);
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
+          final isSelected = vm.selectedCards.contains(c);
 
-            onTap: () => vm.selectCardToStack(c),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              transform: isSelected
-                  ? Matrix4.translationValues(0, -12, 0)
-                  : Matrix4.identity(),
-              child: AnimatedScale(
-                scale: vm.isCardHidden(c) ? 0.0 : 1.0,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
+          return KeyedSubtree(
+            key: ValueKey('card_${c.id}'),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => vm.selectCardToStack(c),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                transform: isSelected
+                    ? Matrix4.translationValues(0, -12, 0)
+                    : Matrix4.identity(),
                 child: AnimatedScale(
-                  duration: const Duration(milliseconds: 200),
-                  scale: isSelected ? 1.06 : 1.0,
-                  child: AnimatedMoveCard(
-                    key: vm.keyForCard(c.id),
-                    card: c,
-                    faceUp: true,
-                    width: tableCardWidth,
+                  scale: vm.isCardHidden(c) ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOut,
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 150),
+                    scale: isSelected ? 1.06 : 1.0,
+                    child: PlayingCard(
+                      playingCardModel: c,
+                      isSelected: isSelected,
+                      width: tableCardWidth,
+                    ),
                   ),
-                  // PlayingCard(
-                  //   key: vm.keyForCard(c.id),
-                  //   playingCardModel: c,
-                  //   isSelected: isSelected,
-                  //   width: tableCardWidth,
-                  // ),
                 ),
               ),
             ),

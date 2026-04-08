@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
+import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
@@ -73,11 +74,13 @@ class LocalPlayer extends ChangeNotifier {
                     pid,
                     _gameState,
                   );
+                  break;
                 default:
                   bestAction = await CasinoPlayer.casinoBestAction(
                     pid,
                     _gameState,
                   );
+                  break;
               }
               developer.log("LocalPlayer._onGameRepoChanged $bestAction");
               await Future.delayed(Duration(seconds: 1));
@@ -87,14 +90,23 @@ class LocalPlayer extends ChangeNotifier {
                 bestAction.cardSelection,
                 bestAction.playAction,
               );
+              _gameState.cardMoveEvents = EventHandler.handlegenerateEvents(
+                _gameState,
+                bestAction.playAction,
+              );
+              break;
             case RoundStatus.completed:
               //HANLDE DEALING NEW ROUND
               if (_gameState.controllerId != pid) return;
               InGameAction action = InGameAction.shuffle;
-              await engine.performInGameAction(_gameState, action, pid);
+              _gameState = await engine.performInGameAction(
+                _gameState,
+                action,
+                pid,
+              );
+              break;
             case RoundStatus.readyToDeal:
               if (_gameState.controllerId != pid) return;
-
               engine.performInGameAction(_gameState, .deal, pid);
           }
         case GameStatus.gameOver:

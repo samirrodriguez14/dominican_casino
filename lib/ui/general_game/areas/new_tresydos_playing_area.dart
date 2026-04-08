@@ -82,9 +82,9 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                         alignment: Alignment.center,
                         children: [
                           AppStyle.theme.dottedBox(
-                    
                             child: CardDeck(
                               title: 'Deck',
+                              showLabel: false,
                               cards: vm.gameState.deck,
                               cardWidth: cardWidth,
                               extraPoints: 0,
@@ -104,15 +104,21 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 150),
                                 transform: isSelectedDeck
-                                    ? Matrix4.translationValues(0, -18, 0)
+                                    ? Matrix4.translationValues(0, -12, 0)
                                     : Matrix4.translationValues(0, 4, 0),
                                 child: AnimatedScale(
-                                  scale: vm.isCardHidden(currentDeckCard) ? 0.0 : 1.0,
-                                  duration: const Duration(milliseconds: 300),
+                                  scale: vm.isCardHidden(currentDeckCard)
+                                      ? 0.0
+                                      : 1.0,
+                                  duration: const Duration(milliseconds: 400),
                                   curve: Curves.easeOut,
-                                  child: PlayingCardBack(
-                                    key: vm.keyForCard(currentDeckCard.id),
-                                    width: cardWidth,
+                                  child: AnimatedScale(
+                                    scale: isSelectedDeck ? 1.1 : 1.0,
+                                    duration: const Duration(milliseconds: 150),
+                                    child: PlayingCardBack(
+                                      key: vm.keyForCard(currentDeckCard.id),
+                                      width: cardWidth,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -131,6 +137,7 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                           CardDeck(
                             title: 'Discard',
                             back: false,
+                            showLabel: false,
                             cards: (vm.gameState.playingArea.length > 1)
                                 ? vm.gameState.playingArea
                                 : [],
@@ -144,17 +151,23 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 150),
                                 transform: isSelected
-                                    ? Matrix4.translationValues(18, 4, 0)
+                                    ? Matrix4.translationValues(0, -12, 0)
                                     : Matrix4.translationValues(0, 4, 0),
                                 child: AnimatedScale(
-                                  scale: vm.isCardHidden(currentCard) ? 0.0 : 1.0,
-                                  duration: const Duration(milliseconds: 300),
+                                  scale: vm.isCardHidden(currentCard)
+                                      ? 0.0
+                                      : 1.0,
+                                  duration: const Duration(milliseconds: 400),
                                   curve: Curves.easeOut,
-                                  child: PlayingCard(
-                                    key: vm.keyForCard(currentCard.id),
-                                    playingCardModel: currentCard,
-                                    isSelected: isSelected,
-                                    width: cardWidth,
+                                  child: AnimatedScale(
+                                    scale: isSelected ? 1.1 : 1.0,
+                                    duration: const Duration(milliseconds: 150),
+                                    child: PlayingCard(
+                                      key: vm.keyForCard(currentCard.id),
+                                      playingCardModel: currentCard,
+                                      isSelected: isSelected,
+                                      width: cardWidth,
+                                    ),
                                   ),
                                 ),
                               ),

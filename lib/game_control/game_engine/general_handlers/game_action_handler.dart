@@ -112,9 +112,9 @@ class GameActionHandler {
       gameState.deck.removeRange(0, cardsPerPlayer);
       gameState.hands[entry.key] = List.of(dealtCards);
 
-      // gameState.cardMoveEvents.addAll(
-      //   EventHandler.generateDealToHandEvent(dealtCards, entry.key, pid),
-      // );
+      gameState.cardMoveEvents.addAll(
+        EventHandler.generateDealToHandEvent(dealtCards, entry.key, pid),
+      );
     }
 
     final tableCards = gameState.deck.sublist(0, cardsInPlayingArea);

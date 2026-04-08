@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 class CardDeck extends StatelessWidget {
   final List<PlayingCardModel> cards;
   final bool back;
+  final bool showLabel;
   final bool? selectedTopCard;
   final int extraPoints;
   final double cardWidth;
@@ -21,6 +22,7 @@ class CardDeck extends StatelessWidget {
     required this.title,
     required this.onTap,
     this.back = true,
+    this.showLabel = true,
     this.selectedTopCard,
   });
   @override
@@ -70,7 +72,7 @@ class CardDeck extends StatelessWidget {
                       child: const Icon(CupertinoIcons.minus_circle_fill),
                     ),
                   ),
-                 
+
                   ...List.generate((deckCount / 8).ceil(), (i) {
                     return Column(
                       children: [
@@ -78,14 +80,14 @@ class CardDeck extends StatelessWidget {
                         (!back)
                             ? PlayingCard(
                                 width: cardWidth,
-                                playingCardModel: cards[cards.length-2],
-                                isSelected: selectedTopCard ?? false ,
+                                playingCardModel: cards[cards.length - 2],
+                                isSelected: selectedTopCard ?? false,
                               )
                             : PlayingCardBack(width: cardWidth),
                       ],
                     );
                   }),
-                  if (cards.isNotEmpty && back)
+                  if (cards.isNotEmpty && showLabel)
                     Padding(
                       padding: EdgeInsetsGeometry.only(top: cardWidth),
                       child: Container(

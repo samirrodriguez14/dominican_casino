@@ -22,7 +22,9 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
     GeneralGameViewModel vm = context.read<GeneralGameViewModel>();
     bool highlightTurn =
         vm.gameState.round.roundStatus == .playing &&
-        vm.gameState.currentTurnPlayerId == opp;
+        vm.gameState.currentTurnPlayerId == opp &&
+        !vm.isAnimating;
+
     bool opponentJoined = opp != null && opp != "";
     List<PlayingCardModel> collectedCards = vm.gameState.hands[opp] ?? [];
     String oppName = vm.gameState.playersInfo[opp]?['name'] ?? "";
@@ -74,12 +76,15 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
                           children: [
                             for (int i = 0; i < count; i++)
                               Positioned(
+                                key: vm.keyForCard(cards[i].id),
+
                                 left: i * gap,
                                 child: AnimatedScale(
                                   scale: vm.isCardHidden(cards[i]) ? 0.0 : 1.0,
-                                  duration: const Duration(milliseconds: 300),
+                                  duration: const Duration(milliseconds: 400),
                                   curve: Curves.easeOut,
-                                  child: (vm.gameState.round.roundStatus ==
+                                  child:
+                                      (vm.gameState.round.roundStatus ==
                                           .completed)
                                       ? PlayingCard(
                                           playingCardModel: cards[i],
