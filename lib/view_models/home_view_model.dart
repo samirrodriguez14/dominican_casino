@@ -5,7 +5,13 @@ class HomeViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
   String? get name=> _appRepo.player?.name;
   HomeViewModel({required AppRepo appRepo}): _appRepo = appRepo; 
+  bool loading = true;
 
+  Future<void> loadPlayer ()async {
+    await _appRepo.loadApp();
+    loading= false;
+    notifyListeners();
+  }
   Future<void> updatePlayerName(String name) async {
     await _appRepo.updatePlayer(name);
     notifyListeners();
