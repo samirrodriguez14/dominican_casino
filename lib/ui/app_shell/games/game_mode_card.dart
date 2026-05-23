@@ -165,11 +165,11 @@ Future<void> gameEnter(
   switch (mode) {
     case GameMode.tresydos:
       final gid = await vm.newGame(mode, local);
-      if (gid != null && context.mounted) context.go('/game/$gid/tresydos');
+      if (gid != null && context.mounted) context.go('/game/$gid/tresydos/false');
       break;
     case GameMode.casino:
       final gid = await vm.newGame(mode, local);
-      if (gid != null && context.mounted) context.go('/game/$gid/casino');
+      if (gid != null && context.mounted) context.go('/game/$gid/casino/false');
       break;
     case GameMode.robaito:
       break;

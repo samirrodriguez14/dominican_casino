@@ -162,7 +162,7 @@ class _CurrentGamesBody extends StatelessWidget {
         return GamePill(
           game: g,
           myPid: myUid ?? '',
-          onEnter: () => context.go('/game/${g.id}/${g.gameMode.name}'),
+          onEnter: () => context.go('/game/${g.id}/${g.gameMode.name}/false'),
           onDelete: () async {
             final ok = await vm.confirmDelete(context, g.id);
             if (!ok) return;

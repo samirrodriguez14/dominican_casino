@@ -1,8 +1,9 @@
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/view_models/tutorial_view_model.dart';
+import 'package:dominican_casino/view_models/tutorial_view_model_base.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 class TutorialScreen extends StatefulWidget {
   const TutorialScreen({super.key});
@@ -31,7 +32,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     return CupertinoPageScaffold(
       backgroundColor: AppStyle.theme.background,
       child: SafeArea(
-        child: Consumer<TutorialViewModel>(
+        child: Consumer<TutorialViewModelBase>(
           builder: (context, vm, _) {
             // Animate to the page when step changes
             if (_pageController.hasClients &&
@@ -65,8 +66,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   children: [
                     _buildWelcomeStep(context, vm),
                     _buildAppShellOverviewStep(context, vm),
-                    _buildGameScreenStep(context, vm),
-                    _buildStartGameStep(context, vm),
+                    // _buildGameScreenStep(context, vm),
+                    // _buildStartGameStep(context, vm),
                     _buildGameWalkthroughStep(context, vm),
                   ],
                 ),
@@ -78,7 +79,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     );
   }
 
-  Widget _buildWelcomeStep(BuildContext context, TutorialViewModel vm) {
+  Widget _buildWelcomeStep(BuildContext context, TutorialViewModelBase vm) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -106,10 +107,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
               Text(
                 "Let's learn how to play! This quick tutorial will guide you through the app and show you how to start your first game against Puli, our AI opponent.",
                 textAlign: TextAlign.center,
-                style: AppStyle.theme.body.copyWith(
-                  fontSize: 16,
-                  height: 1.5,
-                ),
+                style: AppStyle.theme.body.copyWith(fontSize: 16, height: 1.5),
               ),
               const SizedBox(height: 32),
               _buildProgressIndicator(vm.currentStep, vm.totalSteps),
@@ -122,7 +120,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
     );
   }
 
-  Widget _buildAppShellOverviewStep(BuildContext context, TutorialViewModel vm) {
+  Widget _buildAppShellOverviewStep(
+    BuildContext context,
+    TutorialViewModelBase vm,
+  ) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -178,7 +179,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     );
   }
 
-  Widget _buildGameScreenStep(BuildContext context, TutorialViewModel vm) {
+  Widget _buildGameScreenStep(BuildContext context, TutorialViewModelBase vm) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -234,7 +235,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     );
   }
 
-  Widget _buildStartGameStep(BuildContext context, TutorialViewModel vm) {
+  Widget _buildStartGameStep(BuildContext context, TutorialViewModelBase vm) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -304,7 +305,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
     );
   }
 
-  Widget _buildGameWalkthroughStep(BuildContext context, TutorialViewModel vm) {
+  Widget _buildGameWalkthroughStep(
+    BuildContext context,
+    TutorialViewModelBase vm,
+  ) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -332,10 +336,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
               Text(
                 "Let's play your first game against Puli! You'll see how the game flows in real-time with live gameplay explanations.",
                 textAlign: TextAlign.center,
-                style: AppStyle.theme.body.copyWith(
-                  fontSize: 16,
-                  height: 1.5,
-                ),
+                style: AppStyle.theme.body.copyWith(fontSize: 16, height: 1.5),
               ),
               const SizedBox(height: 24),
               Container(
@@ -392,20 +393,13 @@ class _TutorialScreenState extends State<TutorialScreen> {
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 24,
-            color: AppStyle.theme.surfaceAlt,
-          ),
+          Icon(icon, size: 24, color: AppStyle.theme.surfaceAlt),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: AppStyle.theme.title.copyWith(fontSize: 14),
-                ),
+                Text(title, style: AppStyle.theme.title.copyWith(fontSize: 14)),
                 const SizedBox(height: 4),
                 Text(
                   description,
@@ -443,10 +437,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            text,
-            style: AppStyle.theme.body.copyWith(fontSize: 13),
-          ),
+          Text(text, style: AppStyle.theme.body.copyWith(fontSize: 13)),
         ],
       ),
     );
@@ -474,7 +465,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
   Widget _buildNavigationButtons(
     BuildContext context,
-    TutorialViewModel vm, {
+    TutorialViewModelBase vm, {
     bool isFinalStep = false,
   }) {
     return Column(
@@ -510,9 +501,12 @@ class _TutorialScreenState extends State<TutorialScreen> {
             onPressed: vm.isLoading
                 ? null
                 : () async {
-                    await vm.completeTutorial();
+                    // await vm.completeTutorial();
+                    Uuid uuid = Uuid();
                     // ignore: use_build_context_synchronously
-                    context.go('/landing');
+                    context.go(
+                      '/game/${uuid.v4().substring(0, 6)}/casino/true',
+                    );
                   },
             child: Text(
               vm.isLoading ? "Starting game..." : "Play Your First Game!",

@@ -16,7 +16,7 @@ import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_screen.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
-import 'package:dominican_casino/view_models/tutorial_view_model.dart';
+import 'package:dominican_casino/view_models/tutorial_view_model_base.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -60,7 +60,7 @@ class _MyAppState extends State<App> {
         GoRoute(
           path: '/tutorial',
           builder: (context, state) => ChangeNotifierProvider(
-            create: (_) => TutorialViewModel(context.read<AppRepo>()),
+            create: (_) => TutorialViewModelBase(context.read<AppRepo>()),
             child: const TutorialScreen(),
           ),
         ),
@@ -71,14 +71,16 @@ class _MyAppState extends State<App> {
             final gameId = state.pathParameters['gameId']!;
             final gameMode = state.pathParameters['gameMode']!;
 
-            return '/game/$gameId/$gameMode';
+            return '/game/$gameId/$gameMode/false';
           },
         ),
         GoRoute(
-          path: '/game/:gameId/:gameMode',
+          path: '/game/:gameId/:gameMode/:tutorialMode',
           builder: (context, state) {
             final gameId = state.pathParameters['gameId']!;
             final gameMode = state.pathParameters['gameMode']!;
+            final tutorialMode = state.pathParameters['tutorialMode'];
+
             final player = context.read<AppRepo>().player;
             if (player == null) return HomeScreen();
             GameService gameService = FirestoreService();
@@ -100,6 +102,7 @@ class _MyAppState extends State<App> {
                 gameEngine: engine,
                 player: player,
                 gameRepo: context.read<GameRepo>(),
+                tutorialMode: tutorialMode=="true",
               ),
               child: GeneralGameScreen(),
             );

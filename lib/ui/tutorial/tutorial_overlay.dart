@@ -1,16 +1,16 @@
+import 'package:dominican_casino/models/tutorial_step.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:dominican_casino/ui/walkthrough/walkthrough_step.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 
-class GameWalkthroughOverlay extends StatefulWidget {
-  final WalkthroughStep step;
+class TutorialOverlay extends StatefulWidget {
+  final TutorialStep step;
   final VoidCallback onNext;
   final VoidCallback onSkip;
   final int currentStep;
   final int totalSteps;
 
-  const GameWalkthroughOverlay({
+  const TutorialOverlay({
     super.key,
     required this.step,
     required this.onNext,
@@ -20,10 +20,10 @@ class GameWalkthroughOverlay extends StatefulWidget {
   });
 
   @override
-  State<GameWalkthroughOverlay> createState() => _GameWalkthroughOverlayState();
+  State<TutorialOverlay> createState() => _TutorialOverlayState();
 }
 
-class _GameWalkthroughOverlayState extends State<GameWalkthroughOverlay>
+class _TutorialOverlayState extends State<TutorialOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -41,22 +41,18 @@ class _GameWalkthroughOverlayState extends State<GameWalkthroughOverlay>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
 
     _animationController.forward();
   }
 
   @override
-  void didUpdateWidget(GameWalkthroughOverlay oldWidget) {
+  void didUpdateWidget(TutorialOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.step.stepNumber != widget.step.stepNumber) {
+    if (oldWidget.step.step != widget.step.step) {
       _animationController.reset();
       _animationController.forward();
     }
@@ -74,16 +70,11 @@ class _GameWalkthroughOverlayState extends State<GameWalkthroughOverlay>
       opacity: _fadeAnimation,
       child: Stack(
         children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: widget.onNext,
-            child: Container(
-              color: Colors.black.withValues(alpha: .62),
-            ),
-          ),
+          if (widget.step.targetKey != null)
+            IgnorePointer(child: _buildHighlight(context)),
 
           if (widget.step.targetKey != null)
-            _buildHighlight(context)
+            _buildTooltipForTarget(context)
           else
             _buildFloatingTooltip(context),
         ],
@@ -92,7 +83,8 @@ class _GameWalkthroughOverlayState extends State<GameWalkthroughOverlay>
   }
 
   Widget _buildHighlight(BuildContext context) {
-    final renderObject = widget.step.targetKey?.currentContext?.findRenderObject();
+    final renderObject = widget.step.targetKey?.currentContext
+        ?.findRenderObject();
 
     if (renderObject == null || renderObject is! RenderBox) {
       return _buildFloatingTooltip(context);
@@ -129,44 +121,54 @@ class _GameWalkthroughOverlayState extends State<GameWalkthroughOverlay>
           ),
         ),
 
-        _buildTooltipWidget(context, targetOffset, targetSize),
       ],
     );
   }
 
-  Widget _buildTooltipWidget(
-    BuildContext context,
-    Offset targetOffset,
-    Size targetSize,
-  ) {
+  Widget _buildTooltipForTarget(BuildContext context) {
+    final renderObject = widget.step.targetKey?.currentContext
+        ?.findRenderObject();
+
+    if (renderObject == null || renderObject is! RenderBox) {
+      return _buildFloatingTooltip(context);
+    }
+
+    final targetSize = renderObject.size;
+    final targetOffset = renderObject.localToGlobal(Offset.zero);
+
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
     Offset tooltipOffset;
 
-    if (targetOffset.dy > screenHeight / 2) {
+    // Above if lower half of screen
+    if (targetOffset.dy > screenHeight * 0.55) {
       tooltipOffset = Offset(
         targetOffset.dx + targetSize.width / 2 - _tooltipWidth / 2,
-        targetOffset.dy - _tooltipMinHeight - 24,
+        targetOffset.dy - _tooltipMinHeight - 20,
       );
     } else {
+      // Below otherwise
       tooltipOffset = Offset(
         targetOffset.dx + targetSize.width / 2 - _tooltipWidth / 2,
-        targetOffset.dy + targetSize.height + 24,
+        targetOffset.dy + targetSize.height + 20,
       );
     }
 
+    // Clamp inside screen
     tooltipOffset = Offset(
-      tooltipOffset.dx.clamp(12, screenWidth - _tooltipWidth - 12),
-      tooltipOffset.dy.clamp(12, screenHeight - _tooltipMinHeight - 12),
+      tooltipOffset.dx.clamp(12.0, screenWidth - _tooltipWidth - 12),
+      tooltipOffset.dy.clamp(12.0, screenHeight - _tooltipMinHeight - 12),
     );
 
     return Positioned(
       left: tooltipOffset.dx,
       top: tooltipOffset.dy,
-      child: _buildTooltipContent(),
+      child: Material(color: Colors.transparent, child: _buildTooltipContent()),
     );
   }
+
+
 
   Widget _buildFloatingTooltip(BuildContext context) {
     return Center(
@@ -215,25 +217,22 @@ class _GameWalkthroughOverlayState extends State<GameWalkthroughOverlay>
               ),
               const Spacer(),
               Row(
-                children: List.generate(
-                  widget.totalSteps,
-                  (index) {
-                    final isCurrent = index == widget.currentStep;
+                children: List.generate(widget.totalSteps, (index) {
+                  final isCurrent = index == widget.currentStep;
 
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                      width: isCurrent ? 14 : 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: isCurrent
-                            ? theme.turnHighlight
-                            : theme.muted.withValues(alpha: .35),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    );
-                  },
-                ),
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                    width: isCurrent ? 14 : 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? theme.turnHighlight
+                          : theme.muted.withValues(alpha: .35),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  );
+                }),
               ),
             ],
           ),

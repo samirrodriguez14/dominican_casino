@@ -3,6 +3,8 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 class GameModeCarousel extends StatefulWidget {
   const GameModeCarousel({super.key});
@@ -53,8 +55,7 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
                     child: GameModeCard(mode: mode),
                   ),
                   const SizedBox(height: 16),
-                  
-            
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     spacing: 16,
@@ -78,8 +79,6 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
       ),
     );
   }
-
-
 }
 
 void _showGameInfo(BuildContext context, GameMode mode) {
@@ -123,7 +122,10 @@ void _showGameInfo(BuildContext context, GameMode mode) {
               const SizedBox(height: 18),
 
               CupertinoButton.filled(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Uuid uuid = Uuid();
+                  context.go('/game/${uuid.v4().substring(0, 6)}/casino/true');
+                },
                 child: const Text("Got it"),
               ),
             ],

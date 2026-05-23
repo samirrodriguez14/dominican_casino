@@ -3,21 +3,21 @@ import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/game_info_sheet.dart';
 import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
+import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:dominican_casino/view_models/tutorial_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:dominican_casino/ui/walkthrough/casino_walkthrough_steps.dart';
-import 'package:dominican_casino/ui/walkthrough/game_walkthrough_overlay.dart';
-import 'package:dominican_casino/view_models/game_walkthrough_view_model.dart';
 
 class GeneralGameScreen extends StatefulWidget {
   const GeneralGameScreen({super.key});
@@ -30,13 +30,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     with TickerProviderStateMixin {
   GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
   GeneralGameViewModel? _boundVm;
-  final GlobalKey deckKey = GlobalKey();
-  final GlobalKey tableKey = GlobalKey();
-  final GlobalKey playerHandKey = GlobalKey();
-  final GlobalKey myDeckKey = GlobalKey();
-  final GlobalKey oppDeckKey = GlobalKey();
 
-  late final GameWalkthroughViewModel walkthroughVm;
+  late final TutorialViewModel tutorialVm;
   @override
   void initState() {
     super.initState();
@@ -44,15 +39,17 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initvm = context.read<GeneralGameViewModel>();
 
-      walkthroughVm = GameWalkthroughViewModel(
-        steps: getCasinoWalkthroughSteps(
+      tutorialVm = TutorialViewModel(
+        getCasinoTutorialSteps(
           deckKey: initvm.deckKey,
           tableKey: initvm.tableKey,
-          playerHandKey: initvm.myHandKey,
+          handKey: initvm.myHandKey,
           myDeckKey: initvm.myDeckKey,
           oppDeckKey: initvm.oppDeckKey,
+          playButtonKey: initvm.playButtonKey,
         ),
       );
+      initvm.actionGuard = tutorialVm.tryProgress;
 
       final ok = await initvm.loadGame();
 
@@ -60,10 +57,10 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         await initvm.joinGame();
         initvm.gameRepo.listenToGame(initvm.gid);
 
-        if (initvm.gameState.gameMode == GameMode.casino) {
+        if (initvm.tutorialMode && initvm.gameState.gameMode == GameMode.casino) {
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) {
-              walkthroughVm.start();
+              tutorialVm.start();
             }
           });
         }
@@ -134,7 +131,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         child: DecoratedBox(
           decoration: AppStyle.theme.tableBackground(),
           child: AnimatedBuilder(
-            animation: walkthroughVm,
+            animation: tutorialVm,
             builder: (context, _) {
               return Stack(
                 children: [
@@ -173,18 +170,18 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                     ),
                   ),
                   AnimatedBuilder(
-                    animation: walkthroughVm,
+                    animation: tutorialVm,
                     builder: (_, __) {
-                      if (!walkthroughVm.isActive) {
+                      if (!tutorialVm.active) {
                         return const SizedBox.shrink();
                       }
 
-                      return GameWalkthroughOverlay(
-                        step: walkthroughVm.currentStepData,
-                        currentStep: walkthroughVm.currentStep,
-                        totalSteps: walkthroughVm.totalSteps,
-                        onNext: walkthroughVm.nextStep,
-                        onSkip: walkthroughVm.finish,
+                      return TutorialOverlay(
+                        step: tutorialVm.currentStepData,
+                        currentStep: tutorialVm.currentStep,
+                        totalSteps: tutorialVm.totalSteps,
+                        onNext: tutorialVm.nextStep,
+                        onSkip: tutorialVm.finish,
                       );
                     },
                   ),

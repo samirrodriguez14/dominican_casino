@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
@@ -6,23 +7,37 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/models/tutorial_action.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:flutter/cupertino.dart' hide Action;
 import 'package:flutter/services.dart';
 
+typedef ActionGuard =
+    bool Function(
+      TutorialAction action, {
+      String? cardId,
+      String? stackId,
+      List<String> selectedCardIds,
+    });
+
 class GeneralGameViewModel extends ChangeNotifier {
   bool loading = true;
+  bool tutorialMode;
   final GameRepo gameRepo;
   final GameEngine gameEngine;
   Player player;
   String gid;
   late GameState gameState;
   bool isAnimating = false;
+
+  ActionGuard? actionGuard;
+
   GeneralGameViewModel({
     required this.gameRepo,
     required this.gameEngine,
     required this.player,
     required this.gid,
+    this.tutorialMode = false,
   }) {
     gameRepo.addListener(_onGameRepoChanged);
   }
@@ -193,6 +208,15 @@ class GeneralGameViewModel extends ChangeNotifier {
   //OUT OF GAME ACTIONS
   Future<bool> loadGame() async {
     try {
+      if (tutorialMode) {
+        gameState = TutorialCasinoFactory.createBasicTakeTutorial(
+          gid: gid,
+          playerId: me,
+        );
+        loading = false;
+        notifyListeners();
+        return true;
+      }
       gameState = await gameRepo.fs.loadGame(gid);
       loading = false;
       notifyListeners();
@@ -230,7 +254,6 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   ///CARD SELECTION START
-  ///
   PlayingCardModel? selectedCard;
   List<PlayingCardModel> selectedCards = [];
   List<PlayingAreaStackModel> selectedStacks = [];
@@ -246,7 +269,25 @@ class GeneralGameViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _canPerform(
+    TutorialAction action, {
+    String? cardId,
+    String? stackId,
+    List<String> selectedCardIds = const [],
+  }) {
+    return actionGuard?.call(
+          action,
+          cardId: cardId,
+          stackId: stackId,
+          selectedCardIds: selectedCardIds,
+        ) ??
+        true;
+  }
+
   void selectCard(PlayingCardModel card) {
+    if (!_canPerform(TutorialAction.selectHandCard, cardId: card.id)) {
+      return;
+    }
     if (selectedCard == card) {
       selectedCard = null;
     } else {
@@ -265,10 +306,30 @@ class GeneralGameViewModel extends ChangeNotifier {
 
       if (card != null) selectedCards.add(card);
     }
+
+    final ok =
+        actionGuard?.call(
+          TutorialAction.selectTableCard,
+          cardId: card?.id,
+          selectedCardIds: selectedCards.map((c) => c.id).toList(),
+        ) ??
+        true;
+
+    if (!ok) {
+      if (card != null) {
+        selectedCards.remove(card);
+      }
+      return;
+    }
+
     notifyListeners();
   }
 
   void selectCardToStack(PlayingCardModel card) {
+    if (!_canPerform(TutorialAction.selectTableCard, cardId: card.id)) {
+      return;
+    }
+
     if (selectedCards.contains(card)) {
       selectedCards.remove(card);
     } else {
@@ -279,6 +340,9 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   void selectStack(PlayingAreaStackModel stack) {
+    if (!_canPerform(TutorialAction.selectStack, stackId: stack.id)) {
+      return;
+    }
     if (selectedStacks.contains(stack)) {
       selectedStacks.remove(stack);
     } else {
@@ -323,6 +387,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   final GlobalKey oppDeckKey = GlobalKey();
   final GlobalKey myHandKey = GlobalKey();
   final GlobalKey oppHandKey = GlobalKey();
+  final GlobalKey playButtonKey = GlobalKey();
 
   GlobalKey? keyForZone(Zone zone) {
     final myPid = me;
