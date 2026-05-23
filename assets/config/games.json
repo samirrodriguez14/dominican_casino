@@ -1,0 +1,67 @@
+{
+  "games": [
+    {
+      "id": "casino",
+      "title": "Casino",
+      "subtitle": "Classic Dominican Casino Game",
+      "description": "Capture cards from the table that match the value of the card you play. Special cards earn extra points. First player to reach the target score wins the game.",
+      "players": {
+        "min": 2,
+        "max": 2,
+        "label": "2 Players"
+      },
+      "icon": "plus_app",
+      "aiSupported": true,
+      "enabled": true,
+      "themeColor": "#F59E0B",
+      "rules": [
+        "Match cards with equal value",
+        "Capture cards from the table",
+        "Special cards give bonus points",
+        "Reach the target score to win"
+      ]
+    },
+    {
+      "id": "tresydos",
+      "title": "Tres y Dos",
+      "subtitle": "Form a 3 and a 2 of matching ranks",
+      "description": "Form a set of 3 and a set of 2 of the same card ranks before the other players do. First player to claim the sets wins!",
+      "players": {
+        "min": 2,
+        "max": 4,
+        "label": "2–4 Players"
+      },
+      "icon": "square_stack_3d_up",
+      "aiSupported": true,
+      "enabled": true,
+      "themeColor": "#3B82F6",
+      "rules": [
+        "Collect matching card ranks",
+        "Create one set of 3",
+        "Create one set of 2",
+        "Claim your hand before others"
+      ]
+    },
+    {
+      "id": "robaito",
+      "title": "Robaito",
+      "subtitle": "Steal stacks and dominate the table",
+      "description": "Capture cards from the table and steal from other players' stacks. The player with the most cards at the end wins!",
+      "players": {
+        "min": 2,
+        "max": 4,
+        "label": "2–4 Players"
+      },
+      "icon": "app_fill",
+      "aiSupported": false,
+      "enabled": false,
+      "themeColor": "#EF4444",
+      "rules": [
+        "Capture matching cards",
+        "Steal player stacks",
+        "Collect the most cards",
+        "Highest count wins"
+      ]
+    }
+  ]
+}

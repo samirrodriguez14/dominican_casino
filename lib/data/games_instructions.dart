@@ -1,7 +1,7 @@
 const gamesData = {
   "casino":
       "Capture cards from the table that match the value "
-      "of the card you play. Special combinations score "
+      "of the card you play. Special cards earn "
       "extra points. First player to reach the target "
       "score wins the game.",
   "tresydos":

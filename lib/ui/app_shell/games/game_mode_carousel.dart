@@ -103,7 +103,7 @@ void _showGameInfo(BuildContext context, GameMode mode) {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: theme.muted.withOpacity(.4),
+                  color: theme.muted.withValues(alpha: .4),
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),

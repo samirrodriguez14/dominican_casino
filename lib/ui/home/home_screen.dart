@@ -12,21 +12,26 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen> {
   @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      // ignore: use_build_context_synchronously
+      context.read<HomeViewModel>().loadPlayer();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final HomeViewModel vm = context.watch<HomeViewModel>();
-    vm.loadPlayer();
-    if (vm.name == null) {
-      return CupertinoPageScaffold(
+
+    if (vm.loading || vm.name == null) {
+      return const CupertinoPageScaffold(
         child: SafeArea(
-          // top: false,
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CupertinoActivityIndicator(),
-                Text("loading app"),
-                
-              ],
+              children: [CupertinoActivityIndicator(), Text("loading app")],
             ),
           ),
         ),

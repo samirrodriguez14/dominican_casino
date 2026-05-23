@@ -42,6 +42,7 @@ void main() async {
         ChangeNotifierProvider(
           create: (context) {
             final appRepo = AppRepo(fs: context.read<FirestoreService>());
+            appRepo.loadApp();
             return appRepo;
           },
         ),

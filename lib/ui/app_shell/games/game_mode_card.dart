@@ -16,6 +16,7 @@ class GameModeCard extends StatelessWidget {
     double screenHeight = MediaQuery.of(context).size.height;
 
     final theme = AppStyle.theme;
+    final game = vm.gamesInfo.firstWhere((g) => g.id == mode.name);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -31,13 +32,13 @@ class GameModeCard extends StatelessWidget {
           ),
 
           Text(
-            gameModeTitle(mode),
+            game.title,
             style: theme.title.copyWith(fontSize: 24),
             textAlign: TextAlign.center,
           ),
 
           Text(
-            gameModePlayers(mode),
+            game.players.label,
             style: theme.body,
             textAlign: TextAlign.center,
           ),
@@ -51,7 +52,6 @@ class GameModeCard extends StatelessWidget {
                   color: theme.surface,
                   borderRadius: BorderRadius.circular(theme.radius),
                   onPressed: () => _showJoinGameDialog(context, mode.name),
-                  // onPressed: () => gameEnter(context, vm, mode, true),
                   child: Text("Join By Id", style: theme.title),
                 ),
               ),
@@ -84,40 +84,8 @@ class GameModeCard extends StatelessWidget {
         return CupertinoIcons.app_fill;
     }
   }
-
-  String gameModeTitle(GameMode mode) {
-    switch (mode) {
-      case GameMode.tresydos:
-        return "Tres y Dos";
-      case GameMode.casino:
-        return "Casino";
-      case GameMode.robaito:
-        return "Robaito";
-    }
-  }
-
-  String gameModeSubtitle(GameMode mode) {
-    switch (mode) {
-      case GameMode.tresydos:
-        return "End with 3 and 2 of the same card";
-      case GameMode.casino:
-        return "Classic Dominican Casino Game";
-      case GameMode.robaito:
-        return "well.. take from the teammate";
-    }
-  }
 }
 
-String gameModePlayers(GameMode mode) {
-  switch (mode) {
-    case GameMode.tresydos:
-      return "2-4 Players";
-    case GameMode.casino:
-      return "2 Players";
-    case GameMode.robaito:
-      return "2-4 players";
-  }
-}
 
 void _showJoinGameDialog(BuildContext context, String mode) {
   final TextEditingController controller = TextEditingController();
@@ -169,22 +137,18 @@ void _showEnterGameDialog(
     barrierDismissible: true,
     builder: (context) {
       return CupertinoAlertDialog(
-        title: const Text("Start New Game"),
+        title: const Text("Start New Game Against"),
 
         actions: [
           CupertinoDialogAction(
             isDefaultAction: true,
-            child: Text("Online", style: AppStyle.theme.title),
+            child: Text("Friend", style: AppStyle.theme.title),
             onPressed: () => gameEnter(context, vm, mode, false),
           ),
-          
+
           CupertinoDialogAction(
-            child: Text("Local", style: AppStyle.theme.title),
+            child: Text("Puli (AI bot)", style: AppStyle.theme.title),
             onPressed: () => gameEnter(context, vm, mode, true),
-          ),
-          CupertinoDialogAction(
-            child: const Text("Back"),
-            onPressed: () => context.pop(),
           ),
         ],
       );

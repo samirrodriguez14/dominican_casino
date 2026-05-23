@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/local_player/local_player.dart';
+import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
@@ -9,6 +10,7 @@ import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -18,7 +20,7 @@ class AppRepo extends ChangeNotifier {
   Theme _appTheme = Theme.feltWaltnut;
   Theme get appTheme => _appTheme;
   AppTheme get selectedTheme => themeFromEnum(_appTheme);
-
+  List<GameInfo> gamesInfo = [];
   AppStatus appStatus = AppStatus.notReady;
   Player? player;
   final List<GameState> games = [];
@@ -35,6 +37,7 @@ class AppRepo extends ChangeNotifier {
   Future<void> loadApp() async {
     developer.log("AppRepo: Loading player");
     player = await _loadPlayer();
+    gamesInfo = await loadGames();
     if (player != null) {
       player!.token = await getDeviceToken();
     }
@@ -52,8 +55,8 @@ class AppRepo extends ChangeNotifier {
     player?.token = await getDeviceToken();
     GameState gameState = GameState.create(gid, pid, mode);
     if (local) {
-      final localPlayer = LocalPlayer(gameRepo: gameRepo, mode:mode);
-      localPlayer.pid =  _uuid.v4().substring(0, 8);
+      final localPlayer = LocalPlayer(gameRepo: gameRepo, mode: mode);
+      localPlayer.pid = _uuid.v4().substring(0, 8);
       gameState.playersInfo[localPlayer.pid] = {
         "id": localPlayer.pid,
         "name": localPlayer.name,
@@ -94,6 +97,16 @@ class AppRepo extends ChangeNotifier {
     // developer.log('APNS token: $apnsToken');
     developer.log('FCM token: $fcmToken');
     return fcmToken;
+  }
+
+  static Future<List<GameInfo>> loadGames() async {
+    final jsonString = await rootBundle.loadString('config/games.json');
+
+    final jsonData = jsonDecode(jsonString);
+
+    return (jsonData['games'] as List)
+        .map((e) => GameInfo.fromJson(e))
+        .toList();
   }
 
   Future<void> deleteGame(String gameId) async {

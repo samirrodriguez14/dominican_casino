@@ -28,8 +28,8 @@ class PossibleSelection {
 }
 
 class LocalPlayer extends ChangeNotifier {
-  String pid = "localjohn";
-  String name = "john";
+  String pid = "elabusador";
+  String name = "Pulilo";
   late GameState _gameState;
   GameRepo gameRepo;
   GameMode mode;

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/player.dart';
@@ -10,10 +11,13 @@ import 'package:flutter/cupertino.dart';
 class GamesViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
   final GameRepo _gameRepo;
+
   GamesViewModel({required AppRepo appRepo, required GameRepo gameRepo})
     : _appRepo = appRepo,
       _gameRepo = gameRepo;
 
+  List<GameInfo> get gamesInfo => _appRepo.gamesInfo;
+  
   Future<String?> newGame(GameMode mode, bool local) async {
     try {
       String? pid = _appRepo.player?.id;
