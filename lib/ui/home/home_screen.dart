@@ -164,7 +164,12 @@ class HomeScreenState extends State<HomeScreen> {
                         vertical: 14,
                       ),
                       onPressed: () {
-                        context.go('/landing');
+                        // Check if player has completed tutorial
+                        if (vm.player?.completedTutorial == false) {
+                          context.go('/tutorial');
+                        } else {
+                          context.go('/landing');
+                        }
                       },
                       child: Text(
                         "Start",

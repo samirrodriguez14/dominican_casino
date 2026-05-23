@@ -14,7 +14,9 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/general_game/general_game_screen.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
+import 'package:dominican_casino/ui/tutorial/tutorial_screen.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:dominican_casino/view_models/tutorial_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -53,6 +55,14 @@ class _MyAppState extends State<App> {
         GoRoute(
           path: '/instructions',
           builder: (context, state) => const InstructionsScreen(),
+        ),
+
+        GoRoute(
+          path: '/tutorial',
+          builder: (context, state) => ChangeNotifierProvider(
+            create: (_) => TutorialViewModel(context.read<AppRepo>()),
+            child: const TutorialScreen(),
+          ),
         ),
 
         GoRoute(

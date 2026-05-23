@@ -1,9 +1,11 @@
+import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:flutter/cupertino.dart';
 
 class HomeViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
   String? get name=> _appRepo.player?.name;
+  Player? get player => _appRepo.player;
   HomeViewModel({required AppRepo appRepo}): _appRepo = appRepo; 
   bool loading = true;
 

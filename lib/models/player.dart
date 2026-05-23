@@ -23,4 +23,18 @@ class Player {
     'token': token,
     'completedTutorial': completedTutorial,
   };
+
+  Player copyWith({
+    String? id,
+    bool? completedTutorial,
+    String? name,
+    String? token,
+  }) {
+    return Player(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      token: token ?? this.token,
+      completedTutorial: completedTutorial ?? this.completedTutorial,
+    );
+  }
 }

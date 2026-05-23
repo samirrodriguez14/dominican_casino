@@ -1,5 +1,3 @@
-import 'dart:developer' as developer;
-
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
@@ -17,6 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:dominican_casino/ui/walkthrough/casino_walkthrough_steps.dart';
+import 'package:dominican_casino/ui/walkthrough/game_walkthrough_overlay.dart';
+import 'package:dominican_casino/view_models/game_walkthrough_view_model.dart';
 
 class GeneralGameScreen extends StatefulWidget {
   const GeneralGameScreen({super.key});
@@ -29,20 +30,48 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     with TickerProviderStateMixin {
   GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
   GeneralGameViewModel? _boundVm;
+  final GlobalKey deckKey = GlobalKey();
+  final GlobalKey tableKey = GlobalKey();
+  final GlobalKey playerHandKey = GlobalKey();
+  final GlobalKey myDeckKey = GlobalKey();
+  final GlobalKey oppDeckKey = GlobalKey();
 
+  late final GameWalkthroughViewModel walkthroughVm;
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initvm = context.read<GeneralGameViewModel>();
+
+      walkthroughVm = GameWalkthroughViewModel(
+        steps: getCasinoWalkthroughSteps(
+          deckKey: initvm.deckKey,
+          tableKey: initvm.tableKey,
+          playerHandKey: initvm.myHandKey,
+          myDeckKey: initvm.myDeckKey,
+          oppDeckKey: initvm.oppDeckKey,
+        ),
+      );
+
       final ok = await initvm.loadGame();
+
       if (ok && mounted) {
         await initvm.joinGame();
         initvm.gameRepo.listenToGame(initvm.gid);
+
+        if (initvm.gameState.gameMode == GameMode.casino) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              walkthroughVm.start();
+            }
+          });
+        }
+
         return;
       }
+
       if (mounted) context.go('/home');
-      developer.log("GameScreenInit: $ok");
     });
   }
 
@@ -104,43 +133,64 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       child: CupertinoPageScaffold(
         child: DecoratedBox(
           decoration: AppStyle.theme.tableBackground(),
-          child: Stack(
-            children: [
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(vertical: 48),
-                child: CasinoBoard(child: Container()),
-              ),
-              Column(
+          child: AnimatedBuilder(
+            animation: walkthroughVm,
+            builder: (context, _) {
+              return Stack(
                 children: [
-                  const SizedBox(height: 40),
+                  Padding(
+                    padding: EdgeInsetsGeometry.symmetric(vertical: 48),
+                    child: CasinoBoard(child: Container()),
+                  ),
+                  Column(
+                    children: [
+                      const SizedBox(height: 40),
 
-                  Expanded(
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          child: _selectPlayingArea(vm.gameState.gameMode),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      GenPlayerArea(),
+                      const SizedBox(height: 10),
+
+                      _buildGameTopBar(context, vm),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                  AnimatedAlign(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    alignment: vm.inGameAction != InGameAction.noAction
+                        ? Alignment.center
+                        : Alignment.centerRight,
+
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: _selectPlayingArea(vm.gameState.gameMode),
+                      padding: EdgeInsetsGeometry.only(right: 18),
+                      child: GenGameControl(),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  GenPlayerArea(),
-                  const SizedBox(height: 10),
+                  AnimatedBuilder(
+                    animation: walkthroughVm,
+                    builder: (_, __) {
+                      if (!walkthroughVm.isActive) {
+                        return const SizedBox.shrink();
+                      }
 
-                  _buildGameTopBar(context, vm),
-                  const SizedBox(height: 24),
+                      return GameWalkthroughOverlay(
+                        step: walkthroughVm.currentStepData,
+                        currentStep: walkthroughVm.currentStep,
+                        totalSteps: walkthroughVm.totalSteps,
+                        onNext: walkthroughVm.nextStep,
+                        onSkip: walkthroughVm.finish,
+                      );
+                    },
+                  ),
                 ],
-              ),
-              AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                alignment: vm.inGameAction != InGameAction.noAction
-                    ? Alignment.center
-                    : Alignment.centerRight,
-
-                child: Padding(
-                  padding: EdgeInsetsGeometry.only(right: 18),
-                  child: GenGameControl(),
-                ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
