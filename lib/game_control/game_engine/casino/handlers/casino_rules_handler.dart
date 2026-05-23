@@ -271,7 +271,7 @@ class CasinoRulesHandler {
       // values in hand excluding selectedCard
       final handVals = possibleValuesInHand(myHandCards, selectedCard);
       // selectedCard + selectedCards(sum) must equal some other card in hand
-      if (selectedCards.isEmpty && selectedStacks.length == 1) {
+      if (selectedCards.isEmpty && selectedStacks.length == 1 && !selectedStacks[0].paired) {
         for (final cv in cardVals) {
           final needed = cv + selectedStacks[0].stackValue;
           if (handVals.contains(needed)) return ValidateResult.success();

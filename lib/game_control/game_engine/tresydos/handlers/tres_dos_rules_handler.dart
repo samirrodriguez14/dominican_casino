@@ -95,4 +95,6 @@ class TresDosRulesHandler {
       result: selectedCards.length == 1 && gameState.hands[pid]?.length != 6,
     );
   }
+
+
 }

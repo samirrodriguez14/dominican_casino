@@ -63,7 +63,7 @@ class CasinoPlayActionHandler {
     // ADD BOTH CARDS TO PLAYER'S WON/CAPTURED CARDS
     nextState.playersDeck.putIfAbsent(pid, () => []);
     nextState.playersDeck[pid]!.addAll([a.usedCard, a.targetCard]);
-
+    nextState.lastTookCardId = pid;
     return nextState;
   }
 
@@ -82,7 +82,7 @@ class CasinoPlayActionHandler {
     // ADD CARD AND STACK PLAYER'S WON/CAPTURED CARDS
     nextState.playersDeck.putIfAbsent(pid, () => []);
     nextState.playersDeck[pid]!.addAll([a.usedCard, ...a.targetStack.cards]);
-
+    nextState.lastTookCardId = pid;
     return nextState;
   }
 

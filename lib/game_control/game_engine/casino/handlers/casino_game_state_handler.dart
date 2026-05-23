@@ -46,7 +46,6 @@ class CasinoGameStateHandler {
     gameState.controllerId = GameActionHandler.getNextControllerId(gameState);
     gameState.winnerId = _handleWinner(
       gameState.scores,
-      gameState.round.roundScores,
     );
 
     if (gameState.winnerId != null && gameState.winnerId != "") {
@@ -60,21 +59,19 @@ class CasinoGameStateHandler {
   }
 
   static String? _handleWinner(
-    Map<String, dynamic> prevScore,
-    Map<String, dynamic> roundScore,
+    Map<String, dynamic> scores,
   ) {
-    final playerIds = roundScore.keys.toList();
+    final playerIds = scores.keys.toList();
 
     playerIds.sort((a, b) {
-      final aScore = prevScore[a] ?? 0;
-      final bScore = prevScore[b] ?? 0;
+      final aScore = scores[a] ?? 0;
+      final bScore = scores[b] ?? 0;
       return bScore.compareTo(aScore);
     });
 
     for (final pid in playerIds) {
-      final prev = prevScore[pid] ?? 0;
-      final roundTotal = roundScore[pid]['total'] ?? 0;
-      if (prev + roundTotal >= 21) {
+      final prev = scores[pid] ;
+      if (prev >= 21) {
         return pid;
       }
     }

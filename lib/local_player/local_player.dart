@@ -3,7 +3,6 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
@@ -82,16 +81,12 @@ class LocalPlayer extends ChangeNotifier {
                   );
                   break;
               }
-              developer.log("LocalPlayer._onGameRepoChanged $bestAction");
+              // developer.log("LocalPlayer._onGameRepoChanged $bestAction");
               await Future.delayed(Duration(seconds: 1));
 
               _gameState = await engine.performPlayAction(
                 _gameState,
                 bestAction.cardSelection,
-                bestAction.playAction,
-              );
-              _gameState.cardMoveEvents = EventHandler.handlegenerateEvents(
-                _gameState,
                 bestAction.playAction,
               );
               break;
@@ -107,7 +102,7 @@ class LocalPlayer extends ChangeNotifier {
               break;
             case RoundStatus.readyToDeal:
               if (_gameState.controllerId != pid) return;
-              engine.performInGameAction(_gameState, .deal, pid);
+              await engine.performInGameAction(_gameState, .deal, pid);
           }
         case GameStatus.gameOver:
         case GameStatus.error:

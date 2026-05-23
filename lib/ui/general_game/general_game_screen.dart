@@ -60,7 +60,9 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
   void _onVmChanged() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (vm.gameState.gameStatus == .gameOver) {
+      if (vm.gameState.gameStatus == .gameOver ||
+          (vm.gameState.gameStatus == .inProgress &&
+              vm.gameState.round.roundStatus == .completed)) {
         showAppPopup(
           context: context,
           title: "Game Over",
