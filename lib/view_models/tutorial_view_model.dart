@@ -37,12 +37,10 @@ class TutorialViewModel extends ChangeNotifier {
 
   void nextStep() {
     if (!_active) return;
-
     if (isLastStep) {
       finish();
       return;
     }
-
     _current++;
     notifyListeners();
   }
@@ -67,37 +65,37 @@ class TutorialViewModel extends ChangeNotifier {
 
     return step.allowedActions.contains(action);
   }
-bool tryProgress(
-  TutorialAction action, {
-  String? cardId,
-  String? stackId,
-  List<String> selectedCardIds = const [],
-}) {
-  if (!_active) return true;
 
-  if (!canPerform(action)) return false;
+  bool tryProgress(
+    TutorialAction action, {
+    String? cardId,
+    String? stackId,
+    List<String> selectedCardIds = const [],
+  }) {
+    if (!_active) return true;
 
-  if (step.expectedAction != null && step.expectedAction != action) {
-    return false;
-  }
+    if (!canPerform(action)) return false;
 
-  if (step.expectedCardId != null && step.expectedCardId != cardId) {
-    return false;
-  }
-
-  if (step.expectedCardIds != null && step.expectedCardIds!.isNotEmpty) {
-    final selectedSet = selectedCardIds.toSet();
-    final expectedSet = step.expectedCardIds!.toSet();
-
-    final hasAllExpected = expectedSet.every(selectedSet.contains);
-
-    if (!hasAllExpected) {
-      return true; // allow tap, but don't advance yet
+    if (step.expectedAction != null && step.expectedAction != action) {
+      return false;
     }
+
+    if (step.expectedCardId != null && step.expectedCardId != cardId) {
+      return false;
+    }
+
+    if (step.expectedCardIds != null && step.expectedCardIds!.isNotEmpty) {
+      final selectedSet = selectedCardIds.toSet();
+      final expectedSet = step.expectedCardIds!.toSet();
+
+      final hasAllExpected = expectedSet.every(selectedSet.contains);
+
+      if (!hasAllExpected) {
+        return true; // allow tap, but don't advance yet
+      }
+    }
+
+    nextStep();
+    return true;
   }
-
-  nextStep();
-  return true;
-}
-
 }

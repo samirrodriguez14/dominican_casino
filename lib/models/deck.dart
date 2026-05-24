@@ -80,34 +80,21 @@ class Deck {
 
   static List<PlayingCardModel> casinoTutorialDeck() {
     return [
-      // First deal / scripted tutorial cards
+      // First deal
+      // Your hand
       card(id: 'tutorial_5', rank: '5', suit: '♦'),
       card(id: 'tutorial_8', rank: '8', suit: '♠'),
+      card(id: 'tutorial_13', rank: 'K', suit: '♣'),
 
-      card(id: 'opp_4', rank: '4', suit: '♣'),
-      card(id: 'opp_7', rank: '7', suit: '♥'),
+      // Opponent hand
+      card(id: 'opp_11', rank: '11', suit: '♠'),
+      card(id: 'opp_2', rank: '2', suit: '♥'),
 
-      card(id: 'table_2', rank: '2', suit: '♣'),
+      // Initial table
       card(id: 'table_3', rank: '3', suit: '♥'),
       card(id: 'table_9', rank: '9', suit: '♠'),
-      card(id: 'table_A', rank: 'A', suit: '♦'),
+      card(id: 'table_13', rank: 'K', suit: '♣'),
 
-      // Redeal cards
-      card(id: 'tutorial_9', rank: '9', suit: '♦'),
-      card(id: 'tutorial_A', rank: 'A', suit: '♣'),
-
-      card(id: 'opp_6', rank: '6', suit: '♠'),
-      card(id: 'opp_10', rank: '10', suit: '♦'),
-
-      // Extra filler cards
-      card(id: 'deck_1', rank: 'J', suit: '♣'),
-      card(id: 'deck_2', rank: 'Q', suit: '♥'),
-      card(id: 'deck_3', rank: 'K', suit: '♣'),
-      card(id: 'deck_4', rank: '6', suit: '♦'),
-      card(id: 'deck_5', rank: '7', suit: '♣'),
-      card(id: 'deck_6', rank: '8', suit: '♥'),
-      card(id: 'deck_7', rank: '10', suit: '♣'),
-      card(id: 'deck_8', rank: '2', suit: '♠'),
     ];
-  } 
+  }
 }

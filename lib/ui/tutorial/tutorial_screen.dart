@@ -345,7 +345,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
             onPressed: vm.isLoading
                 ? null
                 : () async {
-                    // await vm.completeTutorial();
+                    await vm.completeTutorial();
                     Uuid uuid = Uuid();
                     // ignore: use_build_context_synchronously
                     context.go(

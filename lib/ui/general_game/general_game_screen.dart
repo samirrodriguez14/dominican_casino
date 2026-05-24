@@ -47,17 +47,21 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
           myDeckKey: initvm.myDeckKey,
           oppDeckKey: initvm.oppDeckKey,
           playButtonKey: initvm.playButtonKey,
+          addButtonKey: initvm.playButtonKey,
+          takeStackButtonKey: initvm.playButtonKey,
+          scoreKey: initvm.scoreKey,
         ),
       );
       initvm.actionGuard = tutorialVm.tryProgress;
-
+      initvm.handleTutorialOpponentMove = tutorialVm.nextStep;
       final ok = await initvm.loadGame();
 
       if (ok && mounted) {
         await initvm.joinGame();
         initvm.gameRepo.listenToGame(initvm.gid);
 
-        if (initvm.tutorialMode && initvm.gameState.gameMode == GameMode.casino) {
+        if (initvm.tutorialMode &&
+            initvm.gameState.gameMode == GameMode.casino) {
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) {
               tutorialVm.start();
@@ -172,7 +176,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                   AnimatedBuilder(
                     animation: tutorialVm,
                     builder: (_, __) {
-                      if (!tutorialVm.active) {
+                      if (!tutorialVm.active || vm.isAnimating) {
                         return const SizedBox.shrink();
                       }
 
@@ -182,6 +186,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                         totalSteps: tutorialVm.totalSteps,
                         onNext: tutorialVm.nextStep,
                         onSkip: tutorialVm.finish,
+                        canGoNext: true,
                       );
                     },
                   ),
@@ -295,6 +300,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
             );
           },
           child: Container(
+            key: vm.scoreKey,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: AppStyle.theme.raisedSurfaceBox(),
             child: Row(

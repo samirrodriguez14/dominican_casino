@@ -9,6 +9,7 @@ class TutorialOverlay extends StatefulWidget {
   final VoidCallback onSkip;
   final int currentStep;
   final int totalSteps;
+  final bool canGoNext;
 
   const TutorialOverlay({
     super.key,
@@ -17,6 +18,7 @@ class TutorialOverlay extends StatefulWidget {
     required this.onSkip,
     required this.currentStep,
     required this.totalSteps,
+    required this.canGoNext,
   });
 
   @override
@@ -28,9 +30,9 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
-  static const double _tooltipWidth = 300;
+  static const double _tooltipWidth = 320;
   static const double _tooltipMinHeight = 160;
-  static const double _highlightPadding = 8;
+  static const double _highlightPadding = 4;
 
   @override
   void initState() {
@@ -103,7 +105,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
           child: IgnorePointer(
             child: Container(
               decoration: BoxDecoration(
-                color: AppStyle.theme.turnHighlight.withValues(alpha: .08),
+                color: AppStyle.theme.turnHighlight.withValues(alpha: .03),
                 border: Border.all(
                   color: AppStyle.theme.turnHighlight,
                   width: 2.5,
@@ -120,7 +122,6 @@ class _TutorialOverlayState extends State<TutorialOverlay>
             ),
           ),
         ),
-
       ],
     );
   }
@@ -142,16 +143,16 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     Offset tooltipOffset;
 
     // Above if lower half of screen
-    if (targetOffset.dy > screenHeight * 0.55) {
+    if (targetOffset.dy > screenHeight * 0.5) {
       tooltipOffset = Offset(
         targetOffset.dx + targetSize.width / 2 - _tooltipWidth / 2,
-        targetOffset.dy - _tooltipMinHeight - 20,
+        targetOffset.dy - _tooltipMinHeight - 45,
       );
     } else {
       // Below otherwise
       tooltipOffset = Offset(
         targetOffset.dx + targetSize.width / 2 - _tooltipWidth / 2,
-        targetOffset.dy + targetSize.height + 20,
+        targetOffset.dy + targetSize.height + 30,
       );
     }
 
@@ -168,8 +169,6 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     );
   }
 
-
-
   Widget _buildFloatingTooltip(BuildContext context) {
     return Center(
       child: Padding(
@@ -182,7 +181,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   Widget _buildTooltipContent() {
     final theme = AppStyle.theme;
     final isLastStep = widget.currentStep == widget.totalSteps - 1;
-
+    final canPressNext = widget.canGoNext || widget.step.onShow != null;
     return Container(
       width: _tooltipWidth,
       decoration: BoxDecoration(
@@ -281,17 +280,24 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                 ),
                 const SizedBox(width: 10),
               ],
-
               Expanded(
                 child: CupertinoButton(
                   padding: const EdgeInsets.symmetric(vertical: 9),
-                  color: theme.turnHighlight,
+                  color: canPressNext
+                      ? theme.turnHighlight
+                      : theme.muted.withValues(alpha: .35),
                   borderRadius: BorderRadius.circular(theme.radius),
-                  onPressed: widget.onNext,
+                  onPressed: canPressNext
+                      ? widget.step.onShow != null
+                            ? () => widget.step.onShow!(context)
+                            : widget.onNext
+                      : null,
                   child: Text(
                     isLastStep ? 'Finish' : 'Next',
                     style: theme.body.copyWith(
-                      color: theme.background,
+                      color: canPressNext
+                          ? theme.background
+                          : theme.textPrimary.withValues(alpha: .45),
                       fontWeight: FontWeight.w800,
                     ),
                   ),

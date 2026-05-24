@@ -134,6 +134,8 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minWidth: constraints.maxWidth),
                     child: Row(
+                      key: vm.playButtonKey,
+
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(actions.length, (index) {
                         final action = actions[index];

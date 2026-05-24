@@ -1,6 +1,8 @@
 import 'package:dominican_casino/models/tutorial_action.dart';
 import 'package:flutter/cupertino.dart';
 
+typedef TutorialStepCallback = void Function(BuildContext context);
+
 class TutorialStep {
   final int step;
   final String title;
@@ -12,10 +14,13 @@ class TutorialStep {
   final TutorialAction? expectedAction;
   final String? expectedCardId;
   final String? expectedStackId;
-final List<String>? expectedCardIds;
+  final List<String>? expectedCardIds;
+
   final bool allowInteraction;
   final bool autoAdvance;
   final bool showSkipButton;
+
+  final TutorialStepCallback? onShow;
 
   const TutorialStep({
     required this.step,
@@ -29,6 +34,7 @@ final List<String>? expectedCardIds;
     this.allowInteraction = true,
     this.autoAdvance = false,
     this.showSkipButton = true,
+    this.onShow,
     required this.blockGameInteraction,
     required this.allowedActions,
   });

@@ -9,110 +9,224 @@ List<TutorialStep> getCasinoTutorialSteps({
   required GlobalKey myDeckKey,
   required GlobalKey oppDeckKey,
   required GlobalKey playButtonKey,
+  required GlobalKey addButtonKey,
+  required GlobalKey takeStackButtonKey,
+  required GlobalKey scoreKey,
 }) {
   return [
+    // 0
     TutorialStep(
       step: 0,
       title: "Welcome",
-      description: "Let's learn how to capture cards in Casino.",
+      description:
+          "Let's learn how to play Casino! You'll learn how to capture cards, build stacks, sweep the table, and score points.",
       autoAdvance: false,
       allowInteraction: false,
       blockGameInteraction: true,
+      showSkipButton: false,
       allowedActions: [],
     ),
 
+    // 1
     TutorialStep(
       step: 1,
       title: "Select your card",
-      description: "Tap the 5 card in your hand.",
+      description: "Tap the 5♦ card in your hand.",
       targetKey: handKey,
       expectedAction: TutorialAction.selectHandCard,
       expectedCardId: "tutorial_5",
       allowInteraction: true,
-      autoAdvance: false,
       blockGameInteraction: false,
-      allowedActions: [
-        TutorialAction.selectHandCard,
-      ],
+      showSkipButton: false,
+      allowedActions: [TutorialAction.selectHandCard],
     ),
 
- TutorialStep(
-  step: 2,
-  title: "Pick table cards",
-  description: "Select the 2 and 3 to make 5.",
-  targetKey: tableKey,
-  expectedAction: TutorialAction.selectTableCard,
-  expectedCardIds: [
-    "tutorial_2",
-    "tutorial_3",
-  ],
-  allowInteraction: true,
-  autoAdvance: false,
-  blockGameInteraction: false,
-  allowedActions: [
-    TutorialAction.selectTableCard,
-  ],
-),
+    // 2
+    TutorialStep(
+      step: 2,
+      title: "Choose a table card",
+      description: "Tap the 3♥ on the table. We'll use this to create a stack.",
+      targetKey: tableKey,
+      expectedAction: TutorialAction.selectTableCard,
+      expectedCardId: "table_3",
+      allowInteraction: true,
+      blockGameInteraction: false,
+      showSkipButton: false,
+      allowedActions: [TutorialAction.selectTableCard],
+    ),
 
+    // 3
     TutorialStep(
       step: 3,
-      title: "Play your move",
-      description: "Press Play to capture the selected cards.",
-      targetKey: playButtonKey,
-      expectedAction: TutorialAction.playMove,
+      title: "Create a stack",
+      description: "Press Add to combine your selected cards into a stack.",
+      targetKey: addButtonKey,
+      expectedAction: TutorialAction.addStack,
       allowInteraction: true,
-      autoAdvance: false,
       blockGameInteraction: false,
-      allowedActions: [
-        TutorialAction.playMove,
-      ],
+      showSkipButton: false,
+      allowedActions: [TutorialAction.addStack],
     ),
 
+    // 4
     TutorialStep(
       step: 4,
-      title: "Nice!",
+      title: "Opponent's turn",
       description:
-          "Captured cards go into your collection. That's how taking cards works!",
-      targetKey: myDeckKey,
-      autoAdvance: false,
+          "Your opponent played a card and added more cards to the table.",
+      targetKey: tableKey,
       allowInteraction: false,
       blockGameInteraction: true,
+      showSkipButton: false,
       allowedActions: [],
     ),
 
+    // 5
     TutorialStep(
       step: 5,
-      title: "Opponent's collection",
-      description:
-          "Your opponent's captured cards will show here. Keep an eye on it during the game.",
-      targetKey: oppDeckKey,
-      autoAdvance: false,
-      allowInteraction: false,
-      blockGameInteraction: true,
-      allowedActions: [],
+      title: "Select your 8",
+      description: "Now tap the 8♠ in your hand.",
+      targetKey: handKey,
+      expectedAction: TutorialAction.selectHandCard,
+      expectedCardId: "tutorial_8",
+      allowInteraction: true,
+      blockGameInteraction: false,
+      showSkipButton: false,
+      allowedActions: [TutorialAction.selectHandCard],
     ),
 
+    // 6
     TutorialStep(
       step: 6,
-      title: "The dealing deck",
+      title: "Select the stack",
       description:
-          "New cards are dealt from here. You don't tap this directly during normal play.",
-      targetKey: deckKey,
-      autoAdvance: false,
+          "Tap the stack that totals 8. Since you created it, you can take it.",
+      targetKey: tableKey,
+      expectedAction: TutorialAction.selectStack,
+      allowInteraction: true,
+      blockGameInteraction: false,
+      showSkipButton: false,
+      allowedActions: [TutorialAction.selectStack],
+    ),
+
+    // 7
+    TutorialStep(
+      step: 7,
+      title: "Take the stack",
+      description: "Press Take Stack to collect the cards.",
+      targetKey: takeStackButtonKey,
+      expectedAction: TutorialAction.takeStack,
+      allowInteraction: true,
+      blockGameInteraction: false,
+      showSkipButton: false,
+      allowedActions: [TutorialAction.takeStack],
+    ),
+
+    // 8
+    TutorialStep(
+      step: 8,
+      title: "Collected cards",
+      description:
+          "Captured cards go here. These cards count toward scoring at the end of the round.",
+      targetKey: myDeckKey,
       allowInteraction: false,
       blockGameInteraction: true,
+      showSkipButton: false,
       allowedActions: [],
     ),
 
+    // 9
     TutorialStep(
-      step: 7,
-      title: "You're ready",
+      step: 9,
+      title: "Opponent takes cards",
       description:
-          "That's the basic flow: choose your card, select matching table cards, and play the move.",
+          "Your opponent captured a stack too and added cards to their collection.",
+      targetKey: tableKey,
+      allowInteraction: false,
+      blockGameInteraction: true,
+      showSkipButton: false,
+      allowedActions: [],
+    ),
+
+    // 10
+    TutorialStep(
+      step: 10,
+      title: "Opponent collection",
+      description:
+          "Opponent captures appear here. The highlighted collection means that player captured cards last. At the end of the round, they receive any remaining cards on the table.",
+      targetKey: oppDeckKey,
+      allowInteraction: false,
+      blockGameInteraction: true,
+      showSkipButton: false,
+      allowedActions: [],
+    ),
+
+    // 11
+    TutorialStep(
+      step: 11,
+      title: "Sweep the table",
+      description:
+          "Now take all remaining cards from the table. Clearing every card is called a sweep!",
+      targetKey: tableKey,
+      expectedCardId: "table_13",
+      expectedAction: TutorialAction.selectTableCard,
+      allowInteraction: true,
+      blockGameInteraction: false,
+      showSkipButton: false,
+      allowedActions: [TutorialAction.selectTableCard],
+    ),
+    // 12
+    TutorialStep(
+      step: 12,
+      title: "Sweep the table",
+      description:
+          "Now take all remaining cards from the table. Clearing every card is called a sweep!",
+      targetKey: tableKey,
+      expectedCardId: "tutorial_13",
+      expectedAction: TutorialAction.selectHandCard,
+      allowInteraction: true,
+      blockGameInteraction: false,
+      showSkipButton: false,
+      allowedActions: [TutorialAction.selectHandCard],
+    ),
+    // 13
+    TutorialStep(
+      step: 13,
+      title: "Sweep bonus",
+      description:
+          "Nice! Sweeping the table gives extra points at the end of the round.",
+      targetKey: myDeckKey,
+      allowInteraction: false,
+      blockGameInteraction: true,
+      showSkipButton: false,
+      allowedActions: [],
+    ),
+
+    // 14
+    TutorialStep(
+      step: 14,
+      title: "Round scoring",
+      description:
+          "At the end of each round, points are awarded for sweeps, most cards, special cards, and more.",
+      targetKey: scoreKey,
+      allowInteraction: false,
+      blockGameInteraction: true,
+      showSkipButton: false,
+      allowedActions: [],
+    ),
+
+    // 14
+    TutorialStep(
+      step: 14,
+      title: "You're ready!",
+      description:
+          "You now know the basics of Casino: build stacks, capture cards, sweep the table, and score points. Good luck!",
       autoAdvance: false,
       allowInteraction: false,
       blockGameInteraction: true,
       allowedActions: [],
+      showSkipButton: false,
+    
     ),
   ];
 }

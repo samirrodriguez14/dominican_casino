@@ -20,6 +20,8 @@ typedef ActionGuard =
       List<String> selectedCardIds,
     });
 
+typedef HandleTutorialGameState = void Function();
+
 class GeneralGameViewModel extends ChangeNotifier {
   bool loading = true;
   bool tutorialMode;
@@ -31,6 +33,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   bool isAnimating = false;
 
   ActionGuard? actionGuard;
+  HandleTutorialGameState? handleTutorialOpponentMove;
 
   GeneralGameViewModel({
     required this.gameRepo,
@@ -61,6 +64,16 @@ class GeneralGameViewModel extends ChangeNotifier {
           hiddenCardIds.add(event.card.id);
           gameRepo.lastPlayedIds.add(event.id);
         }
+        developer.log(
+          "tM: $tutorialMode, cpid: ${gameState.currentTurnPlayerId}, oppId = $opp. $handleTutorialOpponentMove",
+        );
+
+        if (tutorialMode &&
+            handleTutorialOpponentMove != null &&
+            gameState.currentTurnPlayerId == opp) {
+          handleTutorialOpponentMove!();
+          developer.log("handling turiral next step");
+        }
         notifyListeners();
         await Future.delayed(const Duration(milliseconds: 300));
 
@@ -69,10 +82,13 @@ class GeneralGameViewModel extends ChangeNotifier {
         selectedCard = null;
         selectedCards = [];
         selectedStacks = [];
+
+        hiddenCardIds.clear();
+
         notifyListeners();
 
         await Future.delayed(const Duration(milliseconds: 100));
-        hiddenCardIds.clear();
+
         notifyListeners();
       } else {
         gameState = nextState;
@@ -212,7 +228,9 @@ class GeneralGameViewModel extends ChangeNotifier {
         gameState = TutorialCasinoFactory.createBasicTakeTutorial(
           gid: gid,
           playerId: me,
+          gameRepo: gameRepo,
         );
+
         loading = false;
         notifyListeners();
         return true;
@@ -240,7 +258,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   Future<void> resign() async {
-    if (opp == null) {
+    if (opp == null || tutorialMode) {
       await gameRepo.fs.deleteGame(gameState.id);
       notifyListeners();
       return;
@@ -388,6 +406,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   final GlobalKey myHandKey = GlobalKey();
   final GlobalKey oppHandKey = GlobalKey();
   final GlobalKey playButtonKey = GlobalKey();
+  final GlobalKey scoreKey = GlobalKey();
 
   GlobalKey? keyForZone(Zone zone) {
     final myPid = me;
