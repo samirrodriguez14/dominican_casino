@@ -1,0 +1,73 @@
+{
+    "title": "How to Play",
+    "sections": [
+        {
+            "title": "General Info",
+            "body": [
+                "Dominican Casino is a capture card game.",
+                "Players use cards from their hand to capture cards from the table.",
+                "The goal is to collect scoring cards and reach the winning score."
+            ]
+        },
+        {
+            "title": "Cards",
+            "body": [
+                "Kings have a capture value of 13.",
+                "Queens have a capture value of 12.",
+                "Jacks have a capture value of 11.",
+                "Number cards use their numerical value.",
+                "Aces count as either 1 or 14, depending on the play.",
+                "An Ace can capture another Ace, or any group of cards that adds up to 14.",
+                "Example: an Ace can capture 8 + 5 + A because 8 + 5 + 1 = 14."
+            ]
+        },
+        {
+            "title": "Game Rules",
+            "body": [
+                "On your turn, play one card from your hand.",
+                "If the card matches a card or stack value on the table, it can capture them.",
+                "Cards can also be combined into stacks.",
+                "Stacks can only be captured by a card matching the stack value."
+            ]
+        },
+        {
+            "title": "Scoring",
+            "body": [
+                "Most captured cards gives carta: +3 points.",
+                "Most spades gives pi: +1 point.",
+                "Each Ace gives +1 point.",
+                "The 2♠ gives +1 point.",
+                "The 10♦ gives +2 points.",
+                "Virao points are added separately."
+            ],
+            "specialCards": [
+                {
+                    "rank": "A",
+                    "suit": "♠",
+                    "label": "Ace",
+                    "points": "+1 each"
+                },
+                {
+                    "rank": "2",
+                    "suit": "♠",
+                    "label": "Two of Spades",
+                    "points": "+1"
+                },
+                {
+                    "rank": "10",
+                    "suit": "♦",
+                    "label": "Ten of Diamonds",
+                    "points": "+2"
+                }
+            ]
+        },
+        {
+            "title": "Endgame Rules",
+            "body": [
+                "At 17 points, the player needs both carta and pi to keep those points.",
+                "At 18 or 19 points, only carta and pi can count.",
+                "At 20 points, the player must get pi or they score 0 for the round."
+            ]
+        }
+    ]
+}

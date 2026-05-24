@@ -1,8 +1,10 @@
-import 'package:dominican_casino/data/games_instructions.dart';
+import 'dart:convert';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
@@ -67,7 +69,7 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
                           AppStyle.theme.radius,
                         ),
                         onPressed: () => _showGameInfo(context, mode),
-                        child: Text("Tutorial", style: AppStyle.theme.title),
+                        child: Text("How to play", style: AppStyle.theme.title),
                       ),
                     ],
                   ),
@@ -81,6 +83,11 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
   }
 }
 
+Future<InstructionsData> _loadInstructions() async {
+  final raw = await rootBundle.loadString('config/instructions.json');
+  return InstructionsData.fromJson(jsonDecode(raw));
+}
+
 void _showGameInfo(BuildContext context, GameMode mode) {
   final theme = AppStyle.theme;
 
@@ -88,6 +95,7 @@ void _showGameInfo(BuildContext context, GameMode mode) {
     context: context,
     builder: (context) {
       return Container(
+        height: MediaQuery.of(context).size.height * .78,
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
         decoration: BoxDecoration(
           color: theme.surface,
@@ -95,43 +103,131 @@ void _showGameInfo(BuildContext context, GameMode mode) {
         ),
         child: SafeArea(
           top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.muted.withValues(alpha: .4),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
+          child: FutureBuilder<InstructionsData>(
+            future: _loadInstructions(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CupertinoActivityIndicator());
+              }
 
-              const SizedBox(height: 16),
+              final data = snapshot.data!;
 
-              Text("How to Play", style: theme.title),
+              return Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.muted.withValues(alpha: .4),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
 
-              const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
-              Text(
-                gamesData[mode.name].toString(),
-                style: theme.body,
-                textAlign: TextAlign.center,
-              ),
+                  Text(
+                    "How to Play",
+                    style: theme.title.copyWith(fontSize: 28),
+                  ),
 
-              const SizedBox(height: 18),
+                  const SizedBox(height: 14),
 
-              CupertinoButton.filled(
-                onPressed: () {
-                  Uuid uuid = Uuid();
-                  context.go('/game/${uuid.v4().substring(0, 6)}/casino/true');
-                },
-                child: const Text("Got it"),
-              ),
-            ],
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: data.sections.map((section) {
+                          return _PopupInstructionSection(section: section);
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+                  Row(
+                    mainAxisAlignment: .center,
+                    spacing: 10,
+                    children: [
+                      Row(
+                        children: [
+                          CupertinoButton.filled(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 14,
+                              horizontal: 10,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(CupertinoIcons.xmark, size: 18),
+                                SizedBox(width: 8),
+                                Text("Got it"),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          CupertinoButton.filled(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 14,
+                              horizontal: 10,
+                            ),
+                            onPressed: () {
+                              final uuid = Uuid();
+                              context.go(
+                                '/game/${uuid.v4().substring(0, 6)}/casino/true',
+                              );
+                            },
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(CupertinoIcons.play_fill, size: 18),
+                                SizedBox(width: 8),
+                                Text("Tutorial"),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
       );
     },
   );
+}
+
+class _PopupInstructionSection extends StatelessWidget {
+  final InstructionSection section;
+
+  const _PopupInstructionSection({required this.section});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.background,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(section.title, style: theme.title.copyWith(fontSize: 22)),
+          const SizedBox(height: 10),
+
+          for (final text in section.body) ...[
+            Text(text, style: theme.body.copyWith(fontSize: 17, height: 1.35)),
+            const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
 }
