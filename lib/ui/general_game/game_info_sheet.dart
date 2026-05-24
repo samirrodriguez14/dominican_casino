@@ -1,12 +1,10 @@
-import 'dart:convert';
-
 import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 
 class GameInfoSheet extends StatefulWidget {
   const GameInfoSheet({super.key, required this.vm, this.scrollController});
@@ -23,7 +21,7 @@ class _GameInfoSheetState extends State<GameInfoSheet> {
   @override
   void initState() {
     super.initState();
-    _instructionsFuture = _loadInstructions();
+    _instructionsFuture = loadInstructions(widget.vm.gameState.gameMode);
   }
 
   @override
@@ -144,8 +142,3 @@ class _GameInfoSheetState extends State<GameInfoSheet> {
   }
 }
 
-Future<InstructionsData> _loadInstructions() async {
-  final raw = await rootBundle.loadString('config/instructions.json');
-
-  return InstructionsData.fromJson(jsonDecode(raw));
-}

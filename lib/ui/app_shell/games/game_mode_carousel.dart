@@ -83,7 +83,7 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
   }
 }
 
-Future<InstructionsData> _loadInstructions(GameMode mode) async {
+Future<InstructionsData> loadInstructions(GameMode mode) async {
   String raw = await rootBundle.loadString('config/casino_instructions.json');
 
   switch (mode) {
@@ -112,7 +112,7 @@ void _showGameInfo(BuildContext context, GameMode mode) {
         child: SafeArea(
           top: false,
           child: FutureBuilder<InstructionsData>(
-            future: _loadInstructions(mode),
+            future: loadInstructions(mode),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CupertinoActivityIndicator());

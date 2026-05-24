@@ -52,7 +52,16 @@ class GeneralGameViewModel extends ChangeNotifier {
     try {
       final nextState = gameRepo.gameState!;
       isAnimating = true;
+      developer.log(
+        "tM: $tutorialMode, cpid: ${gameState.currentTurnPlayerId}, oppId = $opp. $handleTutorialOpponentMove",
+      );
 
+      if ((tutorialMode &&
+          handleTutorialOpponentMove != null &&
+          gameState.currentTurnPlayerId == opp)|| gameState.round.roundStatus ==.completed) {
+        handleTutorialOpponentMove!();
+        developer.log("handling tutorial next step");
+      }
       // Get new events from other players
       final newEvents = nextState.cardMoveEvents
           .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
@@ -64,16 +73,7 @@ class GeneralGameViewModel extends ChangeNotifier {
           hiddenCardIds.add(event.card.id);
           gameRepo.lastPlayedIds.add(event.id);
         }
-        developer.log(
-          "tM: $tutorialMode, cpid: ${gameState.currentTurnPlayerId}, oppId = $opp. $handleTutorialOpponentMove",
-        );
 
-        if (tutorialMode &&
-            handleTutorialOpponentMove != null &&
-            gameState.currentTurnPlayerId == opp) {
-          handleTutorialOpponentMove!();
-          developer.log("handling turiral next step");
-        }
         notifyListeners();
         await Future.delayed(const Duration(milliseconds: 300));
 

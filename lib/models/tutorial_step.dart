@@ -19,6 +19,7 @@ class TutorialStep {
   final bool allowInteraction;
   final bool autoAdvance;
   final bool showSkipButton;
+  final bool showNextButton;
 
   final TutorialStepCallback? onShow;
 
@@ -33,7 +34,8 @@ class TutorialStep {
     this.expectedCardIds,
     this.allowInteraction = true,
     this.autoAdvance = false,
-    this.showSkipButton = true,
+    this.showSkipButton = false,
+    this.showNextButton =true,
     this.onShow,
     required this.blockGameInteraction,
     required this.allowedActions,

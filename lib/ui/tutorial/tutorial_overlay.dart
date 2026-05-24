@@ -280,29 +280,30 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                 ),
                 const SizedBox(width: 10),
               ],
-              Expanded(
-                child: CupertinoButton(
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                  color: canPressNext
-                      ? theme.turnHighlight
-                      : theme.muted.withValues(alpha: .35),
-                  borderRadius: BorderRadius.circular(theme.radius),
-                  onPressed: canPressNext
-                      ? widget.step.onShow != null
-                            ? () => widget.step.onShow!(context)
-                            : widget.onNext
-                      : null,
-                  child: Text(
-                    isLastStep ? 'Finish' : 'Next',
-                    style: theme.body.copyWith(
-                      color: canPressNext
-                          ? theme.background
-                          : theme.textPrimary.withValues(alpha: .45),
-                      fontWeight: FontWeight.w800,
+              if (widget.step.showNextButton)
+                Expanded(
+                  child: CupertinoButton(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    color: canPressNext
+                        ? theme.turnHighlight
+                        : theme.muted.withValues(alpha: .35),
+                    borderRadius: BorderRadius.circular(theme.radius),
+                    onPressed: canPressNext
+                        ? widget.step.onShow != null
+                              ? () => widget.step.onShow!(context)
+                              : widget.onNext
+                        : null,
+                    child: Text(
+                      isLastStep ? 'Finish' : 'Next',
+                      style: theme.body.copyWith(
+                        color: canPressNext
+                            ? theme.background
+                            : theme.textPrimary.withValues(alpha: .45),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ],

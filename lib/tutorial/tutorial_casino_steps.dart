@@ -23,7 +23,6 @@ List<TutorialStep> getCasinoTutorialSteps({
       autoAdvance: false,
       allowInteraction: false,
       blockGameInteraction: true,
-      showSkipButton: false,
       allowedActions: [],
     ),
 
@@ -37,7 +36,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       expectedCardId: "tutorial_5",
       allowInteraction: true,
       blockGameInteraction: false,
-      showSkipButton: false,
+      showNextButton: false,
       allowedActions: [TutorialAction.selectHandCard],
     ),
 
@@ -51,7 +50,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       expectedCardId: "table_3",
       allowInteraction: true,
       blockGameInteraction: false,
-      showSkipButton: false,
+      showNextButton: false,
       allowedActions: [TutorialAction.selectTableCard],
     ),
 
@@ -64,7 +63,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       expectedAction: TutorialAction.addStack,
       allowInteraction: true,
       blockGameInteraction: false,
-      showSkipButton: false,
+      showNextButton: false,
       allowedActions: [TutorialAction.addStack],
     ),
 
@@ -77,7 +76,6 @@ List<TutorialStep> getCasinoTutorialSteps({
       targetKey: tableKey,
       allowInteraction: false,
       blockGameInteraction: true,
-      showSkipButton: false,
       allowedActions: [],
     ),
 
@@ -91,7 +89,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       expectedCardId: "tutorial_8",
       allowInteraction: true,
       blockGameInteraction: false,
-      showSkipButton: false,
+      showNextButton: false,
       allowedActions: [TutorialAction.selectHandCard],
     ),
 
@@ -105,7 +103,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       expectedAction: TutorialAction.selectStack,
       allowInteraction: true,
       blockGameInteraction: false,
-      showSkipButton: false,
+      showNextButton: false,
       allowedActions: [TutorialAction.selectStack],
     ),
 
@@ -118,7 +116,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       expectedAction: TutorialAction.takeStack,
       allowInteraction: true,
       blockGameInteraction: false,
-      showSkipButton: false,
+      showNextButton: false,
       allowedActions: [TutorialAction.takeStack],
     ),
 
@@ -131,93 +129,60 @@ List<TutorialStep> getCasinoTutorialSteps({
       targetKey: myDeckKey,
       allowInteraction: false,
       blockGameInteraction: true,
-      showSkipButton: false,
       allowedActions: [],
     ),
 
     // 9
     TutorialStep(
       step: 9,
-      title: "Opponent takes cards",
-      description:
-          "Your opponent captured a stack too and added cards to their collection.",
-      targetKey: tableKey,
-      allowInteraction: false,
-      blockGameInteraction: true,
-      showSkipButton: false,
-      allowedActions: [],
-    ),
-
-    // 10
-    TutorialStep(
-      step: 10,
       title: "Opponent collection",
       description:
           "Opponent captures appear here. The highlighted collection means that player captured cards last. At the end of the round, they receive any remaining cards on the table.",
       targetKey: oppDeckKey,
       allowInteraction: false,
       blockGameInteraction: true,
-      showSkipButton: false,
       allowedActions: [],
     ),
 
-    // 11
+    //10
+    TutorialStep(
+      step: 10,
+      title: "Sweep bonus",
+      autoAdvance: false,
+
+      description:
+          "Now you can take all remaining cards from the table. Clearing every card is called a sweep (virao)! This gives extra points at the end of the round.",
+      // expectedAction: TutorialAction.takeStack,
+      allowInteraction: false,
+      blockGameInteraction: false,
+      allowedActions: [],
+    ),
+    //11
     TutorialStep(
       step: 11,
-      title: "Sweep the table",
+      title: "Sweep bonus",
+      targetKey: myDeckKey,
       description:
-          "Now take all remaining cards from the table. Clearing every card is called a sweep!",
-      targetKey: tableKey,
-      expectedCardId: "table_13",
-      expectedAction: TutorialAction.selectTableCard,
-      allowInteraction: true,
+          "After sweeping you'll see an extra card showing how many viraos you have (Only one player ca have viraos. If you sweep and the opponent has a virao, he'll lose his virao and next time you sweep, you'll earn one.)",
+      allowInteraction: false,
       blockGameInteraction: false,
-      showSkipButton: false,
-      allowedActions: [TutorialAction.selectTableCard],
+      allowedActions: [],
     ),
     // 12
     TutorialStep(
       step: 12,
-      title: "Sweep the table",
-      description:
-          "Now take all remaining cards from the table. Clearing every card is called a sweep!",
-      targetKey: tableKey,
-      expectedCardId: "tutorial_13",
-      expectedAction: TutorialAction.selectHandCard,
-      allowInteraction: true,
-      blockGameInteraction: false,
-      showSkipButton: false,
-      allowedActions: [TutorialAction.selectHandCard],
-    ),
-    // 13
-    TutorialStep(
-      step: 13,
-      title: "Sweep bonus",
-      description:
-          "Nice! Sweeping the table gives extra points at the end of the round.",
-      targetKey: myDeckKey,
-      allowInteraction: false,
-      blockGameInteraction: true,
-      showSkipButton: false,
-      allowedActions: [],
-    ),
-
-    // 14
-    TutorialStep(
-      step: 14,
       title: "Round scoring",
       description:
           "At the end of each round, points are awarded for sweeps, most cards, special cards, and more.",
       targetKey: scoreKey,
       allowInteraction: false,
       blockGameInteraction: true,
-      showSkipButton: false,
       allowedActions: [],
     ),
 
-    // 14
+    // 13
     TutorialStep(
-      step: 14,
+      step: 13,
       title: "You're ready!",
       description:
           "You now know the basics of Casino: build stacks, capture cards, sweep the table, and score points. Good luck!",
@@ -225,8 +190,6 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowInteraction: false,
       blockGameInteraction: true,
       allowedActions: [],
-      showSkipButton: false,
-    
     ),
   ];
 }
