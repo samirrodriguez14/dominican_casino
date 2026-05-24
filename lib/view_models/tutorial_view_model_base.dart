@@ -17,7 +17,7 @@ class TutorialViewModelBase extends ChangeNotifier {
   bool get isLoading => _isLoading;
   Player? get player => appRepo.player;
   
-  int get totalSteps => 3; // Number of tutorial steps
+  int get totalSteps => 2; // Number of tutorial steps
 
   void nextStep() {
     if (_currentStep < totalSteps - 1) {

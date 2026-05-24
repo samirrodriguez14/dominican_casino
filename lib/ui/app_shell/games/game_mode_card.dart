@@ -42,31 +42,47 @@ class GameModeCard extends StatelessWidget {
             style: theme.body,
             textAlign: TextAlign.center,
           ),
-
-          Row(
+          Stack(
+            alignment: .center,
             children: [
-              const SizedBox(width: 10),
-              Expanded(
-                child: CupertinoButton(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  color: theme.surface,
-                  borderRadius: BorderRadius.circular(theme.radius),
-                  onPressed: () => _showJoinGameDialog(context, mode.name),
-                  child: Text("Join By Id", style: theme.title),
-                ),
+              Row(
+                children: [
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      color: theme.surface,
+                      borderRadius: BorderRadius.circular(theme.radius),
+                      onPressed: (mode == .robaito)
+                          ? null
+                          : () => _showJoinGameDialog(context, mode.name),
+                      child: Text("Join By Id", style: theme.title),
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      color: theme.border,
+                      borderRadius: BorderRadius.circular(theme.radius),
+                      onPressed: (mode == .robaito)
+                          ? null
+                          : () => _showEnterGameDialog(context, vm, mode),
+                      child: Text("Play", style: AppStyle.theme.title),
+                    ),
+                  ),
+                ],
               ),
 
-              const SizedBox(width: 10),
-
-              Expanded(
-                child: CupertinoButton(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  color: theme.border,
-                  borderRadius: BorderRadius.circular(theme.radius),
-                  onPressed: () => _showEnterGameDialog(context, vm, mode),
-                  child: Text("Play", style: AppStyle.theme.title),
-                ),
-              ),
+              if (mode == .robaito)
+              Container(
+                padding: EdgeInsets.all(9),
+                decoration: theme.raisedSurfaceBox(),
+                child: 
+                Text("Coming soon...", style: AppStyle.theme.title),
+              )
             ],
           ),
         ],
@@ -85,7 +101,6 @@ class GameModeCard extends StatelessWidget {
     }
   }
 }
-
 
 void _showJoinGameDialog(BuildContext context, String mode) {
   final TextEditingController controller = TextEditingController();
@@ -165,7 +180,8 @@ Future<void> gameEnter(
   switch (mode) {
     case GameMode.tresydos:
       final gid = await vm.newGame(mode, local);
-      if (gid != null && context.mounted) context.go('/game/$gid/tresydos/false');
+      if (gid != null && context.mounted)
+        context.go('/game/$gid/tresydos/false');
       break;
     case GameMode.casino:
       final gid = await vm.newGame(mode, local);

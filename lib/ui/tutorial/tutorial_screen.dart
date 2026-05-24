@@ -65,9 +65,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   },
                   children: [
                     _buildWelcomeStep(context, vm),
-                    _buildAppShellOverviewStep(context, vm),
-                    // _buildGameScreenStep(context, vm),
-                    // _buildStartGameStep(context, vm),
+    
                     _buildGameWalkthroughStep(context, vm),
                   ],
                 ),
@@ -119,67 +117,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
       ),
     );
   }
-
-  Widget _buildAppShellOverviewStep(
-    BuildContext context,
-    TutorialViewModelBase vm,
-  ) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 28),
-          decoration: AppStyle.theme.raisedSurfaceBox(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Main Menu Overview",
-                textAlign: TextAlign.center,
-                style: AppStyle.theme.title.copyWith(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                height: 1,
-                width: 80,
-                color: AppStyle.theme.surfaceAlt.withValues(alpha: .6),
-              ),
-              const SizedBox(height: 24),
-              _buildStepContent(
-                icon: CupertinoIcons.game_controller,
-                title: "Games Tab",
-                description:
-                    "Browse available games and start new matches against AI opponents or other players.",
-              ),
-              const SizedBox(height: 16),
-              _buildStepContent(
-                icon: CupertinoIcons.person,
-                title: "Profile Tab",
-                description:
-                    "View your stats, game history, and manage your player profile.",
-              ),
-              const SizedBox(height: 16),
-              _buildStepContent(
-                icon: CupertinoIcons.settings,
-                title: "Settings Tab",
-                description:
-                    "Adjust app preferences, notifications, and other options.",
-              ),
-              const SizedBox(height: 32),
-              _buildProgressIndicator(vm.currentStep, vm.totalSteps),
-              const SizedBox(height: 32),
-              _buildNavigationButtons(context, vm),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGameWalkthroughStep(
+ Widget _buildGameWalkthroughStep(
     BuildContext context,
     TutorialViewModelBase vm,
   ) {
@@ -254,39 +192,6 @@ class _TutorialScreenState extends State<TutorialScreen> {
     );
   }
 
-  Widget _buildStepContent({
-    required IconData icon,
-    required String title,
-    required String description,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppStyle.theme.surface,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 24, color: AppStyle.theme.surfaceAlt),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppStyle.theme.title.copyWith(fontSize: 14)),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: AppStyle.theme.body.copyWith(fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildProgressIndicator(int current, int total) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -345,7 +250,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
             onPressed: vm.isLoading
                 ? null
                 : () async {
-                    await vm.completeTutorial();
+                    // await vm.completeTutorial();
                     Uuid uuid = Uuid();
                     // ignore: use_build_context_synchronously
                     context.go(

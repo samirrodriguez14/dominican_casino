@@ -12,7 +12,7 @@ class InstructionsScreen extends StatelessWidget {
   const InstructionsScreen({super.key});
 
   Future<InstructionsData> _loadInstructions() async {
-    final raw = await rootBundle.loadString('config/instructions.json');
+    final raw = await rootBundle.loadString('config/casino_instructions.json');
     return InstructionsData.fromJson(jsonDecode(raw));
   }
 

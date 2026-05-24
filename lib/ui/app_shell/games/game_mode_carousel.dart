@@ -83,8 +83,16 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
   }
 }
 
-Future<InstructionsData> _loadInstructions() async {
-  final raw = await rootBundle.loadString('config/instructions.json');
+Future<InstructionsData> _loadInstructions(GameMode mode) async {
+  String raw = await rootBundle.loadString('config/casino_instructions.json');
+
+  switch (mode) {
+    case GameMode.tresydos:
+      raw = await rootBundle.loadString('config/tresydos_instructions.json');
+    case .robaito:
+      raw = await rootBundle.loadString('config/robaito_instructions.json');
+    default:
+  }
   return InstructionsData.fromJson(jsonDecode(raw));
 }
 
@@ -104,7 +112,7 @@ void _showGameInfo(BuildContext context, GameMode mode) {
         child: SafeArea(
           top: false,
           child: FutureBuilder<InstructionsData>(
-            future: _loadInstructions(),
+            future: _loadInstructions(mode),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CupertinoActivityIndicator());
@@ -165,26 +173,27 @@ void _showGameInfo(BuildContext context, GameMode mode) {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          CupertinoButton.filled(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 14,
-                              horizontal: 10,
+                          if (mode == .casino)
+                            CupertinoButton.filled(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 10,
+                              ),
+                              onPressed: () {
+                                final uuid = Uuid();
+                                context.go(
+                                  '/game/${uuid.v4().substring(0, 6)}/casino/true',
+                                );
+                              },
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(CupertinoIcons.play_fill, size: 18),
+                                  SizedBox(width: 8),
+                                  Text("Tutorial"),
+                                ],
+                              ),
                             ),
-                            onPressed: () {
-                              final uuid = Uuid();
-                              context.go(
-                                '/game/${uuid.v4().substring(0, 6)}/casino/true',
-                              );
-                            },
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(CupertinoIcons.play_fill, size: 18),
-                                SizedBox(width: 8),
-                                Text("Tutorial"),
-                              ],
-                            ),
-                          ),
                         ],
                       ),
                     ],
