@@ -141,4 +141,3 @@ class _GameInfoSheetState extends State<GameInfoSheet> {
     );
   }
 }
-

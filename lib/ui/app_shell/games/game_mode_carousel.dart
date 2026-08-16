@@ -84,15 +84,12 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
 }
 
 Future<InstructionsData> loadInstructions(GameMode mode) async {
-  String raw = await rootBundle.loadString('config/casino_instructions.json');
-
-  switch (mode) {
-    case GameMode.tresydos:
-      raw = await rootBundle.loadString('config/tresydos_instructions.json');
-    case .robaito:
-      raw = await rootBundle.loadString('config/robaito_instructions.json');
-    default:
-  }
+  final path = switch (mode) {
+    GameMode.tresydos => 'assets/config/tresydos_instructions.json',
+    GameMode.robaito => 'assets/config/robaito_instructions.json',
+    GameMode.casino => 'assets/config/casino_instructions.json',
+  };
+  final raw = await rootBundle.loadString(path);
   return InstructionsData.fromJson(jsonDecode(raw));
 }
 
