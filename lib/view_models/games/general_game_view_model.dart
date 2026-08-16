@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
@@ -9,6 +10,7 @@ import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/tutorial_action.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart' hide Action;
 import 'package:flutter/services.dart';
 
@@ -31,6 +33,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   String gid;
   late GameState gameState;
   bool isAnimating = false;
+  final List<CardMoveEvent> pendingFlyEvents = [];
 
   ActionGuard? actionGuard;
   HandleTutorialGameState? handleTutorialOpponentMove;
@@ -68,6 +71,7 @@ class GeneralGameViewModel extends ChangeNotifier {
           .toList();
 
       if (newEvents.isNotEmpty) {
+        pendingFlyEvents.addAll(newEvents);
         // Hide cards for animation
         for (final event in newEvents) {
           hiddenCardIds.add(event.card.id);
@@ -79,6 +83,9 @@ class GeneralGameViewModel extends ChangeNotifier {
 
         gameState = nextState;
         HapticFeedback.heavyImpact();
+        if (nextState.currentTurnPlayerId == me) {
+          SoundService.instance.play(GameSound.yourTurn);
+        }
         selectedCard = null;
         selectedCards = [];
         selectedStacks = [];
@@ -195,19 +202,30 @@ class GeneralGameViewModel extends ChangeNotifier {
     notifyListeners();
     await Future.delayed(const Duration(milliseconds: 300));
 
-    // Update game state after the outbound animation.
-    gameState = await gameEngine.performPlayAction(
+    gameState = gameEngine.performPlayAction(
       gameState,
       cardSelection,
       action,
     );
+    if (!tutorialMode) {
+      gameState = await gameRepo.fs.updateGame(gameState);
+    }
+
+    final actionName = action.runtimeType.toString();
+    if (actionName.contains('Take')) {
+      SoundService.instance.play(GameSound.capture);
+    } else {
+      SoundService.instance.play(GameSound.deal);
+    }
+    if (gameState.gameStatus == GameStatus.gameOver) {
+      SoundService.instance.play(GameSound.win);
+    }
 
     selectedCard = null;
     selectedCards = [];
     selectedStacks = [];
     notifyListeners();
 
-    // Keep the moved cards hidden after the state update so they can animate in.
     await Future.delayed(const Duration(milliseconds: 50));
     hiddenCardIds.clear();
     isAnimating = false;
@@ -217,8 +235,15 @@ class GeneralGameViewModel extends ChangeNotifier {
   //IN GAME ACTION
   InGameAction get inGameAction => gameEngine.getInGameAction(gameState, me);
 
-  void performInGameAction(InGameAction action) {
-    gameEngine.performInGameAction(gameState, action, me);
+  Future<void> performInGameAction(InGameAction action) async {
+    gameState = gameEngine.performInGameAction(gameState, action, me);
+    if (!tutorialMode) {
+      gameState = await gameRepo.fs.updateGame(gameState);
+    }
+    if (action == InGameAction.deal || action == InGameAction.dealSame) {
+      SoundService.instance.play(GameSound.deal);
+    }
+    notifyListeners();
   }
 
   //OUT OF GAME ACTIONS
@@ -247,8 +272,18 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   Future<bool> joinGame() async {
     try {
-      gameState.playersInfo[player.id] = player.toJson();
-      await gameRepo.fs.updateGame(gameState);
+      // Never persist FCM tokens on game docs — only public profile fields.
+      gameState.playersInfo[player.id] = {
+        'id': player.id,
+        'name': player.name,
+      };
+      if (gameEngine.shouldMarkReadyToStart(gameState) &&
+          gameState.gameStatus == GameStatus.waitingForPlayers) {
+        gameState.gameStatus = GameStatus.readyToStart;
+      }
+      if (!tutorialMode) {
+        await gameRepo.fs.updateGame(gameState);
+      }
       notifyListeners();
       return true;
     } catch (e) {
@@ -406,6 +441,8 @@ class GeneralGameViewModel extends ChangeNotifier {
   final GlobalKey myHandKey = GlobalKey();
   final GlobalKey oppHandKey = GlobalKey();
   final GlobalKey playButtonKey = GlobalKey();
+  final GlobalKey addButtonKey = GlobalKey();
+  final GlobalKey takeStackButtonKey = GlobalKey();
   final GlobalKey scoreKey = GlobalKey();
 
   GlobalKey? keyForZone(Zone zone) {

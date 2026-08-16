@@ -25,13 +25,37 @@ class HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final HomeViewModel vm = context.watch<HomeViewModel>();
 
-    if (vm.loading || vm.name == null) {
+    if (vm.loading) {
       return const CupertinoPageScaffold(
         child: SafeArea(
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [CupertinoActivityIndicator(), Text("loading app")],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (vm.name == null) {
+      return CupertinoPageScaffold(
+        child: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text("Could not start the app"),
+                if (vm.error != null)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(vm.error!, textAlign: TextAlign.center),
+                  ),
+                CupertinoButton(
+                  onPressed: () => vm.retry(),
+                  child: const Text("Retry"),
+                ),
+              ],
             ),
           ),
         ),

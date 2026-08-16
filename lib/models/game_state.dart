@@ -21,8 +21,10 @@ GameMode gameModeFrom(String? s) {
     case 'casino':
       return GameMode.casino;
     case 'robaito':
-    default:
       return GameMode.robaito;
+    default:
+      // Fail closed to casino only for legacy docs; prefer GameRegistry for routes.
+      return GameMode.casino;
   }
 }
 

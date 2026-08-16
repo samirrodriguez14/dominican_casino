@@ -1,9 +1,12 @@
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
+import 'package:dominican_casino/ui/animations/deal_annimator.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
@@ -13,6 +16,7 @@ import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model.dart';
+import 'package:dominican_casino/models/round.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -47,8 +51,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
           myDeckKey: initvm.myDeckKey,
           oppDeckKey: initvm.oppDeckKey,
           playButtonKey: initvm.playButtonKey,
-          addButtonKey: initvm.playButtonKey,
-          takeStackButtonKey: initvm.playButtonKey,
+          addButtonKey: initvm.addButtonKey,
+          takeStackButtonKey: initvm.takeStackButtonKey,
           scoreKey: initvm.scoreKey,
         ),
       );
@@ -90,17 +94,45 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
   void _onVmChanged() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (vm.gameState.gameStatus == .gameOver ||
-          (vm.gameState.gameStatus == .inProgress &&
-              vm.gameState.round.roundStatus == .completed)) {
+      if (!mounted) return;
+      if (vm.gameState.gameStatus == GameStatus.gameOver ||
+          (vm.gameState.gameStatus == GameStatus.inProgress &&
+              vm.gameState.round.roundStatus == RoundStatus.completed)) {
         showAppPopup(
           context: context,
           title: "Game Over",
           content: GameStatusSheet(vm: vm),
         );
       }
-      // await _tryPlayEvents();
+      await _flyPendingEvents();
     });
+  }
+
+  Future<void> _flyPendingEvents() async {
+    if (!mounted) return;
+    final events = List<CardMoveEvent>.from(vm.pendingFlyEvents);
+    if (events.isEmpty) return;
+    vm.pendingFlyEvents.clear();
+    for (final event in events.take(6)) {
+      final fromKey = vm.keyForZone(event.from);
+      final toKey = vm.keyForZone(event.to);
+      if (fromKey == null || toKey == null) continue;
+      if (fromKey.currentContext == null || toKey.currentContext == null) {
+        continue;
+      }
+      await CardMoveAnimator.animateCardMove(
+        context: context,
+        vsync: this,
+        fromKey: fromKey,
+        toKey: toKey,
+        child: PlayingCard(
+          playingCardModel: event.card,
+          width: 46,
+          isSelected: false,
+        ),
+        duration: const Duration(milliseconds: 380),
+      );
+    }
   }
 
   @override
@@ -268,33 +300,6 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
             HapticFeedback.mediumImpact();
             showAppPopup(
               context: context,
-              title: "Chat",
-              content: Text("Coming soon...."),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: AppStyle.theme.raisedSurfaceBox(),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Center: Joined As
-                Icon(
-                  CupertinoIcons.chat_bubble,
-                  color: AppStyle.theme.cardBorder,
-                  size: 18,
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        GestureDetector(
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            showAppPopup(
-              context: context,
               title: "Game Status",
               content: GameStatusSheet(vm: vm),
             );
@@ -307,7 +312,6 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Center: Joined As
                 Icon(
                   Icons.keyboard_control_key_sharp,
                   color: AppStyle.theme.cardBorder,

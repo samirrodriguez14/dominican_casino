@@ -34,7 +34,7 @@ class TutorialStep {
     this.expectedCardIds,
     this.allowInteraction = true,
     this.autoAdvance = false,
-    this.showSkipButton = false,
+    this.showSkipButton = true,
     this.showNextButton =true,
     this.onShow,
     required this.blockGameInteraction,

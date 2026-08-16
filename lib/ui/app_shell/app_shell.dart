@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
@@ -16,28 +17,27 @@ class AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final double iconSize = 50;
+    final double iconSize = 36;
+    final l10n = AppLocalizations.of(context);
     return CupertinoTabScaffold(
       tabBuilder: (context, index) {
         return CupertinoTabView(
           builder: (BuildContext context) {
             if (index == 0) {
-              return SettingsScreen();
+              return const SettingsScreen();
             }
             if (index == 1) {
-              return GamesScreen();
+              return const GamesScreen();
             }
             if (index == 2) {
-              return ProfileScreen();
+              return const ProfileScreen();
             }
-            return GamesScreen();
+            return const GamesScreen();
           },
         );
       },
-
       tabBar: CupertinoTabBar(
-        height: 80,
-        // backgroundColor: AppStyle.theme.surface,
+        height: 64,
         border: Border(
           top: BorderSide(
             color: AppStyle.theme.border.withValues(alpha: .5),
@@ -50,28 +50,16 @@ class AppShellState extends State<AppShell> {
         },
         items: [
           BottomNavigationBarItem(
-            icon: AnimatedScale(
-              curve: Curves.easeOutBack,
-              scale: currentIndex == 0 ? 1.3 : 1,
-              duration: const Duration(milliseconds: 750),
-              child: Icon(CupertinoIcons.settings, size: iconSize),
-            ),
+            icon: Icon(CupertinoIcons.settings, size: iconSize),
+            label: l10n.settings,
           ),
           BottomNavigationBarItem(
-            icon: AnimatedScale(
-              curve: Curves.easeOutBack,
-              scale: currentIndex == 1 ? 1.7 : 1.5,
-              duration: const Duration(milliseconds: 750),
-              child: Icon(CupertinoIcons.game_controller, size: iconSize),
-            ),
+            icon: Icon(CupertinoIcons.game_controller, size: iconSize),
+            label: l10n.games,
           ),
           BottomNavigationBarItem(
-            icon: AnimatedScale(
-              curve: Curves.easeOutBack,
-              scale: currentIndex == 2 ? 1.3 : 1,
-              duration: const Duration(milliseconds: 750),
-              child: Icon(CupertinoIcons.profile_circled, size: iconSize),
-            ),
+            icon: Icon(CupertinoIcons.profile_circled, size: iconSize),
+            label: l10n.profile,
           ),
         ],
       ),

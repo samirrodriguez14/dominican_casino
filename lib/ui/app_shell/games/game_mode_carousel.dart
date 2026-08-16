@@ -36,16 +36,19 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
+    final modes = GameMode.values
+        .where((m) => m != GameMode.robaito)
+        .toList();
 
     return SizedBox(
       height: screenHeight * 0.5,
       child: PageView.builder(
         controller: controller,
-        itemCount: GameMode.values.length,
+        itemCount: modes.length,
         itemBuilder: (context, index) {
           final diff = (page - index).abs();
           final scale = (1 - (diff * 0.3)).clamp(0.1, 1.0);
-          final mode = GameMode.values[index];
+          final mode = modes[index];
           return Center(
             child: Transform.scale(
               scale: scale,

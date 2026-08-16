@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -132,7 +133,7 @@ void _showJoinGameDialog(BuildContext context, String mode) {
               Navigator.pop(context);
 
               if (gameId.isNotEmpty) {
-                context.go('/game/$gameId/$mode');
+                context.go(GameRoutes.game(gameId: gameId, gameMode: mode));
               }
             },
           ),
@@ -177,17 +178,9 @@ Future<void> gameEnter(
   GameMode mode,
   bool local,
 ) async {
-  switch (mode) {
-    case GameMode.tresydos:
-      final gid = await vm.newGame(mode, local);
-      if (gid != null && context.mounted)
-        context.go('/game/$gid/tresydos/false');
-      break;
-    case GameMode.casino:
-      final gid = await vm.newGame(mode, local);
-      if (gid != null && context.mounted) context.go('/game/$gid/casino/false');
-      break;
-    case GameMode.robaito:
-      break;
+  if (mode == GameMode.robaito) return;
+  final gid = await vm.newGame(mode, local);
+  if (gid != null && context.mounted) {
+    context.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
   }
 }

@@ -6,14 +6,11 @@ import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tres_dos_play_action_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tres_dos_game_state_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tres_dos_rules_handler.dart';
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_state.dart';
 
 class TresDosGameEngine extends GameEngine {
-  //Orchestrator
-  TresDosGameEngine({required super.gameService});
-
-  //DONE FOR NOW!!!
   @override
   List<PlayAction> getAvailableActions(
     GameState gameState,
@@ -25,13 +22,12 @@ class TresDosGameEngine extends GameEngine {
     );
   }
 
-  ///PERFORM ACTION AND HANDLE END GAME
   @override
-  Future<GameState> performPlayAction(
+  GameState performPlayAction(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
     PlayAction action,
-  ) async {
+  ) {
     ValidateResult result = validateAction(
       gameState,
       currentCardSelection,
@@ -44,24 +40,21 @@ class TresDosGameEngine extends GameEngine {
       throw Exception("Not your turn");
     }
 
-    // HANDLE ACTION
     gameState = TresDosPlayActionHandler.handleAction(
       gameState,
       action,
       currentCardSelection,
     );
 
-    // NEXT PLAYER TURN
     if (gameState.hands[action.performedById]?.length == 5) {
       gameState.currentTurnPlayerId = GameActionHandler.getNextPlayerId(
         gameState,
         action.performedById,
       );
     }
-    // MOVE EVENTS
     final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
     gameState.cardMoveEvents = cardMoveEvents;
-    // // ROUND END
+
     if (TresDosGameStateHandler.roundEnded(gameState, action.performedById)) {
       developer.log("round ended");
       gameState = TresDosGameStateHandler.handleRoundEnded(
@@ -69,15 +62,12 @@ class TresDosGameEngine extends GameEngine {
         action.performedById,
       );
     }
-    //NO MORE CARDS IN DECK
     if (TresDosGameStateHandler.shouldDealSameRound(gameState)) {
       TresDosGameStateHandler.handleShuffleRound(gameState);
     }
-    gameState = await gameService.updateGame(gameState);
     return gameState;
   }
 
-  //FORWARD TO VALIDATE ACTION [GAME RULE HANDLER]
   @override
   ValidateResult validateAction(
     GameState gameState,
@@ -97,39 +87,25 @@ class TresDosGameEngine extends GameEngine {
 
   @override
   InGameAction getInGameAction(GameState gameState, String pid) {
-    int maxPlayers = 2;
-    List<bool> allJoinedVals = [];
-    for (var entry in gameState.playersInfo.entries) {
-      allJoinedVals.add(entry.key != "");
-    }
-    bool allJoined =
-        allJoinedVals.length >= maxPlayers && allJoinedVals.every((v) => v);
-    if (allJoined &&
-        gameState.gameStatus != GameStatus.inProgress &&
-        gameState.gameStatus != GameStatus.gameOver) {
-      gameState.gameStatus = GameStatus.readyToStart;
-      gameService.updateGame(gameState);
-    }
     return GameActionHandler.getInGameAction(gameState, pid);
   }
 
   @override
-  Future<GameState> performInGameAction(
+  GameState performInGameAction(
     GameState state,
     InGameAction action,
     String pid,
-  ) async {
+  ) {
     developer.log("performing in game action: $action");
-    await GameActionHandler.handleGameAction(
-      gameService,
+    final counts = GameRegistry.dealCounts(GameMode.tresydos);
+    return GameActionHandler.handleGameAction(
       state,
       action,
-      5,
-      1,
-      0,
-      1,
+      counts.$1,
+      counts.$2,
+      counts.$3,
+      counts.$4,
       pid,
     );
-    return state;
   }
 }

@@ -1,9 +1,8 @@
 import 'dart:developer' as developer;
 
-import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
 import 'package:dominican_casino/local_player/tresdos_player.dart';
@@ -34,21 +33,21 @@ class LocalPlayer extends ChangeNotifier {
   GameRepo gameRepo;
   GameMode mode;
   late GameEngine engine;
-  LocalPlayer({required this.gameRepo, required this.mode}) {
-    switch (mode) {
-      case .casino:
-        engine = CasinoGameEngine(gameService: gameRepo.fs);
-        break;
-      case .tresydos:
-        engine = TresDosGameEngine(gameService: gameRepo.fs);
-        break;
 
-      default:
-        engine = CasinoGameEngine(gameService: gameRepo.fs);
+  LocalPlayer({required this.gameRepo, required this.mode}) {
+    final created = GameRegistry.createEngine(mode);
+    if (created == null) {
+      throw StateError('No engine for mode $mode');
     }
+    engine = created;
     gameRepo.addListener(_onGameRepoChanged);
     developer.log("LocalPlayer. Mode: $mode, Engine: $engine");
   }
+
+  Future<void> _persist(GameState state) async {
+    await gameRepo.fs.updateGame(state);
+  }
+
   Future<void> _onGameRepoChanged() async {
     try {
       _gameState = gameRepo.gameState!;
@@ -58,17 +57,21 @@ class LocalPlayer extends ChangeNotifier {
         case GameStatus.inProgress:
           switch (_gameState.round.roundStatus) {
             case RoundStatus.playing:
-              //HANDLE DEALING SAME ROUND
               if (_gameState.controllerId == pid &&
+                  _gameState.gameMode == GameMode.casino &&
                   CasinoGameStateHandler.shouldDealSameRound(_gameState)) {
-                await engine.performInGameAction(_gameState, .dealSame, pid);
+                _gameState = engine.performInGameAction(
+                  _gameState,
+                  InGameAction.dealSame,
+                  pid,
+                );
+                await _persist(_gameState);
                 return;
               }
-              //HANDLE PLAY ACTION
               if (_gameState.currentTurnPlayerId != pid) return;
               PossibleSelection bestAction;
               switch (_gameState.gameMode) {
-                case .tresydos:
+                case GameMode.tresydos:
                   bestAction = await TresdosPlayer.tresdosBestAction(
                     pid,
                     _gameState,
@@ -81,35 +84,37 @@ class LocalPlayer extends ChangeNotifier {
                   );
                   break;
               }
-              // developer.log("LocalPlayer._onGameRepoChanged $bestAction");
               await Future.delayed(Duration(seconds: 1));
 
-              _gameState = await engine.performPlayAction(
+              _gameState = engine.performPlayAction(
                 _gameState,
                 bestAction.cardSelection,
                 bestAction.playAction,
               );
+              await _persist(_gameState);
               break;
             case RoundStatus.completed:
-              //HANLDE DEALING NEW ROUND
               if (_gameState.controllerId != pid) return;
-              InGameAction action = InGameAction.shuffle;
-              _gameState = await engine.performInGameAction(
+              _gameState = engine.performInGameAction(
                 _gameState,
-                action,
+                InGameAction.shuffle,
                 pid,
               );
+              await _persist(_gameState);
               break;
             case RoundStatus.readyToDeal:
               if (_gameState.controllerId != pid) return;
-              await engine.performInGameAction(_gameState, .deal, pid);
+              _gameState = engine.performInGameAction(
+                _gameState,
+                InGameAction.deal,
+                pid,
+              );
+              await _persist(_gameState);
           }
         case GameStatus.gameOver:
         case GameStatus.error:
         default:
       }
-
-      // notifyListeners();
     } catch (e) {
       developer.log("LocalPlayer._onGameRepoChanged Error $e");
       notifyListeners();

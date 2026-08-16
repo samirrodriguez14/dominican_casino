@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
@@ -143,11 +144,14 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
 
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: _ActionChipButton(
-                            label: _actionLabel(action),
-                            icon: _actionIcon(action),
-                            primary: isPrimary,
-                            onTap: () => vm.performPlayAction(action),
+                          child: KeyedSubtree(
+                            key: _keyForAction(vm, action),
+                            child: _ActionChipButton(
+                              label: _actionLabel(action),
+                              icon: _actionIcon(action),
+                              primary: isPrimary,
+                              onTap: () => vm.performPlayAction(action),
+                            ),
                           ),
                         );
                       }),
@@ -157,6 +161,20 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
               },
             ),
     );
+  }
+
+  GlobalKey? _keyForAction(GeneralGameViewModel vm, dynamic action) {
+    final name = action.runtimeType.toString();
+    switch (name) {
+      case 'AddCardsAction':
+      case 'AddCardStackAction':
+      case 'AddTableCardsAction':
+        return vm.addButtonKey;
+      case 'TakeStackAction':
+        return vm.takeStackButtonKey;
+      default:
+        return vm.playButtonKey;
+    }
   }
 
   String _actionLabel(dynamic action) {
@@ -218,7 +236,9 @@ class _TurnIndicator extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isMyTurn ? "Your Turn" : "Opponent Turn",
+            isMyTurn
+                ? AppLocalizations.of(context).yourTurn
+                : AppLocalizations.of(context).opponentTurn,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
         ],

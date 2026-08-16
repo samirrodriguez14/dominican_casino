@@ -2,7 +2,6 @@ import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/services/game_service.dart';
 
 class CurrentCardSelection {
   String pid;
@@ -21,39 +20,48 @@ class CurrentCardSelection {
   }
 }
 
+/// Pure game rules orchestrator. Callers persist [GameState] via [GameService].
 abstract class GameEngine {
-  GameService gameService;
-  GameEngine({required this.gameService});
-  //GET PLAY ACTIONS
   List<PlayAction> getAvailableActions(
     GameState gameState,
     CurrentCardSelection currentCardSelection,
   );
 
-  //VALIDATE PLAY ACTIONS
   ValidateResult validateAction(
     GameState state,
     CurrentCardSelection cardSelection,
     PlayAction action,
   );
-  //PERFORM PLAY ACTIONS
-  Future<GameState> performPlayAction(
+
+  /// Mutates and returns state. Does not write to the network.
+  GameState performPlayAction(
     GameState state,
     CurrentCardSelection cardSelection,
     PlayAction action,
   );
 
-  //GET INGAME ACTIONS
+  /// Query only — no side effects / no persistence.
   InGameAction getInGameAction(GameState gameState, String pid);
 
-  //PERFORM INGAME ACTIONS
-  Future<GameState> performInGameAction(
+  /// Mutates and returns state. Does not write to the network.
+  GameState performInGameAction(
     GameState state,
     InGameAction action,
     String pid,
   );
-}
 
+  /// When both seats are filled and the game has not started, callers should
+  /// set [GameStatus.readyToStart] and persist (do not do that inside getters).
+  bool shouldMarkReadyToStart(GameState gameState) {
+    const maxPlayers = 2;
+    if (gameState.gameStatus == GameStatus.inProgress ||
+        gameState.gameStatus == GameStatus.gameOver) {
+      return false;
+    }
+    final joined = gameState.playersInfo.keys.where((k) => k.isNotEmpty);
+    return joined.length >= maxPlayers;
+  }
+}
 
 class ValidateResult {
   bool result;

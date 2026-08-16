@@ -65,6 +65,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '932020449632',
     projectId: 'dominican-casino',
     storageBucket: 'dominican-casino.firebasestorage.app',
-    iosBundleId: 'com.example.dominicanCasino',
+    iosBundleId: 'com.sr2.dominicanCasino',
   );
 }

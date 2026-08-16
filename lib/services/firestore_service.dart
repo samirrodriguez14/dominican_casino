@@ -3,56 +3,23 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/services/game_service.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/game_state.dart';
 
 class FirestoreService extends GameService {
   final CollectionReference _games = FirebaseFirestore.instance.collection(
     'games',
   );
-  final FirebaseMessaging messaging = FirebaseMessaging.instance;
+  final CollectionReference _users = FirebaseFirestore.instance.collection(
+    'users',
+  );
 
-  // String? token;
-  // StreamSubscription<String>? _tokenRefreshSub;
-  // Future<void> initNotifications() async {
-  //   final messaging = FirebaseMessaging.instance;
-  //   final settings = await messaging.requestPermission(
-  //     alert: true,
-  //     badge: true,
-  //     sound: true,
-  //     provisional: false,
-  //   );
-  //   if (settings.authorizationStatus != AuthorizationStatus.authorized) return;
-  //   final token = await messaging.getToken();
-  //   if (token != null) {
-  //     await saveToken(token, "");
-  //   }
-  //   _tokenRefreshSub?.cancel();
-  //   _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
-  //     await saveToken(newToken, "");
-  //   });
-  // }
-
-  Future<String?> getDeviceToken() async {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-    NotificationSettings settings = await messaging.requestPermission();
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      String? token = await messaging.getToken();
-      print("FCM Token: $token");
-      return token;
-    }
-
-    return null;
-  }
-
-  Future<void> saveToken(String pid, String gid) async {
-    String? token = await FirebaseMessaging.instance.getToken();
-
-    if (token != null) {
-      await _games.doc(gid).update({'playersInfo.$pid. ': token});
-    }
+  /// Store FCM token on the user profile — never on game documents.
+  Future<void> saveUserToken(String uid, String token, String? displayName) async {
+    await _users.doc(uid).set({
+      'fcmToken': token,
+      if (displayName != null) 'displayName': displayName,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -70,7 +37,6 @@ class FirestoreService extends GameService {
   @override
   Stream<GameState?> streamGame(String gameId) {
     return _games.doc(gameId).snapshots().map((snap) {
-      // developer.log('updateGame: ${snap.data().toString() != ""}');
       if (!snap.exists) return null;
       return GameState.fromMap(
         Map<String, dynamic>.from(snap.data() as Map<String, dynamic>),
