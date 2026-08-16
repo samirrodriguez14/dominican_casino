@@ -116,31 +116,13 @@ flutter build web --release
 - Bonus points for special combinations
 - Different games have unique scoring mechanics
 
-## 🏗️ Architecture
+## Documentation (contracts)
 
-The app follows a clean architecture pattern:
+Engineering contracts live in [`docs/`](docs/README.md). Use them when adding games, changing Firestore, or preparing an App Store build. The README below is a product overview; if it disagrees with `docs/`, `docs/` wins.
 
-```
-lib/
-├── app.dart              # Main app widget and routing
-├── main.dart             # App initialization and providers
-├── data/                 # Data layer (DTOs, serialization)
-├── models/               # Domain models (GameState, Player, etc.)
-├── repositories/         # Data access layer (Firestore integration)
-├── services/             # External services (Firebase, etc.)
-├── game_control/         # Game logic and engines
-├── ui/                   # UI layer (screens, widgets)
-├── style/                # Theming and styling
-└── view_models/          # Presentation logic (Provider models)
-```
+## Architecture
 
-### Key Components
-
-- **Game Engines**: Handle game-specific logic for each variant
-- **Real-time Sync**: Firestore listeners for live game updates
-- **Push Notifications**: Firebase Cloud Messaging integration
-- **Deep Linking**: App Links for game invites
-- **State Management**: Provider pattern for reactive UI updates
+Flutter UI (Provider + go_router) → game engines → full-document Firestore `games/{id}`. Cloud Functions send turn push notifications only; they do not validate moves. Identity is a local player id, not Firebase Auth. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## 🔧 Configuration
 

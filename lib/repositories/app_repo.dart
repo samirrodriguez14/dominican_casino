@@ -100,7 +100,7 @@ class AppRepo extends ChangeNotifier {
   }
 
   static Future<List<GameInfo>> loadGames() async {
-    final jsonString = await rootBundle.loadString('config/games.json');
+    final jsonString = await rootBundle.loadString('assets/config/games.json');
 
     final jsonData = jsonDecode(jsonString);
 

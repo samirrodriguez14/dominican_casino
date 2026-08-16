@@ -145,7 +145,7 @@ class _GameInfoSheetState extends State<GameInfoSheet> {
 }
 
 Future<InstructionsData> _loadInstructions() async {
-  final raw = await rootBundle.loadString('config/instructions.json');
+  final raw = await rootBundle.loadString('assets/config/instructions.json');
 
   return InstructionsData.fromJson(jsonDecode(raw));
 }
