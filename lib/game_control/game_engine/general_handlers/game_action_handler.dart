@@ -5,11 +5,10 @@ import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/round.dart';
-import 'package:dominican_casino/services/game_service.dart';
 
 class GameActionHandler {
-  static Future<void> handleGameAction(
-    GameService gameService,
+  /// Pure mutation — callers persist the returned state.
+  static GameState handleGameAction(
     GameState gameState,
     InGameAction inGameAction,
     int cardsPerPlayer,
@@ -17,21 +16,20 @@ class GameActionHandler {
     int cardsPerPlayerRedeal,
     int cardsInPlayingAreaRedeal,
     String pid,
-  ) async {
+  ) {
     gameState.cardMoveEvents = [];
+    gameState.settlementEvents = [];
 
     switch (inGameAction) {
       case InGameAction.start:
         gameState.started = true;
         gameState.gameStatus = GameStatus.inProgress;
         gameState.round.roundStatus = RoundStatus.readyToDeal;
-        await gameService.updateGame(gameState);
-        return;
+        gameState.deck = Deck.shuffle(Deck.standard());
+        return gameState;
 
       case InGameAction.shuffle:
-        final newGameState = shuffleAction(gameState, pid);
-        await gameService.updateGame(newGameState);
-        return;
+        return shuffleAction(gameState, pid);
 
       case InGameAction.share:
       case InGameAction.deal:
@@ -43,8 +41,7 @@ class GameActionHandler {
         );
         newGameState.round.roundStatus = RoundStatus.playing;
         newGameState.currentTurnPlayerId = getNextPlayerId(newGameState, pid);
-        await gameService.updateGame(newGameState);
-        return;
+        return newGameState;
 
       case InGameAction.dealSame:
         final newGameState = dealSameAction(
@@ -55,11 +52,10 @@ class GameActionHandler {
         );
         newGameState.round.roundStatus = RoundStatus.playing;
         newGameState.currentTurnPlayerId = getNextPlayerId(newGameState, pid);
-        await gameService.updateGame(newGameState);
-        return;
+        return newGameState;
 
       default:
-        return;
+        return gameState;
     }
   }
 
@@ -85,7 +81,9 @@ class GameActionHandler {
     }
     final cardsToTable = gameState.deck.sublist(0, cardsInPlayingArea);
     gameState.deck.removeRange(0, cardsInPlayingArea);
-    gameState.playingArea.addAll(List.of(cardsToTable));
+    for (final c in cardsToTable) {
+      gameState.placeCardOnTable(c);
+    }
 
     gameState.cardMoveEvents.addAll(
       EventHandler.generateDealToTableEvent(cardsToTable, pid),
@@ -119,7 +117,9 @@ class GameActionHandler {
 
     final tableCards = gameState.deck.sublist(0, cardsInPlayingArea);
     gameState.deck.removeRange(0, cardsInPlayingArea);
-    gameState.playingArea.addAll(tableCards);
+    for (final c in tableCards) {
+      gameState.placeCardOnTable(c);
+    }
 
     gameState.cardMoveEvents.addAll(
       EventHandler.generateDealToTableEvent(tableCards, pid),
@@ -155,7 +155,9 @@ class GameActionHandler {
                 : InGameAction.waiting;
 
           case RoundStatus.playing:
-            if (CasinoGameStateHandler.shouldDealSameRound(gameState)) {
+            // dealSame is Casino-only; Tres y Dos reshuffles via its state handler.
+            if (gameState.gameMode == GameMode.casino &&
+                CasinoGameStateHandler.shouldDealSameRound(gameState)) {
               return gameState.controllerId == pid
                   ? InGameAction.dealSame
                   : InGameAction.waiting;
@@ -183,6 +185,7 @@ class GameActionHandler {
 
     gameState.playingArea.clear();
     gameState.playingAreaStacks.clear();
+    gameState.tableOrder.clear();
 
     gameState.hands.clear();
 
@@ -195,11 +198,13 @@ class GameActionHandler {
     gameState.extraPointsHolderId = '';
     gameState.lastTookCardId = '';
     gameState.cardMoveEvents = [];
+    gameState.settlementEvents = [];
 
     gameState.currentTurnPlayerId = '';
     gameState.controllerId = pid;
 
     gameState.round.roundStatus = RoundStatus.readyToDeal;
+    gameState.round.nextAcknowledged = false;
 
     return gameState;
   }

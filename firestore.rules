@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // FCM tokens and profile — never on game docs.
+    match /users/{uid} {
+      allow read: if isSelf(uid);
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly([
+          'fcmToken',
+          'displayName',
+          'name',
+          'avatarId',
+          'completedTutorial',
+          'updatedAt',
+        ]);
+      allow delete: if isSelf(uid);
+    }
+
+    // Match documents. Authenticated clients may still write full state
+    // until server-side applyMove ships — but anonymous guests cannot.
+    match /games/{gid} {
+      allow create: if signedIn()
+        && request.resource.data.controllerId == request.auth.uid;
+      allow read: if signedIn();
+      allow update: if signedIn();
+      allow delete: if signedIn()
+        && resource.data.controllerId == request.auth.uid;
+
+      match /signals/{sid} {
+        allow read, write: if signedIn();
+      }
+    }
+  }
+}

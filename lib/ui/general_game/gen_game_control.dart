@@ -21,15 +21,17 @@ class _GenGameControlState extends State<GenGameControl> {
 
   @override
   Widget build(BuildContext context) {
-    final inGameAction = context.watch<GeneralGameViewModel>().inGameAction;
-    if (inGameAction != InGameAction.noAction) {
-      return Container(
-        decoration: AppStyle.theme.raisedSurfaceBox(),
+    final vm = context.watch<GeneralGameViewModel>();
 
-        child: _buildInGameActionButton(context, vm, inGameAction),
-      );
+    // Only surface controls after motion finishes.
+    if (!vm.showInGameControl) {
+      return const SizedBox.shrink();
     }
-    return SizedBox();
+
+    return Container(
+      decoration: AppStyle.theme.raisedSurfaceBox(),
+      child: _buildInGameActionButton(context, vm, vm.inGameAction),
+    );
   }
 
   Widget _buildInGameActionButton(

@@ -29,6 +29,7 @@ Today there are already two factories (router + `LocalPlayer`). That duplication
 
 - `Player` lives in SharedPreferences (`player_id` key) via `AppRepo`.
 - Host is **not** in `playersInfo` at create time. Host joins in `GeneralGameViewModel.joinGame()`.
+- On-device AI (`LocalPlayer`) is in-memory only. Recreate it in `joinGame` from `isLocalBot` / `botPlayerId` (legacy games: opponent named `Pulilo`). Do not assume a bot from `createNewGame` still exists after a process kill.
 
 **Contract:** any feature that assumes “creator is already a player” is a bug.
 
@@ -68,7 +69,7 @@ Do not construct a second `FirestoreService()` in the router (current code does)
 ## Performance contracts
 
 - `GameState` is a god object streamed on every snapshot. Do not add large blobs (chat history, replay logs) onto the same document.
-- `cardMoveEvents` is the animation bus. Append, do not rewrite history without a client-side id filter (`lastPlayedIds`).
+- `cardMoveEvents` is the play/capture/deal animation bus. End-of-round leftover collects use `settlementEvents` (separate phase). Append, do not rewrite history without a client-side id filter (`lastPlayedIds`).
 - `getInGameAction` must stay a **pure read**. Writing `readyToStart` from a getter (current Casino/Tres y Dos engines) is forbidden in new code; move that to an explicit join/ready method.
 - Full-document `set` is last-writer-wins. New concurrent writes (join vs play) must use transactions or `update` with field paths before shipping ranked play.
 

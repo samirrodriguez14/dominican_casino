@@ -1,239 +1,322 @@
-import 'dart:convert';
 import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/instructions.dart';
-import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
+import 'package:flutter/physics.dart';
+
+/// Casino starts on top; Tres y Dos sits stacked underneath.
+const gameModeCarouselModes = <GameMode>[GameMode.casino, GameMode.tresydos];
 
 class GameModeCarousel extends StatefulWidget {
-  const GameModeCarousel({super.key});
+  const GameModeCarousel({
+    super.key,
+    this.onModeChanged,
+    this.initialIndex = 0,
+  });
+
+  final ValueChanged<GameMode>? onModeChanged;
+  final int initialIndex;
 
   @override
   State<GameModeCarousel> createState() => _GameModeCarouselState();
 }
 
-class _GameModeCarouselState extends State<GameModeCarousel> {
-  final PageController controller = PageController(
-    viewportFraction: 0.7,
-    initialPage: 1,
-  );
+class _CardPose {
+  const _CardPose({
+    required this.offset,
+    required this.scale,
+    required this.angle,
+  });
 
-  double page = 1;
+  final Offset offset;
+  final double scale;
+  final double angle;
 
-  @override
-  void initState() {
-    super.initState();
-    controller.addListener(() {
-      setState(() {
-        page = controller.page ?? 0;
-      });
-    });
+  static _CardPose lerp(_CardPose a, _CardPose b, double t) {
+    return _CardPose(
+      offset: Offset.lerp(a.offset, b.offset, t)!,
+      scale: a.scale + (b.scale - a.scale) * t,
+      angle: a.angle + (b.angle - a.angle) * t,
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-
-    return SizedBox(
-      height: screenHeight * 0.5,
-      child: PageView.builder(
-        controller: controller,
-        itemCount: GameMode.values.length,
-        itemBuilder: (context, index) {
-          final diff = (page - index).abs();
-          final scale = (1 - (diff * 0.3)).clamp(0.1, 1.0);
-          final mode = GameMode.values[index];
-          return Center(
-            child: Transform.scale(
-              scale: scale,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    decoration: AppStyle.theme.raisedSurfaceBox(),
-                    child: GameModeCard(mode: mode),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    spacing: 16,
-                    children: [
-                      CupertinoButton(
-                        padding: const EdgeInsets.all(12),
-                        color: AppStyle.theme.border,
-                        borderRadius: BorderRadius.circular(
-                          AppStyle.theme.radius,
-                        ),
-                        onPressed: () => _showGameInfo(context, mode),
-                        child: Text("How to play", style: AppStyle.theme.title),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+  /// Quadratic arc so the card sweeps out, then slides back under.
+  static _CardPose arc(_CardPose a, _CardPose mid, _CardPose b, double t) {
+    final u = 1 - t;
+    return _CardPose(
+      offset:
+          a.offset * (u * u) + mid.offset * (2 * u * t) + b.offset * (t * t),
+      scale: a.scale * (u * u) + mid.scale * (2 * u * t) + b.scale * (t * t),
+      angle: a.angle * (u * u) + mid.angle * (2 * u * t) + b.angle * (t * t),
     );
   }
 }
 
-Future<InstructionsData> loadInstructions(GameMode mode) async {
-  final path = switch (mode) {
-    GameMode.tresydos => 'assets/config/tresydos_instructions.json',
-    GameMode.robaito => 'assets/config/robaito_instructions.json',
-    GameMode.casino => 'assets/config/casino_instructions.json',
-  };
-  final raw = await rootBundle.loadString(path);
-  return InstructionsData.fromJson(jsonDecode(raw));
-}
+class _GameModeCarouselState extends State<GameModeCarousel>
+    with SingleTickerProviderStateMixin {
+  late int _frontIndex;
+  double _dragDx = 0;
+  bool _dragging = false;
+  bool _restacking = false;
+  bool _dismissToLeft = true;
+  bool _howToOpen = false;
 
-void _showGameInfo(BuildContext context, GameMode mode) {
-  final theme = AppStyle.theme;
+  late final AnimationController _anim;
+  final GlobalKey _frontCardKey = GlobalKey();
 
-  showCupertinoModalPopup(
-    context: context,
-    builder: (context) {
-      return Container(
-        height: MediaQuery.of(context).size.height * .78,
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
-        decoration: BoxDecoration(
-          color: theme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: FutureBuilder<InstructionsData>(
-            future: loadInstructions(mode),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CupertinoActivityIndicator());
-              }
+  static const _dismissThreshold = 110.0;
 
-              final data = snapshot.data!;
+  /// Peek pose for the under-card — offset + tilt so the next game is visible.
+  static const _backRest = _CardPose(
+    offset: Offset(22, 16),
+    scale: 0.94,
+    angle: 0.12, // ~7°
+  );
+  static const _frontRest = _CardPose(offset: Offset.zero, scale: 1, angle: 0);
 
-              return Column(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.muted.withValues(alpha: .4),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
+  @override
+  void initState() {
+    super.initState();
+    _frontIndex = widget.initialIndex.clamp(
+      0,
+      gameModeCarouselModes.length - 1,
+    );
+    _anim = AnimationController.unbounded(vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onModeChanged?.call(gameModeCarouselModes[_frontIndex]);
+    });
+  }
 
-                  const SizedBox(height: 16),
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
 
-                  Text(
-                    "How to Play",
-                    style: theme.title.copyWith(fontSize: 28),
-                  ),
+  GameMode get _frontMode => gameModeCarouselModes[_frontIndex];
+  GameMode get _backMode =>
+      gameModeCarouselModes[(_frontIndex + 1) % gameModeCarouselModes.length];
 
-                  const SizedBox(height: 14),
+  void _onDragStart(DragStartDetails _) {
+    if (_howToOpen || _anim.isAnimating || _restacking) return;
+    _dragging = true;
+  }
 
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: data.sections.map((section) {
-                          return _PopupInstructionSection(section: section);
-                        }).toList(),
-                      ),
-                    ),
-                  ),
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (!_dragging || _howToOpen || _anim.isAnimating || _restacking) return;
+    setState(() => _dragDx += details.delta.dx);
+  }
 
-                  const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: .center,
-                    spacing: 10,
-                    children: [
-                      Row(
-                        children: [
-                          CupertinoButton.filled(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 14,
-                              horizontal: 10,
-                            ),
-                            onPressed: () => Navigator.pop(context),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(CupertinoIcons.xmark, size: 18),
-                                SizedBox(width: 8),
-                                Text("Got it"),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          if (mode == .casino)
-                            CupertinoButton.filled(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 10,
-                              ),
-                              onPressed: () {
-                                final uuid = Uuid();
-                                context.go(
-                                  '/game/${uuid.v4().substring(0, 6)}/casino/true',
-                                );
-                              },
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(CupertinoIcons.play_fill, size: 18),
-                                  SizedBox(width: 8),
-                                  Text("Tutorial"),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
+  Future<void> _onDragEnd(DragEndDetails details) async {
+    if (!_dragging) return;
+    _dragging = false;
+
+    final vx = details.velocity.pixelsPerSecond.dx;
+    final shouldDismissLeft = _dragDx < -_dismissThreshold || vx < -800;
+    final shouldDismissRight = _dragDx > _dismissThreshold || vx > 800;
+
+    if (shouldDismissLeft) {
+      await _restackUnder(toLeft: true);
+    } else if (shouldDismissRight) {
+      await _restackUnder(toLeft: false);
+    } else {
+      await _springBack();
+    }
+  }
+
+  Future<void> _springBack() async {
+    final spring = SpringDescription(mass: 1, stiffness: 180, damping: 20);
+    final sim = SpringSimulation(spring, _dragDx, 0, 0);
+    void tick() {
+      if (!mounted) return;
+      setState(() => _dragDx = _anim.value);
+    }
+
+    _anim.addListener(tick);
+    await _anim.animateWith(sim);
+    _anim.removeListener(tick);
+    if (!mounted) return;
+    setState(() => _dragDx = 0);
+  }
+
+  Future<void> _restackUnder({required bool toLeft}) async {
+    _dismissToLeft = toLeft;
+    _restacking = true;
+    _anim.value = 0;
+
+    void tick() {
+      if (!mounted) return;
+      setState(() {});
+    }
+
+    _anim.addListener(tick);
+    await _anim.animateTo(
+      1,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeInOutCubic,
+    );
+    _anim.removeListener(tick);
+    if (!mounted) return;
+
+    setState(() {
+      if (toLeft) {
+        _frontIndex = (_frontIndex + 1) % gameModeCarouselModes.length;
+      } else {
+        _frontIndex =
+            (_frontIndex - 1 + gameModeCarouselModes.length) %
+            gameModeCarouselModes.length;
+      }
+      _dragDx = 0;
+      _restacking = false;
+      _anim.value = 0;
+    });
+    widget.onModeChanged?.call(gameModeCarouselModes[_frontIndex]);
+  }
+
+  _CardPose _frontPoseWhileDragging() {
+    return _CardPose(
+      offset: Offset(_dragDx, _dragDx.abs() * 0.03),
+      scale: 1,
+      angle: (_dragDx / 650).clamp(-0.24, 0.24),
+    );
+  }
+
+  /// Under-card eases toward front as the user drags, but stays tilted.
+  _CardPose _backPoseWhileDragging() {
+    final progress = (_dragDx.abs() / _dismissThreshold).clamp(0.0, 1.0);
+    return _CardPose.lerp(_backRest, _frontRest, progress * 0.35);
+  }
+
+  (_CardPose front, _CardPose back, bool dismissedUnder) _restackPoses(
+    double cardWidth,
+  ) {
+    final t = _anim.value.clamp(0.0, 1.0);
+    final start = _frontPoseWhileDragging();
+    final side = _dismissToLeft ? -1.0 : 1.0;
+    final mid = _CardPose(
+      offset: Offset(side * cardWidth * 0.55, -18),
+      scale: 0.97,
+      angle: side * -0.28,
+    );
+    // End pose matches the peek under the new front card.
+    final end = _backRest;
+    final front = _CardPose.arc(start, mid, end, t);
+    final back = _CardPose.lerp(
+      _backPoseWhileDragging(),
+      _frontRest,
+      Curves.easeOutCubic.transform(t),
+    );
+    // Halfway through, the sweeping card slips under the rising one.
+    return (front, back, t > 0.48);
+  }
+
+  Future<void> _openHowTo(GameMode mode, double cardWidth) async {
+    if (_howToOpen || _restacking || _anim.isAnimating) return;
+
+    Rect? anchor;
+    final box = _frontCardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box != null && box.hasSize) {
+      final offset = box.localToGlobal(Offset.zero);
+      anchor = offset & box.size;
+    }
+
+    setState(() => _howToOpen = true);
+    await showGameModeHowTo(
+      context,
+      mode,
+      cardWidth: cardWidth,
+      anchor: anchor,
+    );
+    if (!mounted) return;
+    setState(() => _howToOpen = false);
+  }
+
+  Widget _posedCard({
+    required GameMode mode,
+    required _CardPose pose,
+    required double cardWidth,
+    required bool interactive,
+    GlobalKey? anchorKey,
+  }) {
+    return IgnorePointer(
+      ignoring: !interactive || _howToOpen,
+      child: Opacity(
+        opacity: _howToOpen ? 0 : 1,
+        child: Transform.translate(
+          offset: pose.offset,
+          child: Transform.rotate(
+            angle: pose.angle,
+            child: Transform.scale(
+              scale: pose.scale,
+              child: SizedBox(
+                key: anchorKey,
+                width: cardWidth,
+                child: GameModeCard(
+                  mode: mode,
+                  onHowToPlay: () => _openHowTo(mode, cardWidth),
+                ),
+              ),
+            ),
           ),
         ),
-      );
-    },
-  );
-}
-
-class _PopupInstructionSection extends StatelessWidget {
-  final InstructionSection section;
-
-  const _PopupInstructionSection({required this.section});
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth * 0.78).clamp(220.0, 300.0);
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.background,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(section.title, style: theme.title.copyWith(fontSize: 22)),
-          const SizedBox(height: 10),
+        late final _CardPose frontPose;
+        late final _CardPose backPose;
+        late final bool dismissedUnder;
 
-          for (final text in section.body) ...[
-            Text(text, style: theme.body.copyWith(fontSize: 17, height: 1.35)),
-            const SizedBox(height: 8),
-          ],
-        ],
-      ),
+        if (_restacking) {
+          final poses = _restackPoses(cardWidth);
+          frontPose = poses.$1;
+          backPose = poses.$2;
+          dismissedUnder = poses.$3;
+        } else {
+          frontPose = _frontPoseWhileDragging();
+          backPose = _backPoseWhileDragging();
+          dismissedUnder = false;
+        }
+
+        final under = _posedCard(
+          mode: dismissedUnder ? _frontMode : _backMode,
+          pose: dismissedUnder ? frontPose : backPose,
+          cardWidth: cardWidth,
+          interactive: false,
+        );
+        final over = _posedCard(
+          mode: dismissedUnder ? _backMode : _frontMode,
+          pose: dismissedUnder ? backPose : frontPose,
+          cardWidth: cardWidth,
+          interactive: !_restacking && !_howToOpen,
+          anchorKey: !_restacking && !dismissedUnder ? _frontCardKey : null,
+        );
+
+        return GestureDetector(
+          onHorizontalDragStart: _onDragStart,
+          onHorizontalDragUpdate: _onDragUpdate,
+          onHorizontalDragEnd: _onDragEnd,
+          behavior: HitTestBehavior.translucent,
+          child: Center(
+            child: SizedBox(
+              // Room for the tilted under-card peek.
+              width: cardWidth + 48,
+              height: cardWidth * (3.5 / 2.5) + 36,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [under, over],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

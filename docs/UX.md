@@ -26,16 +26,22 @@ Casino in-game overlay: `lib/tutorial/tutorial_casino_steps.dart` + `TutorialCas
 
 ## Motion and sound
 
-Live motion: hide moving cards, ~300ms delay, haptic (`GeneralGameViewModel`). Tab `AnimatedScale`. Tutorial fade.
+**Motion model (do not patch around this):**
 
-Unused (wire or delete, do not leave both):
+1. Capture card origins from current keys.
+2. Mark card ids **in flight**.
+3. Commit the new `GameState` so destination slots exist in layout (invisible via `FlightAwareCard` / opacity — never scale-to-0 for flights).
+4. Neighbors slide via `SlidingCardLayout` / `AnimatedPositioned`.
+5. Overlay flies to the **destination card key**, not the zone center.
+6. Clear in-flight → card reveals in place.
 
-- `lib/ui/animations/deal_annimator.dart` (`CardMoveAnimator`)
-- `lib/ui/animations/animated_move_card.dart`
+Owned by `CardMotionController` + `CardFlightAnimator`. Local and remote updates share `_commitStateWithMotion`.
 
-**Contract:** deal, capture, illegal tap, win, and your-turn each get a short sound + haptic. Respect Reduce Motion (skip long flights). No audio package is in `pubspec.yaml` yet; add `audioplayers` (or equivalent) with assets under `assets/sounds/` registered in pubspec.
+**Shuffle overlay (not the flight protocol):** Start and between-round Shuffle play a local gather → wash → square sequence via `ShuffleAnimator`. Cards fly from the shoe and/or collected piles into the table center, mill face-down, then stack on the dealing deck. No `cardMoveEvents` — shuffle mints a new deck. `GameSound.shuffle` plays at wash start. Deal/play/capture stay on `cardMoveEvents`.
 
-Route transitions: use a consistent Cupertino slide; do not mix Material and Cupertino transitions.
+Sounds: `SoundService` + `assets/sounds/`. Prompts for ElevenLabs: [SOUND_PROMPTS.md](SOUND_PROMPTS.md).
+
+Route transitions: use a consistent Cupertino slide.
 
 ## Copy and locale
 

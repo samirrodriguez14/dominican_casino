@@ -4,6 +4,7 @@ import 'package:dominican_casino/style/casino_theme.dart';
 import 'package:dominican_casino/style/felt_walnut_theme.dart';
 // import 'package:dominican_casino/style/green_table_theme.dart';
 import 'package:dominican_casino/style/midnight_theme.dart';
+import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class AppStyle {
@@ -15,6 +16,9 @@ abstract class AppTheme {
 
   String get cardBack;
   String get appLogo;
+
+  /// Borderless fill for the home login card. Defaults to [cardBack].
+  String get loginCardBack => cardBack;
   // ---- Base colors ----
   Color get background;
   Color get surface;
@@ -77,10 +81,14 @@ CupertinoThemeData buildCupertinoTheme(AppTheme theme) {
 
 enum Theme {
   feltWaltnut,
+  sage,
   casino,
   midnight,
   //  casinoLight, greenTable, dominican
 }
+
+/// Themes the player already owns (selectable in Profile).
+const ownedThemes = <Theme>[Theme.feltWaltnut, Theme.sage];
 
 enum Cardtheme { blue, dark, wood }
 
@@ -88,7 +96,8 @@ String themeLabel(Theme themeType) {
   switch (themeType) {
     case Theme.feltWaltnut:
       return 'Felt Walnut';
-
+    case Theme.sage:
+      return 'Sage';
     case Theme.casino:
       return 'Casino';
     case Theme.midnight:
@@ -106,6 +115,8 @@ AppTheme themeFromEnum(Theme theme) {
   switch (theme) {
     case Theme.feltWaltnut:
       return FeltWalnutTheme();
+    case Theme.sage:
+      return SageTheme();
     case Theme.casino:
       return CasinoTheme();
     case Theme.midnight:

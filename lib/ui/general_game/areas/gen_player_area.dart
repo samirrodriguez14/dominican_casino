@@ -1,4 +1,6 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -15,7 +17,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
 
   @override
   Widget build(BuildContext context) {
-    final highlightTurn = vm.isMyTurn;
+    final highlightTurn = vm.canPlayTurn;
     return Container(
       key: vm.myHandKey,
       decoration: AppStyle.theme.playerSectionBox(
@@ -76,8 +78,10 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                         clipBehavior: Clip.none,
                         children: [
                           for (int i = 0; i < count; i++)
-                            Positioned(
+                            AnimatedPositioned(
                               key: ValueKey(cards[i].id),
+                              duration: const Duration(milliseconds: 280),
+                              curve: Curves.easeOutCubic,
                               left: i * gap,
                               top: vm.selectedCard == cards[i]
                                   ? 0
@@ -89,12 +93,13 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                                   transform: vm.selectedCard == cards[i]
                                       ? Matrix4.translationValues(0, -12, 0)
                                       : Matrix4.identity(),
-                                  child: AnimatedScale(
-                                    scale: vm.isCardHidden(cards[i])
-                                        ? 0.0
-                                        : 1.0,
-                                    duration: const Duration(milliseconds: 400),
-                                    curve: Curves.easeOut,
+                                  child: FlightAwareCard(
+                                    key: vm.keyForCard(
+                                      cards[i].id,
+                                      CardSlot.myHand,
+                                    ),
+                                    card: cards[i],
+                                    inFlight: vm.motion.isInFlight(cards[i].id),
                                     child: PlayingCard(
                                       playingCardModel: cards[i],
                                       width: cardWidth,
@@ -121,12 +126,12 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
 
   Widget _buildPlayControls(BuildContext context, GeneralGameViewModel vm) {
     final actions = vm.possiblePlayActions;
-    final isMyTurn = vm.isMyTurn && !vm.isAnimating;
+    final canPlay = vm.canPlayTurn;
 
     return SizedBox(
       height: 42,
-      child: actions.isEmpty || !vm.isMyTurn
-          ? Center(child: _TurnIndicator(isMyTurn: isMyTurn))
+      child: actions.isEmpty || !canPlay
+          ? Center(child: _TurnIndicator(isMyTurn: canPlay))
           : LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
@@ -134,29 +139,79 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minWidth: constraints.maxWidth),
                     child: Row(
-                      key: vm.playButtonKey,
-
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(actions.length, (index) {
-                        final action = actions[index];
-                        final isPrimary = index == 0;
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: _ActionChipButton(
-                            label: _actionLabel(action),
-                            icon: _actionIcon(action),
-                            primary: isPrimary,
-                            onTap: () => vm.performPlayAction(action),
+                      children: [
+                        for (var index = 0; index < actions.length; index++)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: KeyedSubtree(
+                              key: _widgetKeyForAction(vm, actions, index),
+                              child: _ActionChipButton(
+                                label: _actionLabel(actions[index]),
+                                icon: _actionIcon(actions[index]),
+                                primary: index == 0,
+                                onTap: () =>
+                                    vm.performPlayAction(actions[index]),
+                              ),
+                            ),
                           ),
-                        );
-                      }),
+                      ],
                     ),
                   ),
                 );
               },
             ),
     );
+  }
+
+  Key _widgetKeyForAction(
+    GeneralGameViewModel vm,
+    List<dynamic> actions,
+    int index,
+  ) {
+    final action = actions[index];
+    final name = action.runtimeType.toString();
+
+    // Assign each tutorial GlobalKey to at most one chip in this row.
+    final isFirstAddAndTake = name == 'AddAndTakeAction' &&
+        actions.indexWhere(
+              (a) => a.runtimeType.toString() == 'AddAndTakeAction',
+            ) ==
+            index;
+    if (isFirstAddAndTake) return vm.playButtonKey;
+
+    final isFirstAdd = (name == 'AddCardsAction' ||
+            name == 'AddCardStackAction' ||
+            name == 'AddTableCardsAction') &&
+        actions.indexWhere((a) {
+              final n = a.runtimeType.toString();
+              return n == 'AddCardsAction' ||
+                  n == 'AddCardStackAction' ||
+                  n == 'AddTableCardsAction';
+            }) ==
+            index;
+    if (isFirstAdd) return vm.addButtonKey;
+
+    final isFirstTakeStack = name == 'TakeStackAction' &&
+        actions.indexWhere(
+              (a) => a.runtimeType.toString() == 'TakeStackAction',
+            ) ==
+            index;
+    if (isFirstTakeStack) return vm.takeStackButtonKey;
+
+    final isFirstPlayish = (name == 'PlayCardAction' ||
+            name == 'TakeCardAction' ||
+            name == 'PairCardsAction') &&
+        actions.indexWhere((a) {
+              final n = a.runtimeType.toString();
+              return n == 'PlayCardAction' ||
+                  n == 'TakeCardAction' ||
+                  n == 'PairCardsAction';
+            }) ==
+            index;
+    if (isFirstPlayish) return vm.playButtonKey;
+
+    return ValueKey('action_${name}_$index');
   }
 
   String _actionLabel(dynamic action) {
@@ -166,11 +221,21 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
       case 'PlayCardAction':
         return 'Play';
       case 'TakeCardAction':
-        return 'Take Card';
+        return 'Take';
       case 'TakeStackAction':
         return 'Take Stack';
       case 'AddCardsAction':
         return 'Add';
+      case 'PairCardsAction':
+        return 'Pair';
+      case 'PairTableCardsAction':
+        return 'Pair Table';
+      case 'AddAndPairCardsAction':
+        return 'Add & Pair';
+      case 'AddAndTakeAction':
+        return 'Add & Take';
+      case 'PairAndTakeCardsAction':
+        return 'Pair & Take';
       default:
         return name.replaceAll('Action', '');
     }
@@ -187,7 +252,12 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
       case 'TakeStackAction':
         return CupertinoIcons.square_stack_3d_up_fill;
       case 'AddCardsAction':
+      case 'AddCardStackAction':
+      case 'AddTableCardsAction':
         return CupertinoIcons.plus_circle_fill;
+      case 'PairCardsAction':
+      case 'PairTableCardsAction':
+        return CupertinoIcons.link;
       default:
         return CupertinoIcons.sparkles;
     }
@@ -218,7 +288,9 @@ class _TurnIndicator extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isMyTurn ? "Your Turn" : "Opponent Turn",
+            isMyTurn
+                ? AppLocalizations.of(context).yourTurn
+                : AppLocalizations.of(context).opponentTurn,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
         ],
@@ -256,7 +328,7 @@ class _ActionChipButton extends StatelessWidget {
 
     return CupertinoButton(
       padding: EdgeInsets.zero,
-      minSize: 0,
+      minimumSize: Size.zero,
       onPressed: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),

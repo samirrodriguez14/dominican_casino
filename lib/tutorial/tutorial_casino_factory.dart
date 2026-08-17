@@ -1,15 +1,12 @@
-import 'package:dominican_casino/local_player/local_player.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
-import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:uuid/uuid.dart';
 
 class TutorialCasinoFactory {
   static GameState createBasicTakeTutorial({
     required String gid,
     required String playerId,
-    required GameRepo gameRepo,
   }) {
     final round = Round(
       id: 1,
@@ -23,23 +20,23 @@ class TutorialCasinoFactory {
     final playerHand = [
       tutorialDeck[0], // 5♦
       tutorialDeck[1], // 8♠
-      tutorialDeck[2], // 13♣
+      tutorialDeck[2], // K♣
     ];
-    final localPlayer = LocalPlayer(gameRepo: gameRepo, mode: .casino);
-    localPlayer.pid = Uuid().v4().substring(0, 8);
+    final botPid = Uuid().v4().substring(0, 8);
 
     final oppHand = [
-      tutorialDeck[3], //11♠
-      tutorialDeck[4], //2♥
+      tutorialDeck[3], // 9♦ — captures the table 9
+      tutorialDeck[4], // 2♥ — dumped after the stack take (next to the J)
+      tutorialDeck[5], // 4♣ — played after the sweep, leftover at round end
     ];
 
     final table = [
-      tutorialDeck[5], // 3♥
-      tutorialDeck[6], // 9♠
-      tutorialDeck[7], // K♣
+      tutorialDeck[6], // 3♥
+      tutorialDeck[7], // 9♠
+      tutorialDeck[8], // J♣
     ];
 
-    final remainingDeck = tutorialDeck.sublist(8);
+    final remainingDeck = tutorialDeck.sublist(9);
     return GameState(
       gameStatus: GameStatus.inProgress,
       gameMode: GameMode.casino,
@@ -47,7 +44,7 @@ class TutorialCasinoFactory {
 
       started: true,
 
-      controllerId: localPlayer.pid,
+      controllerId: botPid,
       currentTurnPlayerId: playerId,
 
       winnerId: "",
@@ -56,7 +53,7 @@ class TutorialCasinoFactory {
 
       deck: remainingDeck,
 
-      scores: {playerId: 0},
+      scores: {playerId: 0, botPid: 0},
 
       extraPoints: 0,
       extraPointsHolderId: "",
@@ -65,21 +62,19 @@ class TutorialCasinoFactory {
 
       playingAreaStacks: [],
 
-      hands: {playerId: playerHand, localPlayer.pid: oppHand},
+      hands: {playerId: playerHand, botPid: oppHand},
 
       playersDeck: {playerId: []},
 
       playersInfo: {
         playerId: {"id": playerId, "name": "You", "token": ""},
-        localPlayer.pid: {
-          "id": localPlayer.pid,
-          "name": "Pulilo the tutor",
-          "token": "",
-        },
+        botPid: {"id": botPid, "name": "Pulilo the tutor", "token": ""},
       },
-      
+      isLocalBot: true,
+      botPlayerId: botPid,
       lastTookCardId: '',
       cardMoveEvents: [],
+      settlementEvents: [],
     );
   }
 }

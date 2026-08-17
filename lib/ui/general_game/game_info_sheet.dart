@@ -1,7 +1,7 @@
 import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -38,31 +38,20 @@ class _GameInfoSheetState extends State<GameInfoSheet> {
 
         final data = snapshot.data!;
 
-        return Expanded(
+        return ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 380, maxWidth: 400),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 10),
-
               Text(
                 "Game: ${vm.gameState.gameMode.name}",
-                style: theme.title.copyWith(fontSize: 24),
+                style: theme.title.copyWith(fontSize: 20),
               ),
-
-              const SizedBox(height: 8),
-
-              Text(
-                "Rules",
-                style: theme.body.copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              Expanded(
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 320,
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.zero,
                   itemCount: data.sections.length,
                   itemBuilder: (context, index) {
                     final section = data.sections[index];

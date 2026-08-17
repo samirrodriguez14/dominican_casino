@@ -41,26 +41,16 @@ class CasinoPlayActionHandler {
   }
 
   static GameState handlePlayCardAction(GameState nextState, PlayCardAction a) {
-    String pid = a.performedById;
-    //MOVE TO GAMESTATE HANDLER
-    //REMOVE CARD FROM PLAYER HAND
+    final pid = a.performedById;
     nextState.hands[pid]?.removeWhere((card) => card == a.usedCard);
-    //ADD CARD TO PLAYING AREA
-    nextState.playingArea.add(a.usedCard);
-
+    nextState.placeCardOnTable(a.usedCard);
     return nextState;
   }
 
   static GameState handleTakeCardAction(GameState nextState, TakeCardAction a) {
     final pid = a.performedById;
-
-    // REMOVE USED CARD FROM PLAYER HAND
     nextState.hands[pid]?.removeWhere((card) => card == a.usedCard);
-
-    // REMOVE TARGET CARD FROM PLAYING AREA
-    nextState.playingArea.removeWhere((card) => card == a.targetCard);
-
-    // ADD BOTH CARDS TO PLAYER'S WON/CAPTURED CARDS
+    nextState.removeLooseCardFromTable(a.targetCard);
     nextState.playersDeck.putIfAbsent(pid, () => []);
     nextState.playersDeck[pid]!.addAll([a.usedCard, a.targetCard]);
     nextState.lastTookCardId = pid;
@@ -72,14 +62,8 @@ class CasinoPlayActionHandler {
     TakeStackAction a,
   ) {
     final pid = a.performedById;
-
-    // REMOVE USED CARD FROM PLAYER HAND
     nextState.hands[pid]?.removeWhere((card) => card == a.usedCard);
-
-    // REMOVE TARGET STACK FROM PLAYING AREA
-    nextState.playingAreaStacks.removeWhere((stack) => stack == a.targetStack);
-
-    // ADD CARD AND STACK PLAYER'S WON/CAPTURED CARDS
+    nextState.removeStackFromTable(a.targetStack);
     nextState.playersDeck.putIfAbsent(pid, () => []);
     nextState.playersDeck[pid]!.addAll([a.usedCard, ...a.targetStack.cards]);
     nextState.lastTookCardId = pid;
@@ -89,16 +73,10 @@ class CasinoPlayActionHandler {
   static GameState handleAddCardsAction(GameState g, AddCardsAction a) {
     final pid = a.performedById;
     final usedCard = a.usedCard;
+    final stackCards = <PlayingCardModel>[usedCard];
 
-    final stackCards = <PlayingCardModel>[];
-
-    // remove used hand card
     g.hands[pid]?.removeWhere((c) => c == usedCard);
-    stackCards.add(usedCard);
-
-    // remove selected table cards
     for (final card in a.targetCards) {
-      g.playingArea.removeWhere((c) => c == card);
       stackCards.add(card);
     }
 
@@ -109,26 +87,19 @@ class CasinoPlayActionHandler {
       paired: false,
     );
 
-    g.playingAreaStacks.add(newStack);
-
+    g.formStackInPlace(
+      stack: newStack,
+      removedCards: a.targetCards,
+    );
     return g;
   }
 
   static GameState handleAddCardStackAction(GameState g, AddCardStackAction a) {
     final pid = a.performedById;
     final usedCard = a.usedCard;
+    final stackCards = <PlayingCardModel>[usedCard];
 
-    final stackCards = <PlayingCardModel>[];
-
-    // remove used hand card
     g.hands[pid]?.removeWhere((c) => c.id == usedCard.id);
-    stackCards.add(usedCard);
-
-    // remove selected table stacks
-    final targetStackIds = a.targetStacks.map((s) => s.id).toSet();
-    g.playingAreaStacks.removeWhere((s) => targetStackIds.contains(s.id));
-
-    // add cards from removed stacks
     for (final stack in a.targetStacks) {
       stackCards.addAll(stack.cards);
     }
@@ -140,8 +111,7 @@ class CasinoPlayActionHandler {
       paired: false,
     );
 
-    g.playingAreaStacks.add(newStack);
-
+    g.formStackInPlace(stack: newStack, removedStacks: a.targetStacks);
     return g;
   }
 
@@ -149,43 +119,26 @@ class CasinoPlayActionHandler {
     GameState g,
     AddTableCardsAction a,
   ) {
-    final stackCards = <PlayingCardModel>[];
-    // remove selected table cards
-    for (final card in a.targetCards) {
-      g.playingArea.removeWhere((c) => c == card);
-      stackCards.add(card);
-    }
+    final stackCards = <PlayingCardModel>[...a.targetCards];
     final newStack = PlayingAreaStackModel(
       id: _uuid.v4().substring(0, 8),
       cards: stackCards,
       stackValue: _calculateStackValue(stackCards),
       paired: false,
     );
-    g.playingAreaStacks.add(newStack);
+    g.formStackInPlace(stack: newStack, removedCards: a.targetCards);
     return g;
   }
 
   static GameState handlePairCardsAction(GameState g, PairCardsAction a) {
     final pid = a.performedById;
-    final usedCard = a.usedCard;
+    final pairCards = <PlayingCardModel>[a.usedCard];
 
-    final pairCards = <PlayingCardModel>[];
-
-    // remove used card from player's hand
-    g.hands[pid]?.removeWhere((c) => c == usedCard);
-
-    // the used card becomes part of the pair stack
-    pairCards.add(usedCard);
-
-    // remove selected loose cards from table
+    g.hands[pid]?.removeWhere((c) => c == a.usedCard);
     for (final card in a.targetCards) {
-      g.playingArea.removeWhere((c) => c == card);
       pairCards.add(card);
     }
-
-    // remove selected stacks from table and merge their cards
     for (final stack in a.targetStacks) {
-      g.playingAreaStacks.removeWhere((s) => s == stack);
       pairCards.addAll(stack.cards);
     }
 
@@ -196,8 +149,11 @@ class CasinoPlayActionHandler {
       id: _uuid.v4().substring(0, 8),
     );
 
-    g.playingAreaStacks.add(newStack);
-
+    g.formStackInPlace(
+      stack: newStack,
+      removedCards: a.targetCards,
+      removedStacks: a.targetStacks,
+    );
     return g;
   }
 
@@ -206,31 +162,25 @@ class CasinoPlayActionHandler {
     PairTableCardsAction a,
   ) {
     final pairCards = <PlayingCardModel>[];
-
-    // remove selected loose cards from table
     for (final card in a.targetCards) {
-      g.playingArea.removeWhere((c) => c == card);
       pairCards.add(card);
     }
-
-    // remove selected stacks from table and merge their cards
     for (final stack in a.targetStacks) {
-      g.playingAreaStacks.removeWhere((s) => s == stack);
       pairCards.addAll(stack.cards);
     }
 
-    // determine pair value from the selection
-    final pairValue = _resolvePairTableValue(a);
-
     final newStack = PlayingAreaStackModel(
       cards: pairCards,
-      stackValue: pairValue,
+      stackValue: _resolvePairTableValue(a),
       paired: true,
       id: _uuid.v4().substring(0, 8),
     );
 
-    g.playingAreaStacks.add(newStack);
-
+    g.formStackInPlace(
+      stack: newStack,
+      removedCards: a.targetCards,
+      removedStacks: a.targetStacks,
+    );
     return g;
   }
 
@@ -240,26 +190,21 @@ class CasinoPlayActionHandler {
   ) {
     final pid = a.performedById;
     final pairCards = <PlayingCardModel>[];
+    final removedCards = <PlayingCardModel>[];
+    final removedStacks = <PlayingAreaStackModel>[];
 
-    // remove used card from hand
     g.hands[pid]?.removeWhere((c) => c == a.usedCard);
     pairCards.add(a.usedCard);
 
-    // determine add base value
     int addBaseValue = 0;
 
-    // remove selected loose cards being added to
     if (a.targetCards.isNotEmpty && a.targetStacks.isEmpty) {
-      for (final card in a.targetCards) {
-        g.playingArea.removeWhere((c) => c == card);
-        pairCards.add(card);
-      }
+      removedCards.addAll(a.targetCards);
+      pairCards.addAll(a.targetCards);
       addBaseValue = _calculateStackValue(a.targetCards);
-    }
-    // remove selected stack being added to
-    else if (a.targetStacks.length == 1 && a.targetCards.isEmpty) {
+    } else if (a.targetStacks.length == 1 && a.targetCards.isEmpty) {
       final targetStack = a.targetStacks.first;
-      g.playingAreaStacks.removeWhere((s) => s == targetStack);
+      removedStacks.add(targetStack);
       pairCards.addAll(targetStack.cards);
       addBaseValue = targetStack.stackValue;
     } else {
@@ -268,26 +213,21 @@ class CasinoPlayActionHandler {
       );
     }
 
-    // resulting value after adding usedCard
     final pairValue = addBaseValue + a.usedCard.valueLow;
 
-    // absorb all remaining loose table cards matching pairValue
     final matchingLooseCards = g.playingArea.where((card) {
-      return _possibleValuesForTableCard(card).contains(pairValue);
+      return _possibleValuesForTableCard(card).contains(pairValue) &&
+          !removedCards.any((r) => r.id == card.id);
     }).toList();
+    removedCards.addAll(matchingLooseCards);
+    pairCards.addAll(matchingLooseCards);
 
-    for (final card in matchingLooseCards) {
-      g.playingArea.removeWhere((c) => c == card);
-      pairCards.add(card);
-    }
-
-    // absorb all remaining stacks matching pairValue
     final matchingStacks = g.playingAreaStacks.where((stack) {
-      return stack.stackValue == pairValue;
+      return stack.stackValue == pairValue &&
+          !removedStacks.any((r) => r.id == stack.id);
     }).toList();
-
+    removedStacks.addAll(matchingStacks);
     for (final stack in matchingStacks) {
-      g.playingAreaStacks.removeWhere((s) => s == stack);
       pairCards.addAll(stack.cards);
     }
 
@@ -298,32 +238,27 @@ class CasinoPlayActionHandler {
       id: _uuid.v4().substring(0, 8),
     );
 
-    g.playingAreaStacks.add(newStack);
-
+    g.formStackInPlace(
+      stack: newStack,
+      removedCards: removedCards,
+      removedStacks: removedStacks,
+    );
     return g;
   }
 
   static GameState handleAddAndTakeAction(GameState g, AddAndTakeAction a) {
     final pid = a.performedById;
-    final takenCards = <PlayingCardModel>[];
+    final takenCards = <PlayingCardModel>[a.usedCard];
 
-    // remove used card from hand
     g.hands[pid]?.removeWhere((c) => c == a.usedCard);
-    takenCards.add(a.usedCard);
-
-    // remove selected loose cards from table
     for (final card in a.targetCards) {
-      g.playingArea.removeWhere((c) => c == card);
+      g.removeLooseCardFromTable(card);
       takenCards.add(card);
     }
 
-    // add all taken cards to player's deck
     g.playersDeck.putIfAbsent(pid, () => []);
     g.playersDeck[pid]!.addAll(takenCards);
-
-    // track last taker if you use that for leftover table cards later
     g.lastTookCardId = pid;
-
     return g;
   }
 
@@ -332,31 +267,21 @@ class CasinoPlayActionHandler {
     PairAndTakeCardsAction a,
   ) {
     final pid = a.performedById;
-    final takenCards = <PlayingCardModel>[];
+    final takenCards = <PlayingCardModel>[a.usedCard];
 
-    // remove used card from hand
     g.hands[pid]?.removeWhere((c) => c == a.usedCard);
-    takenCards.add(a.usedCard);
-
-    // remove selected loose cards from table
     for (final card in a.targetCards) {
-      g.playingArea.removeWhere((c) => c == card);
+      g.removeLooseCardFromTable(card);
       takenCards.add(card);
     }
-
-    // remove selected stacks from table
     for (final stack in a.targetStacks) {
-      g.playingAreaStacks.removeWhere((s) => s == stack);
+      g.removeStackFromTable(stack);
       takenCards.addAll(stack.cards);
     }
 
-    // add all taken cards to player's deck
     g.playersDeck.putIfAbsent(pid, () => []);
     g.playersDeck[pid]!.addAll(takenCards);
-
-    // track last taker
     g.lastTookCardId = pid;
-
     return g;
   }
 
@@ -364,7 +289,6 @@ class CasinoPlayActionHandler {
     if (card.valueLow != card.valueHigh) {
       return {card.valueLow, card.valueHigh};
     }
-
     return {card.valueLow};
   }
 
@@ -372,11 +296,9 @@ class CasinoPlayActionHandler {
     if (a.targetStacks.isNotEmpty) {
       return a.targetStacks.first.stackValue;
     }
-
     if (a.targetCards.isNotEmpty) {
       return a.targetCards.first.valueHigh;
     }
-
     throw Exception(
       'PairTableCardsAction requires targetCards or targetStacks.',
     );

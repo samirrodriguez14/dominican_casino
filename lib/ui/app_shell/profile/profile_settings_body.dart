@@ -1,0 +1,564 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/services/sound_service.dart';
+import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/sage_theme.dart';
+import 'package:dominican_casino/ui/app_shell/settings/theme_option.dart';
+import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
+import 'package:dominican_casino/view_models/app_theme_view_model.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+/// Playing-card settings face, matching the games carousel chrome.
+class ProfileSettingsBody extends StatefulWidget {
+  const ProfileSettingsBody({super.key});
+
+  @override
+  State<ProfileSettingsBody> createState() => _ProfileSettingsBodyState();
+}
+
+class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppRepo>().refreshNotificationStatus();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<AppRepo>().refreshNotificationStatus();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<AppThemeViewModel>();
+    final appRepo = context.watch<AppRepo>();
+    final sounds = context.watch<SoundService>();
+    final l10n = AppLocalizations.of(context);
+    final theme = AppStyle.theme;
+    final face = theme is SageTheme
+        ? theme.pickerFace
+        : const Color(0xFF3A634F);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = homeCardWidth(constraints);
+
+        return Center(
+          child: SizedBox(
+            width: cardWidth,
+            child: AspectRatio(
+              aspectRatio: homeCardAspect,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: face,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: theme.textPrimary.withValues(alpha: .14),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: CupertinoColors.black.withValues(alpha: .30),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.settings,
+                        style: theme.title.copyWith(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          height: 1.05,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SectionLabel(l10n.themes),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  for (
+                                    var i = 0;
+                                    i < ownedThemes.length;
+                                    i++
+                                  ) ...[
+                                    if (i > 0) const SizedBox(width: 8),
+                                    Expanded(
+                                      child: ThemeOptionChip(
+                                        themeType: ownedThemes[i],
+                                        previewTheme: themeFromEnum(
+                                          ownedThemes[i],
+                                        ),
+                                        selected: vm.appTheme == ownedThemes[i],
+                                        onTap: () =>
+                                            vm.selectTheme(ownedThemes[i]),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const _SectionDivider(),
+                              _SectionLabel(l10n.language),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _LanguageButton(
+                                      label: 'Español',
+                                      selected:
+                                          appRepo.locale.languageCode == 'es',
+                                      onPressed: () =>
+                                          appRepo.setLocale(const Locale('es')),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _LanguageButton(
+                                      label: 'English',
+                                      selected:
+                                          appRepo.locale.languageCode == 'en',
+                                      onPressed: () =>
+                                          appRepo.setLocale(const Locale('en')),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const _SectionDivider(),
+                              _SectionLabel(l10n.sound),
+                              const SizedBox(height: 2),
+                              _SettingsToggleRow(
+                                label: l10n.soundEffects,
+                                value: sounds.sfxEnabled,
+                                onChanged: sounds.setSfxEnabled,
+                              ),
+                              _SettingsToggleRow(
+                                label: l10n.backgroundMusic,
+                                value: sounds.musicEnabled,
+                                onChanged: sounds.setMusicEnabled,
+                              ),
+                              const _SectionDivider(),
+                              _SectionLabel(l10n.notifications),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      appRepo.notificationsEnabled
+                                          ? l10n.notificationsOn
+                                          : l10n.notificationsOff,
+                                      style: theme.mutedText.copyWith(
+                                        color: appRepo.notificationsEnabled
+                                            ? theme.success
+                                            : theme.textPrimary.withValues(
+                                                alpha: .7,
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (!appRepo.notificationsEnabled)
+                                    CupertinoButton(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      minimumSize: Size.zero,
+                                      color: theme.textPrimary.withValues(
+                                        alpha: .14,
+                                      ),
+                                      onPressed: () => _requestNotifications(
+                                        context,
+                                        appRepo,
+                                        l10n,
+                                      ),
+                                      child: Text(
+                                        l10n.enableNotifications,
+                                        style: TextStyle(
+                                          color: theme.textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const _SectionDivider(),
+                              _SectionLabel(l10n.account),
+                              const SizedBox(height: 4),
+                              _GoogleAccountRow(
+                                linked: appRepo.isGoogleLinked,
+                                email: appRepo.googleEmail,
+                                onConnect: () =>
+                                    _connectGoogle(context, appRepo, l10n),
+                                onLogOut: () =>
+                                    _confirmLogOut(context, appRepo, l10n),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          minimumSize: Size.zero,
+                          onPressed: () => context.push('/privacy'),
+                          child: Text(
+                            l10n.privacyPolicy,
+                            style: theme.mutedText.copyWith(
+                              color: theme.textPrimary.withValues(alpha: .78),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              decoration: TextDecoration.underline,
+                              decorationColor: theme.textPrimary.withValues(
+                                alpha: .35,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          minimumSize: Size.zero,
+                          onPressed: () =>
+                              _confirmDelete(context, appRepo, l10n),
+                          child: Text(
+                            l10n.deleteAccount,
+                            style: const TextStyle(
+                              color: CupertinoColors.destructiveRed,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _requestNotifications(
+    BuildContext context,
+    AppRepo appRepo,
+    AppLocalizations l10n,
+  ) async {
+    final go = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.enableNotifications),
+        content: Text(l10n.notificationsRationale),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.notNow),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.enableNotifications),
+          ),
+        ],
+      ),
+    );
+    if (go == true) await appRepo.enableNotifications();
+  }
+
+  Future<void> _connectGoogle(
+    BuildContext context,
+    AppRepo appRepo,
+    AppLocalizations l10n,
+  ) async {
+    final result = await appRepo.linkGoogleAccount();
+    if (!context.mounted) return;
+    if (result.status == GoogleAuthStatus.canceled) return;
+    if (result.status == GoogleAuthStatus.failed) {
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: Text(l10n.google),
+          content: Text(l10n.googleSignInError(result.errorCode)),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.back),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    final suggested = result.suggestedName?.trim();
+    final player = appRepo.player;
+    if (suggested != null &&
+        suggested.isNotEmpty &&
+        (player?.needsAccountSetup ?? true)) {
+      await appRepo.updatePlayer(suggested);
+    }
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    AppRepo appRepo,
+    AppLocalizations l10n,
+  ) async {
+    final go = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.deleteAccount),
+        content: Text(
+          appRepo.isGoogleLinked
+              ? l10n.deleteLocalDataGoogleBody
+              : l10n.deleteAccountBody,
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.deleteAccount),
+          ),
+        ],
+      ),
+    );
+    if (go == true) {
+      await appRepo.deleteLocalAccount();
+      if (!context.mounted) return;
+      if (!appRepo.isGoogleLinked) context.go('/home');
+    }
+  }
+
+  Future<void> _confirmLogOut(
+    BuildContext context,
+    AppRepo appRepo,
+    AppLocalizations l10n,
+  ) async {
+    final go = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.logOut),
+        content: Text(l10n.logOutBody),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.logOut),
+          ),
+        ],
+      ),
+    );
+    if (go == true) {
+      await appRepo.logOut();
+      if (context.mounted) context.go('/home');
+    }
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: AppStyle.theme.caption.copyWith(
+        color: AppStyle.theme.textPrimary.withValues(alpha: .72),
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.4,
+      ),
+    );
+  }
+}
+
+class _SectionDivider extends StatelessWidget {
+  const _SectionDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      color: AppStyle.theme.textPrimary.withValues(alpha: .12),
+    );
+  }
+}
+
+class _LanguageButton extends StatelessWidget {
+  const _LanguageButton({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return CupertinoButton(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      minimumSize: Size.zero,
+      color: selected
+          ? theme.textPrimary.withValues(alpha: .18)
+          : theme.textPrimary.withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(12),
+      onPressed: onPressed,
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected
+              ? theme.textPrimary
+              : theme.textPrimary.withValues(alpha: .7),
+          fontSize: 14,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsToggleRow extends StatelessWidget {
+  const _SettingsToggleRow({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: theme.body)),
+          Transform.scale(
+            scale: 0.86,
+            child: CupertinoSwitch(
+              value: value,
+              activeTrackColor: theme.success,
+              onChanged: onChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoogleAccountRow extends StatelessWidget {
+  const _GoogleAccountRow({
+    required this.linked,
+    required this.email,
+    required this.onConnect,
+    required this.onLogOut,
+  });
+
+  final bool linked;
+  final String? email;
+  final VoidCallback onConnect;
+  final VoidCallback onLogOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    return Row(
+      children: [
+        const GoogleGMark(size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                linked ? l10n.googleConnected : l10n.google,
+                style: theme.mutedText.copyWith(
+                  color: linked
+                      ? theme.success
+                      : theme.textPrimary.withValues(alpha: .7),
+                ),
+              ),
+              if (linked && email != null && email!.isNotEmpty)
+                Text(
+                  email!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.caption.copyWith(
+                    color: theme.textPrimary.withValues(alpha: .62),
+                    fontSize: 12,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          minimumSize: Size.zero,
+          color: theme.textPrimary.withValues(alpha: .14),
+          onPressed: linked ? onLogOut : onConnect,
+          child: Text(
+            linked ? l10n.logOut : l10n.connectGoogle,
+            style: TextStyle(
+              color: theme.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

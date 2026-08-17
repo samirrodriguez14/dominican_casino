@@ -189,14 +189,16 @@ class CasinoRulesHandler {
 
     final targetCard = selectedCards.first;
 
-    // Must actually be on table
-    if (!gameState.playingArea.contains(targetCard)) {
+    // Must actually be on table (match by id — selection may be a different instance)
+    if (!gameState.playingArea.any((c) => c.id == targetCard.id)) {
       return ValidateResult.mustBeOnTable();
     }
 
     final cardVals = possibleCardValues(selectedCard);
     final totals = possibleTotals(selectedCards);
 
+    // Take is legal whenever hand value matches the single table card,
+    // independent of whether Pair is also legal (extra matching card in hand).
     return ValidateResult.canTake(cardVals.any(totals.contains));
   }
 

@@ -30,7 +30,7 @@ class EventHandler {
       case PairTableCardsAction a:
         return generatePairTableCardsEvents(a);
       case AddAndPairCardsAction a:
-        return generateAddAndPairCardsEvents(a);
+        return generateAddAndPairCardsEvents(gameState, a);
       case AddAndTakeAction a:
         return generateAddAndTakeCardsEvent(a);
       case PairAndTakeCardsAction a:
@@ -317,6 +317,7 @@ static List<CardMoveEvent> generateAddCardStackEvents(AddCardStackAction a) {
   }
 
   static List<CardMoveEvent> generateAddAndPairCardsEvents(
+    GameState gameState,
     AddAndPairCardsAction a,
   ) {
     final Zone hand = Zone(
@@ -331,43 +332,54 @@ static List<CardMoveEvent> generateAddCardStackEvents(AddCardStackAction a) {
 
     final List<CardMoveEvent> allEvents = [];
 
-    // 1. Hand card goes to table
-    final handToTable = CardMoveEvent(
-      id: _uuid.v4().substring(0, 8),
-      from: hand,
-      to: table,
-      card: a.usedCard,
-      performedBy: a.performedById,
-    );
-    allEvents.add(handToTable);
-
-    // 2. Cards that were selected as the add target reorganize
-    for (final card in a.targetCards) {
-      final tableToTable = CardMoveEvent(
+    allEvents.add(
+      CardMoveEvent(
         id: _uuid.v4().substring(0, 8),
-        from: table,
+        from: hand,
         to: table,
-        card: card,
+        card: a.usedCard,
         performedBy: a.performedById,
-      );
-      allEvents.add(tableToTable);
-    }
+      ),
+    );
 
-    // 3. Cards from the selected stack reorganize
-    for (final stack in a.targetStacks) {
-      for (final card in stack.cards) {
-        final stackToTable = CardMoveEvent(
+    // Add-and-pair absorbs matching table cards/stacks that were not selected.
+    // Fly every card that landed in the new stack, not just the selection.
+    final gathered = _cardsGatheredIntoStackWith(gameState, a.usedCard.id);
+    final tableCards = gathered.isNotEmpty
+        ? gathered
+        : [
+            ...a.targetCards,
+            for (final stack in a.targetStacks) ...stack.cards,
+          ];
+
+    for (final card in tableCards) {
+      allEvents.add(
+        CardMoveEvent(
           id: _uuid.v4().substring(0, 8),
           from: table,
           to: table,
           card: card,
           performedBy: a.performedById,
-        );
-        allEvents.add(stackToTable);
-      }
+        ),
+      );
     }
 
     return allEvents;
+  }
+
+  static List<PlayingCardModel> _cardsGatheredIntoStackWith(
+    GameState gameState,
+    String cardId,
+  ) {
+    for (final stack in gameState.playingAreaStacks) {
+      if (stack.cards.any((c) => c.id == cardId)) {
+        return [
+          for (final card in stack.cards)
+            if (card.id != cardId) card,
+        ];
+      }
+    }
+    return const [];
   }
 
   static List<CardMoveEvent> generateAddAndTakeCardsEvent(AddAndTakeAction a) {

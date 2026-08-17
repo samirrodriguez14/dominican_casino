@@ -2,23 +2,24 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:app_links/app_links.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
-import 'package:dominican_casino/services/firestore_service.dart';
-import 'package:dominican_casino/services/game_service.dart';
+import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/ui/app_shell/app_shell.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/general_game/general_game_screen.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
+import 'package:dominican_casino/ui/home/privacy_policy_screen.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_screen.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model_base.dart';
+import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -29,7 +30,7 @@ class App extends StatefulWidget {
   State<App> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<App> {
+class _MyAppState extends State<App> with WidgetsBindingObserver {
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSub;
   late final GoRouter _router;
@@ -39,6 +40,7 @@ class _MyAppState extends State<App> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _appLinks = AppLinks();
 
@@ -51,12 +53,14 @@ class _MyAppState extends State<App> {
           path: '/landing',
           builder: (context, state) => const AppShell(),
         ),
-
         GoRoute(
           path: '/instructions',
           builder: (context, state) => const InstructionsScreen(),
         ),
-
+        GoRoute(
+          path: '/privacy',
+          builder: (context, state) => const PrivacyPolicyScreen(),
+        ),
         GoRoute(
           path: '/tutorial',
           builder: (context, state) => ChangeNotifierProvider(
@@ -64,14 +68,19 @@ class _MyAppState extends State<App> {
             child: const TutorialScreen(),
           ),
         ),
-
         GoRoute(
           path: '/join/:gameId/:gameMode',
-          redirect: (context, state) async {
+          redirect: (context, state) {
             final gameId = state.pathParameters['gameId']!;
             final gameMode = state.pathParameters['gameMode']!;
-
-            return '/game/$gameId/$gameMode/false';
+            if (!GameRoutes.isValidGameId(gameId) ||
+                GameRegistry.modeFromRoute(gameMode) == null ||
+                !GameRegistry.isPlayable(
+                  GameRegistry.modeFromRoute(gameMode)!,
+                )) {
+              return '/home';
+            }
+            return GameRoutes.game(gameId: gameId, gameMode: gameMode);
           },
         ),
         GoRoute(
@@ -82,29 +91,23 @@ class _MyAppState extends State<App> {
             final tutorialMode = state.pathParameters['tutorialMode'];
 
             final player = context.read<AppRepo>().player;
-            if (player == null) return HomeScreen();
-            GameService gameService = FirestoreService();
-            GameEngine engine;
-            switch (gameMode) {
-              case "casino":
-                engine = CasinoGameEngine(gameService: gameService);
-                break;
-              case "tresydos":
-                engine = TresDosGameEngine(gameService: gameService);
-                break;
-              default:
-                engine = CasinoGameEngine(gameService: gameService);
+            if (player == null) return const HomeScreen();
+
+            final engine = GameRegistry.createEngineFromRoute(gameMode);
+            if (engine == null || !GameRoutes.isValidGameId(gameId)) {
+              return const HomeScreen();
             }
 
             return ChangeNotifierProvider(
+              key: ValueKey('$gameId-$tutorialMode'),
               create: (_) => GeneralGameViewModel(
                 gid: gameId,
                 gameEngine: engine,
                 player: player,
                 gameRepo: context.read<GameRepo>(),
-                tutorialMode: tutorialMode=="true",
+                tutorialMode: tutorialMode == 'true',
               ),
-              child: GeneralGameScreen(),
+              child: GeneralGameScreen(key: ValueKey('$gameId-$tutorialMode')),
             );
           },
         ),
@@ -146,30 +149,44 @@ class _MyAppState extends State<App> {
   }
 
   void _handleIncomingUri(Uri uri) {
-    final segments = uri.pathSegments;
-    developer.log('DeepLink: path segments: $segments');
-
-    if (segments.isEmpty) return;
-
-    if (segments.first == 'join' && segments.length >= 2) {
-      final gameId = segments[1];
-      _router.go('/join/$gameId');
+    developer.log('DeepLink: path segments: ${uri.pathSegments}');
+    final invite = GameRoutes.parseInvite(uri);
+    if (invite == null) {
+      _router.go('/home');
       return;
     }
-
-    if (segments.first == 'game' && segments.length >= 2) {
-      final gameId = segments[1];
-      _router.go('/join/$gameId');
+    final mode = GameRegistry.modeFromRoute(invite.gameMode);
+    if (mode == null || !GameRegistry.isPlayable(mode)) {
+      _router.go('/home');
       return;
     }
-    _router.go('/home');
+    _router.go(
+      GameRoutes.join(gameId: invite.gameId, gameMode: invite.gameMode),
+    );
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _linkSub?.cancel();
     _router.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final sounds = SoundService.instance;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        sounds.startMusic();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        sounds.pauseMusic();
+        break;
+    }
   }
 
   @override
@@ -183,6 +200,14 @@ class _MyAppState extends State<App> {
           title: 'Dominican Casino',
           routerConfig: _router,
           theme: buildCupertinoTheme(appRepo.selectedTheme),
+          locale: appRepo.locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           builder: (context, child) {
             if (child == null) return const SizedBox();
             AppStyle.theme = appRepo.selectedTheme;

@@ -12,11 +12,14 @@ If a PR contradicts a contract, update the contract in the same PR or reject the
 | [IOS_RELEASE.md](IOS_RELEASE.md) | App Store packaging |
 | [UX.md](UX.md) | Navigation, tutorial, sound, animation |
 
-**Current product facts (not marketing):**
+**Current product facts:**
 
-- Flutter + Firestore. Identity is a local 8-character UUID, not Firebase Auth.
-- Two playable engines: Casino and Tres y Dos. Robaito is catalog-only (`enabled: false`).
-- Clients write the full game document. Cloud Functions only send FCM on turn change.
-- There is no wallet, IAP, or betting. Do not add those on the current write path.
+- Flutter + Firestore. Identity is **Firebase Anonymous Auth** (`request.auth.uid`).
+- FCM tokens live under `users/{uid}` — never on game docs.
+- Two playable engines via `GameRegistry`. Engines are I/O-free; callers persist.
+- Robaito is catalog-only and hidden from the carousel.
+- Deploy: `firebase deploy --only firestore:rules,functions,hosting`
+- Enable **Anonymous** sign-in in Firebase Console → Authentication.
+- Bundle id is `com.sr2.dominicanCasino` — re-register the iOS app in Firebase if you need a fresh `GoogleService-Info.plist`.
 
-Reviewed against the codebase on 2026-08-16.
+Updated 2026-08-16.

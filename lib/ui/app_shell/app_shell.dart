@@ -1,8 +1,17 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/account_setup_popup.dart';
+import 'package:dominican_casino/ui/app_shell/games/current_games_popup.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
+import 'package:dominican_casino/ui/app_shell/games/welcome_tutorial_popup.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
-import 'package:dominican_casino/ui/app_shell/settings/settings_screen.dart';
+import 'package:dominican_casino/ui/app_shell/store/store_screen.dart';
+import 'package:dominican_casino/ui/widgets/currency_bar.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -13,67 +22,386 @@ class AppShell extends StatefulWidget {
 
 class AppShellState extends State<AppShell> {
   int currentIndex = 1;
+  late final PageController _pageController;
+  final _storeKey = GlobalKey<StoreScreenState>();
+  final _profileKey = GlobalKey<ProfileScreenState>();
+  bool _offeredTutorial = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: currentIndex);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pid = context.read<AppRepo>().player?.id;
+      if (pid != null) {
+        context.read<GamesViewModel>().startListening(pid);
+      }
+      _maybeOfferFirstRun();
+    });
+  }
+
+  void _maybeOfferFirstRun() {
+    if (_offeredTutorial || !mounted) return;
+    final player = context.read<AppRepo>().player;
+    if (player == null) return;
+    _offeredTutorial = true;
+    if (!player.completedTutorial) {
+      showWelcomeTutorialPopup(context);
+      return;
+    }
+    if (player.needsAccountSetup) {
+      showAccountSetupPopup(context);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onTabTap(int index) {
+    if (index == currentIndex) {
+      if (index == 0) {
+        _storeKey.currentState?.scrollToTop();
+      } else if (index == 2) {
+        _profileKey.currentState?.goToInitial();
+      }
+      return;
+    }
+    setState(() => currentIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final double iconSize = 50;
-    return CupertinoTabScaffold(
-      tabBuilder: (context, index) {
-        return CupertinoTabView(
-          builder: (BuildContext context) {
-            if (index == 0) {
-              return SettingsScreen();
-            }
-            if (index == 1) {
-              return GamesScreen();
-            }
-            if (index == 2) {
-              return ProfileScreen();
-            }
-            return GamesScreen();
-          },
-        );
-      },
+    final l10n = AppLocalizations.of(context);
+    final theme = AppStyle.theme;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final yourTurnCount = context.watch<GamesViewModel>().yourTurnCount;
+    final appRepo = context.watch<AppRepo>();
+    final player = appRepo.player;
+    final displayName = (player == null || player.needsAccountSetup)
+        ? l10n.guest
+        : (player.name ?? l10n.guest);
 
-      tabBar: CupertinoTabBar(
-        height: 80,
-        // backgroundColor: AppStyle.theme.surface,
-        border: Border(
-          top: BorderSide(
-            color: AppStyle.theme.border.withValues(alpha: .5),
-            width: 0.5,
-          ),
-        ),
-        currentIndex: currentIndex,
-        onTap: (i) {
-          setState(() => currentIndex = i);
-        },
-        items: [
-          BottomNavigationBarItem(
-            icon: AnimatedScale(
-              curve: Curves.easeOutBack,
-              scale: currentIndex == 0 ? 1.3 : 1,
-              duration: const Duration(milliseconds: 750),
-              child: Icon(CupertinoIcons.settings, size: iconSize),
+    return CupertinoPageScaffold(
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _KeepAlivePage(child: StoreScreen(key: _storeKey)),
+                const _KeepAlivePage(
+                  child: GamesScreen(key: ValueKey('games-tab')),
+                ),
+                _KeepAlivePage(child: ProfileScreen(key: _profileKey)),
+              ],
             ),
           ),
-          BottomNavigationBarItem(
-            icon: AnimatedScale(
-              curve: Curves.easeOutBack,
-              scale: currentIndex == 1 ? 1.7 : 1.5,
-              duration: const Duration(milliseconds: 750),
-              child: Icon(CupertinoIcons.game_controller, size: iconSize),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _ShellIdentity(
+                        avatarId: player?.avatarId,
+                        name: displayName,
+                        onTap: () => _onTabTap(2),
+                      ),
+                    ),
+                    const CurrencyBar(),
+                  ],
+                ),
+              ),
             ),
           ),
-          BottomNavigationBarItem(
-            icon: AnimatedScale(
-              curve: Curves.easeOutBack,
-              scale: currentIndex == 2 ? 1.3 : 1,
-              duration: const Duration(milliseconds: 750),
-              child: Icon(CupertinoIcons.profile_circled, size: iconSize),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 10 + bottomInset,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                _FloatingTabBar(
+                  currentIndex: currentIndex,
+                  onTap: _onTabTap,
+                  items: [
+                    _FloatingTabItem(
+                      icon: CupertinoIcons.bag,
+                      label: l10n.store,
+                    ),
+                    _FloatingTabItem(
+                      icon: CupertinoIcons.game_controller,
+                      label: l10n.games,
+                    ),
+                    _FloatingTabItem(
+                      icon: CupertinoIcons.profile_circled,
+                      label: l10n.profile,
+                    ),
+                  ],
+                  theme: theme,
+                ),
+                Positioned(
+                  right: 16,
+                  child: _CurrentGamesButton(
+                    badgeCount: yourTurnCount,
+                    onPressed: () => showCurrentGamesPopup(context),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ShellIdentity extends StatelessWidget {
+  const _ShellIdentity({
+    required this.avatarId,
+    required this.name,
+    required this.onTap,
+  });
+
+  final String? avatarId;
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          PlayerAvatarView(avatarId: avatarId, size: 36, showBorder: false),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.title.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KeepAlivePage extends StatefulWidget {
+  const _KeepAlivePage({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
+
+class _CurrentGamesButton extends StatelessWidget {
+  const _CurrentGamesButton({
+    required this.badgeCount,
+    required this.onPressed,
+  });
+
+  final int badgeCount;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        CupertinoButton(
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
+          onPressed: onPressed,
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: theme.surface.withValues(alpha: .94),
+              shape: BoxShape.circle,
+              border: Border.all(color: theme.border.withValues(alpha: .65)),
+              boxShadow: [
+                BoxShadow(
+                  color: CupertinoColors.black.withValues(alpha: .35),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              CupertinoIcons.play_fill,
+              color: theme.textPrimary,
+              size: 22,
+            ),
+          ),
+        ),
+        if (badgeCount > 0)
+          Positioned(
+            top: -2,
+            right: -2,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.danger,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: theme.background, width: 2),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                badgeCount > 9 ? '9+' : '$badgeCount',
+                style: const TextStyle(
+                  color: CupertinoColors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _FloatingTabItem {
+  const _FloatingTabItem({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+}
+
+class _FloatingTabBar extends StatelessWidget {
+  const _FloatingTabBar({
+    required this.currentIndex,
+    required this.onTap,
+    required this.items,
+    required this.theme,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final List<_FloatingTabItem> items;
+  final AppTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.surface.withValues(alpha: .94),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: theme.border.withValues(alpha: .65)),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: .35),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(width: 4),
+            _FloatingTabButton(
+              item: items[i],
+              selected: currentIndex == i,
+              onTap: () => onTap(i),
+              theme: theme,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FloatingTabButton extends StatelessWidget {
+  const _FloatingTabButton({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+    required this.theme,
+  });
+
+  final _FloatingTabItem item;
+  final bool selected;
+  final VoidCallback onTap;
+  final AppTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? theme.textPrimary : theme.muted;
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? theme.surfaceAlt.withValues(alpha: .85)
+              : CupertinoColors.transparent,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(item.icon, size: 24, color: fg),
+            const SizedBox(height: 2),
+            Text(
+              item.label,
+              style: TextStyle(
+                color: fg,
+                fontSize: 11,
+                height: 1.1,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

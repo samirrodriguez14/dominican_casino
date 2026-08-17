@@ -1,5 +1,9 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
+import 'package:dominican_casino/ui/app_shell/profile/avatar_picker_popup.dart';
+import 'package:dominican_casino/ui/app_shell/profile/profile_settings_body.dart';
+import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -8,195 +12,250 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class ProfileScreenState extends State<ProfileScreen> {
+  late final PageController _pageController;
+  double _page = 0;
+
+  static const _tabBarClearance = 110.0;
+  static const _pageDuration = Duration(milliseconds: 320);
+  static const _pageCurve = Curves.easeOutCubic;
+
   @override
   void initState() {
     super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final vm = context.read<ProfileViewModel>();
-      final pid = vm.player?.id;
-      if (pid != null) {
-        vm.startListening(pid);
-      }
-    });
+    _pageController = PageController();
+    _pageController.addListener(_onPage);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final vm = context.read<ProfileViewModel>();
+  void _onPage() {
+    if (!_pageController.hasClients) return;
+    final next = _pageController.page ?? 0;
+    if ((next - _page).abs() > 0.01) {
+      setState(() => _page = next);
+    }
+  }
 
-    return SafeArea(
-      child: Stack(
-        children: [
-          // PROFILE CONTENT
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: const [
-                    ClipOval(
-                      child: Icon(CupertinoIcons.profile_circled, size: 150),
-                    ),
-                    Icon(CupertinoIcons.pencil_circle, size: 50),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                GestureDetector(
-                  onTap: () => _changeName(context, vm),
-                  child: _buildNameSelectionButton(vm),
-                ),
-              ],
-            ),
-          ),
-
-          // HISTORY SHEET
-          DraggableScrollableSheet(
-            initialChildSize: 0.15,
-            minChildSize: 0.15,
-            maxChildSize: 0.8,
-            snap: true,
-            snapSizes: const [0.15, 0.8],
-            builder: (context, scrollController) {
-              return _GameHistorySheet(
-                scrollController: scrollController,
-                vm: vm,
-              );
-            },
-          ),
-        ],
-      ),
+  void goToInitial() {
+    if (!_pageController.hasClients) return;
+    _pageController.animateToPage(
+      0,
+      duration: _pageDuration,
+      curve: _pageCurve,
     );
   }
-}
 
-class _GameHistorySheet extends StatelessWidget {
-  const _GameHistorySheet({required this.scrollController, required this.vm});
-  final ProfileViewModel vm;
-  final ScrollController scrollController;
+  void _goToSettings() {
+    _pageController.animateToPage(
+      1,
+      duration: _pageDuration,
+      curve: _pageCurve,
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.removeListener(_onPage);
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppStyle.theme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: const [
-          BoxShadow(
-            blurRadius: 18,
-            offset: Offset(0, -4),
-            color: Color(0x22000000),
+    final vm = context.watch<ProfileViewModel>();
+    final l10n = AppLocalizations.of(context);
+    final theme = AppStyle.theme;
+    final profileHintOpacity = (1.0 - _page).clamp(0.0, 1.0);
+    final settingsHintOpacity = _page.clamp(0.0, 1.0);
+    final topBar = shellTopBarHeight(context);
+
+    return PageView(
+      controller: _pageController,
+      scrollDirection: Axis.vertical,
+      physics: const BouncingScrollPhysics(),
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, topBar, 16, _tabBarClearance),
+          child: Column(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () => _changeAvatar(context, vm),
+                      behavior: HitTestBehavior.opaque,
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          PlayerAvatarView(
+                            avatarId: vm.player?.avatarId,
+                            size: 168,
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.surface,
+                            ),
+                            child: Icon(
+                              CupertinoIcons.pencil_circle_fill,
+                              size: 40,
+                              color: theme.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: () => _changeName(context, vm),
+                      behavior: HitTestBehavior.opaque,
+                      child: _buildNameSelectionButton(vm),
+                    ),
+                  ],
+                ),
+              ),
+              Opacity(
+                opacity: profileHintOpacity,
+                child: GestureDetector(
+                  onTap: profileHintOpacity > 0.2 ? _goToSettings : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      children: [
+                        Icon(
+                          CupertinoIcons.chevron_down,
+                          size: 18,
+                          color: theme.muted,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.scrollForSettings,
+                          textAlign: TextAlign.center,
+                          style: theme.mutedText,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-
-          // handle
-          Container(
-            width: 42,
-            height: 5,
-            decoration: BoxDecoration(
-              color: AppStyle.theme.muted.withValues(alpha: .45),
-              borderRadius: BorderRadius.circular(999),
-            ),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(12, topBar, 12, _tabBarClearance),
+          child: Column(
+            children: [
+              Opacity(
+                opacity: settingsHintOpacity,
+                child: GestureDetector(
+                  onTap: settingsHintOpacity > 0.2 ? goToInitial : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 8),
+                    child: Column(
+                      children: [
+                        Icon(
+                          CupertinoIcons.chevron_up,
+                          size: 18,
+                          color: theme.muted,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.scrollForProfile,
+                          textAlign: TextAlign.center,
+                          style: theme.mutedText,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const Expanded(child: ProfileSettingsBody()),
+            ],
           ),
-
-          const SizedBox(height: 8),
-
-          Text("Game History", style: AppStyle.theme.mutedText),
-
-          const SizedBox(height: 10),
-
-          Expanded(
-            child: ListView.separated(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-              itemCount: vm.games.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, i) {
-                
-                return GamePill(game: vm.games[i], myPid: vm.player?.id ?? "");
-              },
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
 Widget _buildNameSelectionButton(ProfileViewModel vm) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-    decoration: AppStyle.theme.raisedSurfaceBox(),
-
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(CupertinoIcons.person, size: 30, color: AppStyle.theme.border),
-        const SizedBox(width: 8),
-        Text(
-          vm.player?.name ?? "",
-          style: AppStyle.theme.body.copyWith(fontSize: 24),
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        vm.player?.name ?? '',
+        style: AppStyle.theme.title.copyWith(
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
         ),
-        const SizedBox(width: 6),
-        Icon(CupertinoIcons.pencil, size: 30, color: AppStyle.theme.muted),
-      ],
-    ),
+      ),
+      const SizedBox(width: 8),
+      Icon(CupertinoIcons.pencil, size: 20, color: AppStyle.theme.muted),
+    ],
   );
 }
 
+Future<void> _changeAvatar(BuildContext context, ProfileViewModel vm) async {
+  final picked = await showAvatarPickerPopup(
+    context,
+    selectedId: vm.player?.avatarId,
+  );
+  if (picked == null || picked == vm.player?.avatarId) return;
+  await vm.updatePlayerAvatar(picked);
+}
+
 Future<void> _changeName(BuildContext context, ProfileViewModel vm) async {
+  final l10n = AppLocalizations.of(context);
   final controller = TextEditingController(text: vm.player?.name);
 
-  final newName =
-      await showCupertinoDialog<String>(
-        context: context,
-        builder: (BuildContext context) {
-          return _showCupertinoDialog(context, controller);
-        },
-      ) ??
-      vm.player?.name ??
-      "";
+  try {
+    final newName =
+        await showCupertinoDialog<String>(
+          context: context,
+          builder: (BuildContext context) {
+            return _showCupertinoDialog(context, controller, l10n);
+          },
+        ) ??
+        vm.player?.name ??
+        '';
 
-  if (newName != vm.player?.name) {
-    await vm.updatePlayerName(newName);
+    if (newName.isNotEmpty && newName != vm.player?.name) {
+      await vm.updatePlayerName(newName);
+    }
+  } finally {
+    controller.dispose();
   }
 }
 
 CupertinoAlertDialog _showCupertinoDialog(
   BuildContext context,
   TextEditingController controller,
+  AppLocalizations l10n,
 ) {
   return CupertinoAlertDialog(
-    title: const Text('Edit name'),
+    title: Text(l10n.editName),
     content: Padding(
       padding: const EdgeInsets.only(top: 12),
       child: CupertinoTextField(
-        groupId: controller.text,
         controller: controller,
         maxLength: 10,
-        placeholder: 'Enter your name',
+        placeholder: l10n.enterYourName,
         autofocus: true,
       ),
     ),
     actions: [
       CupertinoDialogAction(
-        child: Text('Cancel', style: AppStyle.theme.mutedText),
+        child: Text(l10n.cancel, style: AppStyle.theme.mutedText),
         onPressed: () => Navigator.pop(context),
       ),
       CupertinoDialogAction(
         isDefaultAction: true,
-        child: Text('Save', style: AppStyle.theme.title),
+        child: Text(l10n.save, style: AppStyle.theme.title),
         onPressed: () {
           Navigator.pop(context, controller.text.trim());
         },

@@ -32,10 +32,15 @@ class Round {
   int id; // index
   RoundStatus roundStatus;
   Map<String, dynamic> roundScores;
+
+  /// Human tapped Continue after round/game status — lets the dealer (or bot) proceed.
+  bool nextAcknowledged;
+
   Round({
     required this.id,
     required this.roundStatus,
     required this.roundScores,
+    this.nextAcknowledged = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -43,6 +48,7 @@ class Round {
       'id': id,
       'roundStatus': roundStatusTo(roundStatus),
       'roundScores': roundScores,
+      'nextAcknowledged': nextAcknowledged,
     };
   }
 
@@ -51,6 +57,7 @@ class Round {
       id: (m['id'] as int?) ?? 1,
       roundStatus: roundStatusFrom(m['roundStatus'] as String?),
       roundScores: Map<String, dynamic>.from(m['roundScores'] ?? {}),
+      nextAcknowledged: m['nextAcknowledged'] == true,
     );
   }
 }

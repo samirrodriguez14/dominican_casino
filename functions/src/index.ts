@@ -3,34 +3,30 @@ import * as admin from "firebase-admin";
 
 admin.initializeApp();
 
+/**
+ * Notify the next player when currentTurnPlayerId changes.
+ * Token is read from users/{uid}.fcmToken — not from game documents.
+ */
 export const onTurnChange = onDocumentUpdated("games/{gid}", async (event) => {
   const before = event.data?.before.data();
   const after = event.data?.after.data();
 
   if (!before || !after) return;
 
-  console.log("start call");
-
-  // Only notify if turn changed
   if (before.currentTurnPlayerId === after.currentTurnPlayerId) return;
 
-  console.log("turn changed");
+  const nextPid = after.currentTurnPlayerId as string | undefined;
+  if (!nextPid) return;
 
-  const nextPid = after.currentTurnPlayerId;
-  const players = after.playersInfo ?? {};
+  const userSnap = await admin.firestore().collection("users").doc(nextPid).get();
+  const token = userSnap.data()?.fcmToken as string | undefined;
+  if (!token) {
+    console.log(`No FCM token for user ${nextPid}`);
+    return;
+  }
 
-  const player = players[nextPid];
-
-  console.log(`new turn ${player?.id}`);
-
-  if (!player || !player.token) return;
-
-  const tokens = Array.isArray(player.token) ? player.token : [player.token];
-
-  console.log(`token found: ${tokens}`);
-
-  await admin.messaging().sendEachForMulticast({
-    tokens,
+  await admin.messaging().send({
+    token,
     notification: {
       title: "Your turn",
       body: "It's your turn to play",

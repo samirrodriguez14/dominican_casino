@@ -43,6 +43,7 @@ class CasinoGameStateHandler {
   static GameState handleRoundEnded(GameState gameState) {
     gameState = _handleScores(gameState);
     gameState.round.roundStatus = RoundStatus.completed;
+    gameState.round.nextAcknowledged = false;
     gameState.controllerId = GameActionHandler.getNextControllerId(gameState);
     gameState.winnerId = _handleWinner(
       gameState.scores,
@@ -203,10 +204,10 @@ class CasinoGameStateHandler {
   }
 
   static GameState settleEndOfRoundIfNeeded(GameState gameState) {
-    if (!roundEnded(gameState)) gameState;
+    if (!roundEnded(gameState)) return gameState;
 
     if (gameState.playingArea.isEmpty && gameState.playingAreaStacks.isEmpty) {
-      gameState;
+      return gameState;
     }
 
     final lastTaker = gameState.lastTookCardId.trim();
@@ -218,7 +219,7 @@ class CasinoGameStateHandler {
         ? lastTaker
         : (playerIds.isNotEmpty ? playerIds.first : '');
 
-    if (receiver.isEmpty) gameState;
+    if (receiver.isEmpty) return gameState;
 
     final leftovers = <PlayingCardModel>[];
     leftovers.addAll(gameState.playingArea);
@@ -232,6 +233,7 @@ class CasinoGameStateHandler {
 
     gameState.playingArea.clear();
     gameState.playingAreaStacks.clear();
+    gameState.tableOrder.clear();
     return gameState;
   }
 

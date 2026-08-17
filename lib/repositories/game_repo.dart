@@ -17,6 +17,8 @@ class GameRepo extends ChangeNotifier {
 
   void listenToGame(String gameId) {
     _sub?.cancel();
+    lastPlayedIds = {};
+    gameState = null;
 
     _sub = fs
         .streamGame(gameId)

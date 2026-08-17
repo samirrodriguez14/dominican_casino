@@ -21,6 +21,15 @@ class TutorialStep {
   final bool showSkipButton;
   final bool showNextButton;
 
+  /// When true, the tutorial bot should take this turn (e.g. after Add).
+  final bool playOpponent;
+
+  /// Hide the overlay and wait for the round-status popup (end of scripted round).
+  final bool awaitRoundStatus;
+
+  /// Display chapter for the overlay pills (several screens can share one).
+  final int section;
+
   final TutorialStepCallback? onShow;
 
   const TutorialStep({
@@ -34,8 +43,11 @@ class TutorialStep {
     this.expectedCardIds,
     this.allowInteraction = true,
     this.autoAdvance = false,
-    this.showSkipButton = false,
+    this.showSkipButton = true,
     this.showNextButton =true,
+    this.playOpponent = false,
+    this.awaitRoundStatus = false,
+    this.section = 0,
     this.onShow,
     required this.blockGameInteraction,
     required this.allowedActions,

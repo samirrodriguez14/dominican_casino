@@ -1,0 +1,347 @@
+import 'dart:convert';
+
+import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/instructions.dart';
+import 'package:dominican_casino/routing/game_routes.dart';
+import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/view_models/games_view_model.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Material;
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+
+void showJoinGameDialog(BuildContext context, String mode) {
+  final TextEditingController controller = TextEditingController();
+
+  showCupertinoDialog(
+    context: context,
+    builder: (context) {
+      return CupertinoAlertDialog(
+        title: const Text('Join Game'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: CupertinoTextField(
+            controller: controller,
+            placeholder: 'Enter Game ID',
+            textAlign: TextAlign.center,
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: Text('Join', style: AppStyle.theme.title),
+            onPressed: () {
+              final gameId = controller.text.trim();
+              Navigator.pop(context);
+              if (gameId.isNotEmpty) {
+                context.go(GameRoutes.game(gameId: gameId, gameMode: mode));
+              }
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+void showEnterGameDialog(
+  BuildContext context,
+  GamesViewModel vm,
+  GameMode mode,
+) {
+  showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Dismiss',
+    barrierColor: CupertinoColors.black.withValues(alpha: .55),
+    transitionDuration: const Duration(milliseconds: 200),
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return _EnterGamePopup(
+        mode: mode,
+        onFriend: () {
+          Navigator.pop(dialogContext);
+          gameEnter(context, vm, mode, false);
+        },
+        onPuli: () {
+          Navigator.pop(dialogContext);
+          gameEnter(context, vm, mode, true);
+        },
+        onJoin: () {
+          Navigator.pop(dialogContext);
+          showJoinGameDialog(context, mode.name);
+        },
+        gameTitle: _modeTitle(vm, mode),
+      );
+    },
+    transitionBuilder: (context, animation, secondary, child) {
+      return FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+String _modeTitle(GamesViewModel vm, GameMode mode) {
+  for (final game in vm.gamesInfo) {
+    if (game.id == mode.name) return game.title;
+  }
+  return switch (mode) {
+    GameMode.casino => 'Casino',
+    GameMode.tresydos => 'Tres y Dos',
+    GameMode.robaito => 'Robaito',
+  };
+}
+
+class _EnterGamePopup extends StatelessWidget {
+  const _EnterGamePopup({
+    required this.mode,
+    required this.gameTitle,
+    required this.onFriend,
+    required this.onPuli,
+    required this.onJoin,
+  });
+
+  final GameMode mode;
+  final String gameTitle;
+  final VoidCallback onFriend;
+  final VoidCallback onPuli;
+  final VoidCallback onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    final suitColor = switch (mode) {
+      GameMode.tresydos => theme.suitRed,
+      GameMode.casino || GameMode.robaito => theme.textPrimary,
+    };
+    final suit = switch (mode) {
+      GameMode.casino => '♠',
+      GameMode.tresydos => '♦',
+      GameMode.robaito => '♣',
+    };
+
+    return Center(
+      child: Material(
+        color: CupertinoColors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 28),
+            padding: const EdgeInsets.fromLTRB(18, 22, 18, 8),
+            decoration: BoxDecoration(
+              color: theme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: theme.border.withValues(alpha: .7)),
+              boxShadow: [
+                BoxShadow(
+                  color: CupertinoColors.black.withValues(alpha: .45),
+                  blurRadius: 28,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  suit,
+                  style: TextStyle(
+                    color: suitColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  gameTitle,
+                  textAlign: TextAlign.center,
+                  style: theme.title.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.playHowPrompt,
+                  textAlign: TextAlign.center,
+                  style: theme.mutedText.copyWith(fontSize: 14),
+                ),
+                const SizedBox(height: 18),
+                _ChoiceTile(
+                  icon: CupertinoIcons.person_2_fill,
+                  title: l10n.playWithFriend,
+                  subtitle: l10n.playWithFriendHint,
+                  emphasized: true,
+                  onTap: onFriend,
+                ),
+                const SizedBox(height: 10),
+                _ChoiceTile(
+                  icon: CupertinoIcons.bolt_fill,
+                  title: l10n.playVsPuli,
+                  subtitle: l10n.playVsPuliHint,
+                  onTap: onPuli,
+                ),
+                const SizedBox(height: 10),
+                _ChoiceTile(
+                  icon: CupertinoIcons.number,
+                  title: l10n.joinById,
+                  subtitle: l10n.playJoinByIdHint,
+                  onTap: onJoin,
+                ),
+                CupertinoButton(
+                  padding: const EdgeInsets.only(top: 4),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    l10n.cancel,
+                    style: TextStyle(color: theme.muted),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChoiceTile extends StatelessWidget {
+  const _ChoiceTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.emphasized = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    const radius = 14.0;
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      pressedOpacity: 0.72,
+      onPressed: onTap,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: emphasized ? theme.surfaceRaised : theme.background,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: emphasized
+                ? theme.turnHighlight.withValues(alpha: .5)
+                : theme.border.withValues(alpha: .55),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 3.5,
+                  color: emphasized
+                      ? theme.turnHighlight
+                      : CupertinoColors.transparent,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: emphasized
+                                ? theme.turnHighlight.withValues(alpha: .22)
+                                : theme.surfaceAlt.withValues(alpha: .55),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            icon,
+                            size: 18,
+                            color: emphasized
+                                ? theme.turnHighlight
+                                : theme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                title,
+                                style: theme.title.copyWith(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                subtitle,
+                                style: theme.mutedText.copyWith(
+                                  fontSize: 12,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> gameEnter(
+  BuildContext context,
+  GamesViewModel vm,
+  GameMode mode,
+  bool local,
+) async {
+  if (mode == GameMode.robaito) return;
+  final gid = await vm.newGame(mode, local);
+  if (gid != null && context.mounted) {
+    context.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
+  }
+}
+
+Future<InstructionsData> loadInstructions(GameMode mode) async {
+  final path = switch (mode) {
+    GameMode.tresydos => 'assets/config/tresydos_instructions.json',
+    GameMode.robaito => 'assets/config/robaito_instructions.json',
+    GameMode.casino => 'assets/config/casino_instructions.json',
+  };
+  final raw = await rootBundle.loadString(path);
+  return InstructionsData.fromJson(jsonDecode(raw));
+}
