@@ -3,6 +3,7 @@ import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
+import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
@@ -35,42 +36,38 @@ class CurrentGamesPopup extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Column(
+        child: Stack(
           children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 42,
-              height: 5,
-              decoration: BoxDecoration(
-                color: theme.muted.withValues(alpha: .45),
-                borderRadius: BorderRadius.circular(999),
+            Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: theme.muted.withValues(alpha: .45),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+                  child: Text(
+                    l10n.currentGames,
+                    textAlign: TextAlign.center,
+                    style: theme.title.copyWith(fontSize: 18),
+                  ),
+                ),
+                Expanded(child: _CurrentGamesList(vm: vm)),
+              ],
+            ),
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: PopupCircleButton(
+                icon: CupertinoIcons.xmark,
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Row(
-                children: [
-                  CupertinoButton(
-                    padding: const EdgeInsets.all(8),
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Icon(
-                      CupertinoIcons.xmark,
-                      color: theme.textPrimary,
-                      size: 22,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      l10n.currentGames,
-                      textAlign: TextAlign.center,
-                      style: theme.title.copyWith(fontSize: 18),
-                    ),
-                  ),
-                  const SizedBox(width: 46),
-                ],
-              ),
-            ),
-            Expanded(child: _CurrentGamesList(vm: vm)),
           ],
         ),
       ),
@@ -112,7 +109,7 @@ class _CurrentGamesList extends StatelessWidget {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
       itemCount: list.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) => _CurrentGamePill(vm: vm, game: list[i]),

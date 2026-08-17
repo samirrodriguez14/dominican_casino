@@ -1,7 +1,7 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/app_shell/settings/theme_option.dart';
-import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:flutter/cupertino.dart';
 
 class StoreScreen extends StatelessWidget {
@@ -12,68 +12,57 @@ class StoreScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
     final storeThemes = Theme.values
-        .where((t) => t != Theme.feltWaltnut)
+        .where((t) => !ownedThemes.contains(t))
         .toList();
 
-    return SafeArea(
-      child: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.fromLTRB(16, 52, 16, 24),
-            children: [
-              Text(l10n.store, style: theme.title.copyWith(fontSize: 32)),
-              const SizedBox(height: 8),
-              Text(l10n.noRealMoney, style: theme.body),
-              const SizedBox(height: 24),
-              Text(l10n.themes, style: theme.title.copyWith(fontSize: 22)),
-              const SizedBox(height: 12),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: storeThemes.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.92,
-                ),
-                itemBuilder: (context, index) {
-                  final themeType = storeThemes[index];
-                  return ThemeOptionCard(
-                    themeType: themeType,
-                    previewTheme: themeFromEnum(themeType),
-                    selected: false,
-                    locked: true,
-                    badgeLabel: l10n.comingSoon,
-                    onTap: null,
-                  );
-                },
-              ),
-              const SizedBox(height: 28),
-              Text(l10n.buyEnergy, style: theme.title.copyWith(fontSize: 22)),
-              const SizedBox(height: 8),
-              _ComingSoonCard(
-                icon: CupertinoIcons.bolt_fill,
-                title: l10n.buyEnergy,
-                subtitle: l10n.comingSoon,
-              ),
-              const SizedBox(height: 20),
-              Text(l10n.buyCoins, style: theme.title.copyWith(fontSize: 22)),
-              const SizedBox(height: 8),
-              _ComingSoonCard(
-                icon: CupertinoIcons.circle_grid_3x3_fill,
-                title: l10n.buyCoins,
-                subtitle: l10n.comingSoon,
-              ),
-            ],
+    return ListView(
+      padding: EdgeInsets.fromLTRB(16, shellTopBarHeight(context) + 8, 16, 110),
+      children: [
+        Text(l10n.store, style: theme.title.copyWith(fontSize: 32)),
+        const SizedBox(height: 8),
+        Text(l10n.noRealMoney, style: theme.body),
+        const SizedBox(height: 24),
+        Text(l10n.themes, style: theme.title.copyWith(fontSize: 22)),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: storeThemes.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.92,
           ),
-          const Positioned(
-            top: 8,
-            right: 16,
-            child: CurrencyBar(),
-          ),
-        ],
-      ),
+          itemBuilder: (context, index) {
+            final themeType = storeThemes[index];
+            return ThemeOptionCard(
+              themeType: themeType,
+              previewTheme: themeFromEnum(themeType),
+              selected: false,
+              locked: true,
+              badgeLabel: l10n.comingSoon,
+              onTap: null,
+            );
+          },
+        ),
+        const SizedBox(height: 28),
+        Text(l10n.buyEnergy, style: theme.title.copyWith(fontSize: 22)),
+        const SizedBox(height: 8),
+        _ComingSoonCard(
+          icon: CupertinoIcons.bolt_fill,
+          title: l10n.buyEnergy,
+          subtitle: l10n.comingSoon,
+        ),
+        const SizedBox(height: 20),
+        Text(l10n.buyCoins, style: theme.title.copyWith(fontSize: 22)),
+        const SizedBox(height: 8),
+        _ComingSoonCard(
+          icon: CupertinoIcons.circle_grid_3x3_fill,
+          title: l10n.buyCoins,
+          subtitle: l10n.comingSoon,
+        ),
+      ],
     );
   }
 }

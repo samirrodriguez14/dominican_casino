@@ -36,13 +36,16 @@ class AppRepo extends ChangeNotifier {
   Wallet get wallet => _wallet;
 
   static const _walletKey = 'wallet';
+  static const _themeKey = 'appTheme';
 
   AppRepo({required this.fs});
 
   set appTheme(Theme value) {
     if (_appTheme == value) return;
     _appTheme = value;
+    AppStyle.theme = selectedTheme;
     notifyListeners();
+    _persistTheme();
   }
 
   Future<void> setLocale(Locale locale) async {
@@ -64,6 +67,7 @@ class AppRepo extends ChangeNotifier {
     try {
       await _ensureAnonymousAuth();
       await _loadLocale();
+      await _loadTheme();
       await _loadWallet();
       player = await _loadPlayer();
       gamesInfo = await loadGames();
@@ -160,6 +164,24 @@ class AppRepo extends ChangeNotifier {
     final created = Player(id: id, name: "p_$id");
     await sp.setString('player_id', jsonEncode(created.toJson()));
     return created;
+  }
+
+  Future<void> _loadTheme() async {
+    final sp = await SharedPreferences.getInstance();
+    final name = sp.getString(_themeKey);
+    if (name == null) return;
+    for (final value in Theme.values) {
+      if (value.name == name) {
+        _appTheme = value;
+        AppStyle.theme = selectedTheme;
+        return;
+      }
+    }
+  }
+
+  Future<void> _persistTheme() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_themeKey, _appTheme.name);
   }
 
   Future<void> _loadLocale() async {

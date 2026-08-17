@@ -9,6 +9,7 @@ class AppThemeViewModel extends ChangeNotifier {
 
   void selectTheme(Theme theme) {
     _appRepo.appTheme = theme;
+    notifyListeners();
   }
 
   

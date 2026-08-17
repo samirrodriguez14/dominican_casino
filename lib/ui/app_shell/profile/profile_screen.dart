@@ -1,7 +1,7 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_settings_body.dart';
-import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -45,81 +45,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
     final screenHeight = MediaQuery.of(context).size.height;
-    final showTopCurrency = _collapse > 0.55;
     final avatarSize = 160.0 - (80.0 * _collapse);
     final pencilSize = 44.0 - (20.0 * _collapse);
     final hintOpacity = (1.0 - _collapse * 1.5).clamp(0.0, 1.0);
-    final headerCurrencyOpacity = (1.0 - _collapse * 1.6).clamp(0.0, 1.0);
     // Push avatar + name toward vertical center; shrinks away on scroll.
-    final topInset =
-        (screenHeight * 0.14) * (1.0 - _collapse) + (showTopCurrency ? 36 : 8);
+    final topInset = (screenHeight * 0.10) * (1.0 - _collapse) + 8;
 
-    return SafeArea(
-      child: Stack(
-        children: [
-          ListView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+    return ListView(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      padding: EdgeInsets.fromLTRB(16, shellTopBarHeight(context), 16, 110),
+      children: [
+        SizedBox(height: topInset),
+        GestureDetector(
+          onTap: () => _changeName(context, vm),
+          child: Column(
             children: [
-              SizedBox(height: topInset),
-              GestureDetector(
-                onTap: () => _changeName(context, vm),
-                child: Column(
-                  children: [
-                    Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        Icon(
-                          CupertinoIcons.profile_circled,
-                          size: avatarSize,
-                          color: theme.muted,
-                        ),
-                        Icon(
-                          CupertinoIcons.pencil_circle,
-                          size: pencilSize,
-                          color: theme.textPrimary,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildNameSelectionButton(vm),
-                  ],
-                ),
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Icon(
+                    CupertinoIcons.profile_circled,
+                    size: avatarSize,
+                    color: theme.muted,
+                  ),
+                  Icon(
+                    CupertinoIcons.pencil_circle,
+                    size: pencilSize,
+                    color: theme.textPrimary,
+                  ),
+                ],
               ),
-              SizedBox(height: 20 + (screenHeight * 0.04) * (1.0 - _collapse)),
-              Opacity(
-                opacity: headerCurrencyOpacity,
-                child: IgnorePointer(
-                  ignoring: headerCurrencyOpacity < 0.2,
-                  child: const Center(child: CurrencyBar(compact: false)),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Opacity(
-                opacity: hintOpacity,
-                child: Text(
-                  l10n.scrollForSettings,
-                  textAlign: TextAlign.center,
-                  style: theme.mutedText,
-                ),
-              ),
-              const SizedBox(height: 28),
-              Text(l10n.settings, style: theme.title.copyWith(fontSize: 22)),
-              const SizedBox(height: 12),
-              const ProfileSettingsBody(),
+              const SizedBox(height: 16),
+              _buildNameSelectionButton(vm),
             ],
           ),
-          if (showTopCurrency)
-            const Positioned(
-              top: 8,
-              right: 16,
-              child: CurrencyBar(),
-            ),
-        ],
-      ),
+        ),
+        SizedBox(height: 20 + (screenHeight * 0.04) * (1.0 - _collapse)),
+        Opacity(
+          opacity: hintOpacity,
+          child: Text(
+            l10n.scrollForSettings,
+            textAlign: TextAlign.center,
+            style: theme.mutedText,
+          ),
+        ),
+        const SizedBox(height: 28),
+        Text(l10n.settings, style: theme.title.copyWith(fontSize: 22)),
+        const SizedBox(height: 12),
+        const ProfileSettingsBody(),
+      ],
     );
   }
 }

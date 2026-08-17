@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 /// Settings content used inside the collapsing Profile screen.
-/// Theme picker is limited to Felt Walnut only.
+/// Theme picker shows owned tables (Felt Walnut + Sage).
 class ProfileSettingsBody extends StatefulWidget {
   const ProfileSettingsBody({super.key});
 
@@ -43,12 +43,11 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.read<AppThemeViewModel>();
+    final vm = context.watch<AppThemeViewModel>();
     final appRepo = context.watch<AppRepo>();
     final sounds = context.watch<SoundService>();
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
-    const walnut = Theme.feltWaltnut;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -57,23 +56,24 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
         const SizedBox(height: 8),
         Text(l10n.noRealMoney, style: theme.body),
         const SizedBox(height: 16),
-        // Same footprint as one Store theme tile (half-width, ~0.92 ratio).
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final tileWidth = (constraints.maxWidth - 12) / 2;
-            return Align(
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                width: tileWidth,
-                height: tileWidth / 0.92,
-                child: ThemeOptionCard(
-                  themeType: walnut,
-                  previewTheme: themeFromEnum(walnut),
-                  selected: vm.appTheme == walnut,
-                  onTap: () => vm.selectTheme(walnut),
-                  badgeLabel: l10n.owned,
-                ),
-              ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: ownedThemes.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.92,
+          ),
+          itemBuilder: (context, index) {
+            final themeType = ownedThemes[index];
+            return ThemeOptionCard(
+              themeType: themeType,
+              previewTheme: themeFromEnum(themeType),
+              selected: vm.appTheme == themeType,
+              onTap: () => vm.selectTheme(themeType),
+              badgeLabel: l10n.owned,
             );
           },
         ),

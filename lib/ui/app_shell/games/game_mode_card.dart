@@ -1,11 +1,12 @@
 import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/sage_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+/// Playing-card face for the Games picker. Stack depth comes from the carousel.
 class GameModeCard extends StatelessWidget {
   final GameMode mode;
 
@@ -14,173 +15,166 @@ class GameModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.read<GamesViewModel>();
-    double screenHeight = MediaQuery.of(context).size.height;
-
     final theme = AppStyle.theme;
     final game = vm.gamesInfo.firstWhere((g) => g.id == mode.name);
+    final face = _pickerFace(theme);
+    final enabled = mode != GameMode.robaito;
+    final markColor = _suitColor(theme);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(
-        spacing: 8,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(
-            gameModeIcon(mode),
-            size: screenHeight * 0.08,
-            color: theme.turnHighlight,
+    return AspectRatio(
+      aspectRatio: 2.5 / 3.5,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: face,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: theme.textPrimary.withValues(alpha: .14),
+            width: 1.2,
           ),
-
-          Text(
-            game.title,
-            style: theme.title.copyWith(fontSize: 24),
-            textAlign: TextAlign.center,
-          ),
-
-          Text(
-            game.players.label,
-            style: theme.body,
-            textAlign: TextAlign.center,
-          ),
-          Stack(
-            alignment: .center,
-            children: [
-              Row(
-                children: [
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      color: theme.surface,
-                      borderRadius: BorderRadius.circular(theme.radius),
-                      onPressed: (mode == .robaito)
-                          ? null
-                          : () => _showJoinGameDialog(context, mode.name),
-                      child: Text("Join By Id", style: theme.title),
+          boxShadow: [
+            BoxShadow(
+              color: CupertinoColors.black.withValues(alpha: .30),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Title + how-to stay optically centered regardless of corners.
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      game.title,
+                      style: theme.title.copyWith(
+                        fontSize: 44,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.15,
+                        height: 1.02,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-
-                  const SizedBox(width: 10),
-
-                  Expanded(
-                    child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      color: theme.border,
-                      borderRadius: BorderRadius.circular(theme.radius),
-                      onPressed: (mode == .robaito)
-                          ? null
-                          : () => _showEnterGameDialog(context, vm, mode),
-                      child: Text("Play", style: AppStyle.theme.title),
+                    const SizedBox(height: 8),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      onPressed:
+                          enabled ? () => showGameInfo(context, mode) : null,
+                      child: Text(
+                        'How to play',
+                        style: theme.mutedText.copyWith(
+                          color: enabled
+                              ? theme.textPrimary.withValues(alpha: .78)
+                              : theme.muted,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          decoration: TextDecoration.underline,
+                          decorationColor:
+                              theme.textPrimary.withValues(alpha: .35),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-
-              if (mode == .robaito)
-              Container(
-                padding: EdgeInsets.all(9),
-                decoration: theme.raisedSurfaceBox(),
-                child: 
-                Text("Coming soon...", style: AppStyle.theme.title),
-              )
-            ],
-          ),
-        ],
+            ),
+            Positioned(
+              top: 16,
+              left: 16,
+              child: _ModeMark(mode: mode, color: markColor),
+            ),
+            Positioned(
+              right: 14,
+              bottom: 14,
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                onPressed: enabled
+                    ? () => showEnterGameDialog(context, vm, mode)
+                    : null,
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: enabled
+                        ? theme.textPrimary.withValues(alpha: .14)
+                        : theme.muted.withValues(alpha: .12),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.textPrimary.withValues(alpha: .18),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    CupertinoIcons.play_fill,
+                    size: 22,
+                    color: enabled
+                        ? theme.textPrimary
+                        : theme.muted.withValues(alpha: .5),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  IconData gameModeIcon(GameMode mode) {
-    switch (mode) {
-      case GameMode.tresydos:
-        return CupertinoIcons.square_stack_3d_up;
-      case GameMode.casino:
-        return CupertinoIcons.plus_app;
-      case GameMode.robaito:
-        return CupertinoIcons.app_fill;
+  Color _suitColor(AppTheme theme) {
+    return switch (mode) {
+      GameMode.tresydos => theme.suitRed,
+      GameMode.casino || GameMode.robaito => theme.textPrimary,
+    };
+  }
+
+  Color _pickerFace(AppTheme theme) {
+    if (theme is SageTheme) {
+      return switch (mode) {
+        GameMode.casino => theme.pickerFace,
+        GameMode.tresydos => theme.pickerFaceAlt,
+        GameMode.robaito => theme.pickerFaceEdge,
+      };
     }
+    return switch (mode) {
+      GameMode.casino => const Color(0xFF3A634F),
+      GameMode.tresydos => const Color(0xFF3D4F58),
+      GameMode.robaito => const Color(0xFF2E3A36),
+    };
   }
 }
 
-void _showJoinGameDialog(BuildContext context, String mode) {
-  final TextEditingController controller = TextEditingController();
+class _ModeMark extends StatelessWidget {
+  const _ModeMark({
+    required this.mode,
+    required this.color,
+  });
 
-  showCupertinoDialog(
-    context: context,
-    builder: (context) {
-      return CupertinoAlertDialog(
-        title: const Text("Join Game"),
-        content: Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: CupertinoTextField(
-            controller: controller,
-            placeholder: "Enter Game ID",
-            textAlign: TextAlign.center,
-          ),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text("Cancel"),
-            onPressed: () => Navigator.pop(context),
-          ),
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: Text("Join", style: AppStyle.theme.title),
-            onPressed: () {
-              final gameId = controller.text.trim();
+  final GameMode mode;
+  final Color color;
 
-              Navigator.pop(context);
-
-              if (gameId.isNotEmpty) {
-                context.go(GameRoutes.game(gameId: gameId, gameMode: mode));
-              }
-            },
-          ),
-        ],
-      );
-    },
-  );
-}
-
-void _showEnterGameDialog(
-  BuildContext context,
-  GamesViewModel vm,
-  GameMode mode,
-) {
-  showCupertinoDialog(
-    context: context,
-    barrierDismissible: true,
-    builder: (context) {
-      return CupertinoAlertDialog(
-        title: const Text("Start New Game Against"),
-
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: Text("Friend", style: AppStyle.theme.title),
-            onPressed: () => gameEnter(context, vm, mode, false),
-          ),
-
-          CupertinoDialogAction(
-            child: Text("Puli (AI bot)", style: AppStyle.theme.title),
-            onPressed: () => gameEnter(context, vm, mode, true),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-Future<void> gameEnter(
-  BuildContext context,
-  GamesViewModel vm,
-  GameMode mode,
-  bool local,
-) async {
-  if (mode == GameMode.robaito) return;
-  final gid = await vm.newGame(mode, local);
-  if (gid != null && context.mounted) {
-    context.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
+  @override
+  Widget build(BuildContext context) {
+    final glyph = switch (mode) {
+      GameMode.casino => '♠',
+      GameMode.tresydos => '♦',
+      GameMode.robaito => '♣',
+    };
+    return Text(
+      glyph,
+      style: TextStyle(
+        color: color,
+        fontSize: 28,
+        fontWeight: FontWeight.w600,
+        height: 1,
+      ),
+    );
   }
 }
