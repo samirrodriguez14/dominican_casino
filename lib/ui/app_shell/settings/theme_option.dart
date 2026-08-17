@@ -240,3 +240,75 @@ class _ColorDot extends StatelessWidget {
     );
   }
 }
+
+/// Compact theme picker: name + a color swatch (fits inside a settings card).
+class ThemeOptionChip extends StatelessWidget {
+  const ThemeOptionChip({
+    super.key,
+    required this.themeType,
+    required this.previewTheme,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Theme themeType;
+  final AppTheme previewTheme;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? previewTheme.surfaceAlt.withValues(alpha: .7)
+              : theme.textPrimary.withValues(alpha: .08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected
+                ? previewTheme.turnHighlight.withValues(alpha: .85)
+                : theme.textPrimary.withValues(alpha: .14),
+            width: selected ? 1.4 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: previewTheme.background,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: previewTheme.turnHighlight,
+                  width: 1.6,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                themeLabel(themeType),
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? theme.textPrimary : theme.muted,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

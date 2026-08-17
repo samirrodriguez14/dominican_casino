@@ -1,24 +1,33 @@
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
-import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
 
-/// Casino starts on top; Tres y Dos sits stacked underneath.
-const gameModeCarouselModes = <GameMode>[GameMode.casino, GameMode.tresydos];
-
-class GameModeCarousel extends StatefulWidget {
-  const GameModeCarousel({
+/// Soft stack: front card plus a tilted peek of the next one.
+class StackedCardCarousel extends StatefulWidget {
+  const StackedCardCarousel({
     super.key,
-    this.onModeChanged,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.onIndexChanged,
     this.initialIndex = 0,
+    this.widthFactor = 0.78,
+    this.maxCardWidth = 300,
+    this.fitToHeight = false,
   });
 
-  final ValueChanged<GameMode>? onModeChanged;
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final ValueChanged<int>? onIndexChanged;
   final int initialIndex;
 
+  /// Share of the parent width used for the front card.
+  final double widthFactor;
+  final double maxCardWidth;
+
+  /// When true, also shrink to fit available height (home Privacy / How to play).
+  final bool fitToHeight;
+
   @override
-  State<GameModeCarousel> createState() => _GameModeCarouselState();
+  State<StackedCardCarousel> createState() => _StackedCardCarouselState();
 }
 
 class _CardPose {
@@ -40,7 +49,6 @@ class _CardPose {
     );
   }
 
-  /// Quadratic arc so the card sweeps out, then slides back under.
   static _CardPose arc(_CardPose a, _CardPose mid, _CardPose b, double t) {
     final u = 1 - t;
     return _CardPose(
@@ -52,7 +60,7 @@ class _CardPose {
   }
 }
 
-class _GameModeCarouselState extends State<GameModeCarousel>
+class _StackedCardCarouselState extends State<StackedCardCarousel>
     with SingleTickerProviderStateMixin {
   late int _frontIndex;
   double _dragDx = 0;
@@ -64,25 +72,36 @@ class _GameModeCarouselState extends State<GameModeCarousel>
 
   static const _dismissThreshold = 110.0;
 
-  /// Peek pose for the under-card — offset + tilt so the next game is visible.
   static const _backRest = _CardPose(
     offset: Offset(22, 16),
     scale: 0.94,
-    angle: 0.12, // ~7°
+    angle: 0.12,
   );
   static const _frontRest = _CardPose(offset: Offset.zero, scale: 1, angle: 0);
 
   @override
   void initState() {
     super.initState();
-    _frontIndex = widget.initialIndex.clamp(
-      0,
-      gameModeCarouselModes.length - 1,
-    );
+    _frontIndex = widget.itemCount == 0
+        ? 0
+        : widget.initialIndex.clamp(0, widget.itemCount - 1);
     _anim = AnimationController.unbounded(vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onModeChanged?.call(gameModeCarouselModes[_frontIndex]);
+      if (widget.itemCount == 0) return;
+      widget.onIndexChanged?.call(_frontIndex);
     });
+  }
+
+  @override
+  void didUpdateWidget(StackedCardCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.itemCount == 0) {
+      _frontIndex = 0;
+      return;
+    }
+    if (_frontIndex >= widget.itemCount) {
+      _frontIndex = widget.itemCount - 1;
+    }
   }
 
   @override
@@ -91,12 +110,13 @@ class _GameModeCarouselState extends State<GameModeCarousel>
     super.dispose();
   }
 
-  GameMode get _frontMode => gameModeCarouselModes[_frontIndex];
-  GameMode get _backMode =>
-      gameModeCarouselModes[(_frontIndex + 1) % gameModeCarouselModes.length];
+  bool get _canRestack => widget.itemCount > 1;
+
+  int get _front => _frontIndex;
+  int get _back => (_frontIndex + 1) % widget.itemCount;
 
   void _onDragStart(DragStartDetails _) {
-    if (_anim.isAnimating || _restacking) return;
+    if (!_canRestack || _anim.isAnimating || _restacking) return;
     _dragging = true;
   }
 
@@ -158,17 +178,15 @@ class _GameModeCarouselState extends State<GameModeCarousel>
 
     setState(() {
       if (toLeft) {
-        _frontIndex = (_frontIndex + 1) % gameModeCarouselModes.length;
+        _frontIndex = (_frontIndex + 1) % widget.itemCount;
       } else {
-        _frontIndex =
-            (_frontIndex - 1 + gameModeCarouselModes.length) %
-            gameModeCarouselModes.length;
+        _frontIndex = (_frontIndex - 1 + widget.itemCount) % widget.itemCount;
       }
       _dragDx = 0;
       _restacking = false;
       _anim.value = 0;
     });
-    widget.onModeChanged?.call(gameModeCarouselModes[_frontIndex]);
+    widget.onIndexChanged?.call(_frontIndex);
   }
 
   _CardPose _frontPoseWhileDragging() {
@@ -179,7 +197,6 @@ class _GameModeCarouselState extends State<GameModeCarousel>
     );
   }
 
-  /// Under-card eases toward front as the user drags, but stays tilted.
   _CardPose _backPoseWhileDragging() {
     final progress = (_dragDx.abs() / _dismissThreshold).clamp(0.0, 1.0);
     return _CardPose.lerp(_backRest, _frontRest, progress * 0.35);
@@ -196,20 +213,17 @@ class _GameModeCarouselState extends State<GameModeCarousel>
       scale: 0.97,
       angle: side * -0.28,
     );
-    // End pose matches the peek under the new front card.
-    final end = _backRest;
-    final front = _CardPose.arc(start, mid, end, t);
+    final front = _CardPose.arc(start, mid, _backRest, t);
     final back = _CardPose.lerp(
       _backPoseWhileDragging(),
       _frontRest,
       Curves.easeOutCubic.transform(t),
     );
-    // Halfway through, the sweeping card slips under the rising one.
     return (front, back, t > 0.48);
   }
 
   Widget _posedCard({
-    required GameMode mode,
+    required int index,
     required _CardPose pose,
     required double cardWidth,
     required bool interactive,
@@ -224,7 +238,7 @@ class _GameModeCarouselState extends State<GameModeCarousel>
             scale: pose.scale,
             child: SizedBox(
               width: cardWidth,
-              child: GameModeCard(mode: mode),
+              child: widget.itemBuilder(context, index),
             ),
           ),
         ),
@@ -232,11 +246,30 @@ class _GameModeCarouselState extends State<GameModeCarousel>
     );
   }
 
+  double _cardWidthFor(BoxConstraints constraints) {
+    final fromWidth = (constraints.maxWidth * widget.widthFactor).clamp(
+      220.0,
+      widget.maxCardWidth,
+    );
+    if (!widget.fitToHeight) return fromWidth;
+    final fromHeight = (constraints.maxHeight - 36) * (2.5 / 3.5);
+    if (fromHeight.isFinite && fromHeight > 0) {
+      return fromWidth < fromHeight ? fromWidth : fromHeight;
+    }
+    return fromWidth;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth * 0.78).clamp(220.0, 300.0);
+        final cardWidth = _cardWidthFor(constraints);
+        if (widget.itemCount == 0) {
+          return SizedBox(
+            width: cardWidth + 48,
+            height: cardWidth * (3.5 / 2.5) + 36,
+          );
+        }
 
         late final _CardPose frontPose;
         late final _CardPose backPose;
@@ -253,18 +286,21 @@ class _GameModeCarouselState extends State<GameModeCarousel>
           dismissedUnder = false;
         }
 
-        final under = _posedCard(
-          mode: dismissedUnder ? _frontMode : _backMode,
-          pose: dismissedUnder ? frontPose : backPose,
-          cardWidth: cardWidth,
-          interactive: false,
-        );
-        final over = _posedCard(
-          mode: dismissedUnder ? _backMode : _frontMode,
-          pose: dismissedUnder ? backPose : frontPose,
-          cardWidth: cardWidth,
-          interactive: !_restacking,
-        );
+        final children = <Widget>[
+          if (_canRestack)
+            _posedCard(
+              index: dismissedUnder ? _front : _back,
+              pose: dismissedUnder ? frontPose : backPose,
+              cardWidth: cardWidth,
+              interactive: false,
+            ),
+          _posedCard(
+            index: _canRestack && dismissedUnder ? _back : _front,
+            pose: _canRestack && dismissedUnder ? backPose : frontPose,
+            cardWidth: cardWidth,
+            interactive: !_restacking,
+          ),
+        ];
 
         return GestureDetector(
           onHorizontalDragStart: _onDragStart,
@@ -273,13 +309,12 @@ class _GameModeCarouselState extends State<GameModeCarousel>
           behavior: HitTestBehavior.translucent,
           child: Center(
             child: SizedBox(
-              // Room for the tilted under-card peek.
               width: cardWidth + 48,
               height: cardWidth * (3.5 / 2.5) + 36,
               child: Stack(
                 alignment: Alignment.center,
                 clipBehavior: Clip.none,
-                children: [under, over],
+                children: children,
               ),
             ),
           ),

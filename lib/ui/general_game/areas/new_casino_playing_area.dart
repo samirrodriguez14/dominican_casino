@@ -77,57 +77,77 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                 Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    AppStyle.theme.dottedBox(
-                      color: vm.gameState.lastTookCardId == vm.opp
-                          ? AppStyle.theme.border
-                          : null,
-                      child: Opacity(
-                        opacity: vm.motion.isShuffling ? 0 : 1,
-                        child: CardDeck(
-                          key: vm.oppDeckKey,
-                          title: "Opp's Deck",
-                          cardWidth: tableCardWidth,
-                          cards: vm.oppCollectedCards,
-                          extraPoints: vm.oppExtraPoints,
-                          holdExtraReveal: vm.motion.hasFlights,
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            SoundService.instance.play(GameSound.softCard);
-                            showAppPopup(
-                              context: context,
-                              title: "Opponent's Collected Cards",
-                              content: CollectedCardsStrip(
+                    Flexible(
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: AppStyle.theme.dottedBox(
+                            color: vm.gameState.lastTookCardId == vm.opp
+                                ? AppStyle.theme.border
+                                : null,
+                            child: Opacity(
+                              opacity: vm.motion.isShuffling ? 0 : 1,
+                              child: CardDeck(
+                                key: vm.oppDeckKey,
+                                title: "Opp's Deck",
+                                cardWidth: tableCardWidth,
                                 cards: vm.oppCollectedCards,
+                                extraPoints: vm.oppExtraPoints,
+                                holdExtraReveal: vm.motion.hasFlights,
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  SoundService.instance.play(
+                                    GameSound.softCard,
+                                  );
+                                  showAppPopup(
+                                    context: context,
+                                    title: "Opponent's Collected Cards",
+                                    content: CollectedCardsStrip(
+                                      cards: vm.oppCollectedCards,
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    AppStyle.theme.dottedBox(
-                      color: vm.gameState.lastTookCardId == vm.me
-                          ? AppStyle.theme.border
-                          : null,
-                      child: Opacity(
-                        opacity: vm.motion.isShuffling ? 0 : 1,
-                        child: CardDeck(
-                          key: vm.myDeckKey,
-                          title: 'My Deck',
-                          cardWidth: tableCardWidth,
-                          cards: vm.myCollectedCards,
-                          extraPoints: vm.myExtraPoints,
-                          holdExtraReveal: vm.motion.hasFlights,
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            SoundService.instance.play(GameSound.softCard);
-                            showAppPopup(
-                              context: context,
-                              title: "My Collected Cards",
-                              content: CollectedCardsStrip(
+                    Flexible(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: AppStyle.theme.dottedBox(
+                            color: vm.gameState.lastTookCardId == vm.me
+                                ? AppStyle.theme.border
+                                : null,
+                            child: Opacity(
+                              opacity: vm.motion.isShuffling ? 0 : 1,
+                              child: CardDeck(
+                                key: vm.myDeckKey,
+                                title: 'My Deck',
+                                cardWidth: tableCardWidth,
                                 cards: vm.myCollectedCards,
+                                extraPoints: vm.myExtraPoints,
+                                holdExtraReveal: vm.motion.hasFlights,
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  SoundService.instance.play(
+                                    GameSound.softCard,
+                                  );
+                                  showAppPopup(
+                                    context: context,
+                                    title: "My Collected Cards",
+                                    content: CollectedCardsStrip(
+                                      cards: vm.myCollectedCards,
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
+                            ),
+                          ),
                         ),
                       ),
                     ),

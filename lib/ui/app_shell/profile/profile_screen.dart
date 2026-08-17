@@ -14,28 +14,40 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final ScrollController _scrollController = ScrollController();
-  double _collapse = 0;
+  late final PageController _pageController;
+  double _page = 0;
 
-  static const _collapseRange = 160.0;
+  static const _tabBarClearance = 110.0;
+  static const _pageDuration = Duration(milliseconds: 320);
+  static const _pageCurve = Curves.easeOutCubic;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
+    _pageController = PageController();
+    _pageController.addListener(_onPage);
   }
 
-  void _onScroll() {
-    final next = (_scrollController.offset / _collapseRange).clamp(0.0, 1.0);
-    if ((next - _collapse).abs() > 0.01) {
-      setState(() => _collapse = next);
+  void _onPage() {
+    if (!_pageController.hasClients) return;
+    final next = _pageController.page ?? 0;
+    if ((next - _page).abs() > 0.01) {
+      setState(() => _page = next);
     }
+  }
+
+  void _goToSettings() {
+    _pageController.animateToPage(
+      1,
+      duration: _pageDuration,
+      curve: _pageCurve,
+    );
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
+    _pageController.removeListener(_onPage);
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -44,83 +56,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final vm = context.watch<ProfileViewModel>();
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final avatarSize = 160.0 - (80.0 * _collapse);
-    final pencilSize = 44.0 - (20.0 * _collapse);
-    final hintOpacity = (1.0 - _collapse * 1.5).clamp(0.0, 1.0);
-    // Push avatar + name toward vertical center; shrinks away on scroll.
-    final topInset = (screenHeight * 0.10) * (1.0 - _collapse) + 8;
+    final hintOpacity = (1.0 - _page).clamp(0.0, 1.0);
+    final topBar = shellTopBarHeight(context);
 
-    return ListView(
-      controller: _scrollController,
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      padding: EdgeInsets.fromLTRB(16, shellTopBarHeight(context), 16, 110),
+    return PageView(
+      controller: _pageController,
+      scrollDirection: Axis.vertical,
+      physics: const BouncingScrollPhysics(),
       children: [
-        SizedBox(height: topInset),
-        GestureDetector(
-          onTap: () => _changeName(context, vm),
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, topBar, 16, _tabBarClearance),
           child: Column(
             children: [
-              Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  Icon(
-                    CupertinoIcons.profile_circled,
-                    size: avatarSize,
-                    color: theme.muted,
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _changeName(context, vm),
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          Icon(
+                            CupertinoIcons.profile_circled,
+                            size: 200,
+                            color: theme.muted,
+                          ),
+                          Icon(
+                            CupertinoIcons.pencil_circle,
+                            size: 44,
+                            color: theme.textPrimary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      _buildNameSelectionButton(vm),
+                    ],
                   ),
-                  Icon(
-                    CupertinoIcons.pencil_circle,
-                    size: pencilSize,
-                    color: theme.textPrimary,
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 16),
-              _buildNameSelectionButton(vm),
+              Opacity(
+                opacity: hintOpacity,
+                child: GestureDetector(
+                  onTap: hintOpacity > 0.2 ? _goToSettings : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      children: [
+                        Icon(
+                          CupertinoIcons.chevron_down,
+                          size: 18,
+                          color: theme.muted,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.scrollForSettings,
+                          textAlign: TextAlign.center,
+                          style: theme.mutedText,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        SizedBox(height: 20 + (screenHeight * 0.04) * (1.0 - _collapse)),
-        Opacity(
-          opacity: hintOpacity,
-          child: Text(
-            l10n.scrollForSettings,
-            textAlign: TextAlign.center,
-            style: theme.mutedText,
-          ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(12, topBar, 12, _tabBarClearance),
+          child: const ProfileSettingsBody(),
         ),
-        const SizedBox(height: 28),
-        Text(l10n.settings, style: theme.title.copyWith(fontSize: 22)),
-        const SizedBox(height: 12),
-        const ProfileSettingsBody(),
       ],
     );
   }
 }
 
 Widget _buildNameSelectionButton(ProfileViewModel vm) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-    decoration: AppStyle.theme.raisedSurfaceBox(),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(CupertinoIcons.person, size: 30, color: AppStyle.theme.border),
-        const SizedBox(width: 10),
-        Text(
-          vm.player?.name ?? '',
-          style: AppStyle.theme.body.copyWith(
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-          ),
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        vm.player?.name ?? '',
+        style: AppStyle.theme.title.copyWith(
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
         ),
-        const SizedBox(width: 8),
-        Icon(CupertinoIcons.pencil, size: 26, color: AppStyle.theme.muted),
-      ],
-    ),
+      ),
+      const SizedBox(width: 8),
+      Icon(CupertinoIcons.pencil, size: 20, color: AppStyle.theme.muted),
+    ],
   );
 }
 

@@ -16,6 +16,9 @@ abstract class AppTheme {
 
   String get cardBack;
   String get appLogo;
+
+  /// Borderless fill for the home login card. Defaults to [cardBack].
+  String get loginCardBack => cardBack;
   // ---- Base colors ----
   Color get background;
   Color get surface;

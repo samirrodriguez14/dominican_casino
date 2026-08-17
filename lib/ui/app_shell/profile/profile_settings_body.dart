@@ -2,14 +2,15 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/ui/app_shell/settings/theme_option.dart';
+import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-/// Settings content used inside the collapsing Profile screen.
-/// Theme picker shows owned tables (Felt Walnut + Sage).
+/// Playing-card settings face, matching the games carousel chrome.
 class ProfileSettingsBody extends StatefulWidget {
   const ProfileSettingsBody({super.key});
 
@@ -48,131 +49,216 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     final sounds = context.watch<SoundService>();
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
+    final face = theme is SageTheme
+        ? theme.pickerFace
+        : const Color(0xFF3A634F);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(l10n.chooseTable, style: theme.title.copyWith(fontSize: 22)),
-        const SizedBox(height: 8),
-        Text(l10n.noRealMoney, style: theme.body),
-        const SizedBox(height: 16),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: ownedThemes.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.92,
-          ),
-          itemBuilder: (context, index) {
-            final themeType = ownedThemes[index];
-            return ThemeOptionCard(
-              themeType: themeType,
-              previewTheme: themeFromEnum(themeType),
-              selected: vm.appTheme == themeType,
-              onTap: () => vm.selectTheme(themeType),
-              badgeLabel: l10n.owned,
-            );
-          },
-        ),
-        const SizedBox(height: 28),
-        Text(l10n.language, style: theme.title),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _LanguageButton(
-                label: 'Español',
-                selected: appRepo.locale.languageCode == 'es',
-                onPressed: () => appRepo.setLocale(const Locale('es')),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _LanguageButton(
-                label: 'English',
-                selected: appRepo.locale.languageCode == 'en',
-                onPressed: () => appRepo.setLocale(const Locale('en')),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 28),
-        Text(l10n.sound, style: theme.title),
-        const SizedBox(height: 8),
-        _SettingsToggleRow(
-          label: l10n.soundEffects,
-          value: sounds.sfxEnabled,
-          onChanged: sounds.setSfxEnabled,
-        ),
-        const SizedBox(height: 8),
-        _SettingsToggleRow(
-          label: l10n.backgroundMusic,
-          value: sounds.musicEnabled,
-          onChanged: sounds.setMusicEnabled,
-        ),
-        const SizedBox(height: 28),
-        Text(l10n.notifications, style: theme.title),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: theme.surfaceBox(),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.notifications, style: theme.body),
-                    const SizedBox(height: 4),
-                    Text(
-                      appRepo.notificationsEnabled
-                          ? l10n.notificationsOn
-                          : l10n.notificationsOff,
-                      style: theme.mutedText.copyWith(
-                        color: appRepo.notificationsEnabled
-                            ? theme.success
-                            : theme.muted,
-                      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = homeCardWidth(constraints);
+
+        return Center(
+          child: SizedBox(
+            width: cardWidth,
+            child: AspectRatio(
+              aspectRatio: homeCardAspect,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: face,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: theme.textPrimary.withValues(alpha: .14),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: CupertinoColors.black.withValues(alpha: .30),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
-              ),
-              if (!appRepo.notificationsEnabled)
-                CupertinoButton(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  color: theme.surfaceAlt,
-                  onPressed: () => _requestNotifications(context, appRepo, l10n),
-                  child: Text(
-                    l10n.enableNotifications,
-                    style: TextStyle(
-                      color: theme.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.settings,
+                        style: theme.title.copyWith(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          height: 1.05,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SectionLabel(l10n.themes),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  for (
+                                    var i = 0;
+                                    i < ownedThemes.length;
+                                    i++
+                                  ) ...[
+                                    if (i > 0) const SizedBox(width: 8),
+                                    Expanded(
+                                      child: ThemeOptionChip(
+                                        themeType: ownedThemes[i],
+                                        previewTheme: themeFromEnum(
+                                          ownedThemes[i],
+                                        ),
+                                        selected: vm.appTheme == ownedThemes[i],
+                                        onTap: () =>
+                                            vm.selectTheme(ownedThemes[i]),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const _SectionDivider(),
+                              _SectionLabel(l10n.language),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _LanguageButton(
+                                      label: 'Español',
+                                      selected:
+                                          appRepo.locale.languageCode == 'es',
+                                      onPressed: () =>
+                                          appRepo.setLocale(const Locale('es')),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _LanguageButton(
+                                      label: 'English',
+                                      selected:
+                                          appRepo.locale.languageCode == 'en',
+                                      onPressed: () =>
+                                          appRepo.setLocale(const Locale('en')),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const _SectionDivider(),
+                              _SectionLabel(l10n.sound),
+                              const SizedBox(height: 2),
+                              _SettingsToggleRow(
+                                label: l10n.soundEffects,
+                                value: sounds.sfxEnabled,
+                                onChanged: sounds.setSfxEnabled,
+                              ),
+                              _SettingsToggleRow(
+                                label: l10n.backgroundMusic,
+                                value: sounds.musicEnabled,
+                                onChanged: sounds.setMusicEnabled,
+                              ),
+                              const _SectionDivider(),
+                              _SectionLabel(l10n.notifications),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      appRepo.notificationsEnabled
+                                          ? l10n.notificationsOn
+                                          : l10n.notificationsOff,
+                                      style: theme.mutedText.copyWith(
+                                        color: appRepo.notificationsEnabled
+                                            ? theme.success
+                                            : theme.textPrimary.withValues(
+                                                alpha: .7,
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (!appRepo.notificationsEnabled)
+                                    CupertinoButton(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      minimumSize: Size.zero,
+                                      color: theme.textPrimary.withValues(
+                                        alpha: .14,
+                                      ),
+                                      onPressed: () => _requestNotifications(
+                                        context,
+                                        appRepo,
+                                        l10n,
+                                      ),
+                                      child: Text(
+                                        l10n.enableNotifications,
+                                        style: TextStyle(
+                                          color: theme.textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          minimumSize: Size.zero,
+                          onPressed: () => context.push('/privacy'),
+                          child: Text(
+                            l10n.privacyPolicy,
+                            style: theme.mutedText.copyWith(
+                              color: theme.textPrimary.withValues(alpha: .78),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              decoration: TextDecoration.underline,
+                              decorationColor: theme.textPrimary.withValues(
+                                alpha: .35,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          minimumSize: Size.zero,
+                          onPressed: () =>
+                              _confirmDelete(context, appRepo, l10n),
+                          child: Text(
+                            l10n.deleteAccount,
+                            style: const TextStyle(
+                              color: CupertinoColors.destructiveRed,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        CupertinoButton(
-          onPressed: () => context.push('/privacy'),
-          child: Text(l10n.privacyPolicy),
-        ),
-        CupertinoButton(
-          onPressed: () => _confirmDelete(context, appRepo, l10n),
-          child: Text(
-            l10n.deleteAccount,
-            style: TextStyle(color: CupertinoColors.destructiveRed),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -232,6 +318,37 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
   }
 }
 
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: AppStyle.theme.caption.copyWith(
+        color: AppStyle.theme.textPrimary.withValues(alpha: .72),
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.4,
+      ),
+    );
+  }
+}
+
+class _SectionDivider extends StatelessWidget {
+  const _SectionDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      color: AppStyle.theme.textPrimary.withValues(alpha: .12),
+    );
+  }
+}
+
 class _LanguageButton extends StatelessWidget {
   const _LanguageButton({
     required this.label,
@@ -247,14 +364,20 @@ class _LanguageButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     return CupertinoButton(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      color: selected ? theme.surfaceAlt : theme.surface,
-      borderRadius: BorderRadius.circular(theme.radius),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      minimumSize: Size.zero,
+      color: selected
+          ? theme.textPrimary.withValues(alpha: .18)
+          : theme.textPrimary.withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(12),
       onPressed: onPressed,
       child: Text(
         label,
         style: TextStyle(
-          color: selected ? theme.textPrimary : theme.muted,
+          color: selected
+              ? theme.textPrimary
+              : theme.textPrimary.withValues(alpha: .7),
+          fontSize: 14,
           fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
         ),
       ),
@@ -276,16 +399,18 @@ class _SettingsToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: theme.surfaceBox(),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(
         children: [
           Expanded(child: Text(label, style: theme.body)),
-          CupertinoSwitch(
-            value: value,
-            activeTrackColor: theme.success,
-            onChanged: onChanged,
+          Transform.scale(
+            scale: 0.86,
+            child: CupertinoSwitch(
+              value: value,
+              activeTrackColor: theme.success,
+              onChanged: onChanged,
+            ),
           ),
         ],
       ),

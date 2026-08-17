@@ -7,6 +7,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
 import 'package:dominican_casino/ui/animations/card_flight_animator.dart';
 import 'package:dominican_casino/ui/animations/shuffle_animator.dart';
+import 'package:dominican_casino/ui/app_shell/games/account_setup_popup.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
@@ -141,22 +142,36 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       context: context,
       title: 'Skip tutorial?',
       content: Text(
-        'Start a real game against Puli, or cancel and go home.',
+        'Go to the games lobby and set up your name when you are ready.',
         textAlign: TextAlign.center,
         style: AppStyle.theme.body,
       ),
-      primaryText: 'Play',
-      onPrimary: _finishTutorialPlayPuli,
-      secondaryText: 'Exit',
-      onSecondary: _finishTutorialReturnHome,
+      primaryText: 'Skip',
+      onPrimary: _finishTutorialReturnHome,
+      secondaryText: 'Stay',
+      onSecondary: () {},
     );
   }
 
-  Future<void> _finishTutorialPlayPuli() async {
+  Future<void> _finishTutorialReturnHome() async {
     _leavingTutorial = true;
     tutorialVm.finish();
     await context.read<AppRepo>().completeTutorial();
     if (!mounted) return;
+    context.go('/landing');
+  }
+
+  Future<void> _finishTutorialPlayGame() async {
+    _leavingTutorial = true;
+    tutorialVm.finish();
+    await context.read<AppRepo>().completeTutorial();
+    if (!mounted) return;
+
+    final player = context.read<AppRepo>().player;
+    if (player != null && player.needsAccountSetup) {
+      await showAccountSetupPopup(context);
+      if (!mounted) return;
+    }
 
     final gid = await context.read<GamesViewModel>().newGame(
       GameMode.casino,
@@ -168,14 +183,6 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       return;
     }
     context.go(GameRoutes.game(gameId: gid, gameMode: GameMode.casino.name));
-  }
-
-  Future<void> _finishTutorialReturnHome() async {
-    _leavingTutorial = true;
-    tutorialVm.finish();
-    await context.read<AppRepo>().completeTutorial();
-    if (!mounted) return;
-    context.go('/landing');
   }
 
   void _onVmChanged() {
@@ -319,7 +326,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                         isLastScreen: tutorialVm.isLastStep,
                         onNext: _onTutorialNext,
                         onSkip: () => _onTutorialSkip(context),
-                        onPlay: _finishTutorialPlayPuli,
+                        onPlay: _finishTutorialPlayGame,
                         onExit: _finishTutorialReturnHome,
                         canGoNext: true,
                       );

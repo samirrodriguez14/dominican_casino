@@ -37,4 +37,11 @@ class Player {
       completedTutorial: completedTutorial ?? this.completedTutorial,
     );
   }
+
+  /// True until the player picks a display name (generated ids look like `p_a1b2c3d4`).
+  bool get needsAccountSetup {
+    final n = name?.trim();
+    if (n == null || n.isEmpty) return true;
+    return n.startsWith('p_') && n.length <= 12;
+  }
 }

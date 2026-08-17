@@ -15,6 +15,9 @@ class SageTheme extends AppTheme {
   @override
   String get cardBack => 'assets/images/card_back_sage.png';
 
+  @override
+  String get loginCardBack => 'assets/images/login_back_sage.png';
+
   // Base — charcoal with a quiet green cast
   @override
   Color get background => const Color(0xFF1A2220);
@@ -76,36 +79,33 @@ class SageTheme extends AppTheme {
 
   @override
   BoxDecoration surfaceBox({Color? color}) => BoxDecoration(
-        color: color ?? surface,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: border.withValues(alpha: .55)),
-      );
+    color: color ?? surface,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: border.withValues(alpha: .55)),
+  );
 
   @override
   BoxDecoration raisedSurfaceBox({Color? color}) => BoxDecoration(
-        color: color ?? surfaceRaised,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: border.withValues(alpha: .45)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .28),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      );
+    color: color ?? surfaceRaised,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: border.withValues(alpha: .45)),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: .28),
+        blurRadius: 16,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
 
   @override
   BoxDecoration tableBackground() => const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(0, -0.12),
-          radius: 1.25,
-          colors: [
-            Color(0xFF2A3D36),
-            Color(0xFF1A2220),
-          ],
-        ),
-      );
+    gradient: RadialGradient(
+      center: Alignment(0, -0.12),
+      radius: 1.25,
+      colors: [Color(0xFF2A3D36), Color(0xFF1A2220)],
+    ),
+  );
 
   @override
   BoxDecoration playerSectionBox({
@@ -150,11 +150,11 @@ class SageTheme extends AppTheme {
 
   @override
   TextStyle get title => TextStyle(
-        color: textPrimary,
-        fontWeight: FontWeight.w700,
-        fontSize: 16,
-        letterSpacing: .15,
-      );
+    color: textPrimary,
+    fontWeight: FontWeight.w700,
+    fontSize: 16,
+    letterSpacing: .15,
+  );
 
   @override
   TextStyle get body => TextStyle(color: textPrimary, fontSize: 14);

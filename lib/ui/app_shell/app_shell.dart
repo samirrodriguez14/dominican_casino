@@ -1,8 +1,10 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/account_setup_popup.dart';
 import 'package:dominican_casino/ui/app_shell/games/current_games_popup.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
+import 'package:dominican_casino/ui/app_shell/games/welcome_tutorial_popup.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_screen.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
@@ -20,6 +22,7 @@ class AppShell extends StatefulWidget {
 class AppShellState extends State<AppShell> {
   int currentIndex = 1;
   late final PageController _pageController;
+  bool _offeredTutorial = false;
 
   @override
   void initState() {
@@ -30,7 +33,22 @@ class AppShellState extends State<AppShell> {
       if (pid != null) {
         context.read<GamesViewModel>().startListening(pid);
       }
+      _maybeOfferFirstRun();
     });
+  }
+
+  void _maybeOfferFirstRun() {
+    if (_offeredTutorial || !mounted) return;
+    final player = context.read<AppRepo>().player;
+    if (player == null) return;
+    _offeredTutorial = true;
+    if (!player.completedTutorial) {
+      showWelcomeTutorialPopup(context);
+      return;
+    }
+    if (player.needsAccountSetup) {
+      showAccountSetupPopup(context);
+    }
   }
 
   @override
@@ -65,14 +83,10 @@ class AppShellState extends State<AppShell> {
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
               children: const [
+                _KeepAlivePage(child: StoreScreen(key: ValueKey('store-tab'))),
+                _KeepAlivePage(child: GamesScreen(key: ValueKey('games-tab'))),
                 _KeepAlivePage(
-                  child: StoreScreen(key: ValueKey('store-tab')),
-                ),
-                _KeepAlivePage(
-                  child: GamesScreen(key: ValueKey('games-tab')),
-                ),
-                _KeepAlivePage(
-                  child: ProfileScreen(key: ValueKey('profile-tab-v2')),
+                  child: ProfileScreen(key: ValueKey('profile-tab-v3')),
                 ),
               ],
             ),
@@ -113,24 +127,24 @@ class AppShellState extends State<AppShell> {
               clipBehavior: Clip.none,
               children: [
                 _FloatingTabBar(
-                    currentIndex: currentIndex,
-                    onTap: _onTabTap,
-                    items: [
-                      _FloatingTabItem(
-                        icon: CupertinoIcons.bag,
-                        label: l10n.store,
-                      ),
-                      _FloatingTabItem(
-                        icon: CupertinoIcons.game_controller,
-                        label: l10n.games,
-                      ),
-                      _FloatingTabItem(
-                        icon: CupertinoIcons.profile_circled,
-                        label: l10n.profile,
-                      ),
-                    ],
-                    theme: theme,
-                  ),
+                  currentIndex: currentIndex,
+                  onTap: _onTabTap,
+                  items: [
+                    _FloatingTabItem(
+                      icon: CupertinoIcons.bag,
+                      label: l10n.store,
+                    ),
+                    _FloatingTabItem(
+                      icon: CupertinoIcons.game_controller,
+                      label: l10n.games,
+                    ),
+                    _FloatingTabItem(
+                      icon: CupertinoIcons.profile_circled,
+                      label: l10n.profile,
+                    ),
+                  ],
+                  theme: theme,
+                ),
                 Positioned(
                   right: 16,
                   child: _CurrentGamesButton(
