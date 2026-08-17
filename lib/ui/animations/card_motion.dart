@@ -1,0 +1,79 @@
+import 'package:dominican_casino/game_control/interfaces/card_event.dart';
+import 'package:dominican_casino/game_control/interfaces/zone.dart';
+import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:flutter/cupertino.dart';
+
+class CardFlightRequest {
+  final CardMoveEvent event;
+  final Offset? fromGlobalCenter;
+  final GlobalKey? toKey;
+  final GlobalKey? fromKey;
+  final bool startFaceUp;
+  final bool endFaceUp;
+  final bool flip;
+  final double startWidth;
+  final double endWidth;
+  final bool hapticOnLaunch;
+
+  const CardFlightRequest({
+    required this.event,
+    this.fromGlobalCenter,
+    this.toKey,
+    this.fromKey,
+    this.startFaceUp = true,
+    this.endFaceUp = true,
+    this.flip = false,
+    this.startWidth = 60,
+    this.endWidth = 60,
+    this.hapticOnLaunch = true,
+  });
+
+  PlayingCardModel get card => event.card;
+  String get cardId => event.card.id;
+  Zone get from => event.from;
+  Zone get to => event.to;
+}
+
+typedef CardFlightRunner =
+    Future<void> Function(
+      List<CardFlightRequest> flights, {
+      VoidCallback? onLanded,
+    });
+
+class CardMotionController extends ChangeNotifier {
+  final Set<String> _inFlight = {};
+  CardFlightRunner? runner;
+
+  bool get hasFlights => _inFlight.isNotEmpty;
+  bool isInFlight(String cardId) => _inFlight.contains(cardId);
+  bool isInFlightCard(PlayingCardModel card) => isInFlight(card.id);
+  bool anyInFlight(Iterable<PlayingCardModel> cards) =>
+      cards.any((c) => isInFlight(c.id));
+
+  void markInFlight(Iterable<String> ids) {
+    _inFlight.addAll(ids);
+    notifyListeners();
+  }
+
+  void clearInFlight([Iterable<String>? ids]) {
+    if (ids == null) {
+      _inFlight.clear();
+    } else {
+      _inFlight.removeAll(ids);
+    }
+    notifyListeners();
+  }
+
+  Future<void> run(List<CardFlightRequest> flights) async {
+    if (flights.isEmpty) return;
+    final run = runner;
+    if (run == null) {
+      clearInFlight(flights.map((f) => f.cardId));
+      return;
+    }
+    await run(
+      flights,
+      onLanded: () => clearInFlight(flights.map((f) => f.cardId)),
+    );
+  }
+}

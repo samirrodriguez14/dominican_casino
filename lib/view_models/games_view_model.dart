@@ -5,25 +5,21 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:flutter/cupertino.dart';
 
 class GamesViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
-  final GameRepo _gameRepo;
 
-  GamesViewModel({required AppRepo appRepo, required GameRepo gameRepo})
-    : _appRepo = appRepo,
-      _gameRepo = gameRepo;
+  GamesViewModel({required AppRepo appRepo}) : _appRepo = appRepo;
 
   List<GameInfo> get gamesInfo => _appRepo.gamesInfo;
-  
+
   Future<String?> newGame(GameMode mode, bool local) async {
     try {
       String? pid = _appRepo.player?.id;
       Player? playersInfo = _appRepo.player;
       if (pid != null && playersInfo != null) {
-        String gid = await _appRepo.createNewGame(mode, pid, _gameRepo, local);
+        String gid = await _appRepo.createNewGame(mode, pid, local);
         developer.log("game $gid, player $pid");
         return gid;
       }

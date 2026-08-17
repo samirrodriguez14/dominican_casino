@@ -51,10 +51,7 @@ void main() async {
               ProfileViewModel(appRepo: context.read<AppRepo>()),
         ),
         ChangeNotifierProvider(
-          create: (context) => GamesViewModel(
-            appRepo: context.read<AppRepo>(),
-            gameRepo: context.read<GameRepo>(),
-          ),
+          create: (context) => GamesViewModel(appRepo: context.read<AppRepo>()),
         ),
         ChangeNotifierProvider(
           create: (context) => HomeViewModel(appRepo: context.read<AppRepo>()),

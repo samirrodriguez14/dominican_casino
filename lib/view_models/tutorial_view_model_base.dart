@@ -1,9 +1,6 @@
-import 'dart:convert';
-
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class TutorialViewModelBase extends ChangeNotifier {
   final AppRepo appRepo;
@@ -44,13 +41,7 @@ class TutorialViewModelBase extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      if (appRepo.player != null) {
-        final updatedPlayer = appRepo.player!.copyWith(completedTutorial: true);
-        final SharedPreferences sp = await SharedPreferences.getInstance();
-        await sp.setString("player_id", jsonEncode(updatedPlayer.toJson()));
-        appRepo.player = updatedPlayer;
-        appRepo.notifyListeners();
-      }
+      await appRepo.completeTutorial();
     } finally {
       _isLoading = false;
       notifyListeners();

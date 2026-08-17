@@ -1,12 +1,17 @@
-import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/models/playing_area_stack_model.dart';
+import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/models/table_slot.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
+import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
+import 'package:dominican_casino/ui/animations/sliding_card_layout.dart';
 import 'package:dominican_casino/ui/cards/card_deck.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/popups/players_deck_content.dart';
 import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_opponent_area.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -20,13 +25,14 @@ class NewCasinoPlayingArea extends StatefulWidget {
 class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
   GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
   final double tableCardWidth = 60;
+  static const double _stackOverlap = 30;
+
   @override
   Widget build(BuildContext context) {
     return Opacity(
-      opacity: (vm.inGameAction != InGameAction.noAction) ? 0.5 : 1,
+      opacity: vm.showInGameControl ? 0.5 : 1,
       child: Column(
         children: [
-          //OPP CARDS
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 0),
             child: GenOpponentArea(
@@ -38,7 +44,6 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                //DEALING DECK
                 Column(
                   mainAxisAlignment: (vm.gameState.controllerId == vm.me)
                       ? MainAxisAlignment.end
@@ -56,21 +61,13 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                     ),
                   ],
                 ),
-
-                //TABLE AREA PLAYING CARDS
                 Expanded(
                   key: vm.tableKey,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      // horizontal: 12,
-                      vertical: 18,
-                    ),
-                    child: _buildCardWrap(context, vm),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: _buildTableSlots(context, vm),
                   ),
-
-                  //   ],
                 ),
-                //COLLECTED CARDS AREAS
                 Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -78,16 +75,16 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                       color: vm.gameState.lastTookCardId == vm.opp
                           ? AppStyle.theme.border
                           : null,
-
                       child: CardDeck(
                         key: vm.oppDeckKey,
-
                         title: "Opp's Deck",
                         cardWidth: tableCardWidth,
                         cards: vm.oppCollectedCards,
                         extraPoints: vm.oppExtraPoints,
+                        holdExtraReveal: vm.motion.hasFlights,
                         onTap: () {
-                          HapticFeedback.mediumImpact();
+                          HapticFeedback.selectionClick();
+                          SoundService.instance.play(GameSound.softCard);
                           showAppPopup(
                             context: context,
                             title: "Opponent's Collected Cards",
@@ -98,7 +95,6 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                         },
                       ),
                     ),
-
                     AppStyle.theme.dottedBox(
                       color: vm.gameState.lastTookCardId == vm.me
                           ? AppStyle.theme.border
@@ -109,8 +105,10 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                         cardWidth: tableCardWidth,
                         cards: vm.myCollectedCards,
                         extraPoints: vm.myExtraPoints,
+                        holdExtraReveal: vm.motion.hasFlights,
                         onTap: () {
-                          HapticFeedback.mediumImpact();
+                          HapticFeedback.selectionClick();
+                          SoundService.instance.play(GameSound.softCard);
                           showAppPopup(
                             context: context,
                             title: "My Collected Cards",
@@ -131,74 +129,93 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
     );
   }
 
-  Widget _buildCardWrap(BuildContext context, GeneralGameViewModel vm) {
-    return Wrap(
-      alignment: WrapAlignment.center,
+  Widget _buildTableSlots(BuildContext context, GeneralGameViewModel vm) {
+    final tableH = tableCardWidth * 1.4;
+    final slots = vm.gameState.tableSlots;
+
+    return SlidingCardLayout(
+      itemHeight: tableH,
       spacing: 10,
       runSpacing: 10,
-      children: [
-        ...vm.playingAreaStacks.map((stack) {
-          final isSelected = vm.selectedStacks.contains(stack);
-
-          return KeyedSubtree(
-            key: ValueKey('stack_${stack.id}'),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => vm.selectStack(stack),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                transform: isSelected
-                    ? Matrix4.translationValues(0, -12, 0)
-                    : Matrix4.identity(),
-                child: AnimatedScale(
-                  scale: vm.stackContainsCardHidded(stack.cards) ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOut,
-                  child: AnimatedScale(
-                    duration: const Duration(milliseconds: 150),
-                    scale: isSelected ? 1.06 : 1.0,
-                    child: PlayingAreaStack(
-                      stack: stack,
-                      isSelected: isSelected,
-                    ),
-                  ),
-                ),
-              ),
+      slots: [
+        for (final slot in slots)
+          switch (slot) {
+            TableCardSlot(:final card) => SlidingSlot(
+              key: ValueKey(slot.orderKey),
+              width: slot.widthFor(cardWidth: tableCardWidth),
+              child: _looseCard(vm, card),
             ),
-          );
-        }),
-        ...vm.playingAreaCards.map((c) {
-          final isSelected = vm.selectedCards.contains(c);
-
-          return KeyedSubtree(
-            key: ValueKey('card_${c.id}'),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => vm.selectCardToStack(c),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                transform: isSelected
-                    ? Matrix4.translationValues(0, -12, 0)
-                    : Matrix4.identity(),
-                child: AnimatedScale(
-                  scale: vm.isCardHidden(c) ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOut,
-                  child: AnimatedScale(
-                    duration: const Duration(milliseconds: 150),
-                    scale: isSelected ? 1.06 : 1.0,
-                    child: PlayingCard(
-                      playingCardModel: c,
-                      isSelected: isSelected,
-                      width: tableCardWidth,
-                    ),
-                  ),
-                ),
+            TableStackSlot(:final stack) => SlidingSlot(
+              key: ValueKey(slot.orderKey),
+              width: slot.widthFor(
+                cardWidth: tableCardWidth,
+                overlap: _stackOverlap,
               ),
+              child: _stackSlot(vm, stack),
             ),
-          );
-        }),
+          },
       ],
+    );
+  }
+
+  Widget _looseCard(GeneralGameViewModel vm, PlayingCardModel card) {
+    final isSelected = vm.selectedCards.contains(card);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => vm.selectCardToStack(card),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        transform: isSelected
+            ? Matrix4.translationValues(0, -12, 0)
+            : Matrix4.identity(),
+        child: FlightAwareCard(
+          key: vm.keyForCard(card.id, CardSlot.table),
+          card: card,
+          inFlight: vm.motion.isInFlight(card.id),
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 150),
+            scale: isSelected ? 1.06 : 1.0,
+            child: PlayingCard(
+              playingCardModel: card,
+              isSelected: isSelected,
+              width: tableCardWidth,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stackSlot(GeneralGameViewModel vm, PlayingAreaStackModel stack) {
+    final isSelected = vm.selectedStacks.contains(stack);
+    final inFlight = vm.stackContainsCardHidded(stack.cards);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => vm.selectStack(stack),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        transform: isSelected
+            ? Matrix4.translationValues(0, -12, 0)
+            : Matrix4.identity(),
+        child: Opacity(
+          // Invisible while flights land into each fanned slot (already laid out).
+          opacity: inFlight ? 0.0 : 1.0,
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 150),
+            scale: isSelected ? 1.06 : 1.0,
+            child: KeyedSubtree(
+              key: vm.keyForStack(stack.id),
+              child: PlayingAreaStack(
+                stack: stack,
+                isSelected: isSelected,
+                cardWidth: tableCardWidth,
+                overlap: _stackOverlap,
+                cardKeyFor: (c) => vm.keyForCard(c.id, CardSlot.inStack),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

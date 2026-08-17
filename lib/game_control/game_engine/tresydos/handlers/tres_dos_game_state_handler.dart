@@ -23,6 +23,7 @@ class TresDosGameStateHandler {
     gameState.extraPointsHolderId = '';
     gameState.lastTookCardId = '';
     gameState.cardMoveEvents = [];
+    gameState.settlementEvents = [];
 
     gameState.currentTurnPlayerId = '';
     gameState.controllerId = pid;
@@ -55,6 +56,7 @@ class TresDosGameStateHandler {
   static GameState handleRoundEnded(GameState gameState, String performedBy) {
     gameState.scores[performedBy] = (gameState.scores[performedBy] ?? 0) + 1;
     gameState.round.roundStatus = RoundStatus.completed;
+    gameState.round.nextAcknowledged = false;
     gameState.controllerId = GameActionHandler.getNextControllerId(gameState);
     bool won = gameState.scores[performedBy] >= 3;
     if (won) {

@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -75,14 +76,15 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
                           clipBehavior: Clip.none,
                           children: [
                             for (int i = 0; i < count; i++)
-                              Positioned(
-                                key: vm.keyForCard(cards[i].id),
-
+                              AnimatedPositioned(
+                                key: ValueKey(cards[i].id),
+                                duration: const Duration(milliseconds: 280),
+                                curve: Curves.easeOutCubic,
                                 left: i * gap,
-                                child: AnimatedScale(
-                                  scale: vm.isCardHidden(cards[i]) ? 0.0 : 1.0,
-                                  duration: const Duration(milliseconds: 400),
-                                  curve: Curves.easeOut,
+                                child: FlightAwareCard(
+                                  key: vm.keyForCard(cards[i].id, CardSlot.oppHand),
+                                  card: cards[i],
+                                  inFlight: vm.motion.isInFlight(cards[i].id),
                                   child:
                                       (vm.gameState.round.roundStatus ==
                                           .completed)

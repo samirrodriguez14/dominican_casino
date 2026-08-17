@@ -2,6 +2,7 @@ import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/round.dart';
+import 'package:dominican_casino/models/table_slot.dart';
 
 import 'playing_card_model.dart';
 
@@ -23,7 +24,6 @@ GameMode gameModeFrom(String? s) {
     case 'robaito':
       return GameMode.robaito;
     default:
-      // Fail closed to casino only for legacy docs; prefer GameRegistry for routes.
       return GameMode.casino;
   }
 }
@@ -47,8 +47,15 @@ class GameState {
   bool started;
   String? currentTurnPlayerId;
   List<CardMoveEvent> cardMoveEvents = [];
+
+  /// End-of-round leftover collect only — never mixed into [cardMoveEvents].
+  List<CardMoveEvent> settlementEvents = [];
+
   final List<PlayingCardModel> playingArea;
   final List<PlayingAreaStackModel> playingAreaStacks;
+
+  /// Visual order on the table: `c:<cardId>` or `s:<stackId>`.
+  List<String> tableOrder;
 
   List<PlayingCardModel> deck;
   final Map<String, List<PlayingCardModel>> hands;
@@ -60,6 +67,13 @@ class GameState {
   final Map<String, dynamic> playersInfo;
   String? winnerId;
   Round round;
+
+  /// Display name of the on-device AI seat ("Puli").
+  static const String localBotName = 'Pulilo';
+
+  /// True when the opponent seat is the on-device AI, not a remote player.
+  bool isLocalBot;
+  String? botPlayerId;
 
   GameState({
     required this.gameStatus,
@@ -78,11 +92,33 @@ class GameState {
     required this.playersDeck,
     required this.lastTookCardId,
     required this.cardMoveEvents,
+    List<CardMoveEvent>? settlementEvents,
     required this.round,
     required this.winnerId,
-
     required this.playersInfo,
-  });
+    this.isLocalBot = false,
+    this.botPlayerId,
+    List<String>? tableOrder,
+  }) : settlementEvents = settlementEvents ?? [],
+       tableOrder = tableOrder ?? [];
+
+  /// Bot pid from persisted fields, or a legacy "Pulilo" seat for older games.
+  String? get localBotPid {
+    if (botPlayerId != null && botPlayerId!.isNotEmpty) return botPlayerId;
+    for (final entry in playersInfo.entries) {
+      final raw = entry.value;
+      if (raw is Map && raw['name'] == localBotName) return entry.key;
+    }
+    return null;
+  }
+
+  /// Fill bot fields so a restored match can recreate the AI actor.
+  void ensureBotMetadata() {
+    final pid = localBotPid;
+    if (pid == null) return;
+    isLocalBot = true;
+    botPlayerId = pid;
+  }
 
   factory GameState.create(String gid, String pid, GameMode mode) {
     final round = Round(
@@ -103,30 +139,101 @@ class GameState {
       extraPointsHolderId: "",
       playingArea: [],
       playingAreaStacks: [],
+      tableOrder: [],
       hands: {},
       playersDeck: {},
       lastTookCardId: '',
       cardMoveEvents: [],
+      settlementEvents: [],
       playersInfo: {},
-
       winnerId: "",
       round: round,
     );
   }
 
+  List<TableSlot> get tableSlots {
+    ensureTableOrder();
+    final cardsById = {for (final c in playingArea) c.id: c};
+    final stacksById = {for (final s in playingAreaStacks) s.id: s};
+    final out = <TableSlot>[];
+    for (final key in tableOrder) {
+      if (TableOrder.isCard(key)) {
+        final c = cardsById[TableOrder.idOf(key)];
+        if (c != null) out.add(TableCardSlot(c));
+      } else if (TableOrder.isStack(key)) {
+        final s = stacksById[TableOrder.idOf(key)];
+        if (s != null) out.add(TableStackSlot(s));
+      }
+    }
+    return out;
+  }
+
+  void ensureTableOrder() {
+    if (tableOrder.isNotEmpty) return;
+    tableOrder = [
+      ...playingAreaStacks.map((s) => TableOrder.stackKey(s.id)),
+      ...playingArea.map((c) => TableOrder.cardKey(c.id)),
+    ];
+  }
+
+  void placeCardOnTable(PlayingCardModel card) {
+    playingArea.add(card);
+    tableOrder.add(TableOrder.cardKey(card.id));
+  }
+
+  void removeLooseCardFromTable(PlayingCardModel card) {
+    playingArea.removeWhere((c) => c.id == card.id);
+    tableOrder.remove(TableOrder.cardKey(card.id));
+  }
+
+  void removeStackFromTable(PlayingAreaStackModel stack) {
+    playingAreaStacks.removeWhere((s) => s.id == stack.id);
+    tableOrder.remove(TableOrder.stackKey(stack.id));
+  }
+
+  void formStackInPlace({
+    required PlayingAreaStackModel stack,
+    List<PlayingCardModel> removedCards = const [],
+    List<PlayingAreaStackModel> removedStacks = const [],
+  }) {
+    ensureTableOrder();
+    int? insertAt;
+    for (final c in removedCards) {
+      final i = tableOrder.indexOf(TableOrder.cardKey(c.id));
+      if (i >= 0 && (insertAt == null || i < insertAt)) insertAt = i;
+    }
+    for (final s in removedStacks) {
+      final i = tableOrder.indexOf(TableOrder.stackKey(s.id));
+      if (i >= 0 && (insertAt == null || i < insertAt)) insertAt = i;
+    }
+
+    for (final c in removedCards) {
+      playingArea.removeWhere((x) => x.id == c.id);
+      tableOrder.remove(TableOrder.cardKey(c.id));
+    }
+    for (final s in removedStacks) {
+      playingAreaStacks.removeWhere((x) => x.id == s.id);
+      tableOrder.remove(TableOrder.stackKey(s.id));
+    }
+
+    playingAreaStacks.add(stack);
+    final at = (insertAt ?? tableOrder.length).clamp(0, tableOrder.length);
+    tableOrder.insert(at, TableOrder.stackKey(stack.id));
+  }
+
   Map<String, dynamic> toJson() => {
     'gameStatus': gameStatus.name,
     'cardMoveEvents': cardMoveEvents.map((e) => e.toJson()).toList(),
+    'settlementEvents': settlementEvents.map((e) => e.toJson()).toList(),
     'id': id,
     'gameMode': gameModeTo(gameMode),
     'controllerId': controllerId,
     'started': started,
     'currentTurnPlayerId': currentTurnPlayerId,
-
     'deck': deck.map((c) => c.toMap()).toList(),
     'playingArea': playingArea.map((c) => c.toMap()).toList(),
     'playingAreaStacks': playingAreaStacks.map((s) => s.toMap()).toList(),
-
+    'tableOrder': tableOrder,
     'hands': hands.map((k, v) => MapEntry(k, v.map((c) => c.toMap()).toList())),
     'scores': scores,
     'playersInfo': playersInfo,
@@ -138,6 +245,8 @@ class GameState {
     'lastTookCardId': lastTookCardId,
     'winnerId': winnerId,
     'round': round.toJson(),
+    'isLocalBot': isLocalBot,
+    'botPlayerId': botPlayerId,
   };
 
   static GameState fromMap(Map<String, dynamic> m) {
@@ -181,10 +290,19 @@ class GameState {
             ?.map((e) => CardMoveEvent.fromDto(e))
             .toList() ??
         [];
+    final settlementEvents =
+        (m['settlementEvents'] as List?)
+            ?.map((e) => CardMoveEvent.fromDto(e))
+            .toList() ??
+        [];
+    final tableOrder =
+        (m['tableOrder'] as List?)?.map((e) => e.toString()).toList() ??
+        <String>[];
     return GameState(
       gameStatus: gameStatus,
       gameMode: gameMode,
       cardMoveEvents: cardMoveEvents,
+      settlementEvents: settlementEvents,
       id: (m['id'] as String?) ?? '',
       controllerId: (m['controllerId'] as String?) ?? '',
       started: m['started'] == true,
@@ -192,15 +310,18 @@ class GameState {
       deck: deck,
       playingArea: playing,
       playingAreaStacks: areaStack,
+      tableOrder: tableOrder,
       scores: Map<String, dynamic>.from(m['scores'] ?? {}),
       hands: hands,
       playersDeck: playersDeck,
       lastTookCardId: (m['lastTookCardId'] as String?) ?? '',
-      playersInfo: m['playersInfo'],
+      playersInfo: Map<String, dynamic>.from(m['playersInfo'] ?? {}),
       winnerId: m['winnerId'] as String?,
       extraPoints: m['extraPoints'],
       extraPointsHolderId: m['extraPointsHolderId'],
       round: round,
+      isLocalBot: m['isLocalBot'] == true,
+      botPlayerId: m['botPlayerId'] as String?,
     );
   }
 }

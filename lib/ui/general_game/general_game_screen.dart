@@ -1,12 +1,10 @@
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
-import 'package:dominican_casino/ui/animations/deal_annimator.dart';
-import 'package:dominican_casino/ui/cards/playing_card.dart';
+import 'package:dominican_casino/ui/animations/card_flight_animator.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
@@ -36,12 +34,27 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   GeneralGameViewModel? _boundVm;
 
   late final TutorialViewModel tutorialVm;
+
+  /// Prevents stacking duplicate round/game status popups.
+  String? _shownStatusKey;
+  bool _statusPopupOpen = false;
+
+  void _bindFlightRunner(GeneralGameViewModel gameVm) {
+    gameVm.motion.runner = (flights, {onLanded}) => CardFlightAnimator.flyAll(
+      context: context,
+      vsync: this,
+      flights: flights,
+      onLanded: onLanded,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final initvm = context.read<GeneralGameViewModel>();
+      _bindFlightRunner(initvm);
 
       tutorialVm = TutorialViewModel(
         getCasinoTutorialSteps(
@@ -57,12 +70,13 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         ),
       );
       initvm.actionGuard = tutorialVm.tryProgress;
-      initvm.handleTutorialOpponentMove = tutorialVm.nextStep;
       final ok = await initvm.loadGame();
 
       if (ok && mounted) {
         await initvm.joinGame();
-        initvm.gameRepo.listenToGame(initvm.gid);
+        if (!initvm.tutorialMode) {
+          initvm.gameRepo.listenToGame(initvm.gid);
+        }
 
         if (initvm.tutorialMode &&
             initvm.gameState.gameMode == GameMode.casino) {
@@ -89,50 +103,91 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       _boundVm?.removeListener(_onVmChanged);
       _boundVm = newVm;
       _boundVm?.addListener(_onVmChanged);
+      _bindFlightRunner(newVm);
     }
+  }
+
+  @override
+  void dispose() {
+    _boundVm?.removeListener(_onVmChanged);
+    super.dispose();
+  }
+
+  void _onTutorialNext() {
+    if (tutorialVm.isLastStep) {
+      _finishTutorialKeepPlaying();
+      return;
+    }
+    tutorialVm.nextStep();
+  }
+
+  void _onTutorialSkip(BuildContext context) {
+    showAppPopup(
+      context: context,
+      title: 'Skip tutorial?',
+      content: Text(
+        'Leave the guided tips and keep playing this game, or return home.',
+        textAlign: TextAlign.center,
+        style: AppStyle.theme.body,
+      ),
+      primaryText: 'Skip and continue tutorial',
+      onPrimary: _finishTutorialKeepPlaying,
+      secondaryText: 'Skip and return home',
+      onSecondary: _finishTutorialReturnHome,
+    );
+  }
+
+  Future<void> _finishTutorialKeepPlaying() async {
+    tutorialVm.finish();
+    await context.read<AppRepo>().completeTutorial();
+    if (!mounted) return;
+    await vm.playTutorialOpponentIfNeeded();
+  }
+
+  Future<void> _finishTutorialReturnHome() async {
+    tutorialVm.finish();
+    await context.read<AppRepo>().completeTutorial();
+    if (!mounted) return;
+    context.go('/landing');
   }
 
   void _onVmChanged() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (vm.gameState.gameStatus == GameStatus.gameOver ||
-          (vm.gameState.gameStatus == GameStatus.inProgress &&
-              vm.gameState.round.roundStatus == RoundStatus.completed)) {
-        showAppPopup(
-          context: context,
-          title: "Game Over",
-          content: GameStatusSheet(vm: vm),
-        );
-      }
-      await _flyPendingEvents();
-    });
-  }
 
-  Future<void> _flyPendingEvents() async {
-    if (!mounted) return;
-    final events = List<CardMoveEvent>.from(vm.pendingFlyEvents);
-    if (events.isEmpty) return;
-    vm.pendingFlyEvents.clear();
-    for (final event in events.take(6)) {
-      final fromKey = vm.keyForZone(event.from);
-      final toKey = vm.keyForZone(event.to);
-      if (fromKey == null || toKey == null) continue;
-      if (fromKey.currentContext == null || toKey.currentContext == null) {
-        continue;
-      }
-      await CardMoveAnimator.animateCardMove(
+      // Wait until card flights finish (incl. leftover collect) before status UI.
+      if (vm.isAnimating) return;
+
+      final gs = vm.gameState;
+      final isGameOver = gs.gameStatus == GameStatus.gameOver;
+      final isRoundDone =
+          gs.gameStatus == GameStatus.inProgress &&
+          gs.round.roundStatus == RoundStatus.completed;
+
+      if (!isGameOver && !isRoundDone) return;
+
+      final key = isGameOver
+          ? 'game_over_${gs.round.id}_${gs.winnerId}'
+          : 'round_${gs.round.id}_completed';
+
+      if (_statusPopupOpen || _shownStatusKey == key) return;
+      _shownStatusKey = key;
+      _statusPopupOpen = true;
+
+      showAppPopup(
         context: context,
-        vsync: this,
-        fromKey: fromKey,
-        toKey: toKey,
-        child: PlayingCard(
-          playingCardModel: event.card,
-          width: 46,
-          isSelected: false,
-        ),
-        duration: const Duration(milliseconds: 380),
-      );
-    }
+        title: isGameOver ? 'Game Over' : 'Round Complete',
+        content: GameStatusSheet(vm: vm),
+        primaryText: 'Continue',
+        barrierDismissible: false,
+        onPrimary: () {
+          _statusPopupOpen = false;
+          vm.continueAfterRound();
+        },
+      ).whenComplete(() {
+        _statusPopupOpen = false;
+      });
+    });
   }
 
   @override
@@ -196,7 +251,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                   AnimatedAlign(
                     duration: const Duration(milliseconds: 200),
                     curve: Curves.easeOut,
-                    alignment: vm.inGameAction != InGameAction.noAction
+                    alignment: vm.showInGameControl
                         ? Alignment.center
                         : Alignment.centerRight,
 
@@ -216,8 +271,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                         step: tutorialVm.currentStepData,
                         currentStep: tutorialVm.currentStep,
                         totalSteps: tutorialVm.totalSteps,
-                        onNext: tutorialVm.nextStep,
-                        onSkip: tutorialVm.finish,
+                        onNext: _onTutorialNext,
+                        onSkip: () => _onTutorialSkip(context),
                         canGoNext: true,
                       );
                     },

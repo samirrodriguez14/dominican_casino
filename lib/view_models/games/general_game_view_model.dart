@@ -1,18 +1,23 @@
 import 'dart:developer' as developer;
-import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
+
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
+import 'package:dominican_casino/local_player/casino_player.dart';
+import 'package:dominican_casino/local_player/local_player.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/models/round.dart';
+import 'package:dominican_casino/models/table_slot.dart';
 import 'package:dominican_casino/models/tutorial_action.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
+import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
+import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:flutter/cupertino.dart' hide Action;
-import 'package:flutter/services.dart';
 
 typedef ActionGuard =
     bool Function(
@@ -22,7 +27,9 @@ typedef ActionGuard =
       List<String> selectedCardIds,
     });
 
-typedef HandleTutorialGameState = void Function();
+/// Visual home of a card widget — scopes GlobalKeys so the same card id can
+/// exist in different UI slots across a rebuild without colliding.
+enum CardSlot { myHand, oppHand, table, aux, inStack }
 
 class GeneralGameViewModel extends ChangeNotifier {
   bool loading = true;
@@ -33,10 +40,14 @@ class GeneralGameViewModel extends ChangeNotifier {
   String gid;
   late GameState gameState;
   bool isAnimating = false;
-  final List<CardMoveEvent> pendingFlyEvents = [];
+  bool _pendingRepoSync = false;
+  bool _syncScheduled = false;
+  bool _disposed = false;
+
+  /// Destination slots stay laid out but invisible until flights land.
+  final CardMotionController motion = CardMotionController();
 
   ActionGuard? actionGuard;
-  HandleTutorialGameState? handleTutorialOpponentMove;
 
   GeneralGameViewModel({
     required this.gameRepo,
@@ -46,106 +57,356 @@ class GeneralGameViewModel extends ChangeNotifier {
     this.tutorialMode = false,
   }) {
     gameRepo.addListener(_onGameRepoChanged);
+    motion.addListener(notifyListeners);
   }
 
-  void _onGameRepoChanged() async {
-    // Prevent concurrent animations
-    if (isAnimating) return;
+  void _onGameRepoChanged() {
+    if (isAnimating) {
+      _pendingRepoSync = true;
+      return;
+    }
+    _syncFromRepo();
+  }
+
+  Future<void> _syncFromRepo() async {
+    if (_syncScheduled) {
+      _pendingRepoSync = true;
+      return;
+    }
+    _syncScheduled = true;
+    isAnimating = true;
 
     try {
-      final nextState = gameRepo.gameState!;
-      isAnimating = true;
-      developer.log(
-        "tM: $tutorialMode, cpid: ${gameState.currentTurnPlayerId}, oppId = $opp. $handleTutorialOpponentMove",
-      );
+      do {
+        _pendingRepoSync = false;
+        final nextState = gameRepo.gameState;
+        if (nextState == null) break;
 
-      if ((tutorialMode &&
-          handleTutorialOpponentMove != null &&
-          gameState.currentTurnPlayerId == opp)|| gameState.round.roundStatus ==.completed) {
-        handleTutorialOpponentMove!();
-        developer.log("handling tutorial next step");
-      }
-      // Get new events from other players
-      final newEvents = nextState.cardMoveEvents
-          .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
-          .toList();
+        final newEvents = nextState.cardMoveEvents
+            .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
+            .toList();
+        final newSettlement = nextState.settlementEvents
+            .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
+            .toList();
 
-      if (newEvents.isNotEmpty) {
-        pendingFlyEvents.addAll(newEvents);
-        // Hide cards for animation
-        for (final event in newEvents) {
-          hiddenCardIds.add(event.card.id);
-          gameRepo.lastPlayedIds.add(event.id);
+        for (final e in [...newEvents, ...newSettlement]) {
+          gameRepo.lastPlayedIds.add(e.id);
         }
 
-        notifyListeners();
-        await Future.delayed(const Duration(milliseconds: 300));
+        final shuffledIn =
+            gameState.round.roundStatus == RoundStatus.completed &&
+            nextState.round.roundStatus == RoundStatus.readyToDeal;
 
-        gameState = nextState;
-        HapticFeedback.heavyImpact();
-        if (nextState.currentTurnPlayerId == me) {
-          SoundService.instance.play(GameSound.yourTurn);
+        await _commitStateWithMotion(
+          nextState,
+          newEvents,
+          settlementEvents: newSettlement,
+        );
+
+        if (shuffledIn) {
+          SoundService.instance.play(GameSound.shuffle);
         }
-        selectedCard = null;
-        selectedCards = [];
-        selectedStacks = [];
-
-        hiddenCardIds.clear();
-
-        notifyListeners();
-
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        notifyListeners();
-      } else {
-        gameState = nextState;
-        notifyListeners();
-      }
-
-      isAnimating = false;
+      } while (_pendingRepoSync);
     } catch (e) {
-      developer.log("GameViewModel._onGameRepoChanged Error $e");
+      developer.log("GameViewModel._syncFromRepo Error $e");
+    } finally {
       isAnimating = false;
+      _syncScheduled = false;
       notifyListeners();
+      if (_pendingRepoSync) {
+        _pendingRepoSync = false;
+        _onGameRepoChanged();
+      }
     }
   }
 
+  /// 1) Capture origins from current keys
+  /// 2) Mark cards in-flight + commit (dest slots invisible; overlay owns paint)
+  /// 3) Fly overlays immediately from captured origins (no blank frames)
+  /// 4) Reveal under overlay, then drop overlay
+  /// 5) Brief settle so dealSame / round controls don't pop in early
+  ///
+  /// [settlementEvents] are end-of-round leftovers only (see GameState).
+  /// They animate after the play/capture batch — never inferred from zones.
+  Future<void> _commitStateWithMotion(
+    GameState next,
+    List<CardMoveEvent> events, {
+    List<CardMoveEvent> settlementEvents = const [],
+  }) async {
+    selectedCard = null;
+    selectedCards = [];
+    selectedStacks = [];
+
+    if (settlementEvents.isNotEmpty) {
+      final playOrigins = _captureOrigins(events);
+      final intermediate = _stateWithLeftoversOnTable(next, settlementEvents);
+
+      await _flyCommit(intermediate, events, playOrigins);
+
+      // Beat so everyone can read the last play before leftovers collect.
+      await Future<void>.delayed(const Duration(milliseconds: 750));
+
+      final settleOrigins = _captureOrigins(settlementEvents);
+      await _flyCommit(next, settlementEvents, settleOrigins);
+
+      await Future<void>.delayed(const Duration(milliseconds: 320));
+      return;
+    }
+
+    // When a card is played onto the table and then settled to a deck in the
+    // same batch (legacy / non-settlement paths), keep the final destination.
+    final deduped = <String, CardMoveEvent>{};
+    for (final e in events) {
+      deduped[e.card.id] = e;
+    }
+    final orderedEvents = deduped.values.toList();
+
+    final origins = _captureOrigins(events);
+    await _flyCommit(next, orderedEvents, origins);
+
+    if (orderedEvents.isEmpty) return;
+
+    final settleMs = orderedEvents.any((e) => e.to.type == ZoneType.playerDeck)
+        ? 320
+        : 220;
+    await Future<void>.delayed(Duration(milliseconds: settleMs));
+  }
+
+  /// Visual pause state: final scores/hands, but leftovers still on the table.
+  GameState _stateWithLeftoversOnTable(
+    GameState next,
+    List<CardMoveEvent> settlementEvents,
+  ) {
+    final settleIds = {for (final e in settlementEvents) e.card.id};
+    final receiver = settlementEvents.first.to.holderId ?? '';
+
+    final playersDeck = <String, List<PlayingCardModel>>{
+      for (final e in next.playersDeck.entries)
+        e.key: List<PlayingCardModel>.from(e.value),
+    };
+    if (receiver.isNotEmpty) {
+      playersDeck[receiver] = (playersDeck[receiver] ?? [])
+          .where((c) => !settleIds.contains(c.id))
+          .toList();
+    }
+
+    final leftovers = settlementEvents.map((e) => e.card).toList();
+
+    return GameState(
+      gameStatus: next.gameStatus,
+      gameMode: next.gameMode,
+      id: next.id,
+      controllerId: next.controllerId,
+      started: next.started,
+      currentTurnPlayerId: next.currentTurnPlayerId,
+      deck: List<PlayingCardModel>.from(next.deck),
+      scores: Map<String, dynamic>.from(next.scores),
+      extraPoints: next.extraPoints,
+      extraPointsHolderId: next.extraPointsHolderId,
+      playingArea: leftovers,
+      playingAreaStacks: [],
+      hands: {
+        for (final e in next.hands.entries)
+          e.key: List<PlayingCardModel>.from(e.value),
+      },
+      playersDeck: playersDeck,
+      lastTookCardId: next.lastTookCardId,
+      cardMoveEvents: List<CardMoveEvent>.from(next.cardMoveEvents),
+      settlementEvents: List<CardMoveEvent>.from(next.settlementEvents),
+      round: next.round,
+      winnerId: next.winnerId,
+      playersInfo: Map<String, dynamic>.from(next.playersInfo),
+      isLocalBot: next.isLocalBot,
+      botPlayerId: next.botPlayerId,
+      tableOrder: leftovers.map((c) => TableOrder.cardKey(c.id)).toList(),
+    );
+  }
+
+  Future<void> _flyCommit(
+    GameState commit,
+    List<CardMoveEvent> events,
+    Map<String, Offset> origins,
+  ) async {
+    if (events.isNotEmpty) {
+      motion.markInFlight(events.map((e) => e.card.id));
+    }
+
+    gameState = commit;
+    notifyListeners();
+
+    if (events.isEmpty) return;
+
+    final flights = events.map((e) {
+      final startUp = _startFaceUpFor(e);
+      final endUp = _endFaceUpFor(e);
+      return CardFlightRequest(
+        event: e,
+        fromGlobalCenter: origins[e.card.id],
+        fromKey: keyForZone(e.from),
+        toKey: _resolveToKey(e),
+        startFaceUp: startUp,
+        endFaceUp: endUp,
+        flip: startUp != endUp,
+        startWidth: _widthForZone(e.from),
+        endWidth: _widthForZone(e.to, cardId: e.card.id),
+        hapticOnLaunch: true,
+      );
+    }).toList();
+
+    await motion.run(flights);
+  }
+
+  /// Match the laid-out card size at each zone so flights grow/shrink in flight.
+  double _widthForZone(Zone zone, {String? cardId}) {
+    switch (zone.type) {
+      case ZoneType.playerHand:
+        // Must match GenPlayerArea (100) / GenOpponentArea (50).
+        return zone.holderId == me ? 100.0 : 50.0;
+      case ZoneType.table:
+      case ZoneType.gameDeck:
+      case ZoneType.playerDeck:
+      case ZoneType.stack:
+        return 60.0;
+    }
+  }
+
+  Map<String, Offset> _captureOrigins(List<CardMoveEvent> events) {
+    final map = <String, Offset>{};
+    for (final e in events) {
+      // First origin wins — important when a card is played then settled to a
+      // deck in the same batch (keep hand/table start, not a later zone center).
+      if (map.containsKey(e.card.id)) continue;
+
+      final fromSlot = _slotKeyForEventOrigin(e);
+      final fromCard = _centerOf(fromSlot);
+      if (fromCard != null) {
+        map[e.card.id] = fromCard;
+        continue;
+      }
+      final stackCard = _centerOf(keyForCard(e.card.id, CardSlot.inStack));
+      if (stackCard != null) {
+        map[e.card.id] = stackCard;
+        continue;
+      }
+      final stackKey = _stackKeyContaining(e.card.id);
+      final fromStack = _centerOf(stackKey);
+      if (fromStack != null) {
+        map[e.card.id] = fromStack;
+        continue;
+      }
+      final fromZone = _centerOf(keyForZone(e.from));
+      if (fromZone != null) map[e.card.id] = fromZone;
+    }
+    return map;
+  }
+
+  GlobalKey? _slotKeyForEventOrigin(CardMoveEvent e) {
+    switch (e.from.type) {
+      case ZoneType.playerHand:
+        return e.from.holderId == me
+            ? keyForCard(e.card.id, CardSlot.myHand)
+            : keyForCard(e.card.id, CardSlot.oppHand);
+      case ZoneType.table:
+        // Loose table card, or already inside a stack.
+        final loose = keyForCard(e.card.id, CardSlot.table);
+        if (loose.currentContext != null) return loose;
+        return keyForCard(e.card.id, CardSlot.inStack);
+      default:
+        return null;
+    }
+  }
+
+  GlobalKey? _resolveToKey(CardMoveEvent e) {
+    // Loose table card — key attaches after this rebuild.
+    if (gameState.playingArea.any((c) => c.id == e.card.id)) {
+      return keyForCard(e.card.id, CardSlot.table);
+    }
+
+    // Inside a stack — fly to that card's fanned slot, not stack center.
+    if (_cardIsInAnyStack(e.card.id)) {
+      return keyForCard(e.card.id, CardSlot.inStack);
+    }
+
+    // Still in a hand (deal / rare).
+    if ((gameState.hands[me] ?? []).any((c) => c.id == e.card.id)) {
+      return keyForCard(e.card.id, CardSlot.myHand);
+    }
+    if (opp != null &&
+        (gameState.hands[opp] ?? []).any((c) => c.id == e.card.id)) {
+      return keyForCard(e.card.id, CardSlot.oppHand);
+    }
+
+    // Collected decks / fallback zones.
+    return keyForZone(e.to);
+  }
+
+  bool _cardIsInAnyStack(String cardId) {
+    return gameState.playingAreaStacks.any(
+      (s) => s.cards.any((c) => c.id == cardId),
+    );
+  }
+
+  GlobalKey? _stackKeyContaining(String cardId) {
+    for (final s in gameState.playingAreaStacks) {
+      if (s.cards.any((c) => c.id == cardId)) {
+        return keyForStack(s.id);
+      }
+    }
+    return null;
+  }
+
+  Offset? _centerOf(GlobalKey? key) {
+    if (key == null) return null;
+    final box = key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(box.size.center(Offset.zero));
+  }
+
+  bool _startFaceUpFor(CardMoveEvent e) {
+    if (e.from.type == ZoneType.gameDeck) return false;
+    if (e.from.type == ZoneType.playerHand && e.from.holderId != me) {
+      return false;
+    }
+    return true;
+  }
+
+  bool _endFaceUpFor(CardMoveEvent e) {
+    if (e.to.type == ZoneType.playerHand && e.to.holderId != me) {
+      return false;
+    }
+    if (e.to.type == ZoneType.gameDeck) return false;
+    return true;
+  }
+
   List<PlayingCardModel> get playingAreaCards => gameState.playingArea;
-  //      PLAYING AREA STACKS
   List<PlayingAreaStackModel> get playingAreaStacks =>
       gameState.playingAreaStacks;
 
-  //      MY CURR HAND
-  //      MY COLLECTED CARDS
   String get me => player.id;
 
   int get myExtraPoints =>
       (gameState.extraPointsHolderId == player.id) ? gameState.extraPoints : 0;
   bool get isMyTurn => gameState.currentTurnPlayerId == me;
 
+  /// Turn is yours and motion has finished — safe to highlight and act.
+  bool get canPlayTurn => isMyTurn && !isAnimating;
+
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
-  List<PlayingCardModel> get myCollectedCards {
-    return gameState.playersDeck[me] ?? [];
-  }
+  List<PlayingCardModel> get myCollectedCards =>
+      gameState.playersDeck[me] ?? [];
 
   void sortHandCards() {
     gameState.hands[me]?.sort((a, b) => b.valueHigh.compareTo(a.valueHigh));
     notifyListeners();
   }
 
-  //      EXTRA POINTS
-
-  //      OPPONENTS HAND
-  //      OPPONENTS COLLECTED CARDS
   String? get opp {
     return (gameState.playersInfo.length > 1)
         ? gameState.playersInfo.entries.firstWhere((p) => p.key != me).key
         : null;
   }
 
-  List<String> get oppIds {
-    return sortIds(me).sublist(1);
-  }
+  List<String> get oppIds => sortIds(me).sublist(1);
 
   List<String> sortIds(String pid) {
     final players = gameState.playersInfo.keys.toList();
@@ -173,94 +434,173 @@ class GeneralGameViewModel extends ChangeNotifier {
   List<PlayingCardModel> get oppCollectedCards =>
       gameState.playersDeck[opp] ?? [];
 
-  //      POSSIBLE ACTIONS:
   CurrentCardSelection get cardSelection => CurrentCardSelection(
     pid: me,
     selectedCard: selectedCard,
     selectedCards: selectedCards,
     selectedStacks: selectedStacks,
   );
+
   List<PlayAction> get possiblePlayActions =>
       gameEngine.getAvailableActions(gameState, cardSelection);
 
   Future<void> performPlayAction(PlayAction action) async {
-    // Prevent concurrent animations
-    if (isAnimating) return;
+    if (isAnimating || _disposed) return;
+    if (!_guardHumanPlay(action)) return;
     isAnimating = true;
 
-    // Hide the selected cards/stacks before the state transition so they animate out.
-    hiddenCardIds.clear();
-
-    if (cardSelection.selectedCard != null) {
-      hiddenCardIds.add(cardSelection.selectedCard!.id);
+    try {
+      await _commitPlay(action, cardSelection);
+      if (_disposed) return;
+      try {
+        await _playTutorialOpponentIfNeeded();
+      } catch (e) {
+        developer.log("tutorial opponent Error $e");
+      }
+    } catch (e) {
+      developer.log("performPlayAction Error $e");
+      SoundService.instance.play(GameSound.illegal);
+    } finally {
+      if (!_disposed) {
+        isAnimating = false;
+        notifyListeners();
+        _drainPendingRepoSync();
+      }
     }
-    hiddenCardIds.addAll(cardSelection.selectedCards.map((e) => e.id));
-    for (var stack in cardSelection.selectedStacks) {
-      hiddenCardIds.addAll(stack.cards.map((e) => e.id));
+  }
+
+  bool _guardHumanPlay(PlayAction action) {
+    if (!tutorialMode || actionGuard == null) return true;
+    if (action.performedById != me) return true;
+    return _canPerform(_tutorialActionFor(action));
+  }
+
+  TutorialAction _tutorialActionFor(PlayAction action) {
+    if (action is AddCardsAction ||
+        action is AddCardStackAction ||
+        action is AddTableCardsAction ||
+        action is AddAndPairCardsAction ||
+        action is AddAndTakeAction) {
+      return TutorialAction.addStack;
     }
+    if (action is TakeStackAction) {
+      return TutorialAction.takeStack;
+    }
+    return TutorialAction.playMove;
+  }
 
-    notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 300));
+  Future<void> _commitPlay(
+    PlayAction action,
+    CurrentCardSelection selection,
+  ) async {
+    final next = gameEngine.performPlayAction(gameState, selection, action);
+    final events = List<CardMoveEvent>.from(next.cardMoveEvents);
+    final settlement = List<CardMoveEvent>.from(next.settlementEvents);
 
-    gameState = gameEngine.performPlayAction(
-      gameState,
-      cardSelection,
-      action,
-    );
     if (!tutorialMode) {
-      gameState = await gameRepo.fs.updateGame(gameState);
+      // Persist first so remote listeners get the same events; local motion
+      // still runs from this client via _commitStateWithMotion below.
+      // Mark event ids so the repo echo does not double-play.
+      for (final e in [...events, ...settlement]) {
+        gameRepo.lastPlayedIds.add(e.id);
+      }
+      await gameRepo.fs.updateGame(next);
     }
 
-    final actionName = action.runtimeType.toString();
-    if (actionName.contains('Take')) {
-      SoundService.instance.play(GameSound.capture);
-    } else {
-      SoundService.instance.play(GameSound.deal);
-    }
-    if (gameState.gameStatus == GameStatus.gameOver) {
+    await _commitStateWithMotion(
+      next,
+      events,
+      settlementEvents: settlement,
+    );
+    if (next.gameStatus == GameStatus.gameOver) {
       SoundService.instance.play(GameSound.win);
     }
-
-    selectedCard = null;
-    selectedCards = [];
-    selectedStacks = [];
-    notifyListeners();
-
-    await Future.delayed(const Duration(milliseconds: 50));
-    hiddenCardIds.clear();
-    isAnimating = false;
-    notifyListeners();
   }
 
-  //IN GAME ACTION
+  /// Tutorial games never hit Firestore, so the on-device AI never wakes up.
+  /// Play the bot locally after the human move (and if Skip leaves it their turn).
+  Future<void> playTutorialOpponentIfNeeded() async {
+    if (!tutorialMode || isAnimating || _disposed) return;
+    isAnimating = true;
+    try {
+      await _playTutorialOpponentIfNeeded();
+    } catch (e) {
+      developer.log("playTutorialOpponentIfNeeded Error $e");
+    } finally {
+      if (!_disposed) {
+        isAnimating = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> _playTutorialOpponentIfNeeded() async {
+    if (!tutorialMode || _disposed) return;
+    final botId = opp;
+    if (botId == null) return;
+    if (gameState.currentTurnPlayerId != botId) return;
+    if (gameState.round.roundStatus != RoundStatus.playing) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (_disposed || gameState.currentTurnPlayerId != botId) return;
+
+    final best = await CasinoPlayer.casinoBestAction(botId, gameState);
+    if (_disposed || gameState.currentTurnPlayerId != botId) return;
+
+    await _commitPlay(best.playAction, best.cardSelection);
+  }
+
   InGameAction get inGameAction => gameEngine.getInGameAction(gameState, me);
 
+  /// Board dim + control chrome share this — never dim while motion is running.
+  bool get showInGameControl =>
+      !isAnimating && inGameAction != InGameAction.noAction;
+
   Future<void> performInGameAction(InGameAction action) async {
-    gameState = gameEngine.performInGameAction(gameState, action, me);
-    if (!tutorialMode) {
-      gameState = await gameRepo.fs.updateGame(gameState);
+    if (isAnimating) return;
+    isAnimating = true;
+    try {
+      final next = gameEngine.performInGameAction(gameState, action, me);
+      final events = List<CardMoveEvent>.from(next.cardMoveEvents);
+
+      if (!tutorialMode) {
+        for (final e in events) {
+          gameRepo.lastPlayedIds.add(e.id);
+        }
+        await gameRepo.fs.updateGame(next);
+      }
+
+      if (action == InGameAction.shuffle) {
+        SoundService.instance.play(GameSound.shuffle);
+      }
+
+      await _commitStateWithMotion(next, events);
+    } catch (e) {
+      developer.log("performInGameAction Error $e");
+    } finally {
+      isAnimating = false;
+      notifyListeners();
+      _drainPendingRepoSync();
     }
-    if (action == InGameAction.deal || action == InGameAction.dealSame) {
-      SoundService.instance.play(GameSound.deal);
-    }
-    notifyListeners();
   }
 
-  //OUT OF GAME ACTIONS
+  void _drainPendingRepoSync() {
+    if (!_pendingRepoSync) return;
+    _pendingRepoSync = false;
+    _onGameRepoChanged();
+  }
+
   Future<bool> loadGame() async {
     try {
       if (tutorialMode) {
         gameState = TutorialCasinoFactory.createBasicTakeTutorial(
           gid: gid,
           playerId: me,
-          gameRepo: gameRepo,
         );
-
-        loading = false;
-        notifyListeners();
-        return true;
+      } else {
+        gameState = await gameRepo.fs.loadGame(gid);
+        gameState.ensureBotMetadata();
       }
-      gameState = await gameRepo.fs.loadGame(gid);
       loading = false;
       notifyListeners();
       return true;
@@ -272,17 +612,14 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   Future<bool> joinGame() async {
     try {
-      // Never persist FCM tokens on game docs — only public profile fields.
-      gameState.playersInfo[player.id] = {
-        'id': player.id,
-        'name': player.name,
-      };
+      gameState.playersInfo[player.id] = {'id': player.id, 'name': player.name};
       if (gameEngine.shouldMarkReadyToStart(gameState) &&
           gameState.gameStatus == GameStatus.waitingForPlayers) {
         gameState.gameStatus = GameStatus.readyToStart;
       }
       if (!tutorialMode) {
         await gameRepo.fs.updateGame(gameState);
+        LocalPlayer.ensureAttached(gameRepo, gameState);
       }
       notifyListeners();
       return true;
@@ -300,13 +637,35 @@ class GeneralGameViewModel extends ChangeNotifier {
     }
 
     gameState.cardMoveEvents = [];
+    gameState.settlementEvents = [];
     gameState.winnerId = opp;
     gameState.gameStatus = GameStatus.gameOver;
     await gameRepo.fs.updateGame(gameState);
     notifyListeners();
   }
 
-  ///CARD SELECTION START
+  /// After round/game status sheet — acknowledge so the dealer (or bot) can proceed.
+  Future<void> continueAfterRound() async {
+    if (gameState.gameStatus == GameStatus.gameOver) {
+      notifyListeners();
+      return;
+    }
+    if (gameState.round.roundStatus != RoundStatus.completed) return;
+
+    gameState.round.nextAcknowledged = true;
+
+    if (gameState.controllerId == me) {
+      await performInGameAction(InGameAction.shuffle);
+      return;
+    }
+
+    // Bot (or other player) is dealer — persist ack so they can shuffle.
+    if (!tutorialMode) {
+      await gameRepo.fs.updateGame(gameState);
+    }
+    notifyListeners();
+  }
+
   PlayingCardModel? selectedCard;
   List<PlayingCardModel> selectedCards = [];
   List<PlayingAreaStackModel> selectedStacks = [];
@@ -338,6 +697,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   void selectCard(PlayingCardModel card) {
+    if (isAnimating || !isMyTurn) return;
     if (!_canPerform(TutorialAction.selectHandCard, cardId: card.id)) {
       return;
     }
@@ -346,10 +706,12 @@ class GeneralGameViewModel extends ChangeNotifier {
     } else {
       selectedCard = card;
     }
+    SoundService.instance.play(GameSound.softCard);
     notifyListeners();
   }
 
   void selectCardToTake(PlayingCardModel? card) {
+    if (isAnimating || !isMyTurn) return;
     if (selectedCards.contains(card)) {
       selectedCards = [];
     } else {
@@ -375,10 +737,12 @@ class GeneralGameViewModel extends ChangeNotifier {
       return;
     }
 
+    SoundService.instance.play(GameSound.softCard);
     notifyListeners();
   }
 
   void selectCardToStack(PlayingCardModel card) {
+    if (isAnimating || !isMyTurn) return;
     if (!_canPerform(TutorialAction.selectTableCard, cardId: card.id)) {
       return;
     }
@@ -389,10 +753,12 @@ class GeneralGameViewModel extends ChangeNotifier {
       selectedCards.add(card);
     }
 
+    SoundService.instance.play(GameSound.softCard);
     notifyListeners();
   }
 
   void selectStack(PlayingAreaStackModel stack) {
+    if (isAnimating || !isMyTurn) return;
     if (!_canPerform(TutorialAction.selectStack, stackId: stack.id)) {
       return;
     }
@@ -402,36 +768,40 @@ class GeneralGameViewModel extends ChangeNotifier {
       selectedStacks.add(stack);
     }
     if (selectedStacks.length > 1) selectedCard = null;
+    SoundService.instance.play(GameSound.softCard);
     notifyListeners();
   }
 
-  ///
-  ///CARD SELECTION FINISH
-
   @override
   void dispose() {
+    _disposed = true;
     gameRepo.removeListener(_onGameRepoChanged);
+    motion.removeListener(notifyListeners);
+    motion.dispose();
     super.dispose();
   }
 
-  bool isCardHidden(PlayingCardModel card) {
-    return hiddenCardIds.contains(card.id);
-  }
+  /// Prefer [motion.isInFlight] — kept for call sites during migration.
+  bool isCardHidden(PlayingCardModel card) => motion.isInFlight(card.id);
 
-  bool stackContainsCardHidded(List<PlayingCardModel> cards) {
-    for (var card in cards) {
-      if (hiddenCardIds.contains(card.id)) {
-        return true;
-      }
-    }
-    return false;
-  }
+  bool stackContainsCardHidded(List<PlayingCardModel> cards) =>
+      motion.anyInFlight(cards);
 
   final Map<String, GlobalKey> cardKeys = {};
-  final Set<String> hiddenCardIds = {};
+  final Map<String, GlobalKey> stackKeys = {};
 
-  GlobalKey keyForCard(String cardId) {
-    return cardKeys.putIfAbsent(cardId, () => GlobalKey());
+  /// One GlobalKey per (cardId, visual slot). Never reuse across hand/table
+  /// or the tree will assert "Multiple widgets used the same GlobalKey".
+  GlobalKey keyForCard(String cardId, CardSlot slot) {
+    final k = '${slot.name}:$cardId';
+    return cardKeys.putIfAbsent(k, () => GlobalKey(debugLabel: k));
+  }
+
+  GlobalKey keyForStack(String stackId) {
+    return stackKeys.putIfAbsent(
+      stackId,
+      () => GlobalKey(debugLabel: 'stack_$stackId'),
+    );
   }
 
   final GlobalKey deckKey = GlobalKey();
@@ -457,6 +827,8 @@ class GeneralGameViewModel extends ChangeNotifier {
       case ZoneType.playerHand:
         return zone.holderId == myPid ? myHandKey : oppHandKey;
       case ZoneType.stack:
+        final sid = zone.holderId;
+        if (sid != null && sid.isNotEmpty) return keyForStack(sid);
         return tableKey;
     }
   }

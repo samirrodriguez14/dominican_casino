@@ -30,9 +30,12 @@ Must stay in sync with `GameState.toJson` / `fromMap` (`lib/models/game_state.da
 | `extraPoints` / `extraPointsHolderId` | Casino virao |
 | `lastTookCardId` | Last capture |
 | `playersInfo` | `{ id, name, token }` per pid |
+| `isLocalBot` | True when the opponent is the on-device AI (Puli) |
+| `botPlayerId` | Pid of that AI seat; used to recreate `LocalPlayer` after a cold start |
 | `winnerId` | Empty string until over |
 | `round` | `{ id, roundStatus, roundScores }` |
-| `cardMoveEvents` | Animation events |
+| `cardMoveEvents` | Play / capture / deal animation events |
+| `settlementEvents` | End-of-round leftover collect only (separate motion phase) |
 
 **Contract:** adding a field requires `toJson` + `fromMap` in the same PR. `updateGame` is a full replace; omitted fields are deleted.
 

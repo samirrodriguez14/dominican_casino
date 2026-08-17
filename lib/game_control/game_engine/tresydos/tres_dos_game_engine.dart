@@ -54,6 +54,7 @@ class TresDosGameEngine extends GameEngine {
     }
     final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
     gameState.cardMoveEvents = cardMoveEvents;
+    gameState.settlementEvents = [];
 
     if (TresDosGameStateHandler.roundEnded(gameState, action.performedById)) {
       developer.log("round ended");

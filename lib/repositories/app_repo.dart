@@ -2,11 +2,9 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dominican_casino/local_player/local_player.dart';
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
-import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -121,20 +119,16 @@ class AppRepo extends ChangeNotifier {
         : const Locale('en');
   }
 
-  Future<String> createNewGame(
-    GameMode mode,
-    String pid,
-    GameRepo gameRepo,
-    bool local,
-  ) async {
+  Future<String> createNewGame(GameMode mode, String pid, bool local) async {
     String gid = _uuid.v4().substring(0, 8);
     GameState gameState = GameState.create(gid, pid, mode);
     if (local) {
-      final localPlayer = LocalPlayer(gameRepo: gameRepo, mode: mode);
-      localPlayer.pid = _uuid.v4().substring(0, 8);
-      gameState.playersInfo[localPlayer.pid] = {
-        "id": localPlayer.pid,
-        "name": localPlayer.name,
+      final botPid = _uuid.v4().substring(0, 8);
+      gameState.isLocalBot = true;
+      gameState.botPlayerId = botPid;
+      gameState.playersInfo[botPid] = {
+        "id": botPid,
+        "name": GameState.localBotName,
       };
     }
     gid = await fs.newCreateGame(gameState);
@@ -185,6 +179,13 @@ class AppRepo extends ChangeNotifier {
 
   Future<void> deleteGame(String gameId) async {
     fs.deleteGame(gameId);
+  }
+
+  Future<void> completeTutorial() async {
+    if (player == null || player!.completedTutorial) return;
+    player = player!.copyWith(completedTutorial: true);
+    await _persistPlayerLocal();
+    notifyListeners();
   }
 
   Future<bool> updatePlayer(String name) async {

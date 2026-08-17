@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/card_deck.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
@@ -106,19 +107,18 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                                 transform: isSelectedDeck
                                     ? Matrix4.translationValues(0, -12, 0)
                                     : Matrix4.translationValues(0, 4, 0),
-                                child: AnimatedScale(
-                                  scale: vm.isCardHidden(currentDeckCard)
-                                      ? 0.0
-                                      : 1.0,
-                                  duration: const Duration(milliseconds: 400),
-                                  curve: Curves.easeOut,
+                                child: FlightAwareCard(
+                                  key: vm.keyForCard(
+                                    currentDeckCard.id,
+                                    CardSlot.aux,
+                                  ),
+                                  card: currentDeckCard,
+                                  inFlight:
+                                      vm.motion.isInFlight(currentDeckCard.id),
                                   child: AnimatedScale(
                                     scale: isSelectedDeck ? 1.1 : 1.0,
                                     duration: const Duration(milliseconds: 150),
-                                    child: PlayingCardBack(
-                                      key: vm.keyForCard(currentDeckCard.id),
-                                      width: cardWidth,
-                                    ),
+                                    child: PlayingCardBack(width: cardWidth),
                                   ),
                                 ),
                               ),
@@ -153,17 +153,18 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                                 transform: isSelected
                                     ? Matrix4.translationValues(0, -12, 0)
                                     : Matrix4.translationValues(0, 4, 0),
-                                child: AnimatedScale(
-                                  scale: vm.isCardHidden(currentCard)
-                                      ? 0.0
-                                      : 1.0,
-                                  duration: const Duration(milliseconds: 400),
-                                  curve: Curves.easeOut,
+                                child: FlightAwareCard(
+                                  key: vm.keyForCard(
+                                    currentCard.id,
+                                    CardSlot.table,
+                                  ),
+                                  card: currentCard,
+                                  inFlight:
+                                      vm.motion.isInFlight(currentCard.id),
                                   child: AnimatedScale(
                                     scale: isSelected ? 1.1 : 1.0,
                                     duration: const Duration(milliseconds: 150),
                                     child: PlayingCard(
-                                      key: vm.keyForCard(currentCard.id),
                                       playingCardModel: currentCard,
                                       isSelected: isSelected,
                                       width: cardWidth,

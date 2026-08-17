@@ -27,21 +27,53 @@ class PossibleSelection {
 }
 
 class LocalPlayer extends ChangeNotifier {
+  static LocalPlayer? _active;
+
   String pid = "elabusador";
-  String name = "Pulilo";
-  late GameState _gameState;
+  String name = GameState.localBotName;
   GameRepo gameRepo;
   GameMode mode;
   late GameEngine engine;
+  bool _busy = false;
+  bool _pending = false;
+  bool _disposed = false;
 
-  LocalPlayer({required this.gameRepo, required this.mode}) {
+  /// Recreate the on-device AI after a cold start, or drop it for a human match.
+  static void ensureAttached(GameRepo gameRepo, GameState state) {
+    final botId = state.localBotPid;
+    if (botId == null || botId.isEmpty) {
+      _active?.dispose();
+      _active = null;
+      return;
+    }
+    if (_active != null &&
+        _active!.pid == botId &&
+        identical(_active!.gameRepo, gameRepo)) {
+      return;
+    }
+    _active?.dispose();
+    _active = LocalPlayer(gameRepo: gameRepo, mode: state.gameMode, pid: botId);
+  }
+
+  LocalPlayer({required this.gameRepo, required this.mode, String? pid}) {
+    if (pid != null) this.pid = pid;
     final created = GameRegistry.createEngine(mode);
     if (created == null) {
       throw StateError('No engine for mode $mode');
     }
     engine = created;
     gameRepo.addListener(_onGameRepoChanged);
-    developer.log("LocalPlayer. Mode: $mode, Engine: $engine");
+    developer.log(
+      "LocalPlayer. pid: ${this.pid}, Mode: $mode, Engine: $engine",
+    );
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    if (identical(_active, this)) _active = null;
+    gameRepo.removeListener(_onGameRepoChanged);
+    super.dispose();
   }
 
   Future<void> _persist(GameState state) async {
@@ -49,75 +81,122 @@ class LocalPlayer extends ChangeNotifier {
   }
 
   Future<void> _onGameRepoChanged() async {
+    if (_disposed) return;
+    if (_busy) {
+      _pending = true;
+      return;
+    }
+    _busy = true;
     try {
-      _gameState = gameRepo.gameState!;
-      await Future.delayed(Duration(microseconds: 500));
+      // Keep acting across phase changes (e.g. shuffle → readyToDeal → deal).
+      do {
+        _pending = false;
+        await Future.delayed(const Duration(milliseconds: 350));
+        if (_disposed) return;
+        final latest = gameRepo.gameState;
+        if (latest == null) break;
 
-      switch (_gameState.gameStatus) {
-        case GameStatus.inProgress:
-          switch (_gameState.round.roundStatus) {
-            case RoundStatus.playing:
-              if (_gameState.controllerId == pid &&
-                  _gameState.gameMode == GameMode.casino &&
-                  CasinoGameStateHandler.shouldDealSameRound(_gameState)) {
-                _gameState = engine.performInGameAction(
-                  _gameState,
-                  InGameAction.dealSame,
-                  pid,
-                );
-                await _persist(_gameState);
-                return;
-              }
-              if (_gameState.currentTurnPlayerId != pid) return;
-              PossibleSelection bestAction;
-              switch (_gameState.gameMode) {
-                case GameMode.tresydos:
-                  bestAction = await TresdosPlayer.tresdosBestAction(
-                    pid,
-                    _gameState,
-                  );
-                  break;
-                default:
-                  bestAction = await CasinoPlayer.casinoBestAction(
-                    pid,
-                    _gameState,
-                  );
-                  break;
-              }
-              await Future.delayed(Duration(seconds: 1));
-
-              _gameState = engine.performPlayAction(
-                _gameState,
-                bestAction.cardSelection,
-                bestAction.playAction,
-              );
-              await _persist(_gameState);
-              break;
-            case RoundStatus.completed:
-              if (_gameState.controllerId != pid) return;
-              _gameState = engine.performInGameAction(
-                _gameState,
-                InGameAction.shuffle,
-                pid,
-              );
-              await _persist(_gameState);
-              break;
-            case RoundStatus.readyToDeal:
-              if (_gameState.controllerId != pid) return;
-              _gameState = engine.performInGameAction(
-                _gameState,
-                InGameAction.deal,
-                pid,
-              );
-              await _persist(_gameState);
-          }
-        case GameStatus.gameOver:
-        case GameStatus.error:
-        default:
-      }
+        final acted = await _tryAct(latest);
+        if (acted) {
+          // Another phase may need us (deal after shuffle, play after deal).
+          _pending = true;
+        }
+      } while (_pending && !_disposed);
     } catch (e) {
       developer.log("LocalPlayer._onGameRepoChanged Error $e");
-      notifyListeners();
+      if (!_disposed) notifyListeners();
+    } finally {
+      _busy = false;
+      if (_pending && !_disposed) {
+        _pending = false;
+        _onGameRepoChanged();
+      }
+    }
+  }
+
+  /// Returns true if this bot wrote a new game state.
+  Future<bool> _tryAct(GameState state) async {
+    if (state.gameStatus != GameStatus.inProgress) return false;
+
+    switch (state.round.roundStatus) {
+      case RoundStatus.playing:
+        if (state.controllerId == pid &&
+            state.gameMode == GameMode.casino &&
+            CasinoGameStateHandler.shouldDealSameRound(state)) {
+          await Future.delayed(const Duration(milliseconds: 700));
+          if (_disposed) return false;
+          final current = gameRepo.gameState;
+          if (current == null ||
+              current.controllerId != pid ||
+              !CasinoGameStateHandler.shouldDealSameRound(current)) {
+            return false;
+          }
+          final next = engine.performInGameAction(
+            current,
+            InGameAction.dealSame,
+            pid,
+          );
+          await _persist(next);
+          return true;
+        }
+
+        if (state.currentTurnPlayerId != pid) return false;
+
+        final PossibleSelection bestAction;
+        switch (state.gameMode) {
+          case GameMode.tresydos:
+            bestAction = await TresdosPlayer.tresdosBestAction(pid, state);
+          default:
+            bestAction = await CasinoPlayer.casinoBestAction(pid, state);
+        }
+
+        await Future.delayed(const Duration(milliseconds: 900));
+        if (_disposed) return false;
+        final current = gameRepo.gameState;
+        if (current == null || current.currentTurnPlayerId != pid) {
+          return false;
+        }
+
+        final next = engine.performPlayAction(
+          current,
+          bestAction.cardSelection,
+          bestAction.playAction,
+        );
+        await _persist(next);
+        return true;
+
+      case RoundStatus.completed:
+        if (state.controllerId != pid) return false;
+        if (!state.round.nextAcknowledged) return false;
+
+        final next = engine.performInGameAction(
+          state,
+          InGameAction.shuffle,
+          pid,
+        );
+        await _persist(next);
+        return true;
+
+      case RoundStatus.readyToDeal:
+        if (state.controllerId != pid) return false;
+
+        // Pause so the human can see the undealt table.
+        await Future.delayed(const Duration(milliseconds: 1200));
+        if (_disposed) return false;
+        final current = gameRepo.gameState;
+        if (current == null ||
+            current.round.roundStatus != RoundStatus.readyToDeal ||
+            current.controllerId != pid) {
+          return false;
+        }
+
+        final next = engine.performInGameAction(
+          current,
+          InGameAction.deal,
+          pid,
+        );
+        await _persist(next);
+        return true;
     }
   }
 }

@@ -18,6 +18,7 @@ class GameActionHandler {
     String pid,
   ) {
     gameState.cardMoveEvents = [];
+    gameState.settlementEvents = [];
 
     switch (inGameAction) {
       case InGameAction.start:
@@ -79,7 +80,9 @@ class GameActionHandler {
     }
     final cardsToTable = gameState.deck.sublist(0, cardsInPlayingArea);
     gameState.deck.removeRange(0, cardsInPlayingArea);
-    gameState.playingArea.addAll(List.of(cardsToTable));
+    for (final c in cardsToTable) {
+      gameState.placeCardOnTable(c);
+    }
 
     gameState.cardMoveEvents.addAll(
       EventHandler.generateDealToTableEvent(cardsToTable, pid),
@@ -113,7 +116,9 @@ class GameActionHandler {
 
     final tableCards = gameState.deck.sublist(0, cardsInPlayingArea);
     gameState.deck.removeRange(0, cardsInPlayingArea);
-    gameState.playingArea.addAll(tableCards);
+    for (final c in tableCards) {
+      gameState.placeCardOnTable(c);
+    }
 
     gameState.cardMoveEvents.addAll(
       EventHandler.generateDealToTableEvent(tableCards, pid),
@@ -179,6 +184,7 @@ class GameActionHandler {
 
     gameState.playingArea.clear();
     gameState.playingAreaStacks.clear();
+    gameState.tableOrder.clear();
 
     gameState.hands.clear();
 
@@ -191,11 +197,13 @@ class GameActionHandler {
     gameState.extraPointsHolderId = '';
     gameState.lastTookCardId = '';
     gameState.cardMoveEvents = [];
+    gameState.settlementEvents = [];
 
     gameState.currentTurnPlayerId = '';
     gameState.controllerId = pid;
 
     gameState.round.roundStatus = RoundStatus.readyToDeal;
+    gameState.round.nextAcknowledged = false;
 
     return gameState;
   }

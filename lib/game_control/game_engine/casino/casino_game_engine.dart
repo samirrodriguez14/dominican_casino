@@ -58,14 +58,16 @@ class CasinoGameEngine extends GameEngine {
     );
     final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
     gameState.cardMoveEvents = cardMoveEvents;
+    gameState.settlementEvents = [];
 
     if (CasinoGameStateHandler.roundEnded(gameState)) {
       developer.log("round ended");
-      gameState = CasinoGameStateHandler.settleEndOfRoundIfNeeded(gameState);
+      // Leftover collect is a separate animation phase from the play/capture.
       final settlementEvents = EventHandler.generateSettleEndRoundEvents(
         gameState,
       );
-      gameState.cardMoveEvents.addAll(settlementEvents);
+      gameState = CasinoGameStateHandler.settleEndOfRoundIfNeeded(gameState);
+      gameState.settlementEvents = settlementEvents;
       gameState = CasinoGameStateHandler.handleRoundEnded(gameState);
     }
 

@@ -1,15 +1,12 @@
-import 'package:dominican_casino/local_player/local_player.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
-import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:uuid/uuid.dart';
 
 class TutorialCasinoFactory {
   static GameState createBasicTakeTutorial({
     required String gid,
     required String playerId,
-    required GameRepo gameRepo,
   }) {
     final round = Round(
       id: 1,
@@ -25,8 +22,7 @@ class TutorialCasinoFactory {
       tutorialDeck[1], // 8♠
       tutorialDeck[2], // 13♣
     ];
-    final localPlayer = LocalPlayer(gameRepo: gameRepo, mode: .casino);
-    localPlayer.pid = Uuid().v4().substring(0, 8);
+    final botPid = Uuid().v4().substring(0, 8);
 
     final oppHand = [
       tutorialDeck[3], //11♠
@@ -47,7 +43,7 @@ class TutorialCasinoFactory {
 
       started: true,
 
-      controllerId: localPlayer.pid,
+      controllerId: botPid,
       currentTurnPlayerId: playerId,
 
       winnerId: "",
@@ -65,21 +61,19 @@ class TutorialCasinoFactory {
 
       playingAreaStacks: [],
 
-      hands: {playerId: playerHand, localPlayer.pid: oppHand},
+      hands: {playerId: playerHand, botPid: oppHand},
 
       playersDeck: {playerId: []},
 
       playersInfo: {
         playerId: {"id": playerId, "name": "You", "token": ""},
-        localPlayer.pid: {
-          "id": localPlayer.pid,
-          "name": "Pulilo the tutor",
-          "token": "",
-        },
+        botPid: {"id": botPid, "name": "Pulilo the tutor", "token": ""},
       },
-      
+      isLocalBot: true,
+      botPlayerId: botPid,
       lastTookCardId: '',
       cardMoveEvents: [],
+      settlementEvents: [],
     );
   }
 }
