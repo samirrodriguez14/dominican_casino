@@ -72,7 +72,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 4,
       title: "Opponent's turn",
       description:
-          "Your opponent played a card and added more cards to the table.",
+          "Your opponent captured the 9♠. Your stack of 8 is still on the table — you'll take it next.",
       targetKey: tableKey,
       allowInteraction: false,
       blockGameInteraction: true,
@@ -144,51 +144,83 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    //10
+    // 10
     TutorialStep(
       step: 10,
-      title: "Sweep bonus",
-      autoAdvance: false,
-
+      title: "Sweep the table",
       description:
-          "Now you can take all remaining cards from the table. Clearing every card is called a sweep (virao)! This gives extra points at the end of the round.",
-      // expectedAction: TutorialAction.takeStack,
-      allowInteraction: false,
+          "Only the K♣ is left. Tap your K♣ — capturing the last card on the table is a sweep (virao).",
+      targetKey: handKey,
+      expectedAction: TutorialAction.selectHandCard,
+      expectedCardId: "tutorial_13",
+      allowInteraction: true,
       blockGameInteraction: false,
-      allowedActions: [],
+      showNextButton: false,
+      allowedActions: [TutorialAction.selectHandCard],
     ),
-    //11
+
+    // 11
     TutorialStep(
       step: 11,
-      title: "Sweep bonus",
-      targetKey: myDeckKey,
-      description:
-          "After sweeping you'll see an extra card showing how many viraos you have (Only one player ca have viraos. If you sweep and the opponent has a virao, he'll lose his virao and next time you sweep, you'll earn one.)",
-      allowInteraction: false,
+      title: "Select the last card",
+      description: "Tap the K♣ on the table.",
+      targetKey: tableKey,
+      expectedAction: TutorialAction.selectTableCard,
+      expectedCardId: "table_13",
+      allowInteraction: true,
       blockGameInteraction: false,
-      allowedActions: [],
+      showNextButton: false,
+      allowedActions: [TutorialAction.selectTableCard],
     ),
+
     // 12
     TutorialStep(
       step: 12,
+      title: "Take to sweep",
+      description:
+          "Press Take. Clearing every card from the table is a sweep and scores a virao.",
+      targetKey: playButtonKey,
+      expectedAction: TutorialAction.sweepTable,
+      allowInteraction: true,
+      blockGameInteraction: false,
+      showNextButton: false,
+      allowedActions: [TutorialAction.sweepTable],
+    ),
+
+    // 13
+    TutorialStep(
+      step: 13,
+      title: "Sweep bonus",
+      targetKey: myDeckKey,
+      description:
+          "The extra card on your collection is a virao. Only one player can hold viraos. If you sweep while the opponent has one, they lose it; your next sweep then earns you one.",
+      allowInteraction: false,
+      blockGameInteraction: true,
+      allowedActions: [],
+    ),
+
+    // 14
+    TutorialStep(
+      step: 14,
       title: "Round scoring",
       description:
-          "At the end of each round, points are awarded for sweeps, most cards, special cards, and more.",
+          "The round is over. Open scores to see points for sweeps, most cards, special cards, and more.",
       targetKey: scoreKey,
       allowInteraction: false,
       blockGameInteraction: true,
       allowedActions: [],
     ),
 
-    // 13
+    // 15
     TutorialStep(
-      step: 13,
+      step: 15,
       title: "You're ready!",
       description:
-          "You now know the basics of Casino: build stacks, capture cards, sweep the table, and score points. Good luck!",
+          "You know the basics: build stacks, capture cards, sweep the table, and score. Finish to play Puli for real, or head home.",
       autoAdvance: false,
       allowInteraction: false,
       blockGameInteraction: true,
+      showSkipButton: false,
       allowedActions: [],
     ),
   ];

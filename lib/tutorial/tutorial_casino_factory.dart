@@ -20,22 +20,21 @@ class TutorialCasinoFactory {
     final playerHand = [
       tutorialDeck[0], // 5♦
       tutorialDeck[1], // 8♠
-      tutorialDeck[2], // 13♣
+      tutorialDeck[2], // K♣
     ];
     final botPid = Uuid().v4().substring(0, 8);
 
     final oppHand = [
-      tutorialDeck[3], //11♠
-      tutorialDeck[4], //2♥
+      tutorialDeck[3], // 9♦ — captures the table 9, then is out of cards
     ];
 
     final table = [
-      tutorialDeck[5], // 3♥
-      tutorialDeck[6], // 9♠
-      tutorialDeck[7], // K♣
+      tutorialDeck[4], // 3♥
+      tutorialDeck[5], // 9♠
+      tutorialDeck[6], // K♣
     ];
 
-    final remainingDeck = tutorialDeck.sublist(8);
+    final remainingDeck = tutorialDeck.sublist(7);
     return GameState(
       gameStatus: GameStatus.inProgress,
       gameMode: GameMode.casino,
@@ -52,7 +51,7 @@ class TutorialCasinoFactory {
 
       deck: remainingDeck,
 
-      scores: {playerId: 0},
+      scores: {playerId: 0, botPid: 0},
 
       extraPoints: 0,
       extraPointsHolderId: "",

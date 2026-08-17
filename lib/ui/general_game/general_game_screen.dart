@@ -1,10 +1,12 @@
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
 import 'package:dominican_casino/ui/animations/card_flight_animator.dart';
+import 'package:dominican_casino/ui/animations/shuffle_animator.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
@@ -13,6 +15,7 @@ import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:flutter/cupertino.dart';
@@ -38,6 +41,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   /// Prevents stacking duplicate round/game status popups.
   String? _shownStatusKey;
   bool _statusPopupOpen = false;
+  bool _leavingTutorial = false;
 
   void _bindFlightRunner(GeneralGameViewModel gameVm) {
     gameVm.motion.runner = (flights, {onLanded}) => CardFlightAnimator.flyAll(
@@ -45,6 +49,12 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       vsync: this,
       flights: flights,
       onLanded: onLanded,
+    );
+    gameVm.motion.shuffleRunner = (request, {onSquared}) => ShuffleAnimator.play(
+      context: context,
+      vsync: this,
+      request: request,
+      onSquared: onSquared,
     );
   }
 
@@ -115,7 +125,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
   void _onTutorialNext() {
     if (tutorialVm.isLastStep) {
-      _finishTutorialKeepPlaying();
+      _onTutorialFinished(context);
       return;
     }
     tutorialVm.nextStep();
@@ -137,14 +147,52 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     );
   }
 
+  void _onTutorialFinished(BuildContext context) {
+    showAppPopup(
+      context: context,
+      title: "You're ready!",
+      content: Text(
+        'Play a real game against Puli, or go home.',
+        textAlign: TextAlign.center,
+        style: AppStyle.theme.body,
+      ),
+      primaryText: 'Play',
+      onPrimary: _finishTutorialPlayPuli,
+      secondaryText: 'Exit',
+      onSecondary: _finishTutorialReturnHome,
+      barrierDismissible: false,
+    );
+  }
+
   Future<void> _finishTutorialKeepPlaying() async {
     tutorialVm.finish();
     await context.read<AppRepo>().completeTutorial();
     if (!mounted) return;
     await vm.playTutorialOpponentIfNeeded();
+    if (!mounted) return;
+    _onVmChanged();
+  }
+
+  Future<void> _finishTutorialPlayPuli() async {
+    _leavingTutorial = true;
+    tutorialVm.finish();
+    await context.read<AppRepo>().completeTutorial();
+    if (!mounted) return;
+
+    final gid = await context.read<GamesViewModel>().newGame(
+      GameMode.casino,
+      true,
+    );
+    if (!mounted) return;
+    if (gid == null) {
+      context.go('/landing');
+      return;
+    }
+    context.go(GameRoutes.game(gameId: gid, gameMode: GameMode.casino.name));
   }
 
   Future<void> _finishTutorialReturnHome() async {
+    _leavingTutorial = true;
     tutorialVm.finish();
     await context.read<AppRepo>().completeTutorial();
     if (!mounted) return;
@@ -157,6 +205,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
       // Wait until card flights finish (incl. leftover collect) before status UI.
       if (vm.isAnimating) return;
+      if (_leavingTutorial) return;
+      if (vm.tutorialMode && tutorialVm.active) return;
 
       final gs = vm.gameState;
       final isGameOver = gs.gameStatus == GameStatus.gameOver;

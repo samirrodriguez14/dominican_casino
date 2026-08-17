@@ -44,6 +44,9 @@ class GeneralGameViewModel extends ChangeNotifier {
   bool _syncScheduled = false;
   bool _disposed = false;
 
+  /// Round id whose gather-wash already played — skip a second overlay on repo echo.
+  int? _shuffleOverlayRoundId;
+
   /// Destination slots stay laid out but invisible until flights land.
   final CardMotionController motion = CardMotionController();
 
@@ -96,20 +99,37 @@ class GeneralGameViewModel extends ChangeNotifier {
         final shuffledIn =
             gameState.round.roundStatus == RoundStatus.completed &&
             nextState.round.roundStatus == RoundStatus.readyToDeal;
+        final startedIn =
+            !gameState.started &&
+            nextState.started &&
+            nextState.round.roundStatus == RoundStatus.readyToDeal;
+        final alreadyPlayed =
+            _shuffleOverlayRoundId == nextState.round.id;
 
-        await _commitStateWithMotion(
-          nextState,
-          newEvents,
-          settlementEvents: newSettlement,
-        );
-
-        if (shuffledIn) {
-          SoundService.instance.play(GameSound.shuffle);
+        if ((shuffledIn || startedIn) && !alreadyPlayed) {
+          _shuffleOverlayRoundId = nextState.round.id;
+          await _playShuffleMotion(
+            onSquared: () async {
+              await _commitStateWithMotion(
+                nextState,
+                newEvents,
+                settlementEvents: newSettlement,
+              );
+              motion.setShuffling(false);
+            },
+          );
+        } else {
+          await _commitStateWithMotion(
+            nextState,
+            newEvents,
+            settlementEvents: newSettlement,
+          );
         }
       } while (_pendingRepoSync);
     } catch (e) {
       developer.log("GameViewModel._syncFromRepo Error $e");
     } finally {
+      motion.setShuffling(false);
       isAnimating = false;
       _syncScheduled = false;
       notifyListeners();
@@ -362,6 +382,51 @@ class GeneralGameViewModel extends ChangeNotifier {
     return box.localToGlobal(box.size.center(Offset.zero));
   }
 
+  /// Gather visible piles to the table, wash, square on the shoe — then commit.
+  Future<void> _playShuffleMotion({
+    Future<void> Function()? onHidden,
+    Future<void> Function()? onSquared,
+  }) async {
+    final sources = <ShuffleSource>[];
+
+    void addSource(GlobalKey key, int count) {
+      if (count <= 0) return;
+      final origin = _centerOf(key);
+      if (origin == null) return;
+      sources.add(ShuffleSource(origin: origin, count: count));
+    }
+
+    addSource(deckKey, gameState.deck.length);
+    addSource(myDeckKey, myCollectedCards.length);
+    addSource(oppDeckKey, oppCollectedCards.length);
+    final tableCount =
+        gameState.playingArea.length +
+        gameState.playingAreaStacks.fold<int>(
+          0,
+          (n, s) => n + s.cards.length,
+        );
+    addSource(tableKey, tableCount);
+
+    final center = _centerOf(tableKey);
+    final deckTarget = _centerOf(deckKey) ?? center;
+    if (sources.isEmpty || center == null || deckTarget == null) {
+      await onHidden?.call();
+      await onSquared?.call();
+      return;
+    }
+
+    motion.setShuffling(true);
+    await onHidden?.call();
+    await motion.runShuffle(
+      ShuffleRequest(
+        sources: sources,
+        center: center,
+        deckTarget: deckTarget,
+      ),
+      onSquared: onSquared,
+    );
+  }
+
   bool _startFaceUpFor(CardMoveEvent e) {
     if (e.from.type == ZoneType.gameDeck) return false;
     if (e.from.type == ZoneType.playerHand && e.from.holderId != me) {
@@ -486,6 +551,9 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (action is TakeStackAction) {
       return TutorialAction.takeStack;
     }
+    if (action is TakeCardAction) {
+      return TutorialAction.sweepTable;
+    }
     return TutorialAction.playMove;
   }
 
@@ -541,6 +609,16 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (gameState.currentTurnPlayerId != botId) return;
     if (gameState.round.roundStatus != RoundStatus.playing) return;
 
+    final botHand = gameState.hands[botId] ?? [];
+    if (botHand.isEmpty) {
+      // Pass the turn back so the human can finish (the sweep).
+      if ((gameState.hands[me] ?? []).isNotEmpty) {
+        gameState.currentTurnPlayerId = me;
+        notifyListeners();
+      }
+      return;
+    }
+
     await Future<void>.delayed(const Duration(milliseconds: 700));
     if (_disposed || gameState.currentTurnPlayerId != botId) return;
 
@@ -553,13 +631,41 @@ class GeneralGameViewModel extends ChangeNotifier {
   InGameAction get inGameAction => gameEngine.getInGameAction(gameState, me);
 
   /// Board dim + control chrome share this — never dim while motion is running.
+  /// Tutorial never surfaces shuffle/deal/start; those belong to a real match.
   bool get showInGameControl =>
-      !isAnimating && inGameAction != InGameAction.noAction;
+      !tutorialMode &&
+      !isAnimating &&
+      inGameAction != InGameAction.noAction;
 
   Future<void> performInGameAction(InGameAction action) async {
     if (isAnimating) return;
     isAnimating = true;
     try {
+      final shuffleVisual =
+          action == InGameAction.shuffle || action == InGameAction.start;
+
+      if (shuffleVisual) {
+        _shuffleOverlayRoundId = gameState.round.id;
+        // Capture piles first — the engine shuffle clears them in place.
+        await _playShuffleMotion(
+          onHidden: () async {
+            final next = gameEngine.performInGameAction(gameState, action, me);
+            final events = List<CardMoveEvent>.from(next.cardMoveEvents);
+            if (!tutorialMode) {
+              for (final e in events) {
+                gameRepo.lastPlayedIds.add(e.id);
+              }
+              await gameRepo.fs.updateGame(next);
+            }
+            await _commitStateWithMotion(next, events);
+          },
+          onSquared: () async {
+            motion.setShuffling(false);
+          },
+        );
+        return;
+      }
+
       final next = gameEngine.performInGameAction(gameState, action, me);
       final events = List<CardMoveEvent>.from(next.cardMoveEvents);
 
@@ -570,14 +676,11 @@ class GeneralGameViewModel extends ChangeNotifier {
         await gameRepo.fs.updateGame(next);
       }
 
-      if (action == InGameAction.shuffle) {
-        SoundService.instance.play(GameSound.shuffle);
-      }
-
       await _commitStateWithMotion(next, events);
     } catch (e) {
       developer.log("performInGameAction Error $e");
     } finally {
+      motion.setShuffling(false);
       isAnimating = false;
       notifyListeners();
       _drainPendingRepoSync();
@@ -659,11 +762,47 @@ class GeneralGameViewModel extends ChangeNotifier {
       return;
     }
 
-    // Bot (or other player) is dealer — persist ack so they can shuffle.
-    if (!tutorialMode) {
-      await gameRepo.fs.updateGame(gameState);
+    final botDealer =
+        gameState.isLocalBot && gameState.controllerId == gameState.localBotPid;
+
+    if (!botDealer) {
+      // Remote human dealer — ack only; shuffle motion arrives via `_syncFromRepo`.
+      if (!tutorialMode) {
+        await gameRepo.fs.updateGame(gameState);
+      }
+      notifyListeners();
+      return;
     }
-    notifyListeners();
+
+    // Local bot dealer: play the gather-wash now, while collected piles
+    // still exist. The bot mutates this same GameState in place, so
+    // `_syncFromRepo` never sees completed → readyToDeal.
+    if (isAnimating) return;
+    isAnimating = true;
+    _shuffleOverlayRoundId = gameState.round.id;
+    try {
+      await _playShuffleMotion(
+        onHidden: () async {
+          if (!tutorialMode) {
+            await gameRepo.fs.updateGame(gameState);
+          }
+        },
+        onSquared: () async {
+          final latest = gameRepo.gameState;
+          if (latest != null) {
+            await _commitStateWithMotion(latest, const []);
+          }
+          motion.setShuffling(false);
+        },
+      );
+    } catch (e) {
+      developer.log("continueAfterRound shuffle Error $e");
+    } finally {
+      motion.setShuffling(false);
+      isAnimating = false;
+      notifyListeners();
+      _drainPendingRepoSync();
+    }
   }
 
   PlayingCardModel? selectedCard;

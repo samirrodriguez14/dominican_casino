@@ -97,6 +97,7 @@ class _MyAppState extends State<App> {
             }
 
             return ChangeNotifierProvider(
+              key: ValueKey('$gameId-$tutorialMode'),
               create: (_) => GeneralGameViewModel(
                 gid: gameId,
                 gameEngine: engine,
@@ -104,7 +105,7 @@ class _MyAppState extends State<App> {
                 gameRepo: context.read<GameRepo>(),
                 tutorialMode: tutorialMode == 'true',
               ),
-              child: const GeneralGameScreen(),
+              child: GeneralGameScreen(key: ValueKey('$gameId-$tutorialMode')),
             );
           },
         ),

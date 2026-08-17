@@ -37,6 +37,8 @@ Casino in-game overlay: `lib/tutorial/tutorial_casino_steps.dart` + `TutorialCas
 
 Owned by `CardMotionController` + `CardFlightAnimator`. Local and remote updates share `_commitStateWithMotion`.
 
+**Shuffle overlay (not the flight protocol):** Start and between-round Shuffle play a local gather → wash → square sequence via `ShuffleAnimator`. Cards fly from the shoe and/or collected piles into the table center, mill face-down, then stack on the dealing deck. No `cardMoveEvents` — shuffle mints a new deck. `GameSound.shuffle` plays at wash start. Deal/play/capture stay on `cardMoveEvents`.
+
 Sounds: `SoundService` + `assets/sounds/`. Prompts for ElevenLabs: [SOUND_PROMPTS.md](SOUND_PROMPTS.md).
 
 Route transitions: use a consistent Cupertino slide.

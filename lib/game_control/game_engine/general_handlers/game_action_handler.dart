@@ -25,6 +25,7 @@ class GameActionHandler {
         gameState.started = true;
         gameState.gameStatus = GameStatus.inProgress;
         gameState.round.roundStatus = RoundStatus.readyToDeal;
+        gameState.deck = Deck.shuffle(Deck.standard());
         return gameState;
 
       case InGameAction.shuffle:

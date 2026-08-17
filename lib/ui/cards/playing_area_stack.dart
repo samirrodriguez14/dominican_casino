@@ -1,6 +1,7 @@
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:flutter/material.dart';
 
@@ -23,6 +24,9 @@ class PlayingAreaStack extends StatelessWidget {
   /// Per-card flight anchors — use [CardSlot.inStack] keys only.
   final GlobalKey Function(PlayingCardModel card)? cardKeyFor;
 
+  /// Hide only the cards that are flying — never the whole stack.
+  final bool Function(PlayingCardModel card)? cardInFlight;
+
   const PlayingAreaStack({
     super.key,
     required this.stack,
@@ -31,6 +35,7 @@ class PlayingAreaStack extends StatelessWidget {
     this.overlap = 30,
     this.onTap,
     this.cardKeyFor,
+    this.cardInFlight,
   });
 
   @override
@@ -42,6 +47,7 @@ class PlayingAreaStack extends StatelessWidget {
     final step = cardWidth - overlap;
     final n = stack.cards.length;
     final totalWidth = n <= 1 ? cardWidth : cardWidth + (n - 1) * step;
+    final landing = stack.cards.any((c) => cardInFlight?.call(c) ?? false);
 
     return GestureDetector(
       onTap: onTap,
@@ -78,8 +84,10 @@ class PlayingAreaStack extends StatelessWidget {
                   top: 0,
                   child: IgnorePointer(
                     ignoring: true,
-                    child: KeyedSubtree(
+                    child: FlightAwareCard(
                       key: cardKeyFor?.call(stack.cards[i]),
+                      card: stack.cards[i],
+                      inFlight: cardInFlight?.call(stack.cards[i]) ?? false,
                       child: PlayingCard(
                         playingCardModel: stack.cards[i],
                         width: cardWidth,
@@ -88,35 +96,36 @@ class PlayingAreaStack extends StatelessWidget {
                     ),
                   ),
                 ),
-              Positioned(
-                top: -6,
-                right: -6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: stackColor.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+              if (!landing)
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: stackColor.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      '${stack.paired ? "P" : ''} ${stack.stackValue}',
+                      style: TextStyle(
+                        color: AppStyle.theme.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
                       ),
-                    ],
-                  ),
-                  child: Text(
-                    '${stack.paired ? "P" : ''} ${stack.stackValue}',
-                    style: TextStyle(
-                      color: AppStyle.theme.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
                     ),
                   ),
                 ),
-              ),
               if (isSelected)
                 Positioned(
                   bottom: -6,

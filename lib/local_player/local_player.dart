@@ -180,8 +180,8 @@ class LocalPlayer extends ChangeNotifier {
       case RoundStatus.readyToDeal:
         if (state.controllerId != pid) return false;
 
-        // Pause so the human can see the undealt table.
-        await Future.delayed(const Duration(milliseconds: 1200));
+        // Pause so the human can see the undealt table after shuffle motion.
+        await Future.delayed(const Duration(milliseconds: 2500));
         if (_disposed) return false;
         final current = gameRepo.gameState;
         if (current == null ||

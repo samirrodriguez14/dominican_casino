@@ -43,6 +43,7 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
           ),
         ),
         Expanded(
+          key: vm.tableKey,
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.center,
@@ -83,23 +84,27 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                         alignment: Alignment.center,
                         children: [
                           AppStyle.theme.dottedBox(
-                            child: CardDeck(
-                              title: 'Deck',
-                              showLabel: false,
-                              cards: vm.gameState.deck,
-                              cardWidth: cardWidth,
-                              extraPoints: 0,
-                              onTap: () {
-                                vm.selectCardToTake(
-                                  vm.gameState.deck.isNotEmpty
-                                      ? vm.gameState.deck[0]
-                                      : null,
-                                );
-                                setState(() {});
-                              },
+                            child: Opacity(
+                              opacity: vm.motion.isShuffling ? 0 : 1,
+                              child: CardDeck(
+                                key: vm.deckKey,
+                                title: 'Deck',
+                                showLabel: false,
+                                cards: vm.gameState.deck,
+                                cardWidth: cardWidth,
+                                extraPoints: 0,
+                                onTap: () {
+                                  vm.selectCardToTake(
+                                    vm.gameState.deck.isNotEmpty
+                                        ? vm.gameState.deck[0]
+                                        : null,
+                                  );
+                                  setState(() {});
+                                },
+                              ),
                             ),
                           ),
-                          if (currentDeckCard != null)
+                          if (currentDeckCard != null && !vm.motion.isShuffling)
                             GestureDetector(
                               onTap: () => vm.selectCardToTake(currentDeckCard),
                               child: AnimatedContainer(
@@ -134,18 +139,21 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                       Stack(
                         alignment: Alignment.center,
                         children: [
-                          CardDeck(
-                            title: 'Discard',
-                            back: false,
-                            showLabel: false,
-                            cards: (vm.gameState.playingArea.length > 1)
-                                ? vm.gameState.playingArea
-                                : [],
-                            cardWidth: cardWidth,
-                            extraPoints: 0,
-                            onTap: () => {},
+                          Opacity(
+                            opacity: vm.motion.isShuffling ? 0 : 1,
+                            child: CardDeck(
+                              title: 'Discard',
+                              back: false,
+                              showLabel: false,
+                              cards: (vm.gameState.playingArea.length > 1)
+                                  ? vm.gameState.playingArea
+                                  : [],
+                              cardWidth: cardWidth,
+                              extraPoints: 0,
+                              onTap: () => {},
+                            ),
                           ),
-                          if (currentCard != null)
+                          if (currentCard != null && !vm.motion.isShuffling)
                             GestureDetector(
                               onTap: () => vm.selectCardToTake(currentCard),
                               child: AnimatedContainer(

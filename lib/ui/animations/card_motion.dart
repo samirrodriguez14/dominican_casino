@@ -40,11 +40,41 @@ typedef CardFlightRunner =
       VoidCallback? onLanded,
     });
 
+class ShuffleSource {
+  final Offset origin;
+  final int count;
+
+  const ShuffleSource({required this.origin, required this.count});
+}
+
+class ShuffleRequest {
+  final List<ShuffleSource> sources;
+  final Offset center;
+  final Offset deckTarget;
+  final double cardWidth;
+
+  const ShuffleRequest({
+    required this.sources,
+    required this.center,
+    required this.deckTarget,
+    this.cardWidth = 60,
+  });
+}
+
+typedef ShuffleRunner =
+    Future<void> Function(
+      ShuffleRequest request, {
+      Future<void> Function()? onSquared,
+    });
+
 class CardMotionController extends ChangeNotifier {
   final Set<String> _inFlight = {};
   CardFlightRunner? runner;
+  ShuffleRunner? shuffleRunner;
+  bool _shuffling = false;
 
-  bool get hasFlights => _inFlight.isNotEmpty;
+  bool get isShuffling => _shuffling;
+  bool get hasFlights => _inFlight.isNotEmpty || _shuffling;
   bool isInFlight(String cardId) => _inFlight.contains(cardId);
   bool isInFlightCard(PlayingCardModel card) => isInFlight(card.id);
   bool anyInFlight(Iterable<PlayingCardModel> cards) =>
@@ -64,6 +94,12 @@ class CardMotionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setShuffling(bool value) {
+    if (_shuffling == value) return;
+    _shuffling = value;
+    notifyListeners();
+  }
+
   Future<void> run(List<CardFlightRequest> flights) async {
     if (flights.isEmpty) return;
     final run = runner;
@@ -75,5 +111,21 @@ class CardMotionController extends ChangeNotifier {
       flights,
       onLanded: () => clearInFlight(flights.map((f) => f.cardId)),
     );
+  }
+
+  Future<void> runShuffle(
+    ShuffleRequest request, {
+    Future<void> Function()? onSquared,
+  }) async {
+    if (request.sources.isEmpty) {
+      await onSquared?.call();
+      return;
+    }
+    final run = shuffleRunner;
+    if (run == null) {
+      await onSquared?.call();
+      return;
+    }
+    await run(request, onSquared: onSquared);
   }
 }
