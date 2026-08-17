@@ -20,6 +20,9 @@ class PlayingCard extends StatelessWidget {
   /// Extra coin hint (e.g. take-size preview). Specials are automatic.
   final int extraCoinHint;
 
+  /// Flight overlays skip hints so they do not mount extra bounce listeners.
+  final bool showCoinHint;
+
   const PlayingCard({
     super.key,
     required this.playingCardModel,
@@ -30,6 +33,7 @@ class PlayingCard extends StatelessWidget {
     this.selectedBorderColor,
     this.selectedBorderWidth = 2.4,
     this.extraCoinHint = 0,
+    this.showCoinHint = true,
   });
 
   @override
@@ -38,7 +42,7 @@ class PlayingCard extends StatelessWidget {
     final suit = _normalizeSuit(playingCardModel.suit);
     final suitColor = _suitColor(suit);
     final height = width * heightMultiplyer;
-    final hintsEnabled = _casinoCoinHintsEnabled(context);
+    final hintsEnabled = showCoinHint && _casinoCoinHintsEnabled(context);
     final specialCoins =
         hintsEnabled ? CasinoCoinBonuses.specialBonus(playingCardModel) : 0;
     final coinHint =

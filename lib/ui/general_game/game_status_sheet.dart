@@ -104,8 +104,10 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
             if (gameState.gameStatus == GameStatus.gameOver) ...[
               _WinSummary(
                 winnerLabel: _winnerLabel(),
-                winBy: GameRegistry.winConditionPhrase(gameState.gameMode),
                 youWon: gameState.winnerId == playerId,
+                modePhrase: GameRegistry.winConditionPhrase(gameState.gameMode),
+                detailLine: _winDetailLine(),
+                breakdown: _winnerBreakdownChips(),
               ),
               const SizedBox(height: 14),
             ],
@@ -240,6 +242,109 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     return _playerLabel(wid);
   }
 
+  Map<String, dynamic> _winnerRoundMap() {
+    final wid = gameState.winnerId;
+    if (wid == null || wid.isEmpty) return const {};
+    return Map<String, dynamic>.from(gameState.round.roundScores[wid] ?? {});
+  }
+
+  int _scoreN(Map<String, dynamic> map, String key) =>
+      (map[key] as num?)?.toInt() ?? 0;
+
+  /// Concrete score line under the mode win phrase.
+  String _winDetailLine() {
+    final wid = gameState.winnerId;
+    if (wid == null || wid.isEmpty) return '';
+    final total = (gameState.scores[wid] as num?)?.toInt() ?? 0;
+    final round = _winnerRoundMap();
+    final roundTotal = _scoreN(round, 'total');
+    final how = _winHowPhrase(round);
+
+    switch (gameState.gameMode) {
+      case GameMode.casino:
+        if (how.isNotEmpty) {
+          return 'Finished with $total points by $how.';
+        }
+        return total > 0 ? 'Finished with $total points.' : '';
+      case GameMode.casinoSpeed:
+        if (roundTotal <= 0) return '';
+        final coins = _scoreN(round, 'coins');
+        final scoreBit = how.isNotEmpty
+            ? '$roundTotal points from $how'
+            : '$roundTotal points';
+        if (coins > 0) {
+          return 'Won the round with $scoreBit and +$coins coins.';
+        }
+        return 'Won the round with $scoreBit.';
+      case GameMode.tresydos:
+        return total > 0 ? 'Won $total of 3 rounds.' : 'Won 3 rounds.';
+      case GameMode.robaito:
+        return total > 0 ? 'Finished with $total cards.' : '';
+    }
+  }
+
+  /// Short phrase of the last-round score sources, e.g. "aces, most cards, and viraos".
+  String _winHowPhrase(Map<String, dynamic> round) {
+    final parts = <String>[];
+    if (_scoreN(round, 'A') != 0) parts.add('aces');
+    if (_scoreN(round, '2♠') != 0) parts.add('2♠');
+    if (_scoreN(round, '10♦') != 0) parts.add('10♦');
+    if (_scoreN(round, 'pi') != 0) parts.add('pi');
+    if (_scoreN(round, 'carta') != 0) parts.add('most cards');
+    if (_scoreN(round, 'virao') != 0) parts.add('viraos');
+    if (parts.isEmpty) return '';
+    if (parts.length == 1) return parts.first;
+    if (parts.length == 2) return '${parts[0]} and ${parts[1]}';
+    return '${parts.sublist(0, parts.length - 1).join(', ')}, and ${parts.last}';
+  }
+
+  /// Last-round score pieces that explain how the winner got there.
+  List<({String label, String value, bool coin})> _winnerBreakdownChips() {
+    final round = _winnerRoundMap();
+    if (round.isEmpty) return const [];
+
+    final chips = <({String label, String value, bool coin})>[
+      if (_scoreN(round, 'A') != 0)
+        (label: 'Aces', value: '+${_scoreN(round, 'A')}', coin: false),
+      if (_scoreN(round, '2♠') != 0)
+        (label: '2♠', value: '+${_scoreN(round, '2♠')}', coin: false),
+      if (_scoreN(round, '10♦') != 0)
+        (label: '10♦', value: '+${_scoreN(round, '10♦')}', coin: false),
+      if (_scoreN(round, 'pi') != 0)
+        (label: 'Pi', value: '+${_scoreN(round, 'pi')}', coin: false),
+      if (_scoreN(round, 'carta') != 0)
+        (label: 'Most cards', value: '+${_scoreN(round, 'carta')}', coin: false),
+      if (_scoreN(round, 'virao') != 0)
+        (label: 'Viraos', value: '+${_scoreN(round, 'virao')}', coin: false),
+    ];
+
+    if (GameRegistry.isCasinoFamily(gameState.gameMode)) {
+      if (_scoreN(round, 'coinsTake') > 0) {
+        chips.add((
+          label: 'Big take',
+          value: '+${_scoreN(round, 'coinsTake')}',
+          coin: true,
+        ));
+      }
+      if (_scoreN(round, 'coinsSpecial') > 0) {
+        chips.add((
+          label: 'Special cards',
+          value: '+${_scoreN(round, 'coinsSpecial')}',
+          coin: true,
+        ));
+      }
+      if (_scoreN(round, 'coinsVirao') > 0) {
+        chips.add((
+          label: 'Virao coins',
+          value: '+${_scoreN(round, 'coinsVirao')}',
+          coin: true,
+        ));
+      }
+    }
+
+    return chips;
+  }
+
   Future<void> _handleResign(
     BuildContext context,
     GeneralGameViewModel vm,
@@ -320,13 +425,17 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
 class _WinSummary extends StatelessWidget {
   const _WinSummary({
     required this.winnerLabel,
-    required this.winBy,
     required this.youWon,
+    required this.modePhrase,
+    required this.detailLine,
+    required this.breakdown,
   });
 
   final String winnerLabel;
-  final String winBy;
   final bool youWon;
+  final String modePhrase;
+  final String detailLine;
+  final List<({String label, String value, bool coin})> breakdown;
 
   @override
   Widget build(BuildContext context) {
@@ -349,13 +458,41 @@ class _WinSummary extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'by $winBy.',
+            'by $modePhrase.',
             textAlign: TextAlign.center,
             style: theme.body.copyWith(
               color: theme.textPrimary.withValues(alpha: .85),
               height: 1.35,
             ),
           ),
+          if (detailLine.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              detailLine,
+              textAlign: TextAlign.center,
+              style: theme.caption.copyWith(
+                color: theme.textPrimary.withValues(alpha: .78),
+                height: 1.35,
+              ),
+            ),
+          ],
+          if (breakdown.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              alignment: WrapAlignment.center,
+              children: [
+                for (final chip in breakdown)
+                  _MiniDetailChip(
+                    label: chip.label,
+                    value: chip.value,
+                    coin: chip.coin,
+                    onDark: true,
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -471,19 +608,21 @@ class _LastRoundPlayerCard extends StatelessWidget {
     final scoreColor = isYou ? theme.turnHighlight : theme.suitBlack;
 
     final pointChips = <({String label, String value})>[
-      if (_n('A') != 0) (label: 'A', value: '+${_n('A')}'),
+      if (_n('A') != 0) (label: 'Aces', value: '+${_n('A')}'),
       if (_n('2♠') != 0) (label: '2♠', value: '+${_n('2♠')}'),
       if (_n('10♦') != 0) (label: '10♦', value: '+${_n('10♦')}'),
       if (_n('pi') != 0) (label: 'Pi', value: '+${_n('pi')}'),
-      if (_n('carta') != 0) (label: 'Carta', value: '+${_n('carta')}'),
-      if (_n('virao') != 0) (label: 'Virao', value: '+${_n('virao')}'),
+      if (_n('carta') != 0) (label: 'Most cards', value: '+${_n('carta')}'),
+      if (_n('virao') != 0) (label: 'Viraos', value: '+${_n('virao')}'),
     ];
 
     final coinChips = <({String label, String value})>[
-      if (_n('coinsTake') > 0) (label: 'Take', value: '+${_n('coinsTake')}'),
+      if (_n('coinsTake') > 0)
+        (label: 'Big take', value: '+${_n('coinsTake')}'),
       if (_n('coinsSpecial') > 0)
-        (label: 'Special', value: '+${_n('coinsSpecial')}'),
-      if (_n('coinsVirao') > 0) (label: 'Virao', value: '+${_n('coinsVirao')}'),
+        (label: 'Special cards', value: '+${_n('coinsSpecial')}'),
+      if (_n('coinsVirao') > 0)
+        (label: 'Viraos', value: '+${_n('coinsVirao')}'),
     ];
 
     return AspectRatio(
@@ -636,26 +775,33 @@ class _MiniDetailChip extends StatelessWidget {
     required this.label,
     required this.value,
     this.coin = false,
+    this.onDark = false,
   });
 
   final String label;
   final String value;
   final bool coin;
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
+    // Point chips sit on a dark fill → light ink. Coin chips keep highlight ink.
+    final labelColor = coin
+        ? theme.turnHighlight.withValues(alpha: .9)
+        : theme.cardBackground.withValues(alpha: .88);
+    final valueColor = coin ? theme.turnHighlight : theme.cardBackground;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
         color: coin
-            ? theme.turnHighlight.withValues(alpha: .12)
-            : theme.background.withValues(alpha: .85),
+            ? theme.turnHighlight.withValues(alpha: onDark ? .18 : .14)
+            : theme.suitBlack.withValues(alpha: .82),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: coin
-              ? theme.turnHighlight.withValues(alpha: .35)
-              : theme.border.withValues(alpha: .3),
+              ? theme.turnHighlight.withValues(alpha: .4)
+              : theme.suitBlack.withValues(alpha: .9),
         ),
       ),
       child: Row(
@@ -665,7 +811,8 @@ class _MiniDetailChip extends StatelessWidget {
             label,
             style: theme.caption.copyWith(
               fontSize: 11,
-              color: theme.textPrimary.withValues(alpha: .75),
+              fontWeight: FontWeight.w600,
+              color: labelColor,
             ),
           ),
           const SizedBox(width: 4),
@@ -674,7 +821,7 @@ class _MiniDetailChip extends StatelessWidget {
             style: theme.caption.copyWith(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: coin ? theme.turnHighlight : theme.textPrimary,
+              color: valueColor,
             ),
           ),
         ],

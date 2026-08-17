@@ -21,6 +21,11 @@ class AnimatedMoveCard extends StatelessWidget {
       return PlayingCardBack(width: width);
     }
 
-    return PlayingCard(playingCardModel: card, isSelected: false, width: width);
+    return PlayingCard(
+      playingCardModel: card,
+      isSelected: false,
+      width: width,
+      showCoinHint: false,
+    );
   }
 }

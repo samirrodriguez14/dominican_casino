@@ -18,6 +18,7 @@ import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area
 import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
+import 'package:dominican_casino/ui/widgets/coin_hint_ticker.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/ui/widgets/coin_gain_badge.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
@@ -336,12 +337,13 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       child: CupertinoPageScaffold(
         child: DecoratedBox(
           decoration: AppStyle.theme.tableBackground(),
-          child: AnimatedBuilder(
-            animation: tutorialVm,
-            builder: (context, _) {
-              final bottomInset = MediaQuery.paddingOf(context).bottom;
-              return Stack(
-                children: [
+          child: CoinHintTickerScope(
+            child: AnimatedBuilder(
+              animation: tutorialVm,
+              builder: (context, _) {
+                final bottomInset = MediaQuery.paddingOf(context).bottom;
+                return Stack(
+                  children: [
                   Padding(
                     padding: EdgeInsetsGeometry.symmetric(vertical: 48),
                     child: CasinoBoard(child: Container()),
@@ -351,21 +353,17 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                       SafeArea(
                         bottom: false,
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                          child: Text(
-                            GameRegistry.displayTitle(vm.gameState.gameMode),
-                            textAlign: TextAlign.center,
-                            style: AppStyle.theme.caption.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.4,
-                              color: AppStyle.theme.textPrimary.withValues(
-                                alpha: 0.85,
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                          child: Center(
+                            child: _GameModeChip(
+                              label: GameRegistry.displayTitle(
+                                vm.gameState.gameMode,
                               ),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 4),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -451,6 +449,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                 ],
               );
             },
+            ),
           ),
         ),
       ),
@@ -573,13 +572,8 @@ class _PlayerScoreAvatar extends StatelessWidget {
               ),
             ),
             Positioned(
-              left: -4,
-              bottom: -2,
-              child: CoinGainBadge(pending: pendingCoins),
-            ),
-            Positioned(
-              right: -2,
-              bottom: -2,
+              left: -2,
+              top: -2,
               child: Container(
                 constraints: const BoxConstraints(minWidth: 22),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -599,7 +593,46 @@ class _PlayerScoreAvatar extends StatelessWidget {
                 ),
               ),
             ),
+            Positioned(
+              right: -4,
+              bottom: -2,
+              child: CoinGainBadge(pending: pendingCoins),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GameModeChip extends StatelessWidget {
+  const _GameModeChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: theme.surface.withValues(alpha: .94),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: theme.border.withValues(alpha: .55)),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: .22),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Text(
+        label,
+        style: theme.caption.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+          color: theme.textPrimary.withValues(alpha: .9),
         ),
       ),
     );

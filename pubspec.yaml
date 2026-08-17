@@ -33,6 +33,12 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
 
+# audioplayers_darwin 6.4+ leaks AVPlayer status continuations on iOS
+# (SWIFT TASK CONTINUATION MISUSE: setUpPlayerItemStatusObservation).
+# See https://github.com/bluefireteam/audioplayers/issues/1982
+dependency_overrides:
+  audioplayers_darwin: 6.3.0
+
 flutter:
   uses-material-design: true
   assets:

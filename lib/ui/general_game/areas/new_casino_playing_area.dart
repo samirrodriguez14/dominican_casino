@@ -10,6 +10,7 @@ import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/popups/players_deck_content.dart';
 import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_opponent_area.dart';
+import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -31,132 +32,159 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
     final vm = context.watch<GeneralGameViewModel>();
     return Opacity(
       opacity: vm.showInGameControl ? 0.5 : 1,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 0),
-            child: GenOpponentArea(
-              key: vm.oppHandKey,
-              oppId: vm.oppIds.isNotEmpty ? vm.oppIds.first : "",
-            ),
-          ),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Column(
-                  mainAxisAlignment: (vm.gameState.controllerId == vm.me)
-                      ? MainAxisAlignment.end
-                      : MainAxisAlignment.start,
-                  children: [
-                    AppStyle.theme.dottedBox(
-                      child: Opacity(
-                        opacity: vm.motion.isShuffling ? 0 : 1,
-                        child: CardDeck(
-                          key: vm.deckKey,
-                          title: "Dealing",
-                          cardWidth: tableCardWidth,
-                          cards: vm.gameState.deck,
-                          extraPoints: 0,
-                          onTap: () {},
-                        ),
-                      ),
-                    ),
-                  ],
+      child: ListenableBuilder(
+        listenable: vm.motion,
+        builder: (context, _) {
+          final shuffling = vm.motion.isShuffling;
+          final holdExtras = vm.motion.hasFlights;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 0),
+                child: GenOpponentArea(
+                  key: vm.oppHandKey,
+                  oppId: vm.oppIds.isNotEmpty ? vm.oppIds.first : "",
                 ),
-                Expanded(
-                  key: vm.tableKey,
-                  child: Opacity(
-                    opacity: vm.motion.isShuffling ? 0 : 1,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      child: _buildTableSlots(context, vm),
-                    ),
-                  ),
-                ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              ),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Flexible(
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: AppStyle.theme.dottedBox(
-                            color: vm.gameState.lastTookCardId == vm.opp
-                                ? AppStyle.theme.border
-                                : null,
-                            child: Opacity(
-                              opacity: vm.motion.isShuffling ? 0 : 1,
-                              child: CardDeck(
-                                key: vm.oppDeckKey,
-                                title: "Opp's Deck",
-                                cardWidth: tableCardWidth,
-                                cards: vm.oppCollectedCards,
-                                extraPoints: vm.oppExtraPoints,
-                                holdExtraReveal: vm.motion.hasFlights,
-                                onTap: () {
-                                  AppHaptics.selectionClick();
-                                  SoundService.instance.play(
-                                    GameSound.softCard,
-                                  );
-                                  showAppPopup(
-                                    context: context,
-                                    title: "Opponent's Collected Cards",
-                                    content: CollectedCardsStrip(
-                                      cards: vm.oppCollectedCards,
-                                    ),
-                                  );
-                                },
-                              ),
+                    Column(
+                      mainAxisAlignment: (vm.gameState.controllerId == vm.me)
+                          ? MainAxisAlignment.end
+                          : MainAxisAlignment.start,
+                      children: [
+                        AppStyle.theme.dottedBox(
+                          child: Offstage(
+                            offstage: shuffling,
+                            child: CardDeck(
+                              key: vm.deckKey,
+                              title: "Dealing",
+                              cardWidth: tableCardWidth,
+                              cards: vm.gameState.deck,
+                              extraPoints: 0,
+                              onTap: () {},
                             ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Expanded(
+                      key: vm.tableKey,
+                      child: TablePlayDropZone(
+                        child: Offstage(
+                          offstage: shuffling,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              const vPad = 18.0;
+                              return SingleChildScrollView(
+                                physics: vm.draggingHandCard != null
+                                    ? const NeverScrollableScrollPhysics()
+                                    : null,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: vPad,
+                                ),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: (constraints.maxHeight - vPad * 2)
+                                        .clamp(0.0, double.infinity),
+                                  ),
+                                  child: Center(
+                                    child: _buildTableSlots(context, vm),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
                     ),
-                    Flexible(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: AppStyle.theme.dottedBox(
-                            color: vm.gameState.lastTookCardId == vm.me
-                                ? AppStyle.theme.border
-                                : null,
-                            child: Opacity(
-                              opacity: vm.motion.isShuffling ? 0 : 1,
-                              child: CardDeck(
-                                key: vm.myDeckKey,
-                                title: 'My Deck',
-                                cardWidth: tableCardWidth,
-                                cards: vm.myCollectedCards,
-                                extraPoints: vm.myExtraPoints,
-                                holdExtraReveal: vm.motion.hasFlights,
-                                onTap: () {
-                                  AppHaptics.selectionClick();
-                                  SoundService.instance.play(
-                                    GameSound.softCard,
-                                  );
-                                  showAppPopup(
-                                    context: context,
-                                    title: "My Collected Cards",
-                                    content: CollectedCardsStrip(
-                                      cards: vm.myCollectedCards,
-                                    ),
-                                  );
-                                },
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: AppStyle.theme.dottedBox(
+                                color: vm.gameState.lastTookCardId == vm.opp
+                                    ? AppStyle.theme.border
+                                    : null,
+                                child: Offstage(
+                                  offstage: shuffling,
+                                  child: CardDeck(
+                                    key: vm.oppDeckKey,
+                                    title: "Opp's Deck",
+                                    cardWidth: tableCardWidth,
+                                    cards: vm.oppCollectedCards,
+                                    extraPoints: vm.oppExtraPoints,
+                                    holdExtraReveal: holdExtras,
+                                    onTap: () {
+                                      AppHaptics.selectionClick();
+                                      SoundService.instance.play(
+                                        GameSound.softCard,
+                                      );
+                                      showAppPopup(
+                                        context: context,
+                                        title: "Opponent's Collected Cards",
+                                        content: CollectedCardsStrip(
+                                          cards: vm.oppCollectedCards,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
+                        Flexible(
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: AppStyle.theme.dottedBox(
+                                color: vm.gameState.lastTookCardId == vm.me
+                                    ? AppStyle.theme.border
+                                    : null,
+                                child: Offstage(
+                                  offstage: shuffling,
+                                  child: CardDeck(
+                                    key: vm.myDeckKey,
+                                    title: 'My Deck',
+                                    cardWidth: tableCardWidth,
+                                    cards: vm.myCollectedCards,
+                                    extraPoints: vm.myExtraPoints,
+                                    holdExtraReveal: holdExtras,
+                                    onTap: () {
+                                      AppHaptics.selectionClick();
+                                      SoundService.instance.play(
+                                        GameSound.softCard,
+                                      );
+                                      showAppPopup(
+                                        context: context,
+                                        title: "My Collected Cards",
+                                        content: CollectedCardsStrip(
+                                          cards: vm.myCollectedCards,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -202,8 +230,8 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
             : Matrix4.identity(),
         child: FlightAwareCard(
           key: vm.keyForCard(card.id, CardSlot.table),
-          card: card,
-          inFlight: vm.motion.isInFlight(card.id),
+          motion: vm.motion,
+          cardId: card.id,
           child: AnimatedScale(
             duration: const Duration(milliseconds: 150),
             scale: isSelected ? 1.06 : 1.0,
@@ -238,8 +266,8 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
               isSelected: isSelected,
               cardWidth: tableCardWidth,
               overlap: _stackOverlap,
+              motion: vm.motion,
               cardKeyFor: (c) => vm.keyForCard(c.id, CardSlot.inStack),
-              cardInFlight: (c) => vm.motion.isInFlight(c.id),
             ),
           ),
         ),

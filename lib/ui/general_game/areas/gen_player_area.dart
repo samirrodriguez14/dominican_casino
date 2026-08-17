@@ -1,4 +1,6 @@
+import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
@@ -14,6 +16,10 @@ class GenPlayerArea extends StatefulWidget {
 
 class GenPlayerAreaState extends State<GenPlayerArea> {
   GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
+
+  final GlobalKey _fanKey = GlobalKey();
+  double _fanGap = 50;
+  static const double _cardWidth = 100.0;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +44,6 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final cards = vm.myHandCards;
-                const cardWidth = 100.0;
                 const selectedLift = 12.0;
                 if (cards.isEmpty) {
                   return const SizedBox.shrink();
@@ -48,7 +53,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                 const idealGap = 12.0;
 
                 final idealTotalWidth =
-                    (count * cardWidth) + ((count - 1) * idealGap);
+                    (count * _cardWidth) + ((count - 1) * idealGap);
 
                 // Compute actual gap
                 double gap;
@@ -56,63 +61,77 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                   // Spread across available width
                   gap = count == 1
                       ? 0
-                      : (constraints.maxWidth - (count * cardWidth)) /
+                      : (constraints.maxWidth - (count * _cardWidth)) /
                             (count - 1);
                 } else {
                   // Not enough room, overlap
-                  gap = (constraints.maxWidth - cardWidth) / (count - 1);
+                  gap = (constraints.maxWidth - _cardWidth) / (count - 1);
                 }
 
                 gap = gap.clamp(50.0, 80);
+                _fanGap = gap;
 
-                final totalWidth = cardWidth + ((count - 1) * gap);
+                final totalWidth = _cardWidth + ((count - 1) * gap);
+                final draggingId = vm.draggingHandCard?.id;
 
                 return SizedBox(
                   width: constraints.maxWidth,
                   height: 150,
                   child: Center(
-                    child: SizedBox(
-                      width: totalWidth,
-                      height: 150,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          for (int i = 0; i < count; i++)
-                            AnimatedPositioned(
-                              key: ValueKey(cards[i].id),
-                              duration: const Duration(milliseconds: 280),
-                              curve: Curves.easeOutCubic,
-                              left: i * gap,
-                              top: vm.selectedCard == cards[i]
-                                  ? 0
-                                  : selectedLift,
-                              child: GestureDetector(
-                                onTap: () => vm.selectCard(cards[i]),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  transform: vm.selectedCard == cards[i]
-                                      ? Matrix4.translationValues(0, -12, 0)
-                                      : Matrix4.identity(),
-                                  child: FlightAwareCard(
-                                    key: vm.keyForCard(
+                    child: DragTarget<PlayingCardModel>(
+                      onWillAcceptWithDetails: (_) => !vm.isAnimating,
+                      onAcceptWithDetails: (details) {
+                        final from = cards.indexWhere(
+                          (c) => c.id == details.data.id,
+                        );
+                        if (from < 0) return;
+                        final to = _insertIndexFor(
+                          globalOffset: details.offset,
+                          count: count,
+                        );
+                        vm.reorderHand(from, to);
+                      },
+                      builder: (context, candidate, rejected) {
+                        return SizedBox(
+                          key: _fanKey,
+                          width: totalWidth,
+                          height: 150,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              for (int i = 0; i < count; i++)
+                                AnimatedPositioned(
+                                  key: ValueKey(cards[i].id),
+                                  duration: draggingId == cards[i].id
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 280),
+                                  curve: Curves.easeOutCubic,
+                                  left: i * gap,
+                                  top: vm.selectedCard == cards[i]
+                                      ? 0
+                                      : selectedLift,
+                                  child: _HandDragCard(
+                                    card: cards[i],
+                                    cardWidth: _cardWidth,
+                                    enabled: !vm.isAnimating,
+                                    isSelected:
+                                        vm.cardSelection.selectedCard ==
+                                        cards[i],
+                                    flightKey: vm.keyForCard(
                                       cards[i].id,
                                       CardSlot.myHand,
                                     ),
-                                    card: cards[i],
-                                    inFlight: vm.motion.isInFlight(cards[i].id),
-                                    child: PlayingCard(
-                                      playingCardModel: cards[i],
-                                      width: cardWidth,
-                                      isSelected:
-                                          vm.cardSelection.selectedCard ==
-                                          cards[i],
-                                    ),
+                                    motion: vm.motion,
+                                    onTap: () => vm.selectCard(cards[i]),
+                                    onDragStarted: () =>
+                                        vm.beginHandDrag(cards[i]),
+                                    onDragEnded: vm.endHandDrag,
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 );
@@ -122,6 +141,16 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
         ],
       ),
     );
+  }
+
+  /// Slot index from the feedback's top-left, relative to the fan stack.
+  int _insertIndexFor({required Offset globalOffset, required int count}) {
+    final box = _fanKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return count.clamp(0, count);
+    final local = box.globalToLocal(globalOffset);
+    final centerX = local.dx + _cardWidth / 2;
+    if (_fanGap <= 0) return 0;
+    return (centerX / _fanGap).round().clamp(0, count);
   }
 
   Widget _buildPlayControls(BuildContext context, GeneralGameViewModel vm) {
@@ -173,14 +202,16 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
     final name = action.runtimeType.toString();
 
     // Assign each tutorial GlobalKey to at most one chip in this row.
-    final isFirstAddAndTake = name == 'AddAndTakeAction' &&
+    final isFirstAddAndTake =
+        name == 'AddAndTakeAction' &&
         actions.indexWhere(
               (a) => a.runtimeType.toString() == 'AddAndTakeAction',
             ) ==
             index;
     if (isFirstAddAndTake) return vm.playButtonKey;
 
-    final isFirstAdd = (name == 'AddCardsAction' ||
+    final isFirstAdd =
+        (name == 'AddCardsAction' ||
             name == 'AddCardStackAction' ||
             name == 'AddTableCardsAction') &&
         actions.indexWhere((a) {
@@ -192,14 +223,16 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
             index;
     if (isFirstAdd) return vm.addButtonKey;
 
-    final isFirstTakeStack = name == 'TakeStackAction' &&
+    final isFirstTakeStack =
+        name == 'TakeStackAction' &&
         actions.indexWhere(
               (a) => a.runtimeType.toString() == 'TakeStackAction',
             ) ==
             index;
     if (isFirstTakeStack) return vm.takeStackButtonKey;
 
-    final isFirstPlayish = (name == 'PlayCardAction' ||
+    final isFirstPlayish =
+        (name == 'PlayCardAction' ||
             name == 'TakeCardAction' ||
             name == 'PairCardsAction') &&
         actions.indexWhere((a) {
@@ -261,6 +294,79 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
       default:
         return CupertinoIcons.sparkles;
     }
+  }
+}
+
+class _HandDragCard extends StatelessWidget {
+  const _HandDragCard({
+    required this.card,
+    required this.cardWidth,
+    required this.enabled,
+    required this.isSelected,
+    required this.flightKey,
+    required this.motion,
+    required this.onTap,
+    required this.onDragStarted,
+    required this.onDragEnded,
+  });
+
+  final PlayingCardModel card;
+  final double cardWidth;
+  final bool enabled;
+  final bool isSelected;
+  final GlobalKey flightKey;
+  final CardMotionController motion;
+  final VoidCallback onTap;
+  final VoidCallback onDragStarted;
+  final VoidCallback onDragEnded;
+
+  @override
+  Widget build(BuildContext context) {
+    // Keep [flightKey] inside the selection lift so overlay flights start on the
+    // painted card — not the un-lifted layout slot under LongPressDraggable.
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      transform: isSelected
+          ? Matrix4.translationValues(0, -12, 0)
+          : Matrix4.identity(),
+      child: FlightAwareCard(
+        key: flightKey,
+        motion: motion,
+        cardId: card.id,
+        child: LongPressDraggable<PlayingCardModel>(
+          data: card,
+          maxSimultaneousDrags: enabled ? 1 : 0,
+          hapticFeedbackOnStart: true,
+          onDragStarted: onDragStarted,
+          onDragEnd: (_) => onDragEnded(),
+          onDraggableCanceled: (_, _) => onDragEnded(),
+          feedback: Opacity(
+            opacity: 0.92,
+            child: PlayingCard(
+              playingCardModel: card,
+              width: cardWidth,
+              isSelected: true,
+            ),
+          ),
+          childWhenDragging: Opacity(
+            opacity: 0.35,
+            child: PlayingCard(
+              playingCardModel: card,
+              width: cardWidth,
+              isSelected: isSelected,
+            ),
+          ),
+          child: GestureDetector(
+            onTap: onTap,
+            child: PlayingCard(
+              playingCardModel: card,
+              width: cardWidth,
+              isSelected: isSelected,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -15,9 +15,7 @@ class WalletConfig {
   static const int casinoPuliloEnergyCost = 10;
 
   static int puliloEnergyCostFor(String gameMode) {
-    return gameMode == 'casino' || gameMode == 'casinoSpeed'
-        ? casinoPuliloEnergyCost
-        : puliloEnergyCost;
+    return gameMode == 'casino' ? casinoPuliloEnergyCost : puliloEnergyCost;
   }
 
   static int winPayout(int entry) => entry * winPayoutMultiplier;

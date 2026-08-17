@@ -194,7 +194,11 @@ class FirestoreService extends GameService {
             emit();
           },
           onError: (e, st) {
-            debugPrint('listenGames cloud: $e');
+            // Common when signed out / rules block list — local pills still emit.
+            final msg = e.toString();
+            if (!msg.contains('permission-denied')) {
+              debugPrint('listenGames cloud: $e');
+            }
             cloud = [];
             emit();
           },

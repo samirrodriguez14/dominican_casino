@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +12,9 @@ class SoundService extends ChangeNotifier {
 
   /// Max overlapping card ticks so a big deal/capture does not become a wash.
   static const cardTickMax = 6;
+
+  /// audioplayers can hang on iOS AVPlayerItem status; fail fast and reset.
+  static const _sfxTimeout = Duration(seconds: 2);
 
   static const _sfxKey = 'sfx_enabled';
   static const _musicKey = 'music_enabled';
@@ -26,6 +31,8 @@ class SoundService extends ChangeNotifier {
     (_) => AudioPlayer(),
   );
   int _layer = 0;
+  final Map<AudioPlayer, String?> _sourceByPlayer = {};
+  final Set<AudioPlayer> _sfxBusy = {};
 
   bool sfxEnabled = true;
   bool musicEnabled = true;
@@ -126,9 +133,14 @@ class SoundService extends ChangeNotifier {
         await _music.resume();
         return;
       }
-      await _music.stop();
       await _music.setVolume(musicVolume);
-      await _music.play(AssetSource(_musicAsset));
+      if (_sourceByPlayer[_music] == _musicAsset) {
+        await _music.seek(Duration.zero);
+        await _music.resume();
+      } else {
+        await _music.play(AssetSource(_musicAsset));
+        _sourceByPlayer[_music] = _musicAsset;
+      }
       _musicPlaying = true;
     } catch (e) {
       debugPrint('SoundService music: $e');
@@ -159,9 +171,7 @@ class SoundService extends ChangeNotifier {
     final path = _assets[sound];
     if (path == null) return;
     try {
-      await _oneshot.stop();
-      await _oneshot.setVolume(sfxVolume);
-      await _oneshot.play(AssetSource(path));
+      await _playSfx(_oneshot, path, sfxVolume);
     } catch (e) {
       debugPrint('SoundService: $e');
     }
@@ -175,11 +185,52 @@ class SoundService extends ChangeNotifier {
     final player = _layers[_layer % _layers.length];
     _layer++;
     try {
-      await player.stop();
-      await player.setVolume((volume * sfxVolume).clamp(0, 1));
-      await player.play(AssetSource(path));
+      await _playSfx(player, path, (volume * sfxVolume).clamp(0, 1));
     } catch (e) {
       debugPrint('SoundService: $e');
     }
+  }
+
+  /// Prefer seek/resume over stop+play so iOS does not tear down a pending
+  /// AVPlayerItem status continuation mid-flight.
+  Future<void> _playSfx(AudioPlayer player, String path, double volume) async {
+    if (_sfxBusy.contains(player)) return;
+    _sfxBusy.add(player);
+    try {
+      await player.setVolume(volume).timeout(_sfxTimeout);
+      if (_sourceByPlayer[player] == path) {
+        await player.seek(Duration.zero).timeout(_sfxTimeout);
+        await player.resume().timeout(_sfxTimeout);
+        return;
+      }
+      await player
+          .play(AssetSource(path), mode: PlayerMode.lowLatency)
+          .timeout(_sfxTimeout);
+      _sourceByPlayer[player] = path;
+    } on TimeoutException {
+      await _resetPlayer(player);
+      try {
+        await player.setVolume(volume).timeout(_sfxTimeout);
+        await player
+            .play(AssetSource(path), mode: PlayerMode.lowLatency)
+            .timeout(_sfxTimeout);
+        _sourceByPlayer[player] = path;
+      } catch (e) {
+        _sourceByPlayer.remove(player);
+        debugPrint('SoundService: $e');
+      }
+    } catch (e) {
+      _sourceByPlayer.remove(player);
+      rethrow;
+    } finally {
+      _sfxBusy.remove(player);
+    }
+  }
+
+  Future<void> _resetPlayer(AudioPlayer player) async {
+    _sourceByPlayer.remove(player);
+    try {
+      await player.stop().timeout(const Duration(milliseconds: 500));
+    } catch (_) {}
   }
 }

@@ -37,7 +37,7 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
     List<PlayingCardModel> collectedCards = vm.gameState.hands[opp] ?? [];
 
     return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 22),
+      padding: const EdgeInsets.only(top: 0, bottom: 18),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -84,8 +84,8 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
                                     cards[i].id,
                                     CardSlot.oppHand,
                                   ),
-                                  card: cards[i],
-                                  inFlight: vm.motion.isInFlight(cards[i].id),
+                                  motion: vm.motion,
+                                  cardId: cards[i].id,
                                   child:
                                       (vm.gameState.round.roundStatus ==
                                           .completed)
@@ -179,20 +179,35 @@ class OpponentIdentityChip extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Text(
-                '$score',
-                style: theme.caption.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: theme.turnHighlight,
-                  fontSize: 13,
-                ),
-              ),
             ],
           ),
         ),
         if (!waiting)
           Positioned(
-            left: 0,
+            left: -2,
+            top: -6,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 22),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.surfaceAlt,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: theme.background, width: 2),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '$score',
+                style: theme.caption.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.textPrimary,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ),
+        if (!waiting)
+          Positioned(
+            right: 0,
             bottom: -14,
             child: CoinGainBadge(
               pending: vm.revealedPendingFor(oppId),

@@ -22,77 +22,79 @@ class CardFlightAnimator {
     final overlay = Overlay.of(context);
     final entries = <_FlightEntry>[];
 
-    // Mount every flyer at its origin immediately (covers the invisible source).
-    for (final flight in flights) {
-      Offset? begin = flight.fromGlobalCenter;
-      begin ??= flight.fromKey != null ? _centerOf(flight.fromKey!) : null;
-      if (begin == null) continue;
+    try {
+      // Mount every flyer at its origin immediately (covers the invisible source).
+      for (final flight in flights) {
+        Offset? begin = flight.fromGlobalCenter;
+        begin ??= flight.fromKey != null ? _centerOf(flight.fromKey!) : null;
+        if (begin == null) continue;
 
-      final controller = AnimationController(vsync: vsync, duration: perCard);
-      final entry = _FlightEntry(
-        flight: flight,
-        begin: begin,
-        end: begin,
-        controller: controller,
-      );
-      entry.overlayEntry = OverlayEntry(builder: (_) => entry.build());
-      overlay.insert(entry.overlayEntry!);
-      entries.add(entry);
-    }
+        final controller = AnimationController(vsync: vsync, duration: perCard);
+        final entry = _FlightEntry(
+          flight: flight,
+          begin: begin,
+          end: begin,
+          controller: controller,
+        );
+        entry.overlayEntry = OverlayEntry(builder: (_) => entry.build());
+        overlay.insert(entry.overlayEntry!);
+        entries.add(entry);
+      }
 
-    if (entries.isEmpty) {
-      onLanded?.call();
-      return;
-    }
+      if (entries.isEmpty) {
+        onLanded?.call();
+        return;
+      }
 
-    // Destination slots are laid out (invisible) — resolve end points.
-    await WidgetsBinding.instance.endOfFrame;
-    await WidgetsBinding.instance.endOfFrame;
+      // Destination slots are laid out (invisible) — resolve end points.
+      await WidgetsBinding.instance.endOfFrame;
+      await WidgetsBinding.instance.endOfFrame;
 
-    for (final entry in entries) {
-      final end = entry.flight.toKey != null
-          ? _centerOf(entry.flight.toKey!)
-          : null;
-      if (end != null) entry.end = end;
-      entry.overlayEntry!.markNeedsBuild();
-    }
+      for (final entry in entries) {
+        final end = entry.flight.toKey != null
+            ? _centerOf(entry.flight.toKey!)
+            : null;
+        if (end != null) entry.end = end;
+        entry.overlayEntry!.markNeedsBuild();
+      }
 
-    final futures = <Future<void>>[];
-    var cardTicks = 0;
-    for (var i = 0; i < entries.length; i++) {
-      final entry = entries[i];
-      futures.add(
-        Future<void>.delayed(stagger * i).then((_) async {
-          if (!context.mounted) return;
-          final toDeck = entry.flight.to.type == ZoneType.playerDeck;
-          if (entry.flight.hapticOnLaunch) {
-            // Soft tick per card — deals and table collects both feel tactile.
-            if (toDeck) {
-              AppHaptics.lightImpact();
-            } else {
-              AppHaptics.selectionClick();
+      final futures = <Future<void>>[];
+      var cardTicks = 0;
+      for (var i = 0; i < entries.length; i++) {
+        final entry = entries[i];
+        futures.add(
+          Future<void>.delayed(stagger * i).then((_) async {
+            if (!context.mounted) return;
+            final toDeck = entry.flight.to.type == ZoneType.playerDeck;
+            if (entry.flight.hapticOnLaunch) {
+              // Soft tick per card — deals and table collects both feel tactile.
+              if (toDeck) {
+                AppHaptics.lightImpact();
+              } else {
+                AppHaptics.selectionClick();
+              }
             }
-          }
-          if (cardTicks < SoundService.cardTickMax) {
-            SoundService.instance.playLayered(
-              _soundFor(entry.flight),
-              volume: cardTicks == 0 ? 1 : 0.7,
-            );
-            cardTicks++;
-          }
-          await entry.controller.forward();
-        }),
-      );
-    }
-    await Future.wait(futures);
+            if (cardTicks < SoundService.cardTickMax) {
+              SoundService.instance.playLayered(
+                _soundFor(entry.flight),
+                volume: cardTicks == 0 ? 1 : 0.7,
+              );
+              cardTicks++;
+            }
+            await entry.controller.forward();
+          }),
+        );
+      }
+      await Future.wait(futures);
 
-    // Reveal destination under the overlay, then remove flyer (no blank frame).
-    onLanded?.call();
-    await WidgetsBinding.instance.endOfFrame;
-
-    for (final entry in entries) {
-      entry.overlayEntry?.remove();
-      entry.controller.dispose();
+      // Reveal destination under the overlay, then remove flyer (no blank frame).
+      onLanded?.call();
+      await WidgetsBinding.instance.endOfFrame;
+    } finally {
+      for (final entry in entries) {
+        entry.overlayEntry?.remove();
+        entry.controller.dispose();
+      }
     }
   }
 
