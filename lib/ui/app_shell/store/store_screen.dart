@@ -6,11 +6,33 @@ import 'package:dominican_casino/ui/app_shell/store/store_catalog.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_theme_card.dart';
 import 'package:flutter/cupertino.dart';
 
-class StoreScreen extends StatelessWidget {
+class StoreScreen extends StatefulWidget {
   const StoreScreen({super.key});
 
   static const _cardAspect = 2.5 / 3.5;
   static const _gridGap = 10.0;
+
+  @override
+  State<StoreScreen> createState() => StoreScreenState();
+}
+
+class StoreScreenState extends State<StoreScreen> {
+  final _scrollController = ScrollController();
+
+  void scrollToTop() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +40,7 @@ class StoreScreen extends StatelessWidget {
     final theme = AppStyle.theme;
 
     return ListView(
+      controller: _scrollController,
       padding: EdgeInsets.fromLTRB(16, shellTopBarHeight(context) + 8, 16, 110),
       children: [
         Text(l10n.store, style: theme.title.copyWith(fontSize: 32)),

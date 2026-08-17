@@ -1,7 +1,9 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
+import 'package:dominican_casino/ui/app_shell/profile/avatar_picker_popup.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_settings_body.dart';
+import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -10,10 +12,10 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class ProfileScreenState extends State<ProfileScreen> {
   late final PageController _pageController;
   double _page = 0;
 
@@ -36,6 +38,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void goToInitial() {
+    if (!_pageController.hasClients) return;
+    _pageController.animateToPage(
+      0,
+      duration: _pageDuration,
+      curve: _pageCurve,
+    );
+  }
+
   void _goToSettings() {
     _pageController.animateToPage(
       1,
@@ -56,7 +67,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final vm = context.watch<ProfileViewModel>();
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
-    final hintOpacity = (1.0 - _page).clamp(0.0, 1.0);
+    final profileHintOpacity = (1.0 - _page).clamp(0.0, 1.0);
+    final settingsHintOpacity = _page.clamp(0.0, 1.0);
     final topBar = shellTopBarHeight(context);
 
     return PageView(
@@ -69,37 +81,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             children: [
               Expanded(
-                child: GestureDetector(
-                  onTap: () => _changeName(context, vm),
-                  behavior: HitTestBehavior.opaque,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Stack(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () => _changeAvatar(context, vm),
+                      behavior: HitTestBehavior.opaque,
+                      child: Stack(
                         alignment: Alignment.bottomRight,
                         children: [
-                          Icon(
-                            CupertinoIcons.profile_circled,
-                            size: 200,
-                            color: theme.muted,
+                          PlayerAvatarView(
+                            avatarId: vm.player?.avatarId,
+                            size: 168,
                           ),
-                          Icon(
-                            CupertinoIcons.pencil_circle,
-                            size: 44,
-                            color: theme.textPrimary,
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.surface,
+                            ),
+                            child: Icon(
+                              CupertinoIcons.pencil_circle_fill,
+                              size: 40,
+                              color: theme.textPrimary,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      _buildNameSelectionButton(vm),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: () => _changeName(context, vm),
+                      behavior: HitTestBehavior.opaque,
+                      child: _buildNameSelectionButton(vm),
+                    ),
+                  ],
                 ),
               ),
               Opacity(
-                opacity: hintOpacity,
+                opacity: profileHintOpacity,
                 child: GestureDetector(
-                  onTap: hintOpacity > 0.2 ? _goToSettings : null,
+                  onTap: profileHintOpacity > 0.2 ? _goToSettings : null,
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -126,7 +147,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         Padding(
           padding: EdgeInsets.fromLTRB(12, topBar, 12, _tabBarClearance),
-          child: const ProfileSettingsBody(),
+          child: Column(
+            children: [
+              Opacity(
+                opacity: settingsHintOpacity,
+                child: GestureDetector(
+                  onTap: settingsHintOpacity > 0.2 ? goToInitial : null,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 8),
+                    child: Column(
+                      children: [
+                        Icon(
+                          CupertinoIcons.chevron_up,
+                          size: 18,
+                          color: theme.muted,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.scrollForProfile,
+                          textAlign: TextAlign.center,
+                          style: theme.mutedText,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const Expanded(child: ProfileSettingsBody()),
+            ],
+          ),
         ),
       ],
     );
@@ -150,47 +200,62 @@ Widget _buildNameSelectionButton(ProfileViewModel vm) {
   );
 }
 
+Future<void> _changeAvatar(BuildContext context, ProfileViewModel vm) async {
+  final picked = await showAvatarPickerPopup(
+    context,
+    selectedId: vm.player?.avatarId,
+  );
+  if (picked == null || picked == vm.player?.avatarId) return;
+  await vm.updatePlayerAvatar(picked);
+}
+
 Future<void> _changeName(BuildContext context, ProfileViewModel vm) async {
+  final l10n = AppLocalizations.of(context);
   final controller = TextEditingController(text: vm.player?.name);
 
-  final newName =
-      await showCupertinoDialog<String>(
-        context: context,
-        builder: (BuildContext context) {
-          return _showCupertinoDialog(context, controller);
-        },
-      ) ??
-      vm.player?.name ??
-      '';
+  try {
+    final newName =
+        await showCupertinoDialog<String>(
+          context: context,
+          builder: (BuildContext context) {
+            return _showCupertinoDialog(context, controller, l10n);
+          },
+        ) ??
+        vm.player?.name ??
+        '';
 
-  if (newName != vm.player?.name) {
-    await vm.updatePlayerName(newName);
+    if (newName.isNotEmpty && newName != vm.player?.name) {
+      await vm.updatePlayerName(newName);
+    }
+  } finally {
+    controller.dispose();
   }
 }
 
 CupertinoAlertDialog _showCupertinoDialog(
   BuildContext context,
   TextEditingController controller,
+  AppLocalizations l10n,
 ) {
   return CupertinoAlertDialog(
-    title: const Text('Edit name'),
+    title: Text(l10n.editName),
     content: Padding(
       padding: const EdgeInsets.only(top: 12),
       child: CupertinoTextField(
         controller: controller,
         maxLength: 10,
-        placeholder: 'Enter your name',
+        placeholder: l10n.enterYourName,
         autofocus: true,
       ),
     ),
     actions: [
       CupertinoDialogAction(
-        child: Text('Cancel', style: AppStyle.theme.mutedText),
+        child: Text(l10n.cancel, style: AppStyle.theme.mutedText),
         onPressed: () => Navigator.pop(context),
       ),
       CupertinoDialogAction(
         isDefaultAction: true,
-        child: Text('Save', style: AppStyle.theme.title),
+        child: Text(l10n.save, style: AppStyle.theme.title),
         onPressed: () {
           Navigator.pop(context, controller.text.trim());
         },

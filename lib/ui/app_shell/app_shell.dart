@@ -8,6 +8,7 @@ import 'package:dominican_casino/ui/app_shell/games/welcome_tutorial_popup.dart'
 import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_screen.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +23,8 @@ class AppShell extends StatefulWidget {
 class AppShellState extends State<AppShell> {
   int currentIndex = 1;
   late final PageController _pageController;
+  final _storeKey = GlobalKey<StoreScreenState>();
+  final _profileKey = GlobalKey<ProfileScreenState>();
   bool _offeredTutorial = false;
 
   @override
@@ -58,7 +61,14 @@ class AppShellState extends State<AppShell> {
   }
 
   void _onTabTap(int index) {
-    if (index == currentIndex) return;
+    if (index == currentIndex) {
+      if (index == 0) {
+        _storeKey.currentState?.scrollToTop();
+      } else if (index == 2) {
+        _profileKey.currentState?.goToInitial();
+      }
+      return;
+    }
     setState(() => currentIndex = index);
     _pageController.animateToPage(
       index,
@@ -73,7 +83,11 @@ class AppShellState extends State<AppShell> {
     final theme = AppStyle.theme;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final yourTurnCount = context.watch<GamesViewModel>().yourTurnCount;
-    context.watch<AppRepo>(); // rebuild when Sage / Walnut is selected
+    final appRepo = context.watch<AppRepo>();
+    final player = appRepo.player;
+    final displayName = (player == null || player.needsAccountSetup)
+        ? l10n.guest
+        : (player.name ?? l10n.guest);
 
     return CupertinoPageScaffold(
       child: Stack(
@@ -82,12 +96,12 @@ class AppShellState extends State<AppShell> {
             child: PageView(
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
-              children: const [
-                _KeepAlivePage(child: StoreScreen(key: ValueKey('store-tab'))),
-                _KeepAlivePage(child: GamesScreen(key: ValueKey('games-tab'))),
-                _KeepAlivePage(
-                  child: ProfileScreen(key: ValueKey('profile-tab-v3')),
+              children: [
+                _KeepAlivePage(child: StoreScreen(key: _storeKey)),
+                const _KeepAlivePage(
+                  child: GamesScreen(key: ValueKey('games-tab')),
                 ),
+                _KeepAlivePage(child: ProfileScreen(key: _profileKey)),
               ],
             ),
           ),
@@ -101,17 +115,13 @@ class AppShellState extends State<AppShell> {
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: Row(
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage(theme.appLogo),
-                          fit: BoxFit.contain,
-                        ),
+                    Expanded(
+                      child: _ShellIdentity(
+                        avatarId: player?.avatarId,
+                        name: displayName,
+                        onTap: () => _onTabTap(2),
                       ),
                     ),
-                    const Spacer(),
                     const CurrencyBar(),
                   ],
                 ),
@@ -153,6 +163,44 @@ class AppShellState extends State<AppShell> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShellIdentity extends StatelessWidget {
+  const _ShellIdentity({
+    required this.avatarId,
+    required this.name,
+    required this.onTap,
+  });
+
+  final String? avatarId;
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          PlayerAvatarView(avatarId: avatarId, size: 36, showBorder: false),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.title.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

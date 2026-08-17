@@ -33,4 +33,10 @@ class HomeViewModel extends ChangeNotifier {
     await _appRepo.updatePlayer(name);
     notifyListeners();
   }
+
+  Future<GoogleAuthResult> linkGoogle() async {
+    final result = await _appRepo.linkGoogleAccount();
+    notifyListeners();
+    return result;
+  }
 }

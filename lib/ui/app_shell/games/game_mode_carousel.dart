@@ -1,6 +1,6 @@
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
-import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
 
@@ -59,8 +59,10 @@ class _GameModeCarouselState extends State<GameModeCarousel>
   bool _dragging = false;
   bool _restacking = false;
   bool _dismissToLeft = true;
+  bool _howToOpen = false;
 
   late final AnimationController _anim;
+  final GlobalKey _frontCardKey = GlobalKey();
 
   static const _dismissThreshold = 110.0;
 
@@ -96,12 +98,12 @@ class _GameModeCarouselState extends State<GameModeCarousel>
       gameModeCarouselModes[(_frontIndex + 1) % gameModeCarouselModes.length];
 
   void _onDragStart(DragStartDetails _) {
-    if (_anim.isAnimating || _restacking) return;
+    if (_howToOpen || _anim.isAnimating || _restacking) return;
     _dragging = true;
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    if (!_dragging || _anim.isAnimating || _restacking) return;
+    if (!_dragging || _howToOpen || _anim.isAnimating || _restacking) return;
     setState(() => _dragDx += details.delta.dx);
   }
 
@@ -208,23 +210,52 @@ class _GameModeCarouselState extends State<GameModeCarousel>
     return (front, back, t > 0.48);
   }
 
+  Future<void> _openHowTo(GameMode mode, double cardWidth) async {
+    if (_howToOpen || _restacking || _anim.isAnimating) return;
+
+    Rect? anchor;
+    final box = _frontCardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box != null && box.hasSize) {
+      final offset = box.localToGlobal(Offset.zero);
+      anchor = offset & box.size;
+    }
+
+    setState(() => _howToOpen = true);
+    await showGameModeHowTo(
+      context,
+      mode,
+      cardWidth: cardWidth,
+      anchor: anchor,
+    );
+    if (!mounted) return;
+    setState(() => _howToOpen = false);
+  }
+
   Widget _posedCard({
     required GameMode mode,
     required _CardPose pose,
     required double cardWidth,
     required bool interactive,
+    GlobalKey? anchorKey,
   }) {
     return IgnorePointer(
-      ignoring: !interactive,
-      child: Transform.translate(
-        offset: pose.offset,
-        child: Transform.rotate(
-          angle: pose.angle,
-          child: Transform.scale(
-            scale: pose.scale,
-            child: SizedBox(
-              width: cardWidth,
-              child: GameModeCard(mode: mode),
+      ignoring: !interactive || _howToOpen,
+      child: Opacity(
+        opacity: _howToOpen ? 0 : 1,
+        child: Transform.translate(
+          offset: pose.offset,
+          child: Transform.rotate(
+            angle: pose.angle,
+            child: Transform.scale(
+              scale: pose.scale,
+              child: SizedBox(
+                key: anchorKey,
+                width: cardWidth,
+                child: GameModeCard(
+                  mode: mode,
+                  onHowToPlay: () => _openHowTo(mode, cardWidth),
+                ),
+              ),
             ),
           ),
         ),
@@ -263,7 +294,8 @@ class _GameModeCarouselState extends State<GameModeCarousel>
           mode: dismissedUnder ? _backMode : _frontMode,
           pose: dismissedUnder ? backPose : frontPose,
           cardWidth: cardWidth,
-          interactive: !_restacking,
+          interactive: !_restacking && !_howToOpen,
+          anchorKey: !_restacking && !dismissedUnder ? _frontCardKey : null,
         );
 
         return GestureDetector(

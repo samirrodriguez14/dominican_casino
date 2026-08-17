@@ -13,4 +13,17 @@ class ProfileViewModel extends ChangeNotifier {
     await _appRepo.updatePlayer(name);
     notifyListeners();
   }
+
+  Future<void> updatePlayerAvatar(String avatarId) async {
+    await _appRepo.updatePlayerAvatar(avatarId);
+    notifyListeners();
+  }
+
+  bool get isGoogleLinked => _appRepo.isGoogleLinked;
+
+  Future<GoogleAuthResult> linkGoogle() async {
+    final result = await _appRepo.linkGoogleAccount();
+    notifyListeners();
+    return result;
+  }
 }

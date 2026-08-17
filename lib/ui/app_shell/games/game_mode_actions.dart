@@ -1,16 +1,15 @@
 import 'dart:convert';
 
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
-import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Divider, Material;
+import 'package:flutter/material.dart' show Material;
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
 
 void showJoinGameDialog(BuildContext context, String mode) {
   final TextEditingController controller = TextEditingController();
@@ -55,8 +54,6 @@ void showEnterGameDialog(
   GamesViewModel vm,
   GameMode mode,
 ) {
-  final theme = AppStyle.theme;
-
   showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -64,86 +61,21 @@ void showEnterGameDialog(
     barrierColor: CupertinoColors.black.withValues(alpha: .55),
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
-      return Center(
-        child: Material(
-          color: CupertinoColors.transparent,
-          child: Container(
-            width: 300,
-            margin: const EdgeInsets.symmetric(horizontal: 28),
-            decoration: BoxDecoration(
-              color: theme.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: theme.border.withValues(alpha: .7)),
-              boxShadow: [
-                BoxShadow(
-                  color: CupertinoColors.black.withValues(alpha: .45),
-                  blurRadius: 28,
-                  offset: const Offset(0, 14),
-                ),
-              ],
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
-                  color: theme.background,
-                  child: Text(
-                    'Play',
-                    textAlign: TextAlign.center,
-                    style: theme.title.copyWith(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: theme.textPrimary,
-                    ),
-                  ),
-                ),
-                Container(
-                  width: double.infinity,
-                  color: theme.surfaceRaised,
-                  child: Column(
-                    children: [
-                      _PlayOption(
-                        label: 'Friend',
-                        emphasized: true,
-                        onTap: () {
-                          Navigator.pop(dialogContext);
-                          gameEnter(context, vm, mode, false);
-                        },
-                      ),
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: theme.border.withValues(alpha: .55),
-                      ),
-                      _PlayOption(
-                        label: 'Puli (AI bot)',
-                        onTap: () {
-                          Navigator.pop(dialogContext);
-                          gameEnter(context, vm, mode, true);
-                        },
-                      ),
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: theme.border.withValues(alpha: .55),
-                      ),
-                      _PlayOption(
-                        label: 'Join by ID',
-                        onTap: () {
-                          Navigator.pop(dialogContext);
-                          showJoinGameDialog(context, mode.name);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      return _EnterGamePopup(
+        mode: mode,
+        onFriend: () {
+          Navigator.pop(dialogContext);
+          gameEnter(context, vm, mode, false);
+        },
+        onPuli: () {
+          Navigator.pop(dialogContext);
+          gameEnter(context, vm, mode, true);
+        },
+        onJoin: () {
+          Navigator.pop(dialogContext);
+          showJoinGameDialog(context, mode.name);
+        },
+        gameTitle: _modeTitle(vm, mode),
       );
     },
     transitionBuilder: (context, animation, secondary, child) {
@@ -158,32 +90,232 @@ void showEnterGameDialog(
   );
 }
 
-class _PlayOption extends StatelessWidget {
-  const _PlayOption({
-    required this.label,
+String _modeTitle(GamesViewModel vm, GameMode mode) {
+  for (final game in vm.gamesInfo) {
+    if (game.id == mode.name) return game.title;
+  }
+  return switch (mode) {
+    GameMode.casino => 'Casino',
+    GameMode.tresydos => 'Tres y Dos',
+    GameMode.robaito => 'Robaito',
+  };
+}
+
+class _EnterGamePopup extends StatelessWidget {
+  const _EnterGamePopup({
+    required this.mode,
+    required this.gameTitle,
+    required this.onFriend,
+    required this.onPuli,
+    required this.onJoin,
+  });
+
+  final GameMode mode;
+  final String gameTitle;
+  final VoidCallback onFriend;
+  final VoidCallback onPuli;
+  final VoidCallback onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    final suitColor = switch (mode) {
+      GameMode.tresydos => theme.suitRed,
+      GameMode.casino || GameMode.robaito => theme.textPrimary,
+    };
+    final suit = switch (mode) {
+      GameMode.casino => '♠',
+      GameMode.tresydos => '♦',
+      GameMode.robaito => '♣',
+    };
+
+    return Center(
+      child: Material(
+        color: CupertinoColors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 28),
+            padding: const EdgeInsets.fromLTRB(18, 22, 18, 8),
+            decoration: BoxDecoration(
+              color: theme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: theme.border.withValues(alpha: .7)),
+              boxShadow: [
+                BoxShadow(
+                  color: CupertinoColors.black.withValues(alpha: .45),
+                  blurRadius: 28,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  suit,
+                  style: TextStyle(
+                    color: suitColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  gameTitle,
+                  textAlign: TextAlign.center,
+                  style: theme.title.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.playHowPrompt,
+                  textAlign: TextAlign.center,
+                  style: theme.mutedText.copyWith(fontSize: 14),
+                ),
+                const SizedBox(height: 18),
+                _ChoiceTile(
+                  icon: CupertinoIcons.person_2_fill,
+                  title: l10n.playWithFriend,
+                  subtitle: l10n.playWithFriendHint,
+                  emphasized: true,
+                  onTap: onFriend,
+                ),
+                const SizedBox(height: 10),
+                _ChoiceTile(
+                  icon: CupertinoIcons.bolt_fill,
+                  title: l10n.playVsPuli,
+                  subtitle: l10n.playVsPuliHint,
+                  onTap: onPuli,
+                ),
+                const SizedBox(height: 10),
+                _ChoiceTile(
+                  icon: CupertinoIcons.number,
+                  title: l10n.joinById,
+                  subtitle: l10n.playJoinByIdHint,
+                  onTap: onJoin,
+                ),
+                CupertinoButton(
+                  padding: const EdgeInsets.only(top: 4),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    l10n.cancel,
+                    style: TextStyle(color: theme.muted),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChoiceTile extends StatelessWidget {
+  const _ChoiceTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
     required this.onTap,
     this.emphasized = false,
   });
 
-  final String label;
+  final IconData icon;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
   final bool emphasized;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
+    const radius = 14.0;
+
     return CupertinoButton(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      pressedOpacity: 0.72,
       onPressed: onTap,
-      child: SizedBox(
-        width: double.infinity,
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: theme.title.copyWith(
-            fontSize: 18,
-            fontWeight: emphasized ? FontWeight.w700 : FontWeight.w600,
-            color: theme.textPrimary,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: emphasized ? theme.surfaceRaised : theme.background,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: emphasized
+                ? theme.turnHighlight.withValues(alpha: .5)
+                : theme.border.withValues(alpha: .55),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 3.5,
+                  color: emphasized
+                      ? theme.turnHighlight
+                      : CupertinoColors.transparent,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: emphasized
+                                ? theme.turnHighlight.withValues(alpha: .22)
+                                : theme.surfaceAlt.withValues(alpha: .55),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            icon,
+                            size: 18,
+                            color: emphasized
+                                ? theme.turnHighlight
+                                : theme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                title,
+                                style: theme.title.copyWith(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                subtitle,
+                                style: theme.mutedText.copyWith(
+                                  fontSize: 12,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -212,129 +344,4 @@ Future<InstructionsData> loadInstructions(GameMode mode) async {
   };
   final raw = await rootBundle.loadString(path);
   return InstructionsData.fromJson(jsonDecode(raw));
-}
-
-void showGameInfo(BuildContext context, GameMode mode) {
-  final theme = AppStyle.theme;
-
-  showCupertinoModalPopup(
-    context: context,
-    builder: (context) {
-      return Container(
-        height: MediaQuery.of(context).size.height * .78,
-        decoration: BoxDecoration(
-          color: theme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.muted.withValues(alpha: .4),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'How to Play',
-                    style: theme.title.copyWith(fontSize: 28),
-                  ),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: FutureBuilder<InstructionsData>(
-                      future: loadInstructions(mode),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return const Center(
-                            child: CupertinoActivityIndicator(),
-                          );
-                        }
-
-                        final data = snapshot.data!;
-                        return SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 88),
-                          child: Column(
-                            children: data.sections.map((section) {
-                              return _PopupInstructionSection(
-                                section: section,
-                              );
-                            }).toList(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              Positioned(
-                right: 16,
-                bottom: 16,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (mode == GameMode.casino) ...[
-                      PopupCircleButton(
-                        icon: CupertinoIcons.play_fill,
-                        emphasized: true,
-                        onPressed: () {
-                          final uuid = Uuid();
-                          context.go(
-                            '/game/${uuid.v4().substring(0, 6)}/casino/true',
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    PopupCircleButton(
-                      icon: CupertinoIcons.xmark,
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-class _PopupInstructionSection extends StatelessWidget {
-  final InstructionSection section;
-
-  const _PopupInstructionSection({required this.section});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.background,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(section.title, style: theme.title.copyWith(fontSize: 22)),
-          const SizedBox(height: 10),
-          for (final text in section.body) ...[
-            Text(text, style: theme.body.copyWith(fontSize: 17, height: 1.35)),
-            const SizedBox(height: 8),
-          ],
-        ],
-      ),
-    );
-  }
 }

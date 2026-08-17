@@ -13,7 +13,14 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isSelf(uid);
       allow create, update: if isSelf(uid)
-        && request.resource.data.keys().hasOnly(['fcmToken', 'displayName', 'updatedAt']);
+        && request.resource.data.keys().hasOnly([
+          'fcmToken',
+          'displayName',
+          'name',
+          'avatarId',
+          'completedTutorial',
+          'updatedAt',
+        ]);
       allow delete: if isSelf(uid);
     }
 

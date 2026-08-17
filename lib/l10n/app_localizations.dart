@@ -19,9 +19,23 @@ class AppLocalizations {
   bool get isEs => locale.languageCode == 'es';
 
   String get appTitle => isEs ? 'Casino Dominicano' : 'Dominican Casino';
-  String get joinById => isEs ? 'Unirse por ID' : 'Join By Id';
+  String get joinById => isEs ? 'Unirse por ID' : 'Join by ID';
   String get play => isEs ? 'Jugar' : 'Play';
+  String get playHowPrompt =>
+      isEs ? '¿Cómo quieres jugar?' : 'How do you want to play?';
+  String get playWithFriend => isEs ? 'Con un amigo' : 'With a friend';
+  String get playWithFriendHint => isEs
+      ? 'Crea una mesa y comparte el ID'
+      : 'Create a table and share the ID';
+  String get playVsPuli => isEs ? 'Contra Puli' : 'Vs Puli';
+  String get playVsPuliHint => isEs
+      ? 'Practica contra el bot de la casa'
+      : 'Practice against the house bot';
+  String get playJoinByIdHint =>
+      isEs ? 'Entra el código de un amigo' : 'Enter a code from a friend';
   String get howToPlay => isEs ? 'Cómo jugar' : 'How to play';
+  String get tapForInstructions =>
+      isEs ? 'Toca para instrucciones' : 'Tap for instructions';
   String get yourTurn => isEs ? 'Tu turno' : 'Your Turn';
   String get opponentTurn => isEs ? 'Turno del rival' : 'Opponent Turn';
   String get settings => isEs ? 'Ajustes' : 'Settings';
@@ -34,6 +48,10 @@ class AppLocalizations {
   String get instructions => isEs ? 'Instrucciones' : 'Instructions';
   String get welcome => isEs ? 'BIENVENIDO' : 'WELCOME';
   String get yourName => isEs ? 'Tu nombre' : 'Your name';
+  String get editName => isEs ? 'Editar nombre' : 'Edit name';
+  String get enterYourName => isEs ? 'Escribe tu nombre' : 'Enter your name';
+  String get save => isEs ? 'Guardar' : 'Save';
+  String get chooseAvatar => isEs ? 'Elige un avatar' : 'Choose an avatar';
   String get guest => isEs ? 'Invitado' : 'Guest';
   String get google => 'Google';
   String get continueLabel => isEs ? 'Continuar' : 'Continue';
@@ -48,6 +66,8 @@ class AppLocalizations {
       ? 'Aprende a jugar con un tutorial rápido contra Puli, nuestro bot.'
       : 'Learn how to play with a short tutorial against Puli, our AI opponent.';
   String get startTutorial => isEs ? 'Empezar tutorial' : 'Start tutorial';
+  String get tapAnywhereToExit =>
+      isEs ? 'Toca en cualquier lugar para salir' : 'Tap anywhere to exit';
   String get later => isEs ? 'Más tarde' : 'Later';
   String get saveProgressTitle =>
       isEs ? 'Guarda tu progreso' : 'Save your progress';
@@ -62,6 +82,8 @@ class AppLocalizations {
   String get buyCoins => isEs ? 'Comprar monedas' : 'Buy coins';
   String get scrollForSettings =>
       isEs ? 'Desliza hacia abajo para ajustes' : 'Scroll down for settings';
+  String get scrollForProfile =>
+      isEs ? 'Desliza hacia arriba para el perfil' : 'Scroll up for profile';
   String get currentGames => isEs ? 'Actuales' : 'Current';
   String get previousGames => isEs ? 'Anteriores' : 'Previous';
   String get noCurrentGames =>
@@ -100,6 +122,39 @@ class AppLocalizations {
   String get deleteAccountBody => isEs
       ? 'Borra tu perfil en este dispositivo y el token de notificaciones. Las partidas en curso pueden quedar huérfanas.'
       : 'Clears your profile on this device and notification token. In-progress matches may be orphaned.';
+  String get connectGoogle => isEs ? 'Conectar Google' : 'Connect Google';
+  String get googleConnected =>
+      isEs ? 'Conectado con Google' : 'Connected with Google';
+  String get account => isEs ? 'Cuenta' : 'Account';
+  String get logOut => isEs ? 'Cerrar sesión' : 'Log out';
+  String get logOutBody => isEs
+      ? 'Sales de Google en este dispositivo. Nombre, avatar y tutorial se restauran al volver a entrar.'
+      : 'Signs out of Google on this device. Your name, avatar, and tutorial restore when you sign in again.';
+  String get deleteLocalDataGoogleBody => isEs
+      ? 'Borra el caché y las fichas de este dispositivo. Tu cuenta de Google, nombre, avatar y tutorial se quedan en la nube.'
+      : 'Clears this device\'s cache and chips. Your Google account, name, avatar, and tutorial stay in the cloud.';
+
+  String googleSignInError(String? code) {
+    switch (code) {
+      case 'operation-not-allowed':
+        return isEs
+            ? 'Google no está disponible todavía.'
+            : 'Google sign-in isn\'t available yet.';
+      case 'network-request-failed':
+        return isEs
+            ? 'Sin conexión. Inténtalo de nuevo.'
+            : 'No connection. Please try again.';
+      case 'clientConfigurationError':
+      case 'providerConfigurationError':
+        return isEs
+            ? 'Google no está configurado en este dispositivo.'
+            : 'Google isn\'t configured on this device.';
+      default:
+        return isEs
+            ? 'No se pudo conectar con Google. Inténtalo de nuevo.'
+            : 'Couldn\'t connect with Google. Please try again.';
+    }
+  }
 }
 
 class _AppLocalizationsDelegate

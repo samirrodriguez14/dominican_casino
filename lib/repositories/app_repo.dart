@@ -6,6 +6,7 @@ import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/wallet.dart';
+import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,10 +14,30 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 enum AppStatus { notReady, appReady, inGame, appError }
+
+enum GoogleAuthStatus { success, canceled, failed }
+
+class GoogleAuthResult {
+  const GoogleAuthResult.success(this.suggestedName)
+    : status = GoogleAuthStatus.success,
+      errorCode = null;
+  const GoogleAuthResult.canceled()
+    : status = GoogleAuthStatus.canceled,
+      suggestedName = null,
+      errorCode = null;
+  const GoogleAuthResult.failed(this.errorCode)
+    : status = GoogleAuthStatus.failed,
+      suggestedName = null;
+
+  final GoogleAuthStatus status;
+  final String? suggestedName;
+  final String? errorCode;
+}
 
 class AppRepo extends ChangeNotifier {
   Theme _appTheme = Theme.feltWaltnut;
@@ -34,9 +55,32 @@ class AppRepo extends ChangeNotifier {
   AuthorizationStatus notificationStatus = AuthorizationStatus.notDetermined;
   Wallet _wallet = const Wallet();
   Wallet get wallet => _wallet;
+  bool _googleSignInReady = false;
 
   static const _walletKey = 'wallet';
   static const _themeKey = 'appTheme';
+
+  bool get isGoogleLinked {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    return user.providerData.any(
+      (info) => info.providerId == GoogleAuthProvider.PROVIDER_ID,
+    );
+  }
+
+  String? get googleEmail {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    for (final info in user.providerData) {
+      if (info.providerId == GoogleAuthProvider.PROVIDER_ID) {
+        final email = info.email?.trim();
+        if (email != null && email.isNotEmpty) return email;
+      }
+    }
+    final email = user.email?.trim();
+    if (email == null || email.isEmpty) return null;
+    return email;
+  }
 
   AppRepo({required this.fs});
 
@@ -120,8 +164,8 @@ class AppRepo extends ChangeNotifier {
   /// Reads OS notification permission without prompting or opening Settings.
   Future<void> refreshNotificationStatus() async {
     try {
-      final settings =
-          await FirebaseMessaging.instance.getNotificationSettings();
+      final settings = await FirebaseMessaging.instance
+          .getNotificationSettings();
       notificationStatus = settings.authorizationStatus;
       notificationsEnabled =
           notificationStatus == AuthorizationStatus.authorized ||
@@ -151,6 +195,189 @@ class AppRepo extends ChangeNotifier {
     } catch (e) {
       developer.log("AppRepo: Anonymous Auth error: $e");
     }
+  }
+
+  Future<void> _ensureGoogleSignIn() async {
+    if (_googleSignInReady || kIsWeb) return;
+    await GoogleSignIn.instance.initialize(
+      clientId: defaultTargetPlatform == TargetPlatform.iOS
+          ? DefaultFirebaseOptions.ios.iosClientId
+          : null,
+    );
+    _googleSignInReady = true;
+  }
+
+  /// Attach Google to the current anonymous uid, or sign in if that Google
+  /// account already exists. Returns a display name to confirm.
+  Future<GoogleAuthResult> linkGoogleAccount() async {
+    try {
+      await _ensureAnonymousAuth();
+      final current = FirebaseAuth.instance.currentUser;
+      if (current != null && _isGoogleLinked(current)) {
+        return GoogleAuthResult.success(
+          _displayNameFromGoogle(current) ?? player?.name,
+        );
+      }
+
+      if (kIsWeb) {
+        return await _linkGoogleWeb(current);
+      }
+
+      await _ensureGoogleSignIn();
+      final GoogleSignInAccount account;
+      try {
+        account = await GoogleSignIn.instance.authenticate(
+          scopeHint: const ['email', 'profile'],
+        );
+      } on GoogleSignInException catch (e) {
+        if (e.code == GoogleSignInExceptionCode.canceled) {
+          return const GoogleAuthResult.canceled();
+        }
+        developer.log('AppRepo.linkGoogleAccount GoogleSignIn: $e');
+        return GoogleAuthResult.failed(e.code.name);
+      }
+
+      final idToken = account.authentication.idToken;
+      if (idToken == null) {
+        return const GoogleAuthResult.failed('missing-id-token');
+      }
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+      return await _linkOrSignIn(current, credential, account.displayName);
+    } on FirebaseAuthException catch (e) {
+      developer.log('AppRepo.linkGoogleAccount Auth: ${e.code}', error: e);
+      if (_isGoogleCanceled(e.code)) {
+        return const GoogleAuthResult.canceled();
+      }
+      return GoogleAuthResult.failed(e.code);
+    } catch (e, st) {
+      developer.log('AppRepo.linkGoogleAccount: $e', error: e, stackTrace: st);
+      return const GoogleAuthResult.failed('unknown');
+    }
+  }
+
+  Future<GoogleAuthResult> _linkGoogleWeb(User? current) async {
+    final provider = GoogleAuthProvider()
+      ..addScope('email')
+      ..addScope('profile');
+    try {
+      late final UserCredential cred;
+      if (current != null && current.isAnonymous) {
+        try {
+          cred = await current.linkWithPopup(provider);
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'credential-already-in-use' ||
+              e.code == 'email-already-in-use') {
+            cred = await FirebaseAuth.instance.signInWithPopup(provider);
+          } else if (e.code == 'provider-already-linked') {
+            return GoogleAuthResult.success(
+              _displayNameFromGoogle(current) ?? player?.name,
+            );
+          } else {
+            rethrow;
+          }
+        }
+      } else {
+        cred = await FirebaseAuth.instance.signInWithPopup(provider);
+      }
+      return await _afterGoogleUser(cred.user, cred.user?.displayName);
+    } on FirebaseAuthException catch (e) {
+      if (_isGoogleCanceled(e.code)) {
+        return const GoogleAuthResult.canceled();
+      }
+      rethrow;
+    }
+  }
+
+  Future<GoogleAuthResult> _linkOrSignIn(
+    User? current,
+    AuthCredential credential,
+    String? googleName,
+  ) async {
+    try {
+      if (current != null &&
+          (current.isAnonymous || !_isGoogleLinked(current))) {
+        try {
+          final cred = await current.linkWithCredential(credential);
+          return await _afterGoogleUser(cred.user, googleName);
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'credential-already-in-use' ||
+              e.code == 'email-already-in-use') {
+            final cred = await FirebaseAuth.instance.signInWithCredential(
+              e.credential ?? credential,
+            );
+            return await _afterGoogleUser(cred.user, googleName);
+          }
+          if (e.code == 'provider-already-linked') {
+            return await _afterGoogleUser(current, googleName);
+          }
+          rethrow;
+        }
+      }
+      final cred = await FirebaseAuth.instance.signInWithCredential(credential);
+      return await _afterGoogleUser(cred.user, googleName);
+    } on FirebaseAuthException catch (e) {
+      if (_isGoogleCanceled(e.code)) {
+        return const GoogleAuthResult.canceled();
+      }
+      rethrow;
+    }
+  }
+
+  Future<GoogleAuthResult> _afterGoogleUser(
+    User? user,
+    String? googleName,
+  ) async {
+    if (user == null) return const GoogleAuthResult.failed('unknown');
+    final suggested = _displayNameFromGoogle(user, googleName);
+
+    if (player == null || player!.id != user.uid) {
+      player = await _playerFromRemoteOrLocal(user.uid, suggested);
+    } else if (player!.needsAccountSetup && suggested != null) {
+      player = player!.copyWith(name: suggested);
+    }
+
+    await _persistPlayer();
+    notifyListeners();
+    return GoogleAuthResult.success(suggested ?? player?.name);
+  }
+
+  Future<Player> _playerFromRemoteOrLocal(
+    String uid,
+    String? suggestedName,
+  ) async {
+    Map<String, dynamic>? remote;
+    try {
+      remote = await fs.loadUserProfile(uid);
+    } catch (e) {
+      developer.log('AppRepo.loadUserProfile: $e');
+    }
+    return _mergePlayer(
+      uid,
+      local: null,
+      remote: remote,
+      suggestedName: suggestedName,
+    );
+  }
+
+  bool _isGoogleLinked(User user) {
+    return user.providerData.any(
+      (info) => info.providerId == GoogleAuthProvider.PROVIDER_ID,
+    );
+  }
+
+  bool _isGoogleCanceled(String code) {
+    return code == 'canceled' ||
+        code == 'web-context-canceled' ||
+        code == 'popup-closed-by-user' ||
+        code == 'cancelled-popup-request';
+  }
+
+  String? _displayNameFromGoogle(User user, [String? fallback]) {
+    final raw = (user.displayName ?? fallback)?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    final first = raw.split(RegExp(r'\s+')).first;
+    if (first.isEmpty) return null;
+    return first.length <= 10 ? first : first.substring(0, 10);
   }
 
   Future<Player> _fallbackLocalPlayer() async {
@@ -273,7 +500,7 @@ class AppRepo extends ChangeNotifier {
   Future<void> completeTutorial() async {
     if (player == null || player!.completedTutorial) return;
     player = player!.copyWith(completedTutorial: true);
-    await _persistPlayerLocal();
+    await _persistPlayer();
     notifyListeners();
   }
 
@@ -286,7 +513,7 @@ class AppRepo extends ChangeNotifier {
       } else {
         player = player!.copyWith(name: name);
       }
-      await _persistPlayerLocal();
+      await _persistPlayer();
       if (player!.token != null) {
         await fs.saveUserToken(player!.id, player!.token!, player!.name);
       }
@@ -298,27 +525,142 @@ class AppRepo extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteLocalAccount() async {
-    final uid = player?.id ?? FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null) {
-      try {
-        await FirebaseFirestore.instance.collection('users').doc(uid).delete();
-      } catch (_) {}
+  Future<bool> updatePlayerAvatar(String avatarId) async {
+    try {
+      if (player == null) return false;
+      player = player!.copyWith(avatarId: avatarId);
+      await _persistPlayer();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      developer.log("AppRepo.updatePlayerAvatar Error: $e");
+      return false;
     }
-    final sp = await SharedPreferences.getInstance();
-    await sp.remove('player_id');
-    player = null;
-    appStatus = AppStatus.notReady;
+  }
+
+  /// Sign out of Google on this device. Cloud profile stays.
+  Future<void> logOut() async {
+    try {
+      await _persistPlayerRemote();
+    } catch (_) {}
+    await _clearLocalPlayer();
     try {
       await FirebaseAuth.instance.signOut();
     } catch (_) {}
+    if (!kIsWeb) {
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
+    }
     _loadFuture = null;
     await loadApp();
   }
 
+  /// Wipe this device's cached profile. Guest accounts are fully reset.
+  /// Google accounts stay signed in and reload name / avatar / tutorial
+  /// from the cloud. Wallet is local-only, so it is cleared.
+  Future<void> deleteLocalAccount() async {
+    final linked = isGoogleLinked;
+    final uid = player?.id ?? FirebaseAuth.instance.currentUser?.uid;
+    if (!linked && uid != null) {
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+      } catch (_) {}
+    }
+    await _clearLocalPlayer();
+    await _resetWallet();
+    if (!linked) {
+      try {
+        await FirebaseAuth.instance.signOut();
+      } catch (_) {}
+      if (!kIsWeb) {
+        try {
+          await GoogleSignIn.instance.signOut();
+        } catch (_) {}
+      }
+    }
+    _loadFuture = null;
+    await loadApp();
+  }
+
+  Future<void> _clearLocalPlayer() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove('player_id');
+    player = null;
+    appStatus = AppStatus.notReady;
+  }
+
+  Future<void> _resetWallet() async {
+    _wallet = const Wallet();
+    await _persistWallet();
+  }
+
+  Future<void> _persistPlayer() async {
+    await _persistPlayerLocal();
+    await _persistPlayerRemote();
+  }
+
   Future<void> _persistPlayerLocal() async {
+    if (player == null) return;
     final sp = await SharedPreferences.getInstance();
     await sp.setString('player_id', jsonEncode(player!.toJson()));
+  }
+
+  Future<void> _persistPlayerRemote() async {
+    final current = player;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (current == null || uid == null || current.id != uid) return;
+    try {
+      await fs.saveUserProfile(
+        uid: uid,
+        name: current.name,
+        avatarId: current.avatarId,
+        completedTutorial: current.completedTutorial,
+      );
+    } catch (e) {
+      developer.log('AppRepo.saveUserProfile: $e');
+    }
+  }
+
+  Player _mergePlayer(
+    String uid, {
+    Player? local,
+    Map<String, dynamic>? remote,
+    String? suggestedName,
+  }) {
+    Player? cloud;
+    if (remote != null) {
+      cloud = Player.fromDto({
+        'id': uid,
+        'name': remote['name'] ?? remote['displayName'] ?? '',
+        'avatarId': remote['avatarId'],
+        'completedTutorial': remote['completedTutorial'] ?? false,
+      });
+    }
+
+    final cloudName = cloud != null && !cloud.needsAccountSetup
+        ? cloud.name
+        : null;
+    final localName = local != null && !local.needsAccountSetup
+        ? local.name
+        : null;
+    final name =
+        cloudName ??
+        localName ??
+        suggestedName ??
+        cloud?.name ??
+        local?.name ??
+        'p_${uid.substring(0, 6)}';
+
+    return Player(
+      id: uid,
+      name: name,
+      avatarId: cloud?.avatarId ?? local?.avatarId,
+      completedTutorial:
+          (cloud?.completedTutorial ?? false) ||
+          (local?.completedTutorial ?? false),
+      token: local?.token,
+    );
   }
 
   Future<Player?> _loadPlayer() async {
@@ -326,26 +668,30 @@ class AppRepo extends ChangeNotifier {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) {
-        // Auth unavailable — keep app usable with a local id.
         return await _fallbackLocalPlayer();
       }
 
+      Player? cached;
       final p = sp.getString('player_id');
       if (p != null) {
-        final existing = Player.fromDto(jsonDecode(p));
-        // Migrate old 8-char ids onto the Auth uid.
-        if (existing.id != uid) {
-          player = existing.copyWith(id: uid, token: null);
-          await _persistPlayerLocal();
-          return player;
-        }
-        // Drop any cached FCM token from local profile for safety.
-        player = existing.copyWith(token: null);
-        return player;
+        cached = Player.fromDto(jsonDecode(p)).copyWith(token: null);
       }
 
-      player = Player(id: uid, name: "p_${uid.substring(0, 6)}");
-      await _persistPlayerLocal();
+      Map<String, dynamic>? remote;
+      try {
+        remote = await fs.loadUserProfile(uid);
+      } catch (e) {
+        developer.log('AppRepo.loadUserProfile: $e');
+      }
+
+      final local = cached != null && cached.id == uid
+          ? cached
+          : (remote == null && cached != null && !cached.needsAccountSetup
+                ? cached.copyWith(id: uid)
+                : null);
+
+      player = _mergePlayer(uid, local: local, remote: remote);
+      await _persistPlayer();
       return player;
     } catch (e) {
       developer.log("AppRepo.loadPlayer Error: $e");

@@ -3,10 +3,12 @@ class Player {
   bool completedTutorial;
   String? name;
   String? token;
+  String? avatarId;
   Player({
     required this.id,
     this.name,
     this.token,
+    this.avatarId,
     this.completedTutorial = false,
   });
   factory Player.fromDto(Map<String, dynamic> playerDto) {
@@ -14,6 +16,7 @@ class Player {
       id: playerDto['id'],
       name: playerDto['name'] ?? '',
       token: playerDto['token'],
+      avatarId: playerDto['avatarId'] as String?,
       completedTutorial: playerDto['completedTutorial'] ?? false,
     );
   }
@@ -21,6 +24,7 @@ class Player {
     'id': id,
     'name': name,
     'token': token,
+    'avatarId': avatarId,
     'completedTutorial': completedTutorial,
   };
 
@@ -29,11 +33,13 @@ class Player {
     bool? completedTutorial,
     String? name,
     String? token,
+    String? avatarId,
   }) {
     return Player(
       id: id ?? this.id,
       name: name ?? this.name,
       token: token ?? this.token,
+      avatarId: avatarId ?? this.avatarId,
       completedTutorial: completedTutorial ?? this.completedTutorial,
     );
   }

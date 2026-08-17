@@ -1,6 +1,7 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
@@ -57,6 +58,51 @@ class HomeScreenState extends State<HomeScreen> {
       _nameController.text = name;
     }
     setState(() => _askingName = true);
+  }
+
+  Future<void> _onGoogle() async {
+    if (_entering) return;
+    setState(() => _entering = true);
+    try {
+      final vm = context.read<HomeViewModel>();
+      final result = await vm.linkGoogle();
+      if (!mounted) return;
+      if (result.status == GoogleAuthStatus.canceled) return;
+      if (result.status == GoogleAuthStatus.failed) {
+        await _showGoogleError(result.errorCode);
+        return;
+      }
+      final player = vm.player;
+      if (player != null && !player.needsAccountSetup) {
+        context.go('/landing');
+        return;
+      }
+      final suggested = result.suggestedName?.trim();
+      if (suggested != null && suggested.isNotEmpty) {
+        _nameController.text = suggested;
+      }
+      setState(() => _askingName = true);
+    } finally {
+      if (mounted) setState(() => _entering = false);
+    }
+  }
+
+  Future<void> _showGoogleError(String? code) async {
+    final l10n = AppLocalizations.of(context);
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.google),
+        content: Text(l10n.googleSignInError(code)),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.back),
+          ),
+        ],
+      ),
+    );
   }
 
   void _cancelNameStep() {
@@ -143,7 +189,7 @@ class HomeScreenState extends State<HomeScreen> {
       return const Center(child: CupertinoActivityIndicator());
     }
 
-    if (vm.player != null && !vm.player!.needsAccountSetup) {
+    if (vm.player != null && !vm.player!.needsAccountSetup && !_askingName) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         context.go('/landing');
@@ -202,7 +248,7 @@ class HomeScreenState extends State<HomeScreen> {
                 busy: _entering,
                 askingName: _askingName,
                 onGuest: _startNameStep,
-                onGoogle: _startNameStep,
+                onGoogle: _onGoogle,
                 onQuickPlay: _startTutorial,
                 onContinue: _enter,
                 onCancelName: _cancelNameStep,

@@ -5,6 +5,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/ui/app_shell/settings/theme_option.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
@@ -206,6 +207,17 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                                     ),
                                 ],
                               ),
+                              const _SectionDivider(),
+                              _SectionLabel(l10n.account),
+                              const SizedBox(height: 4),
+                              _GoogleAccountRow(
+                                linked: appRepo.isGoogleLinked,
+                                email: appRepo.googleEmail,
+                                onConnect: () =>
+                                    _connectGoogle(context, appRepo, l10n),
+                                onLogOut: () =>
+                                    _confirmLogOut(context, appRepo, l10n),
+                              ),
                             ],
                           ),
                         ),
@@ -288,6 +300,40 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     if (go == true) await appRepo.enableNotifications();
   }
 
+  Future<void> _connectGoogle(
+    BuildContext context,
+    AppRepo appRepo,
+    AppLocalizations l10n,
+  ) async {
+    final result = await appRepo.linkGoogleAccount();
+    if (!context.mounted) return;
+    if (result.status == GoogleAuthStatus.canceled) return;
+    if (result.status == GoogleAuthStatus.failed) {
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: Text(l10n.google),
+          content: Text(l10n.googleSignInError(result.errorCode)),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.back),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    final suggested = result.suggestedName?.trim();
+    final player = appRepo.player;
+    if (suggested != null &&
+        suggested.isNotEmpty &&
+        (player?.needsAccountSetup ?? true)) {
+      await appRepo.updatePlayer(suggested);
+    }
+  }
+
   Future<void> _confirmDelete(
     BuildContext context,
     AppRepo appRepo,
@@ -297,7 +343,11 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: Text(l10n.deleteAccount),
-        content: Text(l10n.deleteAccountBody),
+        content: Text(
+          appRepo.isGoogleLinked
+              ? l10n.deleteLocalDataGoogleBody
+              : l10n.deleteAccountBody,
+        ),
         actions: [
           CupertinoDialogAction(
             onPressed: () => Navigator.pop(ctx, false),
@@ -313,6 +363,36 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     );
     if (go == true) {
       await appRepo.deleteLocalAccount();
+      if (!context.mounted) return;
+      if (!appRepo.isGoogleLinked) context.go('/home');
+    }
+  }
+
+  Future<void> _confirmLogOut(
+    BuildContext context,
+    AppRepo appRepo,
+    AppLocalizations l10n,
+  ) async {
+    final go = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.logOut),
+        content: Text(l10n.logOutBody),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.logOut),
+          ),
+        ],
+      ),
+    );
+    if (go == true) {
+      await appRepo.logOut();
       if (context.mounted) context.go('/home');
     }
   }
@@ -414,6 +494,71 @@ class _SettingsToggleRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _GoogleAccountRow extends StatelessWidget {
+  const _GoogleAccountRow({
+    required this.linked,
+    required this.email,
+    required this.onConnect,
+    required this.onLogOut,
+  });
+
+  final bool linked;
+  final String? email;
+  final VoidCallback onConnect;
+  final VoidCallback onLogOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    return Row(
+      children: [
+        const GoogleGMark(size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                linked ? l10n.googleConnected : l10n.google,
+                style: theme.mutedText.copyWith(
+                  color: linked
+                      ? theme.success
+                      : theme.textPrimary.withValues(alpha: .7),
+                ),
+              ),
+              if (linked && email != null && email!.isNotEmpty)
+                Text(
+                  email!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.caption.copyWith(
+                    color: theme.textPrimary.withValues(alpha: .62),
+                    fontSize: 12,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          minimumSize: Size.zero,
+          color: theme.textPrimary.withValues(alpha: .14),
+          onPressed: linked ? onLogOut : onConnect,
+          child: Text(
+            linked ? l10n.logOut : l10n.connectGoogle,
+            style: TextStyle(
+              color: theme.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -20,10 +20,11 @@ class PrivacyPolicyCopy extends StatelessWidget {
         Text(l10n.noRealMoney, style: body),
         SizedBox(height: compact ? 12 : 16),
         Text(
-          'We collect a Firebase Authentication identifier (anonymous), '
-          'your display name, game match data you create or join, and — '
-          'only if you allow notifications — a push token stored under '
-          'your user profile (not on shared game documents).',
+          'We collect a Firebase Authentication identifier (anonymous until you '
+          'connect Google), your display name, game match data you create or join, '
+          'and — only if you allow notifications — a push token stored under '
+          'your user profile (not on shared game documents). If you connect '
+          'Google, we also receive your Google name and email from that sign-in.',
           style: body,
         ),
         SizedBox(height: compact ? 10 : 12),

@@ -14,12 +14,40 @@ class FirestoreService extends GameService {
   );
 
   /// Store FCM token on the user profile — never on game documents.
-  Future<void> saveUserToken(String uid, String token, String? displayName) async {
+  Future<void> saveUserToken(
+    String uid,
+    String token,
+    String? displayName,
+  ) async {
     await _users.doc(uid).set({
       'fcmToken': token,
-      if (displayName != null) 'displayName': displayName,
+      'displayName': ?displayName,
+      'name': ?displayName,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  Future<void> saveUserProfile({
+    required String uid,
+    String? name,
+    String? avatarId,
+    required bool completedTutorial,
+  }) async {
+    await _users.doc(uid).set({
+      'name': ?name,
+      'displayName': ?name,
+      'avatarId': ?avatarId,
+      'completedTutorial': completedTutorial,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<Map<String, dynamic>?> loadUserProfile(String uid) async {
+    final snap = await _users.doc(uid).get();
+    if (!snap.exists) return null;
+    final data = snap.data();
+    if (data is! Map) return null;
+    return Map<String, dynamic>.from(data);
   }
 
   @override
