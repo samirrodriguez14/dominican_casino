@@ -1,6 +1,7 @@
+import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 
 Future<T?> showAppPopup<T>({
   required BuildContext context,
@@ -62,11 +63,11 @@ Future<T?> showAppPopup<T>({
                       width: double.infinity,
                       child: CupertinoButton.filled(
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        onPressed: () {
-                          HapticFeedback.mediumImpact();
+                        onPressed: SoundService.wrapTap(() {
+                          AppHaptics.mediumImpact();
                           Navigator.of(ctx).pop();
                           onPrimary?.call();
-                        },
+                        }),
                         child: Text(primaryText),
                       ),
                     ),
@@ -76,12 +77,12 @@ Future<T?> showAppPopup<T>({
                         width: double.infinity,
                         child: CupertinoButton(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          onPressed: () {
-                            HapticFeedback.lightImpact();
+                          onPressed: SoundService.wrapTap(() {
+                            AppHaptics.lightImpact();
 
                             Navigator.of(ctx).pop();
                             onSecondary?.call();
-                          },
+                          }),
                           child: Text(secondaryText),
                         ),
                       ),

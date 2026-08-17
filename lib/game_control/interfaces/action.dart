@@ -1,5 +1,6 @@
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/game_control/interfaces/zone.dart';
 
 //Start (only at the begining of the game when everyone has joined)
 //people join as Ready.
@@ -49,10 +50,14 @@ class TakeCardAction extends PlayAction {
   PlayingCardModel usedCard;
   PlayingCardModel targetCard;
 
+  /// Tres y Dos draw: card comes from the shoe or the discard into the hand.
+  final ZoneType? fromZone;
+
   TakeCardAction({
     required this.usedCard,
     required this.targetCard,
     required super.performedById,
+    this.fromZone,
   });
 }
 

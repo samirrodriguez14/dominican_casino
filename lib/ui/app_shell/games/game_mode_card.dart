@@ -2,6 +2,7 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/sage_theme.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -47,7 +48,9 @@ class GameModeCard extends StatelessWidget {
     return AspectRatio(
       aspectRatio: 2.5 / 3.5,
       child: GestureDetector(
-        onTap: enabled && onHowToPlay != null ? onHowToPlay : null,
+        onTap: enabled && onHowToPlay != null
+            ? SoundService.wrapTap(onHowToPlay)
+            : null,
         behavior: HitTestBehavior.opaque,
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -103,7 +106,9 @@ class GameModeCard extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
                     onPressed: enabled
-                        ? () => showEnterGameDialog(context, vm, mode)
+                        ? SoundService.wrapTap(
+                            () => showEnterGameDialog(context, vm, mode),
+                          )
                         : null,
                     child: Container(
                       width: 52,

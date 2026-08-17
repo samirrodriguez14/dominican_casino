@@ -1,10 +1,15 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/animations/currency_burst.dart';
 import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_bundle_card.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_catalog.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_theme_card.dart';
+import 'package:dominican_casino/ui/widgets/currency_bar.dart';
+import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
 class StoreScreen extends StatefulWidget {
   const StoreScreen({super.key});
@@ -47,9 +52,12 @@ class StoreScreenState extends State<StoreScreen> {
         const SizedBox(height: 8),
         Text(l10n.noRealMoney, style: theme.body),
         const SizedBox(height: 28),
-        Text(l10n.buyEnergy, style: theme.title.copyWith(fontSize: 22)),
+        Text(l10n.buyEnergyWithCoins, style: theme.title.copyWith(fontSize: 22)),
         const SizedBox(height: 12),
-        _BundleGrid(bundles: energyBundles),
+        _BundleGrid(
+          bundles: energyBundles,
+          onBundleTap: (bundle, origin) => _buyEnergy(context, bundle, origin),
+        ),
         const SizedBox(height: 28),
         Text(l10n.buyCoins, style: theme.title.copyWith(fontSize: 22)),
         const SizedBox(height: 12),
@@ -61,12 +69,54 @@ class StoreScreenState extends State<StoreScreen> {
       ],
     );
   }
+
+  Future<void> _buyEnergy(
+    BuildContext context,
+    StoreBundle bundle,
+    Offset? origin,
+  ) async {
+    final cost = bundle.coinCost;
+    if (cost == null) return;
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showConfirmStorePurchase(
+      context,
+      body: l10n.confirmBuyEnergy(bundle.amount, cost),
+    );
+    if (!confirmed || !context.mounted) return;
+
+    final repo = context.read<AppRepo>();
+    if (repo.wallet.coins < cost) {
+      await showInsufficientFundsDialog(context, energy: false);
+      return;
+    }
+    final ok = await repo.buyEnergyWithCoins(
+      energy: bundle.amount,
+      coinCost: cost,
+    );
+    if (!ok && context.mounted) {
+      await showInsufficientFundsDialog(context, energy: false);
+      return;
+    }
+    if (!context.mounted) return;
+    final to = CurrencyBar.centerOf(CurrencyBar.energyChipKey);
+    if (origin != null && to != null) {
+      await CurrencyBurst.play(
+        context: context,
+        from: origin,
+        to: to,
+        icon: CupertinoIcons.bolt_fill,
+        color: AppStyle.theme.warning,
+        count: bundle.amount.clamp(5, 10),
+      );
+    }
+  }
 }
 
 class _BundleGrid extends StatelessWidget {
-  const _BundleGrid({required this.bundles});
+  const _BundleGrid({required this.bundles, this.onBundleTap});
 
   final List<StoreBundle> bundles;
+  final void Function(StoreBundle bundle, Offset? origin)? onBundleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +143,12 @@ class _BundleGrid extends StatelessWidget {
               childAspectRatio: StoreScreen._cardAspect,
             ),
             itemBuilder: (context, index) {
-              return StoreBundleCard(bundle: bundles[index]);
+              return StoreBundleCard(
+                bundle: bundles[index],
+                onTap: onBundleTap == null
+                    ? null
+                    : (origin) => onBundleTap!(bundles[index], origin),
+              );
             },
           ),
         );

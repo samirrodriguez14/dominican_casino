@@ -1,5 +1,6 @@
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/models/game_state.dart';
 
 class TresDosRulesHandler {
@@ -21,11 +22,14 @@ class TresDosRulesHandler {
     }
 
     if (canTakeCard(gameState, currentCardSelection).result) {
+      final card = currentCardSelection.selectedCards[0];
+      final fromDeck = gameState.deck.any((c) => c.id == card.id);
       available.add(
         TakeCardAction(
-          usedCard: currentCardSelection.selectedCards[0],
-          targetCard: currentCardSelection.selectedCards[0],
+          usedCard: card,
+          targetCard: card,
           performedById: performedBy,
+          fromZone: fromDeck ? ZoneType.gameDeck : ZoneType.table,
         ),
       );
     }

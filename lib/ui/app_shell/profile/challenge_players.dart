@@ -1,3 +1,4 @@
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -115,7 +116,7 @@ class _ChallengePlayerTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             color: AppStyle.theme.turnHighlight,
             borderRadius: BorderRadius.circular(10),
-            onPressed: onChallenge,
+            onPressed: SoundService.wrapTap(onChallenge),
             child: const Text("Challenge"),
           ),
         ],

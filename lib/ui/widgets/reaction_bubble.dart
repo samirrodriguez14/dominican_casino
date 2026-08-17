@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/game_reaction.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -194,7 +195,7 @@ class GameReactionPicker extends StatelessWidget {
               child: CupertinoButton(
                 padding: const EdgeInsets.all(6),
                 minimumSize: const Size(40, 40),
-                onPressed: () => onSelected(emoji),
+                onPressed: SoundService.wrapTap(() => onSelected(emoji)),
                 child: Text(emoji, style: const TextStyle(fontSize: 28)),
               ),
             ),

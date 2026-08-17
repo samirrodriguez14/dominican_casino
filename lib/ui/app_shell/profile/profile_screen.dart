@@ -1,7 +1,9 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/profile/avatar_picker_popup.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_settings_body.dart';
+import 'package:dominican_casino/ui/app_shell/profile/profile_wallet_cards.dart';
 import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/view_models/profile_view_model.dart';
@@ -81,46 +83,65 @@ class ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             children: [
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: () => _changeAvatar(context, vm),
-                      behavior: HitTestBehavior.opaque,
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          PlayerAvatarView(
-                            avatarId: vm.player?.avatarId,
-                            size: 168,
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: theme.surface,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: SoundService.wrapTap(
+                                () => _changeAvatar(context, vm),
+                              ),
+                              behavior: HitTestBehavior.opaque,
+                              child: Stack(
+                                alignment: Alignment.bottomRight,
+                                children: [
+                                  PlayerAvatarView(
+                                    avatarId: vm.player?.avatarId,
+                                    size: 168,
+                                  ),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: theme.surface,
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.pencil_circle_fill,
+                                      size: 40,
+                                      color: theme.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            child: Icon(
-                              CupertinoIcons.pencil_circle_fill,
-                              size: 40,
-                              color: theme.textPrimary,
+                            const SizedBox(height: 20),
+                            GestureDetector(
+                              onTap: SoundService.wrapTap(
+                                () => _changeName(context, vm),
+                              ),
+                              behavior: HitTestBehavior.opaque,
+                              child: _buildNameSelectionButton(vm),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 28),
+                            const ProfileWalletCards(),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: () => _changeName(context, vm),
-                      behavior: HitTestBehavior.opaque,
-                      child: _buildNameSelectionButton(vm),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
               Opacity(
                 opacity: profileHintOpacity,
                 child: GestureDetector(
-                  onTap: profileHintOpacity > 0.2 ? _goToSettings : null,
+                  onTap: profileHintOpacity > 0.2
+                      ? SoundService.wrapTap(_goToSettings)
+                      : null,
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -152,7 +173,9 @@ class ProfileScreenState extends State<ProfileScreen> {
               Opacity(
                 opacity: settingsHintOpacity,
                 child: GestureDetector(
-                  onTap: settingsHintOpacity > 0.2 ? goToInitial : null,
+                  onTap: settingsHintOpacity > 0.2
+                      ? SoundService.wrapTap(goToInitial)
+                      : null,
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -251,14 +274,14 @@ CupertinoAlertDialog _showCupertinoDialog(
     actions: [
       CupertinoDialogAction(
         child: Text(l10n.cancel, style: AppStyle.theme.mutedText),
-        onPressed: () => Navigator.pop(context),
+        onPressed: SoundService.wrapTap(() => Navigator.pop(context)),
       ),
       CupertinoDialogAction(
         isDefaultAction: true,
         child: Text(l10n.save, style: AppStyle.theme.title),
-        onPressed: () {
+        onPressed: SoundService.wrapTap(() {
           Navigator.pop(context, controller.text.trim());
-        },
+        }),
       ),
     ],
   );

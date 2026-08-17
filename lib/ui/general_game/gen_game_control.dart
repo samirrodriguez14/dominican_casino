@@ -1,10 +1,11 @@
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -41,7 +42,7 @@ class _GenGameControlState extends State<GenGameControl> {
   ) {
     double iconSize = 75;
     return CupertinoButton(
-      onPressed: actionAction(inGameAction, vm),
+      onPressed: SoundService.wrapTap(actionAction(inGameAction, vm)),
 
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -64,7 +65,9 @@ class _GenGameControlState extends State<GenGameControl> {
       case InGameAction.share:
         return () => _shareAction(vm.gid, vm.gameState.gameMode.name);
       case InGameAction.exit:
-        return () {
+        return () async {
+          await vm.queueHomeCoinClaim();
+          if (!mounted) return;
           context.go('/landing');
         };
       case InGameAction.waiting:
@@ -102,7 +105,7 @@ class _GenGameControlState extends State<GenGameControl> {
   static Future<void> _shareAction(String? gid, String gameMode) async {
     if (gid == null) return;
     developer.log("sharing");
-    HapticFeedback.mediumImpact();
+    AppHaptics.mediumImpact();
     final link = "https://dominican-casino.web.app/join/$gid/$gameMode";
     final message = '''Join my Dominican $gameMode game!
            $link''';

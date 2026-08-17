@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/local_player/local_player.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
@@ -99,6 +100,7 @@ class TresdosPlayer {
             performedById: pid,
             usedCard: tableCard,
             targetCard: tableCard,
+            fromZone: ZoneType.table,
           ),
           cardSelection: CurrentCardSelection(
             pid: pid,
@@ -124,6 +126,7 @@ class TresdosPlayer {
           performedById: pid,
           usedCard: deckCard,
           targetCard: deckCard,
+          fromZone: ZoneType.gameDeck,
         ),
         cardSelection: CurrentCardSelection(
           pid: pid,
@@ -149,6 +152,7 @@ class TresdosPlayer {
           performedById: pid,
           usedCard: tableCard,
           targetCard: tableCard,
+          fromZone: ZoneType.table,
         ),
         cardSelection: CurrentCardSelection(
           pid: pid,

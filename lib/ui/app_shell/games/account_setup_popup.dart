@@ -1,5 +1,6 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:flutter/cupertino.dart';
@@ -75,7 +76,7 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
             actions: [
               CupertinoDialogAction(
                 isDefaultAction: true,
-                onPressed: () => Navigator.pop(ctx),
+                onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
                 child: Text(l10n.back),
               ),
             ],
@@ -159,7 +160,7 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     color: theme.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
-                    onPressed: _busy ? null : _saveGuest,
+                    onPressed: SoundService.wrapTap(_busy ? null : _saveGuest),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -186,7 +187,7 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     color: theme.surfaceRaised,
                     borderRadius: BorderRadius.circular(12),
-                    onPressed: _busy ? null : _saveGoogle,
+                    onPressed: SoundService.wrapTap(_busy ? null : _saveGoogle),
                     child: _busy
                         ? const CupertinoActivityIndicator()
                         : Row(
@@ -209,7 +210,9 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
             ),
             CupertinoButton(
               padding: const EdgeInsets.only(top: 4),
-              onPressed: _busy ? null : () => Navigator.pop(context),
+              onPressed: SoundService.wrapTap(
+                _busy ? null : () => Navigator.pop(context),
+              ),
               child: Text(l10n.later, style: TextStyle(color: theme.muted)),
             ),
           ],

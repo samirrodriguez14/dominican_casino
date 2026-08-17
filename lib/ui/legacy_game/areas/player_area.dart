@@ -1,4 +1,5 @@
 import 'package:dominican_casino/style/layouts/app_popup.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/legacy_game/popups/button_instructions.dart';
 import 'package:dominican_casino/ui/widgets/action_icon_button.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -165,7 +166,9 @@ class PlayerAreaState extends State<PlayerArea> {
         padding: EdgeInsets.zero,
         color: AppStyle.theme.surface,
         borderRadius: BorderRadius.circular(12),
-        onPressed: () => _showControlsLegendPopup(context),
+        onPressed: SoundService.wrapTap(
+          () => _showControlsLegendPopup(context),
+        ),
         child: const Icon(CupertinoIcons.info),
       ),
     );

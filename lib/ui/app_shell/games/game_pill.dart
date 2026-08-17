@@ -2,6 +2,7 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -71,7 +72,7 @@ class GamePill extends StatelessWidget {
     ];
 
     return GestureDetector(
-      onTap: onOpen,
+      onTap: SoundService.wrapTap(onOpen),
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 12, 10),
@@ -278,7 +279,7 @@ class _PillIconButton extends StatelessWidget {
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: onPressed,
+      onPressed: SoundService.wrapTap(onPressed),
       child: Container(
         width: 40,
         height: 40,

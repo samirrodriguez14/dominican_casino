@@ -5,7 +5,7 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
+import 'package:dominican_casino/services/haptics.dart';
 
 /// Cosmetic gather → wash → square overlay. Not the CardMoveEvent flight path.
 class ShuffleAnimator {
@@ -77,7 +77,7 @@ class ShuffleAnimator {
         );
         cardTicks++;
       }
-      HapticFeedback.selectionClick();
+      AppHaptics.selectionClick();
 
       await _runPhase(
         flyers,
@@ -101,7 +101,7 @@ class ShuffleAnimator {
       }
 
       if (context.mounted) {
-        HapticFeedback.lightImpact();
+        AppHaptics.lightImpact();
         await _runPhase(
           flyers,
           squareDuration,

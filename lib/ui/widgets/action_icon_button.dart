@@ -1,3 +1,4 @@
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 class ActionControlButton extends StatelessWidget {
@@ -31,7 +32,7 @@ class ActionControlButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12),
             borderRadius: BorderRadius.circular(14),
             color: bg,
-            onPressed: enabled ? onTap : null,
+            onPressed: SoundService.wrapTap(enabled ? onTap : null),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

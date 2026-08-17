@@ -11,9 +11,9 @@ import 'package:dominican_casino/ui/general_game/popups/players_deck_content.dar
 import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_opponent_area.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class NewCasinoPlayingArea extends StatefulWidget {
@@ -96,7 +96,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                                 extraPoints: vm.oppExtraPoints,
                                 holdExtraReveal: vm.motion.hasFlights,
                                 onTap: () {
-                                  HapticFeedback.selectionClick();
+                                  AppHaptics.selectionClick();
                                   SoundService.instance.play(
                                     GameSound.softCard,
                                   );
@@ -133,7 +133,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                                 extraPoints: vm.myExtraPoints,
                                 holdExtraReveal: vm.motion.hasFlights,
                                 onTap: () {
-                                  HapticFeedback.selectionClick();
+                                  AppHaptics.selectionClick();
                                   SoundService.instance.play(
                                     GameSound.softCard,
                                   );

@@ -1,3 +1,4 @@
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model_base.dart';
 import 'package:flutter/cupertino.dart';
@@ -221,7 +222,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
       children: [
         if (vm.currentStep > 0)
           CupertinoButton(
-            onPressed: vm.previousStep,
+            onPressed: SoundService.wrapTap(vm.previousStep),
             child: Text(
               "← Back",
               style: TextStyle(color: AppStyle.theme.muted),
@@ -233,7 +234,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
             color: AppStyle.theme.surfaceAlt,
             borderRadius: BorderRadius.circular(12),
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            onPressed: vm.nextStep,
+            onPressed: SoundService.wrapTap(vm.nextStep),
             child: Text(
               "Next →",
               style: TextStyle(
@@ -247,16 +248,18 @@ class _TutorialScreenState extends State<TutorialScreen> {
             color: AppStyle.theme.surfaceAlt,
             borderRadius: BorderRadius.circular(12),
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            onPressed: vm.isLoading
-                ? null
-                : () async {
-                    // await vm.completeTutorial();
-                    Uuid uuid = Uuid();
-                    // ignore: use_build_context_synchronously
-                    context.go(
-                      '/game/${uuid.v4().substring(0, 6)}/casino/true',
-                    );
-                  },
+            onPressed: SoundService.wrapTap(
+              vm.isLoading
+                  ? null
+                  : () async {
+                      // await vm.completeTutorial();
+                      Uuid uuid = Uuid();
+                      // ignore: use_build_context_synchronously
+                      context.go(
+                        '/game/${uuid.v4().substring(0, 6)}/casino/true',
+                      );
+                    },
+            ),
             child: Text(
               vm.isLoading ? "Starting game..." : "Play Your First Game!",
               style: TextStyle(

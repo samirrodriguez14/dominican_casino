@@ -1,11 +1,14 @@
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/general_game/game_info_sheet.dart';
+import 'package:dominican_casino/ui/general_game/match_coin_payout.dart';
+import 'package:dominican_casino/ui/widgets/coin_gain_badge.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 Future<void> showGameStatusPopup(
@@ -54,6 +57,31 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
   bool get showActions => widget.showActions ?? widget.vm != null;
 
   @override
+  void initState() {
+    super.initState();
+    widget.vm?.addListener(_onVm);
+  }
+
+  @override
+  void didUpdateWidget(covariant GameStatusSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.vm != widget.vm) {
+      oldWidget.vm?.removeListener(_onVm);
+      widget.vm?.addListener(_onVm);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.vm?.removeListener(_onVm);
+    super.dispose();
+  }
+
+  void _onVm() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final vm = widget.vm;
     final theme = AppStyle.theme;
@@ -62,7 +90,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     final roundScores = gameState.round.roundScores;
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 400, maxHeight: 360),
+      constraints: const BoxConstraints(maxWidth: 400, maxHeight: 460),
       child: SingleChildScrollView(
         controller: widget.scrollController,
         child: Column(
@@ -77,6 +105,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                       score: totalScores[playerIds[i]] ?? 0,
                       name: _playerLabel(playerIds[i]),
                       avatarId: _playerAvatarId(playerIds[i]),
+                      pendingCoins: gameState.pendingCoinsFor(playerIds[i]),
                       isYou: playerIds[i] == playerId,
                       isDealer: gameState.controllerId == playerIds[i],
                     ),
@@ -116,6 +145,9 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                 style: theme.mutedText,
               ),
             ],
+            if (vm != null &&
+                gameState.gameStatus == GameStatus.gameOver)
+              MatchCoinPayout(vm: vm),
             if (vm != null || showActions) ...[
               const SizedBox(height: 14),
               Row(
@@ -141,8 +173,10 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                       child: _CompactActionButton(
                         label: 'Lobby',
                         icon: CupertinoIcons.house_fill,
-                        onPressed: () {
+                        onPressed: () async {
                           Navigator.of(context).pop();
+                          await vm.queueHomeCoinClaim();
+                          if (!context.mounted) return;
                           context.go('/landing');
                         },
                       ),
@@ -190,6 +224,8 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     if (shouldLeave != true || !context.mounted) return;
     await vm.resign();
     if (!context.mounted) return;
+    await vm.queueHomeCoinClaim();
+    if (!context.mounted) return;
     Navigator.of(context).pop();
     context.go('/landing');
   }
@@ -206,12 +242,16 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
           ),
           actions: [
             CupertinoDialogAction(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: SoundService.wrapTap(
+                () => Navigator.of(context).pop(false),
+              ),
               child: Text('Cancel', style: AppStyle.theme.mutedText),
             ),
             CupertinoDialogAction(
               isDestructiveAction: true,
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: SoundService.wrapTap(
+                () => Navigator.of(context).pop(true),
+              ),
               child: const Text('Resign'),
             ),
           ],
@@ -232,12 +272,16 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
           ),
           actions: [
             CupertinoDialogAction(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: SoundService.wrapTap(
+                () => Navigator.of(context).pop(false),
+              ),
               child: Text('Cancel', style: AppStyle.theme.mutedText),
             ),
             CupertinoDialogAction(
               isDestructiveAction: true,
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: SoundService.wrapTap(
+                () => Navigator.of(context).pop(true),
+              ),
               child: const Text('Exit'),
             ),
           ],
@@ -252,6 +296,7 @@ class _ScoreCard extends StatelessWidget {
     required this.score,
     required this.name,
     required this.avatarId,
+    required this.pendingCoins,
     required this.isYou,
     required this.isDealer,
   });
@@ -259,6 +304,7 @@ class _ScoreCard extends StatelessWidget {
   final dynamic score;
   final String name;
   final String? avatarId;
+  final int pendingCoins;
   final bool isYou;
   final bool isDealer;
 
@@ -280,7 +326,19 @@ class _ScoreCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          PlayerAvatarView(avatarId: avatarId, size: 40, showBorder: false),
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              PlayerAvatarView(avatarId: avatarId, size: 40, showBorder: false),
+              if (pendingCoins > 0)
+                Positioned(
+                  right: -18,
+                  bottom: -4,
+                  child: CoinGainBadge(pending: pendingCoins, compact: true),
+                ),
+            ],
+          ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -446,10 +504,10 @@ class _CompactActionButton extends StatelessWidget {
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: () {
-        HapticFeedback.lightImpact();
+      onPressed: SoundService.wrapTap(() {
+        AppHaptics.lightImpact();
         onPressed();
-      },
+      }),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(

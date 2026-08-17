@@ -1,8 +1,9 @@
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:dominican_casino/ui/legacy_game/game_view_model.dart';
 import 'package:share_plus/share_plus.dart';
@@ -99,10 +100,10 @@ class _GameControlDeckState extends State<GameControlDeck> {
       children: [
         CupertinoButton(
           onPressed: (onAction != null)
-              ? () async {
-                  HapticFeedback.mediumImpact();
+              ? SoundService.wrapTap(() async {
+                  AppHaptics.mediumImpact();
                   onAction();
-                }
+                })
               : null,
           child: Container(
             margin: EdgeInsets.symmetric(horizontal: 8),

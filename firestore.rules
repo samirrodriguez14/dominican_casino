@@ -20,6 +20,9 @@ service cloud.firestore {
           'avatarId',
           'completedTutorial',
           'updatedAt',
+          'coins',
+          'energy',
+          'energyUpdatedAt',
         ]);
       allow delete: if isSelf(uid);
     }

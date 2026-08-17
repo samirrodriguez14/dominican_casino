@@ -1,5 +1,7 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/sage_theme.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_catalog.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -9,7 +11,7 @@ class StoreBundleCard extends StatelessWidget {
   const StoreBundleCard({super.key, required this.bundle, this.onTap});
 
   final StoreBundle bundle;
-  final VoidCallback? onTap;
+  final void Function(Offset? origin)? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +24,16 @@ class StoreBundleCard extends StatelessWidget {
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: onTap ?? () {},
+      onPressed: bundle.comingSoon
+          ? null
+          : SoundService.wrapTap(() {
+              final box = context.findRenderObject() as RenderBox?;
+              if (box == null || !box.hasSize) {
+                onTap?.call(null);
+                return;
+              }
+              onTap?.call(box.localToGlobal(box.size.center(Offset.zero)));
+            }),
       child: AspectRatio(
         aspectRatio: 2.5 / 3.5,
         child: LayoutBuilder(
@@ -56,7 +67,7 @@ class StoreBundleCard extends StatelessWidget {
                     left: inset,
                     child: _PriceIndex(
                       price: bundle.priceLabel,
-                      icon: bundle.icon,
+                      icon: bundle.priceIcon,
                       fontSize: priceSize,
                       color: theme.textPrimary,
                     ),
@@ -84,11 +95,33 @@ class StoreBundleCard extends StatelessWidget {
                     right: inset,
                     child: _PriceIndex(
                       price: bundle.priceLabel,
-                      icon: bundle.icon,
+                      icon: bundle.priceIcon,
                       fontSize: priceSize * 0.78,
                       color: theme.textPrimary.withValues(alpha: .78),
                     ),
                   ),
+                  if (bundle.comingSoon)
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.black.withValues(alpha: .45),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Text(
+                              AppLocalizations.of(context).comingSoon,
+                              textAlign: TextAlign.center,
+                              style: theme.title.copyWith(
+                                fontSize: (w * 0.12).clamp(9.0, 13.0),
+                                color: CupertinoColors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             );

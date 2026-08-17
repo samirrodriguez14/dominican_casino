@@ -1,4 +1,5 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
@@ -123,7 +124,9 @@ class HomeLoginCard extends StatelessWidget {
                       CupertinoButton(
                         padding: const EdgeInsets.only(top: 6),
                         minimumSize: Size.zero,
-                        onPressed: busy ? null : onCancelName,
+                        onPressed: SoundService.wrapTap(
+                          busy ? null : onCancelName,
+                        ),
                         child: Text(
                           l10n.back,
                           style: theme.caption.copyWith(
@@ -142,7 +145,9 @@ class HomeLoginCard extends StatelessWidget {
                         child: CupertinoButton(
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,
-                          onPressed: busy ? null : onQuickPlay,
+                          onPressed: SoundService.wrapTap(
+                            busy ? null : onQuickPlay,
+                          ),
                           child: Container(
                             width: 68,
                             height: 68,
@@ -228,7 +233,7 @@ class _AuthPill extends StatelessWidget {
       child: CupertinoButton(
         padding: EdgeInsets.zero,
         minimumSize: Size.zero,
-        onPressed: onPressed,
+        onPressed: SoundService.wrapTap(onPressed),
         child: Container(
           height: 44,
           alignment: Alignment.center,

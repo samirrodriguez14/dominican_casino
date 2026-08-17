@@ -3,6 +3,7 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
@@ -97,7 +98,7 @@ class HomeScreenState extends State<HomeScreen> {
         actions: [
           CupertinoDialogAction(
             isDefaultAction: true,
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
             child: Text(l10n.back),
           ),
         ],
@@ -218,7 +219,10 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
               ],
               const SizedBox(height: 16),
-              CupertinoButton(onPressed: vm.retry, child: Text(l10n.retry)),
+              CupertinoButton(
+                onPressed: SoundService.wrapTap(vm.retry),
+                child: Text(l10n.retry),
+              ),
             ],
           ),
         ),
@@ -427,7 +431,7 @@ class _PaneBackButton extends StatelessWidget {
       child: CupertinoButton(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         minimumSize: Size.zero,
-        onPressed: onPressed,
+        onPressed: SoundService.wrapTap(onPressed),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -459,7 +463,7 @@ class _TextLink extends StatelessWidget {
     return CupertinoButton(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       minimumSize: Size.zero,
-      onPressed: onPressed,
+      onPressed: SoundService.wrapTap(onPressed),
       child: Text(
         label,
         style: theme.caption.copyWith(

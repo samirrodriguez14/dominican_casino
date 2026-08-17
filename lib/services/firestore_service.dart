@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_reaction.dart';
+import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/services/game_service.dart';
 import '../models/game_state.dart';
 
@@ -49,6 +50,13 @@ class FirestoreService extends GameService {
     final data = snap.data();
     if (data is! Map) return null;
     return Map<String, dynamic>.from(data);
+  }
+
+  Future<void> saveWallet({required String uid, required Wallet wallet}) async {
+    await _users.doc(uid).set({
+      ...wallet.toJson(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   @override

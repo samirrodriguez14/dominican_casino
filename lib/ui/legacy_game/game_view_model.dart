@@ -6,8 +6,9 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 enum Actions { take, play, add, stack }
@@ -269,7 +270,7 @@ class GameViewModel extends ChangeNotifier {
         bothPlayersReady = false;
         showRoundCompletePopup = false;
       }
-      HapticFeedback.mediumImpact();
+      AppHaptics.mediumImpact();
       cancelSelection();
     } catch (e) {
       developer.log("GameViewModel._onGameRepoChanged Error $e");
@@ -316,22 +317,22 @@ class GameViewModel extends ChangeNotifier {
         actions: [
           if (g != null)
             CupertinoDialogAction(
-              onPressed: () => Navigator.of(ctx).pop(true),
+              onPressed: SoundService.wrapTap(() => Navigator.of(ctx).pop(true)),
               child: Text("Go to Lobby", style: AppStyle.theme.title),
             ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () async {
+            onPressed: SoundService.wrapTap(() async {
               Navigator.of(ctx).pop(true);
 
               await leaveGame();
               Navigator.of(ctx).pop(true);
-            },
+            }),
             child: Text("Abandon"),
           ),
           if (g != null)
             CupertinoDialogAction(
-              onPressed: () => Navigator.of(ctx).pop(false),
+              onPressed: SoundService.wrapTap(() => Navigator.of(ctx).pop(false)),
               child: const Text("Cancel"),
             ),
         ],

@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:flutter/cupertino.dart';
@@ -140,6 +141,7 @@ class _GameModeCarouselState extends State<GameModeCarousel>
   }
 
   Future<void> _restackUnder({required bool toLeft}) async {
+    SoundService.instance.playLayered(GameSound.softCard);
     _dismissToLeft = toLeft;
     _restacking = true;
     _anim.value = 0;

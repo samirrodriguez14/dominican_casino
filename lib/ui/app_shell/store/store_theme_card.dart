@@ -1,3 +1,4 @@
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -23,7 +24,7 @@ class StoreThemeCard extends StatelessWidget {
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: onTap ?? () {},
+      onPressed: SoundService.wrapTap(onTap),
       child: AspectRatio(
         aspectRatio: 2.5 / 3.5,
         child: DecoratedBox(

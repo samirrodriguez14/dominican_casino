@@ -11,13 +11,14 @@ import 'package:dominican_casino/ui/legacy_game/popups/players_deck_content.dart
 import 'package:dominican_casino/ui/legacy_game/popups/round_completed.dart';
 import 'package:dominican_casino/ui/legacy_game/areas/player_area.dart';
 import 'package:dominican_casino/ui/legacy_game/areas/casino_playing_area.dart';
+import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/legacy_game/areas/tresydos_playing_area.dart';
 import 'package:dominican_casino/ui/legacy_game/game_controll.dart';
 import 'package:dominican_casino/ui/legacy_game/game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -68,9 +69,12 @@ class GameScreenState extends State<GameScreen> {
           
           CupertinoActivityIndicator(),
           Text("taking too long?"),
-          CupertinoButton(child: Text("Home"), onPressed: (){
-            context.go('/landing');
-          })
+          CupertinoButton(
+            child: Text("Home"),
+            onPressed: SoundService.wrapTap(() {
+              context.go('/landing');
+            }),
+          ),
           ])),
       );
     }
@@ -221,7 +225,7 @@ class GameScreenState extends State<GameScreen> {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () async {
-                  HapticFeedback.mediumImpact();
+                  AppHaptics.mediumImpact();
                   final ok = await vm.confirmDelete(context);
                   if (context.mounted && ok) context.go('/landing');
                 },

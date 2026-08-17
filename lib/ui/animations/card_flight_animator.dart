@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
+import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/animations/animated_move_card.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 
 /// Continuous overlay flights — same visual from lift-off to landing (no flash).
 class CardFlightAnimator {
@@ -68,9 +68,9 @@ class CardFlightAnimator {
           if (entry.flight.hapticOnLaunch) {
             // Soft tick per card — deals and table collects both feel tactile.
             if (toDeck) {
-              HapticFeedback.lightImpact();
+              AppHaptics.lightImpact();
             } else {
-              HapticFeedback.selectionClick();
+              AppHaptics.selectionClick();
             }
           }
           if (cardTicks < SoundService.cardTickMax) {

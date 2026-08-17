@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:math';
 
+import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_reaction.dart';
@@ -16,12 +17,13 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/models/table_slot.dart';
 import 'package:dominican_casino/models/tutorial_action.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
+import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:flutter/cupertino.dart' hide Action;
-import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 typedef ActionGuard =
@@ -36,11 +38,21 @@ typedef ActionGuard =
 /// exist in different UI slots across a rebuild without colliding.
 enum CardSlot { myHand, oppHand, table, aux, inStack }
 
+enum JoinGameResult { ok, notEnoughCoins, failed }
+
+class DeckCoinFlight {
+  const DeckCoinFlight({required this.mine, required this.amount});
+
+  final bool mine;
+  final int amount;
+}
+
 class GeneralGameViewModel extends ChangeNotifier {
   bool loading = true;
   bool tutorialMode;
   final GameRepo gameRepo;
   final GameEngine gameEngine;
+  final AppRepo appRepo;
   Player player;
   String gid;
   late GameState gameState;
@@ -64,6 +76,11 @@ class GeneralGameViewModel extends ChangeNotifier {
   /// Round id whose gather-wash already played — skip a second overlay on repo echo.
   int? _shuffleOverlayRoundId;
 
+  /// Coins to fly from a collected pile into an avatar after take motion.
+  DeckCoinFlight? pendingDeckCoinFlight;
+  int _revealedPendingMe = 0;
+  int _revealedPendingOpp = 0;
+
   /// Destination slots stay laid out but invisible until flights land.
   final CardMotionController motion = CardMotionController();
 
@@ -75,6 +92,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   GeneralGameViewModel({
     required this.gameRepo,
     required this.gameEngine,
+    required this.appRepo,
     required this.player,
     required this.gid,
     this.tutorialMode = false,
@@ -125,6 +143,9 @@ class GeneralGameViewModel extends ChangeNotifier {
             nextState.round.roundStatus == RoundStatus.readyToDeal;
         final alreadyPlayed =
             _shuffleOverlayRoundId == nextState.round.id;
+        final oldMe = gameState.pendingCoinsFor(me);
+        final oppId = opp;
+        final oldOpp = oppId == null ? 0 : gameState.pendingCoinsFor(oppId);
 
         if ((shuffledIn || startedIn) && !alreadyPlayed) {
           _shuffleOverlayRoundId = nextState.round.id;
@@ -145,6 +166,11 @@ class GeneralGameViewModel extends ChangeNotifier {
             settlementEvents: newSettlement,
           );
         }
+
+        _queueDeckCoinFlight(
+          meGain: gameState.pendingCoinsFor(me) - oldMe,
+          oppGain: oppId == null ? 0 : gameState.pendingCoinsFor(oppId) - oldOpp,
+        );
 
         final botId = gameState.localBotPid ?? opp;
         final botPlayed = botId != null &&
@@ -271,6 +297,11 @@ class GeneralGameViewModel extends ChangeNotifier {
       playersInfo: Map<String, dynamic>.from(next.playersInfo),
       isLocalBot: next.isLocalBot,
       botPlayerId: next.botPlayerId,
+      entryCost: next.entryCost,
+      entryPaidBy: List<String>.from(next.entryPaidBy),
+      payoutApplied: next.payoutApplied,
+      pendingCoins: Map<String, int>.from(next.pendingCoins),
+      viraosCreditedRoundId: next.viraosCreditedRoundId,
       tableOrder: leftovers.map((c) => TableOrder.cardKey(c.id)).toList(),
     );
   }
@@ -364,6 +395,10 @@ class GeneralGameViewModel extends ChangeNotifier {
         final loose = keyForCard(e.card.id, CardSlot.table);
         if (loose.currentContext != null) return loose;
         return keyForCard(e.card.id, CardSlot.inStack);
+      case ZoneType.gameDeck:
+        final top = keyForCard(e.card.id, CardSlot.aux);
+        if (top.currentContext != null) return top;
+        return null;
       default:
         return null;
     }
@@ -380,13 +415,14 @@ class GeneralGameViewModel extends ChangeNotifier {
       return keyForCard(e.card.id, CardSlot.inStack);
     }
 
-    // Still in a hand (deal / rare).
-    if ((gameState.hands[me] ?? []).any((c) => c.id == e.card.id)) {
-      return keyForCard(e.card.id, CardSlot.myHand);
-    }
-    if (opp != null &&
-        (gameState.hands[opp] ?? []).any((c) => c.id == e.card.id)) {
-      return keyForCard(e.card.id, CardSlot.oppHand);
+    // Still in a hand (deal / draw).
+    for (final pid in gameState.hands.keys) {
+      if ((gameState.hands[pid] ?? []).any((c) => c.id == e.card.id)) {
+        return keyForCard(
+          e.card.id,
+          pid == me ? CardSlot.myHand : CardSlot.oppHand,
+        );
+      }
     }
 
     // Collected decks / fallback zones.
@@ -594,14 +630,15 @@ class GeneralGameViewModel extends ChangeNotifier {
     PlayAction action,
     CurrentCardSelection selection,
   ) async {
+    final beforeMe = gameState.pendingCoinsFor(me);
+    final oppId = opp;
+    final beforeOpp = oppId == null ? 0 : gameState.pendingCoinsFor(oppId);
     final next = gameEngine.performPlayAction(gameState, selection, action);
     final events = List<CardMoveEvent>.from(next.cardMoveEvents);
     final settlement = List<CardMoveEvent>.from(next.settlementEvents);
 
     if (!tutorialMode) {
-      // Persist first so remote listeners get the same events; local motion
-      // still runs from this client via _commitStateWithMotion below.
-      // Mark event ids so the repo echo does not double-play.
+      CasinoCoinBonuses.accrueAfterPlay(next, action);
       for (final e in [...events, ...settlement]) {
         gameRepo.lastPlayedIds.add(e.id);
       }
@@ -613,9 +650,54 @@ class GeneralGameViewModel extends ChangeNotifier {
       events,
       settlementEvents: settlement,
     );
+    _queueDeckCoinFlight(
+      meGain: next.pendingCoinsFor(me) - beforeMe,
+      oppGain: oppId == null ? 0 : next.pendingCoinsFor(oppId) - beforeOpp,
+    );
     if (next.gameStatus == GameStatus.gameOver) {
       SoundService.instance.play(GameSound.win);
     }
+  }
+
+  void _queueDeckCoinFlight({required int meGain, required int oppGain}) {
+    if (tutorialMode) {
+      _syncRevealedPending();
+      return;
+    }
+    if (meGain > 0) {
+      pendingDeckCoinFlight = DeckCoinFlight(mine: true, amount: meGain);
+      return;
+    }
+    if (oppGain > 0) {
+      pendingDeckCoinFlight = DeckCoinFlight(mine: false, amount: oppGain);
+      return;
+    }
+    _syncRevealedPending();
+  }
+
+  DeckCoinFlight? takeDeckCoinFlight() {
+    final flight = pendingDeckCoinFlight;
+    pendingDeckCoinFlight = null;
+    return flight;
+  }
+
+  int revealedPendingFor(String pid) {
+    if (pid == me) return _revealedPendingMe;
+    return _revealedPendingOpp;
+  }
+
+  void revealPendingCoins() {
+    final nextMe = gameState.pendingCoinsFor(me);
+    final nextOpp = opp == null ? 0 : gameState.pendingCoinsFor(opp!);
+    if (nextMe == _revealedPendingMe && nextOpp == _revealedPendingOpp) return;
+    _revealedPendingMe = nextMe;
+    _revealedPendingOpp = nextOpp;
+    notifyListeners();
+  }
+
+  void _syncRevealedPending() {
+    _revealedPendingMe = gameState.pendingCoinsFor(me);
+    _revealedPendingOpp = opp == null ? 0 : gameState.pendingCoinsFor(opp!);
   }
 
   /// Tutorial games never hit Firestore, so the on-device AI never wakes up.
@@ -755,6 +837,7 @@ class GeneralGameViewModel extends ChangeNotifier {
         gameState = await gameRepo.fs.loadGame(gid);
         gameState.ensureBotMetadata();
       }
+      _syncRevealedPending();
       loading = false;
       notifyListeners();
       return true;
@@ -764,8 +847,22 @@ class GeneralGameViewModel extends ChangeNotifier {
     return false;
   }
 
-  Future<bool> joinGame() async {
+  Future<JoinGameResult> joinGame() async {
+    var charged = 0;
     try {
+      if (!tutorialMode &&
+          !gameState.isLocalBot &&
+          !gameState.entryPaidBy.contains(player.id)) {
+        final cost = gameState.entryCost;
+        if (appRepo.wallet.coins < cost) {
+          return JoinGameResult.notEnoughCoins;
+        }
+        final spent = await appRepo.trySpendCoins(cost);
+        if (!spent) return JoinGameResult.notEnoughCoins;
+        charged = cost;
+        gameState.entryPaidBy.add(player.id);
+      }
+
       gameState.playersInfo[player.id] = player.toGameSeat();
       if (gameEngine.shouldMarkReadyToStart(gameState) &&
           gameState.gameStatus == GameStatus.waitingForPlayers) {
@@ -776,16 +873,20 @@ class GeneralGameViewModel extends ChangeNotifier {
         LocalPlayer.ensureAttached(gameRepo, gameState);
       }
       notifyListeners();
-      return true;
+      return JoinGameResult.ok;
     } catch (e) {
       developer.log("GameViewModel.joiningGame Error: $e");
+      if (charged > 0) {
+        await appRepo.grantCoins(charged);
+        gameState.entryPaidBy.remove(player.id);
+      }
     }
-    return false;
+    return JoinGameResult.failed;
   }
 
   Future<void> resign() async {
     if (opp == null || tutorialMode) {
-      await gameRepo.fs.deleteGame(gameState.id);
+      await appRepo.deleteGame(gameState.id);
       notifyListeners();
       return;
     }
@@ -1002,7 +1103,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       notifyListeners();
     });
     notifyListeners();
-    HapticFeedback.lightImpact();
+    AppHaptics.lightImpact();
   }
 
   bool _isTakeAction(PlayAction action) {
@@ -1010,6 +1111,16 @@ class GeneralGameViewModel extends ChangeNotifier {
         action is TakeStackAction ||
         action is AddAndTakeAction ||
         action is PairAndTakeCardsAction;
+  }
+
+  Future<void> claimMatchCoins() async {
+    if (tutorialMode) return;
+    await appRepo.claimMatchCoins(gameState, me);
+  }
+
+  Future<void> queueHomeCoinClaim() async {
+    if (tutorialMode) return;
+    await appRepo.queueHomeCoinClaim(gameState, me);
   }
 
   /// Occasional local-bot emoji after a play/take. Never writes game state.
@@ -1124,6 +1235,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   final GlobalKey addButtonKey = GlobalKey();
   final GlobalKey takeStackButtonKey = GlobalKey();
   final GlobalKey scoreKey = GlobalKey();
+  final GlobalKey oppScoreKey = GlobalKey();
 
   GlobalKey? keyForZone(Zone zone) {
     final myPid = me;

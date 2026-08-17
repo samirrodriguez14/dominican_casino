@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
@@ -6,6 +7,7 @@ import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/wallet.dart';
+import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -39,6 +41,31 @@ class GoogleAuthResult {
   final String? errorCode;
 }
 
+class InsufficientFundsException implements Exception {
+  const InsufficientFundsException({required this.energy});
+
+  final bool energy;
+}
+
+class HomeCoinClaim {
+  const HomeCoinClaim({required this.gameId, required this.amount});
+
+  final String gameId;
+  final int amount;
+
+  Map<String, dynamic> toJson() => {'gameId': gameId, 'amount': amount};
+
+  static HomeCoinClaim? fromJson(Map<String, dynamic>? json) {
+    if (json == null) return null;
+    final gameId = json['gameId'] as String?;
+    final amount = (json['amount'] as num?)?.toInt();
+    if (gameId == null || gameId.isEmpty || amount == null || amount <= 0) {
+      return null;
+    }
+    return HomeCoinClaim(gameId: gameId, amount: amount);
+  }
+}
+
 class AppRepo extends ChangeNotifier {
   Theme _appTheme = Theme.feltWaltnut;
   Theme get appTheme => _appTheme;
@@ -53,11 +80,16 @@ class AppRepo extends ChangeNotifier {
   Locale get locale => _locale;
   bool notificationsEnabled = false;
   AuthorizationStatus notificationStatus = AuthorizationStatus.notDetermined;
-  Wallet _wallet = const Wallet();
+  Wallet _wallet = Wallet.starter();
   Wallet get wallet => _wallet;
   bool _googleSignInReady = false;
+  String? _walletUid;
+  Timer? _energyTimer;
+  int? _shellTabRequest;
+  int? get shellTabRequest => _shellTabRequest;
+  HomeCoinClaim? _pendingHomeCoinClaim;
+  HomeCoinClaim? get pendingHomeCoinClaim => _pendingHomeCoinClaim;
 
-  static const _walletKey = 'wallet';
   static const _themeKey = 'appTheme';
 
   bool get isGoogleLinked {
@@ -112,8 +144,9 @@ class AppRepo extends ChangeNotifier {
       await _ensureAnonymousAuth();
       await _loadLocale();
       await _loadTheme();
-      await _loadWallet();
       player = await _loadPlayer();
+      await _loadWallet();
+      _ensureEnergyTicker();
       gamesInfo = await loadGames();
       await refreshNotificationStatus();
       if (player != null) appStatus = AppStatus.appReady;
@@ -127,6 +160,7 @@ class AppRepo extends ChangeNotifier {
       } catch (_) {}
       try {
         await _loadWallet();
+        _ensureEnergyTicker();
       } catch (_) {}
       try {
         await refreshNotificationStatus();
@@ -135,30 +169,266 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _loadWallet() async {
-    final sp = await SharedPreferences.getInstance();
-    final raw = sp.getString(_walletKey);
-    if (raw == null) {
-      _wallet = const Wallet();
-      await _persistWallet();
+  String _walletPrefsKey(String uid) => 'wallet_$uid';
+
+  String? get _currentUid =>
+      player?.id ?? FirebaseAuth.instance.currentUser?.uid;
+
+  void requestShellTab(int index) {
+    _shellTabRequest = index;
+    notifyListeners();
+  }
+
+  int? takeShellTabRequest() {
+    final v = _shellTabRequest;
+    _shellTabRequest = null;
+    return v;
+  }
+
+  void _ensureEnergyTicker() {
+    _energyTimer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+      tickEnergy();
+    });
+  }
+
+  /// Apply pending regen. Notifies only when energy actually changes.
+  void tickEnergy() {
+    final next = _wallet.applyRegen();
+    if (next.energy == _wallet.energy &&
+        next.energyUpdatedAt == _wallet.energyUpdatedAt) {
       return;
     }
+    _wallet = next;
+    notifyListeners();
+    unawaited(_persistWallet());
+  }
+
+  Duration get timeToNextEnergy => _wallet.timeToNextEnergy();
+
+  Future<void> _loadWallet() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? player?.id;
+    _walletUid = uid;
+    if (uid == null) {
+      _wallet = Wallet.starter();
+      return;
+    }
+
+    Map<String, dynamic>? remote;
     try {
-      _wallet = Wallet.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      remote = await fs.loadUserProfile(uid);
+    } catch (e) {
+      developer.log('AppRepo.loadWallet remote: $e');
+    }
+
+    Wallet loaded;
+    if (Wallet.hasWalletFields(remote)) {
+      loaded = Wallet.fromJson(remote!);
+    } else {
+      loaded = await _loadWalletPrefs(uid) ?? Wallet.starter();
+    }
+    _wallet = loaded.applyRegen();
+    await _persistWallet();
+    await _loadHomeCoinClaim(uid);
+  }
+
+  String _homeCoinClaimPrefsKey(String uid) => 'home_coin_claim_$uid';
+
+  Future<void> _loadHomeCoinClaim(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_homeCoinClaimPrefsKey(uid));
+      if (raw == null) {
+        _pendingHomeCoinClaim = null;
+        return;
+      }
+      _pendingHomeCoinClaim = HomeCoinClaim.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+    } catch (e) {
+      developer.log('AppRepo.loadHomeCoinClaim: $e');
+      _pendingHomeCoinClaim = null;
+    }
+  }
+
+  Future<void> _persistHomeCoinClaim() async {
+    final uid = _walletUid ?? _currentUid;
+    if (uid == null) return;
+    final sp = await SharedPreferences.getInstance();
+    final key = _homeCoinClaimPrefsKey(uid);
+    final pending = _pendingHomeCoinClaim;
+    if (pending == null) {
+      await sp.remove(key);
+    } else {
+      await sp.setString(key, jsonEncode(pending.toJson()));
+    }
+  }
+
+  /// Stash match winnings to celebrate on home. Does not grant until
+  /// [completeHomeCoinClaim]. Zero-amount games just mark payout applied.
+  Future<void> queueHomeCoinClaim(GameState game, String me) async {
+    if (game.gameStatus != GameStatus.gameOver) return;
+    if (game.payoutApplied) return;
+    if (me.isEmpty) return;
+    final amount = game.coinsToClaim(me);
+    if (amount <= 0) {
+      await claimMatchCoins(game, me);
+      return;
+    }
+    if (_pendingHomeCoinClaim?.gameId == game.id) return;
+    _pendingHomeCoinClaim = HomeCoinClaim(gameId: game.id, amount: amount);
+    await _persistHomeCoinClaim();
+    notifyListeners();
+  }
+
+  Future<void> completeHomeCoinClaim() async {
+    final pending = _pendingHomeCoinClaim;
+    if (pending == null) return;
+    final uid = _currentUid;
+    GameState? game;
+    try {
+      game = await fs.loadGame(pending.gameId);
+    } catch (e) {
+      developer.log('AppRepo.completeHomeCoinClaim load: $e');
+    }
+    if (game != null && uid != null) {
+      if (!game.payoutApplied) {
+        await claimMatchCoins(game, uid);
+      }
+    } else {
+      await grantCoins(pending.amount);
+    }
+    _pendingHomeCoinClaim = null;
+    await _persistHomeCoinClaim();
+    notifyListeners();
+  }
+
+  Future<Wallet?> _loadWalletPrefs(String uid) async {
+    final sp = await SharedPreferences.getInstance();
+    final raw = sp.getString(_walletPrefsKey(uid));
+    if (raw == null) return null;
+    try {
+      return Wallet.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (_) {
-      _wallet = const Wallet();
+      return null;
     }
   }
 
   Future<void> _persistWallet() async {
+    final uid = _walletUid ?? _currentUid;
+    if (uid == null) return;
     final sp = await SharedPreferences.getInstance();
-    await sp.setString(_walletKey, jsonEncode(_wallet.toJson()));
+    await sp.setString(_walletPrefsKey(uid), jsonEncode(_wallet.toJson()));
+    try {
+      await fs.saveWallet(uid: uid, wallet: _wallet);
+    } catch (e) {
+      developer.log('AppRepo.saveWallet: $e');
+    }
   }
 
   Future<void> setWallet(Wallet wallet) async {
-    _wallet = wallet;
+    _wallet = wallet.applyRegen();
     await _persistWallet();
     notifyListeners();
+  }
+
+  Future<bool> trySpendCoins(int amount) async {
+    if (amount <= 0) return true;
+    if (_wallet.coins < amount) return false;
+    _wallet = _wallet.copyWith(coins: _wallet.coins - amount);
+    await _persistWallet();
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> trySpendEnergy(int amount) async {
+    if (amount <= 0) return true;
+    if (_wallet.energy < amount) return false;
+    final wasAtCap = _wallet.isAtOrAboveCap;
+    final nextEnergy = _wallet.energy - amount;
+    DateTime nextAt = _wallet.energyUpdatedAt;
+    if (wasAtCap && nextEnergy < WalletConfig.energyCap) {
+      nextAt = DateTime.now();
+    }
+    _wallet = _wallet.copyWith(energy: nextEnergy, energyUpdatedAt: nextAt);
+    await _persistWallet();
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> grantCoins(int amount) async {
+    if (amount <= 0) return;
+    _wallet = _wallet.copyWith(coins: _wallet.coins + amount);
+    await _persistWallet();
+    notifyListeners();
+  }
+
+  Future<void> grantEnergy(int amount) async {
+    if (amount <= 0) return;
+    _wallet = _wallet.copyWith(energy: _wallet.energy + amount);
+    await _persistWallet();
+    notifyListeners();
+  }
+
+  Future<bool> buyEnergyWithCoins({
+    required int energy,
+    required int coinCost,
+  }) async {
+    if (energy <= 0 || coinCost <= 0) return false;
+    if (_wallet.coins < coinCost) return false;
+    _wallet = _wallet.copyWith(
+      coins: _wallet.coins - coinCost,
+      energy: _wallet.energy + energy,
+    );
+    await _persistWallet();
+    notifyListeners();
+    return true;
+  }
+
+  bool get canAffordFriendGame => _wallet.coins >= WalletConfig.entryCost;
+  bool get canAffordPulilo =>
+      _wallet.energy >= WalletConfig.puliloEnergyCost;
+
+  Future<bool> refundEntryIfNeeded(GameState game) async {
+    final uid = _currentUid;
+    if (uid == null) return false;
+    if (game.isLocalBot) return false;
+    if (game.started) return false;
+    if (game.gameStatus != GameStatus.waitingForPlayers &&
+        game.gameStatus != GameStatus.readyToStart) {
+      return false;
+    }
+    if (!game.entryPaidBy.contains(uid)) return false;
+    game.entryPaidBy.remove(uid);
+    await grantCoins(game.entryCost);
+    return true;
+  }
+
+  /// Delete a match and refund this device's unpaid-start entry if needed.
+  Future<void> deleteGame(String gameId) async {
+    GameState? game;
+    try {
+      game = await fs.loadGame(gameId);
+    } catch (e) {
+      developer.log('AppRepo.deleteGame load: $e');
+    }
+    if (game != null) {
+      await refundEntryIfNeeded(game);
+    }
+    await fs.deleteGame(gameId);
+  }
+
+  Future<void> claimMatchCoins(GameState game, String me) async {
+    if (game.gameStatus != GameStatus.gameOver) return;
+    if (game.payoutApplied) return;
+    if (me.isEmpty) return;
+    final amount = game.coinsToClaim(me);
+    game.payoutApplied = true;
+    if (amount > 0) await grantCoins(amount);
+    try {
+      await fs.updateGame(game);
+    } catch (e) {
+      developer.log('AppRepo.claimMatchCoins: $e');
+    }
   }
 
   /// Reads OS notification permission without prompting or opening Settings.
@@ -337,6 +607,7 @@ class AppRepo extends ChangeNotifier {
     }
 
     await _persistPlayer();
+    await _loadWallet();
     notifyListeners();
     return GoogleAuthResult.success(suggested ?? player?.name);
   }
@@ -427,6 +698,7 @@ class AppRepo extends ChangeNotifier {
   Future<String> createNewGame(GameMode mode, String pid, bool local) async {
     String gid = _uuid.v4().substring(0, 8);
     GameState gameState = GameState.create(gid, pid, mode);
+    gameState.entryCost = WalletConfig.entryCost;
     final host = player;
     if (host != null) {
       gameState.playersInfo[pid] = host.toGameSeat();
@@ -434,6 +706,9 @@ class AppRepo extends ChangeNotifier {
       gameState.playersInfo[pid] = {'id': pid};
     }
     if (local) {
+      if (!await trySpendEnergy(WalletConfig.puliloEnergyCost)) {
+        throw const InsufficientFundsException(energy: true);
+      }
       final botPid = _uuid.v4().substring(0, 8);
       gameState.isLocalBot = true;
       gameState.botPlayerId = botPid;
@@ -442,9 +717,23 @@ class AppRepo extends ChangeNotifier {
         'name': GameState.localBotName,
         'avatarId': GameState.localBotAvatarId,
       };
+    } else {
+      if (!await trySpendCoins(WalletConfig.entryCost)) {
+        throw const InsufficientFundsException(energy: false);
+      }
+      gameState.entryPaidBy = [pid];
     }
-    gid = await fs.newCreateGame(gameState);
-    return gid;
+    try {
+      gid = await fs.newCreateGame(gameState);
+      return gid;
+    } catch (e) {
+      if (local) {
+        await grantEnergy(WalletConfig.puliloEnergyCost);
+      } else {
+        await grantCoins(WalletConfig.entryCost);
+      }
+      rethrow;
+    }
   }
 
   /// Request notification permission after an in-app rationale, then store
@@ -500,10 +789,6 @@ class AppRepo extends ChangeNotifier {
         .toList();
   }
 
-  Future<void> deleteGame(String gameId) async {
-    fs.deleteGame(gameId);
-  }
-
   Future<void> completeTutorial() async {
     if (player == null || player!.completedTutorial) return;
     player = player!.copyWith(completedTutorial: true);
@@ -545,12 +830,15 @@ class AppRepo extends ChangeNotifier {
     }
   }
 
-  /// Sign out of Google on this device. Cloud profile stays.
+  /// Sign out of Google on this device. Cloud profile and wallet stay.
   Future<void> logOut() async {
     try {
       await _persistPlayerRemote();
     } catch (_) {}
     await _clearLocalPlayer();
+    _wallet = Wallet.starter();
+    _walletUid = null;
+    _pendingHomeCoinClaim = null;
     try {
       await FirebaseAuth.instance.signOut();
     } catch (_) {}
@@ -565,7 +853,7 @@ class AppRepo extends ChangeNotifier {
 
   /// Wipe this device's cached profile. Guest accounts are fully reset.
   /// Google accounts stay signed in and reload name / avatar / tutorial
-  /// from the cloud. Wallet is local-only, so it is cleared.
+  /// and wallet from the cloud.
   Future<void> deleteLocalAccount() async {
     final linked = isGoogleLinked;
     final uid = player?.id ?? FirebaseAuth.instance.currentUser?.uid;
@@ -575,7 +863,9 @@ class AppRepo extends ChangeNotifier {
       } catch (_) {}
     }
     await _clearLocalPlayer();
-    await _resetWallet();
+    _wallet = Wallet.starter();
+    _walletUid = null;
+    _pendingHomeCoinClaim = null;
     if (!linked) {
       try {
         await FirebaseAuth.instance.signOut();
@@ -595,11 +885,6 @@ class AppRepo extends ChangeNotifier {
     await sp.remove('player_id');
     player = null;
     appStatus = AppStatus.notReady;
-  }
-
-  Future<void> _resetWallet() async {
-    _wallet = const Wallet();
-    await _persistWallet();
   }
 
   Future<void> _persistPlayer() async {

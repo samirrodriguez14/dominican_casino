@@ -105,6 +105,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
                 gameEngine: engine,
                 player: player,
                 gameRepo: context.read<GameRepo>(),
+                appRepo: context.read<AppRepo>(),
                 tutorialMode: tutorialMode == 'true',
               ),
               child: GeneralGameScreen(key: ValueKey('$gameId-$tutorialMode')),

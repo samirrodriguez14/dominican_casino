@@ -1,4 +1,5 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/privacy_policy_copy.dart';
 import 'package:flutter/cupertino.dart';
@@ -17,7 +18,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
         middle: Text(l10n.privacyPolicy),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
-          onPressed: () => context.pop(),
+          onPressed: SoundService.wrapTap(() => context.pop()),
           child: const Icon(CupertinoIcons.back),
         ),
       ),

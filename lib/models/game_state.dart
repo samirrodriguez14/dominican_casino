@@ -4,6 +4,8 @@ import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/models/table_slot.dart';
 
+import 'package:dominican_casino/models/wallet_config.dart';
+
 import 'playing_card_model.dart';
 
 enum GameStatus { waitingForPlayers, readyToStart, inProgress, gameOver, error }
@@ -78,6 +80,21 @@ class GameState {
   bool isLocalBot;
   String? botPlayerId;
 
+  /// Coins charged to join this table. Join-by-ID reads this.
+  int entryCost;
+
+  /// Uids that already paid [entryCost]. Host is added at create.
+  List<String> entryPaidBy;
+
+  /// True after this player's match coins were written to their wallet.
+  bool payoutApplied;
+
+  /// Casino bonuses earned this match, claimed at game over.
+  Map<String, int> pendingCoins;
+
+  /// Round id whose virao coins were already added to [pendingCoins].
+  int viraosCreditedRoundId;
+
   GameState({
     required this.gameStatus,
     required this.gameMode,
@@ -101,9 +118,17 @@ class GameState {
     required this.playersInfo,
     this.isLocalBot = false,
     this.botPlayerId,
+    int? entryCost,
+    List<String>? entryPaidBy,
+    this.payoutApplied = false,
+    Map<String, int>? pendingCoins,
+    this.viraosCreditedRoundId = -1,
     List<String>? tableOrder,
   }) : settlementEvents = settlementEvents ?? [],
-       tableOrder = tableOrder ?? [];
+       tableOrder = tableOrder ?? [],
+       entryCost = entryCost ?? WalletConfig.entryCost,
+       entryPaidBy = entryPaidBy ?? [],
+       pendingCoins = pendingCoins ?? {};
 
   /// Bot pid from persisted fields, or a legacy "Pulilo" seat for older games.
   String? get localBotPid {
@@ -122,6 +147,22 @@ class GameState {
     isLocalBot = true;
     botPlayerId = pid;
   }
+
+  int pendingCoinsFor(String pid) => pendingCoins[pid] ?? 0;
+
+  void addPendingCoins(String pid, int amount) {
+    if (amount <= 0 || pid.isEmpty) return;
+    pendingCoins[pid] = pendingCoinsFor(pid) + amount;
+  }
+
+  int winPotCoins(String pid) {
+    if (isLocalBot) return 0;
+    if (gameStatus != GameStatus.gameOver) return 0;
+    if (winnerId == null || winnerId!.isEmpty || winnerId != pid) return 0;
+    return WalletConfig.winPayout(entryCost);
+  }
+
+  int coinsToClaim(String pid) => pendingCoinsFor(pid) + winPotCoins(pid);
 
   factory GameState.create(String gid, String pid, GameMode mode) {
     final round = Round(
@@ -151,6 +192,11 @@ class GameState {
       playersInfo: {},
       winnerId: "",
       round: round,
+      entryCost: WalletConfig.entryCost,
+      entryPaidBy: [],
+      payoutApplied: false,
+      pendingCoins: {},
+      viraosCreditedRoundId: -1,
     );
   }
 
@@ -250,6 +296,11 @@ class GameState {
     'round': round.toJson(),
     'isLocalBot': isLocalBot,
     'botPlayerId': botPlayerId,
+    'entryCost': entryCost,
+    'entryPaidBy': entryPaidBy,
+    'payoutApplied': payoutApplied,
+    'pendingCoins': pendingCoins,
+    'viraosCreditedRoundId': viraosCreditedRoundId,
   };
 
   static GameState fromMap(Map<String, dynamic> m) {
@@ -325,6 +376,23 @@ class GameState {
       round: round,
       isLocalBot: m['isLocalBot'] == true,
       botPlayerId: m['botPlayerId'] as String?,
+      entryCost: (m['entryCost'] as num?)?.toInt() ?? WalletConfig.entryCost,
+      entryPaidBy: (m['entryPaidBy'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          <String>[],
+      payoutApplied: m.containsKey('payoutApplied')
+          ? m['payoutApplied'] == true
+          : gameStatus == GameStatus.gameOver,
+      pendingCoins: _intMap(m['pendingCoins']),
+      viraosCreditedRoundId: (m['viraosCreditedRoundId'] as num?)?.toInt() ?? -1,
+    );
+  }
+
+  static Map<String, int> _intMap(dynamic raw) {
+    if (raw is! Map) return {};
+    return raw.map(
+      (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
@@ -58,7 +59,9 @@ Future<String?> showAvatarPickerPopup(
                   children: [
                     for (final option in PlayerAvatars.all)
                       GestureDetector(
-                        onTap: () => Navigator.pop(dialogContext, option.id),
+                        onTap: SoundService.wrapTap(
+                          () => Navigator.pop(dialogContext, option.id),
+                        ),
                         child: Center(
                           child: PlayerAvatarView(
                             avatarId: option.id,
@@ -73,7 +76,9 @@ Future<String?> showAvatarPickerPopup(
                 ),
                 CupertinoButton(
                   padding: const EdgeInsets.only(top: 8),
-                  onPressed: () => Navigator.pop(dialogContext),
+                  onPressed: SoundService.wrapTap(
+                    () => Navigator.pop(dialogContext),
+                  ),
                   child: Text(
                     l10n.cancel,
                     style: TextStyle(color: theme.muted),

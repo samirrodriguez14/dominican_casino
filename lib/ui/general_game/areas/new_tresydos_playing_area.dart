@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
@@ -21,6 +22,14 @@ class NewTresydosPlayingArea extends StatefulWidget {
 class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
   GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
   final double cardWidth = 60;
+
+  /// Empty seats stay visible only while still waiting for players to join.
+  String? _oppAt(int index) {
+    if (index < vm.oppIds.length) return vm.oppIds[index];
+    if (vm.gameState.gameStatus == GameStatus.waitingForPlayers) return '';
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     PlayingCardModel? currentCard = vm.playingAreaCards.isNotEmpty
@@ -36,42 +45,39 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        SizedBox(
-          width: 350,
-          child: GenOpponentArea(
-            oppId: vm.oppIds.isNotEmpty ? vm.oppIds[0] : "",
+        if (_oppAt(0) != null)
+          SizedBox(
+            width: 350,
+            child: GenOpponentArea(oppId: _oppAt(0)!),
           ),
-        ),
         Expanded(
           key: vm.tableKey,
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
-              Positioned(
-                right: -145,
-                child: SizedBox(
-                  width: 350,
-                  child: Transform.rotate(
-                    angle: math.pi / 2,
-                    child: GenOpponentArea(
-                      oppId: vm.oppIds.length >= 2 ? vm.oppIds[1] : "",
+              if (_oppAt(1) != null)
+                Positioned(
+                  right: -145,
+                  child: SizedBox(
+                    width: 350,
+                    child: Transform.rotate(
+                      angle: math.pi / 2,
+                      child: GenOpponentArea(oppId: _oppAt(1)!),
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                left: -145,
-                child: SizedBox(
-                  width: 350,
-                  child: Transform.rotate(
-                    angle: -math.pi / 2,
-                    child: GenOpponentArea(
-                      oppId: vm.oppIds.length >= 3 ? vm.oppIds[2] : "",
+              if (_oppAt(2) != null)
+                Positioned(
+                  left: -145,
+                  child: SizedBox(
+                    width: 350,
+                    child: Transform.rotate(
+                      angle: -math.pi / 2,
+                      child: GenOpponentArea(oppId: _oppAt(2)!),
                     ),
                   ),
                 ),
-              ),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

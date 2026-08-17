@@ -54,6 +54,11 @@ class EventHandler {
   }
 
   static List<CardMoveEvent> generateTakeCardEvents(TakeCardAction a) {
+    // Tres y Dos: one card drawn into the hand (used == target).
+    if (a.usedCard.id == a.targetCard.id) {
+      return generateDrawToHandEvents(a);
+    }
+
     final Zone hand = Zone(
       type: ZoneType.playerHand,
       holderId: a.performedById,
@@ -86,6 +91,21 @@ class EventHandler {
     );
 
     return [targetTableToCaptured, playedTableToCaptured];
+  }
+
+  static List<CardMoveEvent> generateDrawToHandEvents(TakeCardAction a) {
+    final fromType = a.fromZone ?? ZoneType.gameDeck;
+    final from = Zone(type: fromType, holderId: fromType.name);
+    final to = Zone(type: ZoneType.playerHand, holderId: a.performedById);
+    return [
+      CardMoveEvent(
+        id: _uuid.v4().substring(0, 8),
+        from: from,
+        to: to,
+        card: a.targetCard,
+        performedBy: a.performedById,
+      ),
+    ];
   }
 
   static List<CardMoveEvent> generateTakeStackEvents(TakeStackAction a) {

@@ -6,6 +6,7 @@ import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 
 class GamesViewModel extends ChangeNotifier {
@@ -31,7 +32,7 @@ class GamesViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteGame(String gameId) async {
-    await _appRepo.fs.deleteGame(gameId);
+    await _appRepo.deleteGame(gameId);
   }
 
   Future<GameState> loadGameState(String gameId) {
@@ -134,12 +135,12 @@ class GamesViewModel extends ChangeNotifier {
         content: Text("Game: $gameId"),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.of(ctx).pop(false),
+            onPressed: SoundService.wrapTap(() => Navigator.of(ctx).pop(false)),
             child: const Text("Cancel"),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () => Navigator.of(ctx).pop(true),
+            onPressed: SoundService.wrapTap(() => Navigator.of(ctx).pop(true)),
             child: const Text("Delete"),
           ),
         ],

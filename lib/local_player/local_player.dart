@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/game_registry.dart';
@@ -162,6 +163,7 @@ class LocalPlayer extends ChangeNotifier {
           bestAction.cardSelection,
           bestAction.playAction,
         );
+        CasinoCoinBonuses.accrueAfterPlay(next, bestAction.playAction);
         await _persist(next);
         return true;
 

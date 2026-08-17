@@ -8,6 +8,7 @@ import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
 import 'package:dominican_casino/ui/animations/card_flight_animator.dart';
+import 'package:dominican_casino/ui/animations/currency_burst.dart';
 import 'package:dominican_casino/ui/animations/shuffle_animator.dart';
 import 'package:dominican_casino/ui/app_shell/games/account_setup_popup.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
@@ -17,14 +18,19 @@ import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:dominican_casino/ui/widgets/coin_gain_badge.dart';
+import 'package:dominican_casino/ui/widgets/coin_icon.dart';
+import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
 import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
+import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model.dart';
 import 'package:dominican_casino/models/round.dart';
+import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -46,6 +52,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   String? _shownStatusKey;
   bool _statusPopupOpen = false;
   bool _leavingTutorial = false;
+  bool _playingDeckCoins = false;
 
   void _bindFlightRunner(GeneralGameViewModel gameVm) {
     gameVm.motion.runner = (flights, {onLanded}) => CardFlightAnimator.flyAll(
@@ -89,7 +96,17 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       final ok = await initvm.loadGame();
 
       if (ok && mounted) {
-        await initvm.joinGame();
+        final join = await initvm.joinGame();
+        if (join == JoinGameResult.notEnoughCoins) {
+          if (!mounted) return;
+          await showInsufficientFundsDialog(context, energy: false);
+          if (mounted) context.go('/landing');
+          return;
+        }
+        if (join != JoinGameResult.ok) {
+          if (mounted) context.go('/home');
+          return;
+        }
         if (!initvm.tutorialMode) {
           initvm.gameRepo.listenToGame(initvm.gid);
           initvm.listenToReactions();
@@ -190,12 +207,22 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   }
 
   void _onVmChanged() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
       // Wait until card flights finish (incl. leftover collect) before status UI.
       if (vm.isAnimating) return;
       if (_leavingTutorial) return;
+      if (_playingDeckCoins) return;
+
+      final coinFlight = vm.takeDeckCoinFlight();
+      if (coinFlight != null) {
+        _playingDeckCoins = true;
+        await _playDeckCoinFlight(coinFlight);
+        if (mounted) vm.revealPendingCoins();
+        _playingDeckCoins = false;
+        if (!mounted) return;
+      }
 
       final gs = vm.gameState;
       final isGameOver = gs.gameStatus == GameStatus.gameOver;
@@ -237,12 +264,40 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
             tutorialVm.nextStep();
             return;
           }
+          if (isGameOver) {
+            _leaveToHome();
+            return;
+          }
           vm.continueAfterRound();
         },
       ).whenComplete(() {
         _statusPopupOpen = false;
       });
     });
+  }
+
+  Future<void> _leaveToHome() async {
+    await vm.queueHomeCoinClaim();
+    if (mounted) context.go('/landing');
+  }
+
+  Future<void> _playDeckCoinFlight(DeckCoinFlight flight) async {
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    if (!mounted) return;
+    final fromKey = flight.mine ? vm.myDeckKey : vm.oppDeckKey;
+    final toKey = flight.mine ? vm.scoreKey : vm.oppScoreKey;
+    final from = CurrencyBar.centerOf(fromKey);
+    final to = CurrencyBar.centerOf(toKey);
+    if (from == null || to == null) return;
+    await CurrencyBurst.play(
+      context: context,
+      from: from,
+      to: to,
+      icon: coinIcon,
+      color: AppStyle.theme.turnHighlight,
+      count: flight.amount.clamp(3, 10),
+      jump: true,
+    );
   }
 
   @override
@@ -260,9 +315,9 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                 Text("taking too long?"),
                 CupertinoButton(
                   child: Text("Home"),
-                  onPressed: () {
+                  onPressed: SoundService.wrapTap(() {
                     context.go('/landing');
-                  },
+                  }),
                 ),
               ],
             ),
@@ -321,7 +376,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                         PopupCircleButton(
                           emphasized: true,
                           onPressed: () {
-                            HapticFeedback.mediumImpact();
+                            AppHaptics.mediumImpact();
                             vm.sortHandCards();
                           },
                           child: Transform.rotate(
@@ -340,8 +395,9 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                           key: vm.scoreKey,
                           avatarId: vm.player.avatarId,
                           score: vm.gameState.scores[vm.me] ?? 0,
+                          pendingCoins: vm.revealedPendingFor(vm.me),
                           onPressed: () {
-                            HapticFeedback.mediumImpact();
+                            AppHaptics.mediumImpact();
                             showGameStatusPopup(context, vm: vm);
                           },
                         ),
@@ -422,7 +478,7 @@ class _PlayerReactionButtonState extends State<_PlayerReactionButton> {
           if (_open) ...[
             GameReactionPicker(
               onSelected: (emoji) {
-                HapticFeedback.lightImpact();
+                AppHaptics.lightImpact();
                 setState(() => _open = false);
                 vm.sendReaction(emoji);
               },
@@ -434,7 +490,7 @@ class _PlayerReactionButtonState extends State<_PlayerReactionButton> {
             emphasized: true,
             selected: _open,
             onPressed: () {
-              HapticFeedback.lightImpact();
+              AppHaptics.lightImpact();
               setState(() => _open = !_open);
             },
           ),
@@ -449,11 +505,13 @@ class _PlayerScoreAvatar extends StatelessWidget {
     super.key,
     required this.avatarId,
     required this.score,
+    required this.pendingCoins,
     required this.onPressed,
   });
 
   final String? avatarId;
   final dynamic score;
+  final int pendingCoins;
   final VoidCallback onPressed;
 
   @override
@@ -462,7 +520,7 @@ class _PlayerScoreAvatar extends StatelessWidget {
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: onPressed,
+      onPressed: SoundService.wrapTap(onPressed),
       child: SizedBox(
         width: 64,
         height: 64,
@@ -490,6 +548,11 @@ class _PlayerScoreAvatar extends StatelessWidget {
                 size: 64,
                 showBorder: false,
               ),
+            ),
+            Positioned(
+              left: -4,
+              bottom: -2,
+              child: CoinGainBadge(pending: pendingCoins),
             ),
             Positioned(
               right: -2,

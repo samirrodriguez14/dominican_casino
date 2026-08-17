@@ -1,3 +1,4 @@
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
 
@@ -158,6 +159,7 @@ class _StackedCardCarouselState extends State<StackedCardCarousel>
   }
 
   Future<void> _restackUnder({required bool toLeft}) async {
+    SoundService.instance.playLayered(GameSound.softCard);
     _dismissToLeft = toLeft;
     _restacking = true;
     _anim.value = 0;

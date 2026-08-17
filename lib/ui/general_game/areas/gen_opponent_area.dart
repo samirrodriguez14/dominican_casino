@@ -1,9 +1,11 @@
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:dominican_casino/ui/widgets/coin_gain_badge.dart';
 import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -23,6 +25,10 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
   @override
   Widget build(BuildContext context) {
     GeneralGameViewModel vm = context.read<GeneralGameViewModel>();
+    if (widget.oppId.isEmpty &&
+        vm.gameState.gameStatus != GameStatus.waitingForPlayers) {
+      return const SizedBox.shrink();
+    }
     bool highlightTurn =
         vm.gameState.round.roundStatus == .playing &&
         vm.gameState.currentTurnPlayerId == opp &&
@@ -136,6 +142,7 @@ class OpponentIdentityChip extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Container(
+          key: waiting ? null : vm.oppScoreKey,
           padding: const EdgeInsets.fromLTRB(4, 4, 10, 4),
           decoration: BoxDecoration(
             color: theme.surface.withValues(alpha: .94),
@@ -180,6 +187,13 @@ class OpponentIdentityChip extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
+              if (!waiting) ...[
+                const SizedBox(width: 6),
+                CoinGainBadge(
+                  pending: vm.revealedPendingFor(oppId),
+                  compact: true,
+                ),
+              ],
             ],
           ),
         ),

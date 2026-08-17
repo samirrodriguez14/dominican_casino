@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/tutorial_step.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -279,7 +280,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     color: theme.surface,
                     borderRadius: BorderRadius.circular(theme.radius),
-                    onPressed: widget.onExit,
+                    onPressed: SoundService.wrapTap(widget.onExit),
                     child: Text(
                       'Exit',
                       style: theme.body.copyWith(
@@ -295,7 +296,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     color: theme.turnHighlight,
                     borderRadius: BorderRadius.circular(theme.radius),
-                    onPressed: widget.onPlay,
+                    onPressed: SoundService.wrapTap(widget.onPlay),
                     child: Text(
                       'Play',
                       style: theme.body.copyWith(
@@ -312,7 +313,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       color: theme.surface,
                       borderRadius: BorderRadius.circular(theme.radius),
-                      onPressed: widget.onSkip,
+                      onPressed: SoundService.wrapTap(widget.onSkip),
                       child: Text(
                         'Skip',
                         style: theme.body.copyWith(
@@ -333,9 +334,11 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                           : theme.muted.withValues(alpha: .35),
                       borderRadius: BorderRadius.circular(theme.radius),
                       onPressed: canPressNext
-                          ? widget.step.onShow != null
-                                ? () => widget.step.onShow!(context)
-                                : widget.onNext
+                          ? SoundService.wrapTap(
+                              widget.step.onShow != null
+                                  ? () => widget.step.onShow!(context)
+                                  : widget.onNext,
+                            )
                           : null,
                       child: Text(
                         'Next',

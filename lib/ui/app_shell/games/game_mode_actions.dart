@@ -3,45 +3,61 @@ import 'dart:convert';
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
+import 'package:dominican_casino/models/wallet_config.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/services/sound_service.dart';
+import 'package:dominican_casino/ui/widgets/coin_icon.dart';
+import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 void showJoinGameDialog(BuildContext context, String mode) {
   final TextEditingController controller = TextEditingController();
+  final l10n = AppLocalizations.of(context);
 
   showCupertinoDialog(
     context: context,
     builder: (context) {
       return CupertinoAlertDialog(
-        title: const Text('Join Game'),
+        title: Text(l10n.joinGame),
         content: Padding(
           padding: const EdgeInsets.only(top: 12),
-          child: CupertinoTextField(
-            controller: controller,
-            placeholder: 'Enter Game ID',
-            textAlign: TextAlign.center,
+          child: Column(
+            children: [
+              Text(
+                l10n.joinCostsCoins(WalletConfig.entryCost),
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 10),
+              CupertinoTextField(
+                controller: controller,
+                placeholder: l10n.enterGameId,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
         actions: [
           CupertinoDialogAction(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+            onPressed: SoundService.wrapTap(() => Navigator.pop(context)),
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
-            child: Text('Join', style: AppStyle.theme.title),
-            onPressed: () {
+            child: Text(l10n.join, style: AppStyle.theme.title),
+            onPressed: SoundService.wrapTap(() {
               final gameId = controller.text.trim();
               Navigator.pop(context);
               if (gameId.isNotEmpty) {
                 context.go(GameRoutes.game(gameId: gameId, gameMode: mode));
               }
-            },
+            }),
           ),
         ],
       );
@@ -182,6 +198,8 @@ class _EnterGamePopup extends StatelessWidget {
                   icon: CupertinoIcons.person_2_fill,
                   title: l10n.playWithFriend,
                   subtitle: l10n.playWithFriendHint,
+                  costLabel: '${WalletConfig.entryCost}',
+                  costIcon: coinIcon,
                   emphasized: true,
                   onTap: onFriend,
                 ),
@@ -190,6 +208,8 @@ class _EnterGamePopup extends StatelessWidget {
                   icon: CupertinoIcons.bolt_fill,
                   title: l10n.playVsPuli,
                   subtitle: l10n.playVsPuliHint,
+                  costLabel: '${WalletConfig.puliloEnergyCost}',
+                  costIcon: CupertinoIcons.bolt_fill,
                   onTap: onPuli,
                 ),
                 const SizedBox(height: 10),
@@ -197,11 +217,13 @@ class _EnterGamePopup extends StatelessWidget {
                   icon: CupertinoIcons.number,
                   title: l10n.joinById,
                   subtitle: l10n.playJoinByIdHint,
+                  costLabel: '${WalletConfig.entryCost}',
+                  costIcon: coinIcon,
                   onTap: onJoin,
                 ),
                 CupertinoButton(
                   padding: const EdgeInsets.only(top: 4),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: SoundService.wrapTap(() => Navigator.pop(context)),
                   child: Text(
                     l10n.cancel,
                     style: TextStyle(color: theme.muted),
@@ -223,6 +245,8 @@ class _ChoiceTile extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.emphasized = false,
+    this.costLabel,
+    this.costIcon,
   });
 
   final IconData icon;
@@ -230,6 +254,8 @@ class _ChoiceTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final bool emphasized;
+  final String? costLabel;
+  final IconData? costIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +266,7 @@ class _ChoiceTile extends StatelessWidget {
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
       pressedOpacity: 0.72,
-      onPressed: onTap,
+      onPressed: SoundService.wrapTap(onTap),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: emphasized ? theme.surfaceRaised : theme.background,
@@ -310,6 +336,26 @@ class _ChoiceTile extends StatelessWidget {
                             ],
                           ),
                         ),
+                        if (costLabel != null) ...[
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                costIcon ?? coinIcon,
+                                size: 14,
+                                color: costIcon == CupertinoIcons.bolt_fill
+                                    ? theme.warning
+                                    : theme.turnHighlight,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                costLabel!,
+                                style: theme.title.copyWith(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -330,6 +376,16 @@ Future<void> gameEnter(
   bool local,
 ) async {
   if (mode == GameMode.robaito) return;
+  final repo = context.read<AppRepo>();
+  if (local) {
+    if (!repo.canAffordPulilo) {
+      await showInsufficientFundsDialog(context, energy: true);
+      return;
+    }
+  } else if (!repo.canAffordFriendGame) {
+    await showInsufficientFundsDialog(context, energy: false);
+    return;
+  }
   final gid = await vm.newGame(mode, local);
   if (gid != null && context.mounted) {
     context.go(GameRoutes.game(gameId: gid, gameMode: mode.name));

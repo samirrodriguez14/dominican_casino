@@ -33,6 +33,38 @@ class AppLocalizations {
       : 'Practice against the house bot';
   String get playJoinByIdHint =>
       isEs ? 'Entra el código de un amigo' : 'Enter a code from a friend';
+  String joinCostsCoins(int n) => isEs
+      ? 'Unirse cuesta $n monedas'
+      : 'Joining costs $n coins';
+  String get notEnoughCoins =>
+      isEs ? 'No tienes suficientes monedas' : 'Not enough coins';
+  String get notEnoughEnergy =>
+      isEs ? 'No tienes suficiente energía' : 'Not enough energy';
+  String get notEnoughCoinsBody => isEs
+      ? 'Consigue monedas ganando partidas o entra a la tienda.'
+      : 'Win matches to earn coins, or open the store.';
+  String get notEnoughEnergyBody => isEs
+      ? 'Espera a que se recargue o cómprala con monedas en la tienda.'
+      : 'Wait for it to refill, or buy more with coins in the store.';
+  String get goToStore => isEs ? 'Ir a la tienda' : 'Go to store';
+  String get confirmPurchase =>
+      isEs ? 'Confirmar compra' : 'Confirm purchase';
+  String get buy => isEs ? 'Comprar' : 'Buy';
+  String get coinsThisGame => isEs ? 'Monedas de la partida' : 'Coins this game';
+  String get coinBonuses => isEs ? 'Bonos' : 'Bonuses';
+  String get coinWinPot => isEs ? 'Premio' : 'Win pot';
+  String get coinsCongratsTitle => isEs ? '¡Felicidades!' : 'Congrats!';
+  String coinsCongratsBody(int n) => isEs
+      ? 'Ganaste $n monedas'
+      : 'You made $n coins';
+  String confirmBuyEnergy(int energy, int coins) => isEs
+      ? '¿Gastar $coins monedas para obtener $energy de energía?'
+      : 'Spend $coins coins to get $energy energy?';
+  String confirmBuyCoins(int coins, String price) => isEs
+      ? '¿Comprar $coins monedas por $price?'
+      : 'Buy $coins coins for $price?';
+  String get buyEnergyWithCoins =>
+      isEs ? 'Energía por monedas' : 'Energy for coins';
   String get howToPlay => isEs ? 'Cómo jugar' : 'How to play';
   String get tapForInstructions =>
       isEs ? 'Toca para instrucciones' : 'Tap for instructions';
@@ -80,6 +112,11 @@ class AppLocalizations {
   String get locked => isEs ? 'Bloqueado' : 'Locked';
   String get buyEnergy => isEs ? 'Comprar energía' : 'Buy energy';
   String get buyCoins => isEs ? 'Comprar monedas' : 'Buy coins';
+  String get energy => isEs ? 'Energía' : 'Energy';
+  String get coins => isEs ? 'Monedas' : 'Coins';
+  String get energyFull => isEs ? 'Llena' : 'Full';
+  String nextEnergyIn(String time) =>
+      isEs ? 'Siguiente en $time' : 'Next in $time';
   String get scrollForSettings =>
       isEs ? 'Desliza hacia abajo para ajustes' : 'Scroll down for settings';
   String get scrollForProfile =>
@@ -129,6 +166,7 @@ class AppLocalizations {
   String get sound => isEs ? 'Sonido' : 'Sound';
   String get soundEffects => isEs ? 'Efectos de sonido' : 'Sound effects';
   String get backgroundMusic => isEs ? 'Música de fondo' : 'Background music';
+  String get hapticFeedback => isEs ? 'Háptica' : 'Haptics';
   String get notifications => isEs ? 'Notificaciones' : 'Notifications';
   String get notificationsOn => isEs ? 'Activadas' : 'On';
   String get notificationsOff => isEs ? 'Desactivadas' : 'Off';
@@ -163,11 +201,11 @@ class AppLocalizations {
   String get account => isEs ? 'Cuenta' : 'Account';
   String get logOut => isEs ? 'Cerrar sesión' : 'Log out';
   String get logOutBody => isEs
-      ? 'Sales de Google en este dispositivo. Nombre, avatar y tutorial se restauran al volver a entrar.'
-      : 'Signs out of Google on this device. Your name, avatar, and tutorial restore when you sign in again.';
+      ? 'Sales de Google en este dispositivo. Nombre, avatar, tutorial, monedas y energía se restauran al volver a entrar.'
+      : 'Signs out of Google on this device. Your name, avatar, tutorial, coins, and energy restore when you sign in again.';
   String get deleteLocalDataGoogleBody => isEs
-      ? 'Borra el caché y las fichas de este dispositivo. Tu cuenta de Google, nombre, avatar y tutorial se quedan en la nube.'
-      : 'Clears this device\'s cache and chips. Your Google account, name, avatar, and tutorial stay in the cloud.';
+      ? 'Borra el caché de este dispositivo. Tu cuenta de Google, nombre, avatar, tutorial, monedas y energía se quedan en la nube.'
+      : 'Clears this device\'s cache. Your Google account, name, avatar, tutorial, coins, and energy stay in the cloud.';
 
   String googleSignInError(String? code) {
     switch (code) {

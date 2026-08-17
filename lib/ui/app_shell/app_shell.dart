@@ -8,7 +8,10 @@ import 'package:dominican_casino/ui/app_shell/games/welcome_tutorial_popup.dart'
 import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_screen.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
+import 'package:dominican_casino/ui/widgets/home_coin_celebration.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -26,6 +29,7 @@ class AppShellState extends State<AppShell> {
   final _storeKey = GlobalKey<StoreScreenState>();
   final _profileKey = GlobalKey<ProfileScreenState>();
   bool _offeredTutorial = false;
+  HomeCoinClaim? _activeCelebration;
 
   @override
   void initState() {
@@ -42,7 +46,11 @@ class AppShellState extends State<AppShell> {
 
   void _maybeOfferFirstRun() {
     if (_offeredTutorial || !mounted) return;
-    final player = context.read<AppRepo>().player;
+    final repo = context.read<AppRepo>();
+    if (repo.pendingHomeCoinClaim != null || _activeCelebration != null) {
+      return;
+    }
+    final player = repo.player;
     if (player == null) return;
     _offeredTutorial = true;
     if (!player.completedTutorial) {
@@ -52,6 +60,18 @@ class AppShellState extends State<AppShell> {
     if (player.needsAccountSetup) {
       showAccountSetupPopup(context);
     }
+  }
+
+  void _maybeStartHomeCoinCelebration(AppRepo repo) {
+    final pending = repo.pendingHomeCoinClaim;
+    if (pending == null || _activeCelebration != null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_activeCelebration != null) return;
+      final claim = context.read<AppRepo>().pendingHomeCoinClaim;
+      if (claim == null) return;
+      setState(() => _activeCelebration = claim);
+    });
   }
 
   @override
@@ -70,6 +90,8 @@ class AppShellState extends State<AppShell> {
       return;
     }
     setState(() => currentIndex = index);
+    AppHaptics.selectionClick();
+    SoundService.instance.play(GameSound.deal);
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 320),
@@ -89,6 +111,16 @@ class AppShellState extends State<AppShell> {
         ? l10n.guest
         : (player.name ?? l10n.guest);
 
+    final requestedTab = appRepo.shellTabRequest;
+    if (requestedTab != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final tab = context.read<AppRepo>().takeShellTabRequest();
+        if (tab != null) _onTabTap(tab);
+      });
+    }
+    _maybeStartHomeCoinCelebration(appRepo);
+
     return CupertinoPageScaffold(
       child: Stack(
         children: [
@@ -103,29 +135,6 @@ class AppShellState extends State<AppShell> {
                 ),
                 _KeepAlivePage(child: ProfileScreen(key: _profileKey)),
               ],
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _ShellIdentity(
-                        avatarId: player?.avatarId,
-                        name: displayName,
-                        onTap: () => _onTabTap(2),
-                      ),
-                    ),
-                    const CurrencyBar(),
-                  ],
-                ),
-              ),
             ),
           ),
           Positioned(
@@ -163,6 +172,56 @@ class AppShellState extends State<AppShell> {
                   ),
                 ),
               ],
+            ),
+          ),
+          if (_activeCelebration != null)
+            Positioned.fill(
+              child: HomeCoinCelebrationOverlay(
+                key: ValueKey(_activeCelebration!.gameId),
+                amount: _activeCelebration!.amount,
+                onCollected: () =>
+                    context.read<AppRepo>().completeHomeCoinClaim(),
+                onDismissed: () {
+                  if (!mounted) return;
+                  setState(() => _activeCelebration = null);
+                  _offeredTutorial = false;
+                  _maybeOfferFirstRun();
+                },
+              ),
+            ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _ShellIdentity(
+                        avatarId: player?.avatarId,
+                        name: displayName,
+                        onTap: () => _onTabTap(2),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        if (currentIndex == 0) {
+                          AppHaptics.selectionClick();
+                          SoundService.instance.play(GameSound.deal);
+                          _storeKey.currentState?.scrollToTop();
+                          return;
+                        }
+                        _onTabTap(0);
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: const CurrencyBar(),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -249,7 +308,7 @@ class _CurrentGamesButton extends StatelessWidget {
         CupertinoButton(
           padding: EdgeInsets.zero,
           minimumSize: Size.zero,
-          onPressed: onPressed,
+          onPressed: SoundService.wrapTap(onPressed),
           child: Container(
             width: 56,
             height: 56,

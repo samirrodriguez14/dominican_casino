@@ -1,5 +1,6 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/sage_theme.dart';
@@ -156,11 +157,23 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                                 label: l10n.soundEffects,
                                 value: sounds.sfxEnabled,
                                 onChanged: sounds.setSfxEnabled,
+                                volume: sounds.sfxVolume,
+                                onVolumeChanged: sounds.setSfxVolume,
                               ),
                               _SettingsToggleRow(
                                 label: l10n.backgroundMusic,
                                 value: sounds.musicEnabled,
                                 onChanged: sounds.setMusicEnabled,
+                                volume: sounds.musicVolume,
+                                onVolumeChanged: sounds.setMusicVolume,
+                              ),
+                              _SettingsToggleRow(
+                                label: l10n.hapticFeedback,
+                                value: sounds.hapticEnabled,
+                                onChanged: (enabled) async {
+                                  await sounds.setHapticEnabled(enabled);
+                                  if (enabled) AppHaptics.mediumImpact();
+                                },
                               ),
                               const _SectionDivider(),
                               _SectionLabel(l10n.notifications),
@@ -191,10 +204,12 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                                       color: theme.textPrimary.withValues(
                                         alpha: .14,
                                       ),
-                                      onPressed: () => _requestNotifications(
-                                        context,
-                                        appRepo,
-                                        l10n,
+                                      onPressed: SoundService.wrapTap(
+                                        () => _requestNotifications(
+                                          context,
+                                          appRepo,
+                                          l10n,
+                                        ),
                                       ),
                                       child: Text(
                                         l10n.enableNotifications,
@@ -229,7 +244,9 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                             vertical: 4,
                           ),
                           minimumSize: Size.zero,
-                          onPressed: () => context.push('/privacy'),
+                          onPressed: SoundService.wrapTap(
+                            () => context.push('/privacy'),
+                          ),
                           child: Text(
                             l10n.privacyPolicy,
                             style: theme.mutedText.copyWith(
@@ -251,8 +268,9 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                             vertical: 4,
                           ),
                           minimumSize: Size.zero,
-                          onPressed: () =>
-                              _confirmDelete(context, appRepo, l10n),
+                          onPressed: SoundService.wrapTap(
+                            () => _confirmDelete(context, appRepo, l10n),
+                          ),
                           child: Text(
                             l10n.deleteAccount,
                             style: const TextStyle(
@@ -286,12 +304,12 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
         content: Text(l10n.notificationsRationale),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
             child: Text(l10n.notNow),
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
             child: Text(l10n.enableNotifications),
           ),
         ],
@@ -317,7 +335,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
           actions: [
             CupertinoDialogAction(
               isDefaultAction: true,
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
               child: Text(l10n.back),
             ),
           ],
@@ -350,12 +368,12 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
         ),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
             child: Text(l10n.cancel),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
             child: Text(l10n.deleteAccount),
           ),
         ],
@@ -380,12 +398,12 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
         content: Text(l10n.logOutBody),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
             child: Text(l10n.cancel),
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
             child: Text(l10n.logOut),
           ),
         ],
@@ -450,7 +468,7 @@ class _LanguageButton extends StatelessWidget {
           ? theme.textPrimary.withValues(alpha: .18)
           : theme.textPrimary.withValues(alpha: .08),
       borderRadius: BorderRadius.circular(12),
-      onPressed: onPressed,
+      onPressed: SoundService.wrapTap(onPressed),
       child: Text(
         label,
         style: TextStyle(
@@ -470,20 +488,46 @@ class _SettingsToggleRow extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
+    this.volume,
+    this.onVolumeChanged,
   });
 
   final String label;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final double? volume;
+  final ValueChanged<double>? onVolumeChanged;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
+    final hasVolume = volume != null && onVolumeChanged != null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: theme.body)),
+          if (hasVolume)
+            SizedBox(
+              width: 78,
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.body.copyWith(fontSize: 13, height: 1.15),
+              ),
+            )
+          else
+            Expanded(child: Text(label, style: theme.body)),
+          if (hasVolume)
+            Expanded(
+              child: CupertinoSlider(
+                value: volume!,
+                min: 0,
+                max: 1,
+                activeColor: theme.success,
+                onChanged: onVolumeChanged,
+              ),
+            ),
           Transform.scale(
             scale: 0.86,
             child: CupertinoSwitch(
@@ -548,7 +592,7 @@ class _GoogleAccountRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           minimumSize: Size.zero,
           color: theme.textPrimary.withValues(alpha: .14),
-          onPressed: linked ? onLogOut : onConnect,
+          onPressed: SoundService.wrapTap(linked ? onLogOut : onConnect),
           child: Text(
             linked ? l10n.logOut : l10n.connectGoogle,
             style: TextStyle(

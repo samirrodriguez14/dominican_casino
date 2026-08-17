@@ -1,6 +1,7 @@
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
@@ -144,7 +145,7 @@ class HomeInstructionCard extends StatelessWidget {
                 child: CupertinoButton(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
-                  onPressed: onPlay,
+                  onPressed: SoundService.wrapTap(onPlay),
                   child: Container(
                     width: 52,
                     height: 52,

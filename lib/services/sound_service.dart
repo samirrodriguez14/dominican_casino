@@ -2,7 +2,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum GameSound { deal, capture, shuffle, win, illegal, softCard }
+enum GameSound { deal, capture, shuffle, win, illegal, softCard, coin, button }
 
 class SoundService extends ChangeNotifier {
   SoundService._();
@@ -13,7 +13,11 @@ class SoundService extends ChangeNotifier {
 
   static const _sfxKey = 'sfx_enabled';
   static const _musicKey = 'music_enabled';
+  static const _sfxVolumeKey = 'sfx_volume';
+  static const _musicVolumeKey = 'music_volume';
+  static const _hapticKey = 'haptic_enabled';
   static const _musicAsset = 'sounds/bg_music.mp3';
+  static const _defaultMusicVolume = 0.35;
 
   final AudioPlayer _oneshot = AudioPlayer();
   final AudioPlayer _music = AudioPlayer();
@@ -25,6 +29,9 @@ class SoundService extends ChangeNotifier {
 
   bool sfxEnabled = true;
   bool musicEnabled = true;
+  bool hapticEnabled = true;
+  double sfxVolume = 1;
+  double musicVolume = _defaultMusicVolume;
   bool _musicPlaying = false;
   bool _loaded = false;
 
@@ -35,11 +42,18 @@ class SoundService extends ChangeNotifier {
     GameSound.win: 'sounds/win.wav',
     GameSound.illegal: 'sounds/illegal.wav',
     GameSound.softCard: 'sounds/soft_card.wav',
+    GameSound.coin: 'sounds/coin.wav',
+    GameSound.button: 'sounds/button_soft.wav',
   };
 
-  /// Kept for call sites that still use [enabled].
-  bool get enabled => sfxEnabled;
-  set enabled(bool value) => setSfxEnabled(value);
+  /// Soft UI thud for taps that have no other SFX.
+  static VoidCallback? wrapTap(VoidCallback? onPressed) {
+    if (onPressed == null) return null;
+    return () {
+      instance.playLayered(GameSound.button);
+      onPressed();
+    };
+  }
 
   Future<void> load() async {
     if (_loaded) return;
@@ -47,8 +61,12 @@ class SoundService extends ChangeNotifier {
     final sp = await SharedPreferences.getInstance();
     sfxEnabled = sp.getBool(_sfxKey) ?? true;
     musicEnabled = sp.getBool(_musicKey) ?? true;
+    hapticEnabled = sp.getBool(_hapticKey) ?? true;
+    sfxVolume = (sp.getDouble(_sfxVolumeKey) ?? 1).clamp(0, 1);
+    musicVolume =
+        (sp.getDouble(_musicVolumeKey) ?? _defaultMusicVolume).clamp(0, 1);
     await _music.setReleaseMode(ReleaseMode.loop);
-    await _music.setVolume(0.35);
+    await _music.setVolume(musicVolume);
     notifyListeners();
     if (musicEnabled) await startMusic();
   }
@@ -74,6 +92,33 @@ class SoundService extends ChangeNotifier {
     }
   }
 
+  Future<void> setSfxVolume(double value) async {
+    sfxVolume = value.clamp(0, 1);
+    notifyListeners();
+    final sp = await SharedPreferences.getInstance();
+    await sp.setDouble(_sfxVolumeKey, sfxVolume);
+  }
+
+  Future<void> setMusicVolume(double value) async {
+    musicVolume = value.clamp(0, 1);
+    try {
+      await _music.setVolume(musicVolume);
+    } catch (e) {
+      debugPrint('SoundService music volume: $e');
+    }
+    notifyListeners();
+    final sp = await SharedPreferences.getInstance();
+    await sp.setDouble(_musicVolumeKey, musicVolume);
+  }
+
+  Future<void> setHapticEnabled(bool value) async {
+    if (hapticEnabled == value) return;
+    hapticEnabled = value;
+    final sp = await SharedPreferences.getInstance();
+    await sp.setBool(_hapticKey, value);
+    notifyListeners();
+  }
+
   Future<void> startMusic() async {
     if (!musicEnabled) return;
     try {
@@ -82,6 +127,7 @@ class SoundService extends ChangeNotifier {
         return;
       }
       await _music.stop();
+      await _music.setVolume(musicVolume);
       await _music.play(AssetSource(_musicAsset));
       _musicPlaying = true;
     } catch (e) {
@@ -114,6 +160,7 @@ class SoundService extends ChangeNotifier {
     if (path == null) return;
     try {
       await _oneshot.stop();
+      await _oneshot.setVolume(sfxVolume);
       await _oneshot.play(AssetSource(path));
     } catch (e) {
       debugPrint('SoundService: $e');
@@ -129,7 +176,7 @@ class SoundService extends ChangeNotifier {
     _layer++;
     try {
       await player.stop();
-      await player.setVolume(volume.clamp(0, 1));
+      await player.setVolume((volume * sfxVolume).clamp(0, 1));
       await player.play(AssetSource(path));
     } catch (e) {
       debugPrint('SoundService: $e');

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dominican_casino/models/instructions.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
@@ -27,7 +28,7 @@ class InstructionsScreen extends StatelessWidget {
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
           child: const Icon(CupertinoIcons.back),
-          onPressed: () => context.go('/home'),
+          onPressed: SoundService.wrapTap(() => context.go('/home')),
         ),
       ),
       child: SafeArea(
@@ -42,6 +43,9 @@ class InstructionsScreen extends StatelessWidget {
 
             return PageView.builder(
               itemCount: data.sections.length,
+              onPageChanged: (_) {
+                SoundService.instance.playLayered(GameSound.softCard);
+              },
               itemBuilder: (context, index) {
                 final section = data.sections[index];
 

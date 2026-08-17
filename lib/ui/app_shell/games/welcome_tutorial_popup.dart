@@ -1,6 +1,7 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
@@ -62,7 +63,7 @@ Future<void> showWelcomeTutorialPopup(BuildContext context) {
                     color: theme.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    onPressed: () {
+                    onPressed: SoundService.wrapTap(() {
                       Navigator.pop(dialogContext);
                       final gid = Uuid().v4().substring(0, 6);
                       context.go(
@@ -72,7 +73,7 @@ Future<void> showWelcomeTutorialPopup(BuildContext context) {
                           tutorial: true,
                         ),
                       );
-                    },
+                    }),
                     child: Text(
                       l10n.startTutorial,
                       style: TextStyle(
@@ -84,7 +85,9 @@ Future<void> showWelcomeTutorialPopup(BuildContext context) {
                 ),
                 CupertinoButton(
                   padding: const EdgeInsets.only(top: 4),
-                  onPressed: () => Navigator.pop(dialogContext),
+                  onPressed: SoundService.wrapTap(
+                    () => Navigator.pop(dialogContext),
+                  ),
                   child: Text(l10n.later, style: TextStyle(color: theme.muted)),
                 ),
               ],

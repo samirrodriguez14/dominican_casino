@@ -7,8 +7,8 @@ import 'package:dominican_casino/ui/legacy_game/popups/players_deck_content.dart
 import 'package:dominican_casino/ui/legacy_game/game_view_model.dart';
 import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
+import 'package:dominican_casino/services/haptics.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class PlayingArea extends StatefulWidget {
@@ -77,7 +77,7 @@ class PlayingAreaState extends State<PlayingArea> {
                         cards: vm.oppCollectedCards,
                         extraPoints: vm.oppExtraPoints,
                         onTap: () {
-                          HapticFeedback.mediumImpact();
+                          AppHaptics.mediumImpact();
                           showAppPopup(
                             context: context,
                             title: "Opponent's Collected Cards",
@@ -99,7 +99,7 @@ class PlayingAreaState extends State<PlayingArea> {
                         cards: vm.myCollectedCards,
                         extraPoints: vm.myExtraPoints,
                         onTap: () {
-                          HapticFeedback.mediumImpact();
+                          AppHaptics.mediumImpact();
                           showAppPopup(
                             context: context,
                             title: "My Collected Cards",
