@@ -23,12 +23,12 @@ class NewCasinoPlayingArea extends StatefulWidget {
 }
 
 class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
-  GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
   final double tableCardWidth = 60;
   static const double _stackOverlap = 30;
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<GeneralGameViewModel>();
     return Opacity(
       opacity: vm.showInGameControl ? 0.5 : 1,
       child: Column(

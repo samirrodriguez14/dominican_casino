@@ -80,7 +80,9 @@ void showEnterGameDialog(
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return _EnterGamePopup(
         mode: mode,
-        onFriend: () {
+        onFriend: () async {
+          if (!await ensureGoogleForOnlinePlay(context)) return;
+          if (!context.mounted) return;
           Navigator.pop(dialogContext);
           gameEnter(context, vm, mode, false);
         },
@@ -88,7 +90,9 @@ void showEnterGameDialog(
           Navigator.pop(dialogContext);
           gameEnter(context, vm, mode, true);
         },
-        onJoin: () {
+        onJoin: () async {
+          if (!await ensureGoogleForOnlinePlay(context)) return;
+          if (!context.mounted) return;
           Navigator.pop(dialogContext);
           showJoinGameDialog(context, mode.name);
         },
@@ -105,6 +109,56 @@ void showEnterGameDialog(
       );
     },
   );
+}
+
+Future<bool> ensureGoogleForOnlinePlay(BuildContext context) async {
+  final repo = context.read<AppRepo>();
+  if (repo.isGoogleLinked) return true;
+  final l10n = AppLocalizations.of(context);
+  final connect = await showCupertinoDialog<bool>(
+    context: context,
+    builder: (ctx) => CupertinoAlertDialog(
+      title: Text(l10n.googleRequiredForFriendsTitle),
+      content: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(l10n.googleRequiredForFriendsBody),
+      ),
+      actions: [
+        CupertinoDialogAction(
+          onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
+          child: Text(l10n.cancel),
+        ),
+        CupertinoDialogAction(
+          isDefaultAction: true,
+          onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
+          child: Text(l10n.connectGoogle),
+        ),
+      ],
+    ),
+  );
+  if (connect != true || !context.mounted) return false;
+
+  final result = await repo.linkGoogleAccount();
+  if (!context.mounted) return false;
+  if (result.status == GoogleAuthStatus.canceled) return false;
+  if (result.status == GoogleAuthStatus.failed) {
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.google),
+        content: Text(l10n.googleSignInError(result.errorCode)),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
+            child: Text(l10n.back),
+          ),
+        ],
+      ),
+    );
+    return false;
+  }
+  return repo.isGoogleLinked;
 }
 
 String _modeTitle(GamesViewModel vm, GameMode mode) {

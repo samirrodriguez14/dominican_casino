@@ -1,3 +1,4 @@
+import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -48,6 +49,8 @@ class PlayingAreaStack extends StatelessWidget {
     final n = stack.cards.length;
     final totalWidth = n <= 1 ? cardWidth : cardWidth + (n - 1) * step;
     final landing = stack.cards.any((c) => cardInFlight?.call(c) ?? false);
+    final takePreview = CasinoCoinBonuses.takePreviewForTableCount(n);
+    final previewIndex = n > 0 ? n - 1 : -1;
 
     return GestureDetector(
       onTap: onTap,
@@ -92,6 +95,8 @@ class PlayingAreaStack extends StatelessWidget {
                         playingCardModel: stack.cards[i],
                         width: cardWidth,
                         isSelected: false,
+                        // Take preview beats special badge on the top card.
+                        extraCoinHint: i == previewIndex ? takePreview : 0,
                       ),
                     ),
                   ),

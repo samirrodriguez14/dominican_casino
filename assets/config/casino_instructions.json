@@ -62,6 +62,37 @@
             ]
         },
         {
+            "title": "Coins",
+            "body": [
+                "Coins are earned during Casino play and added to your wallet after the match.",
+                "A take awards coins when you capture 6 or more cards.",
+                "Those coins equal the number of cards in that take.",
+                "Special cards pay as soon as you capture them: 10♦ adds 2 coins, 2♠ adds 1, and each Ace adds 1.",
+                "Look for the bouncing coin markers on special cards and on big stacks that are ready to pay.",
+                "At the end of a round, only viraos add extra coins, equal to the virao points."
+            ],
+            "specialCards": [
+                {
+                    "rank": "A",
+                    "suit": "♠",
+                    "label": "Ace",
+                    "points": "+1 coin each"
+                },
+                {
+                    "rank": "2",
+                    "suit": "♠",
+                    "label": "Two of Spades",
+                    "points": "+1 coin"
+                },
+                {
+                    "rank": "10",
+                    "suit": "♦",
+                    "label": "Ten of Diamonds",
+                    "points": "+2 coins"
+                }
+            ]
+        },
+        {
             "title": "Endgame Rules",
             "body": [
                 "At 17 points, the player needs both carta and pi to keep those points.",

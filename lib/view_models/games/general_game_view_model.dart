@@ -167,9 +167,12 @@ class GeneralGameViewModel extends ChangeNotifier {
           );
         }
 
+        final meGain = gameState.pendingCoinsFor(me) - oldMe;
+        final oppGain =
+            oppId == null ? 0 : gameState.pendingCoinsFor(oppId) - oldOpp;
         _queueDeckCoinFlight(
-          meGain: gameState.pendingCoinsFor(me) - oldMe,
-          oppGain: oppId == null ? 0 : gameState.pendingCoinsFor(oppId) - oldOpp,
+          meGain: meGain,
+          oppGain: oppGain,
         );
 
         final botId = gameState.localBotPid ?? opp;
@@ -302,6 +305,9 @@ class GeneralGameViewModel extends ChangeNotifier {
       payoutApplied: next.payoutApplied,
       pendingCoins: Map<String, int>.from(next.pendingCoins),
       viraosCreditedRoundId: next.viraosCreditedRoundId,
+      roundTakeCoins: Map<String, int>.from(next.roundTakeCoins),
+      roundSpecialCoins: Map<String, int>.from(next.roundSpecialCoins),
+      roundViraoCoins: Map<String, int>.from(next.roundViraoCoins),
       tableOrder: leftovers.map((c) => TableOrder.cardKey(c.id)).toList(),
     );
   }
@@ -643,23 +649,35 @@ class GeneralGameViewModel extends ChangeNotifier {
         gameRepo.lastPlayedIds.add(e.id);
       }
       await gameRepo.fs.updateGame(next);
+      await _commitStateWithMotion(
+        next,
+        events,
+        settlementEvents: settlement,
+      );
+      _queueDeckCoinFlight(
+        meGain: next.pendingCoinsFor(me) - beforeMe,
+        oppGain: oppId == null ? 0 : next.pendingCoinsFor(oppId) - beforeOpp,
+      );
+    } else {
+      await _commitStateWithMotion(
+        next,
+        events,
+        settlementEvents: settlement,
+      );
+      _queueDeckCoinFlight(
+        meGain: next.pendingCoinsFor(me) - beforeMe,
+        oppGain: oppId == null ? 0 : next.pendingCoinsFor(oppId) - beforeOpp,
+      );
     }
-
-    await _commitStateWithMotion(
-      next,
-      events,
-      settlementEvents: settlement,
-    );
-    _queueDeckCoinFlight(
-      meGain: next.pendingCoinsFor(me) - beforeMe,
-      oppGain: oppId == null ? 0 : next.pendingCoinsFor(oppId) - beforeOpp,
-    );
     if (next.gameStatus == GameStatus.gameOver) {
       SoundService.instance.play(GameSound.win);
     }
   }
 
-  void _queueDeckCoinFlight({required int meGain, required int oppGain}) {
+  void _queueDeckCoinFlight({
+    required int meGain,
+    required int oppGain,
+  }) {
     if (tutorialMode) {
       _syncRevealedPending();
       return;

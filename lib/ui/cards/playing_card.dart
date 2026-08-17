@@ -1,6 +1,7 @@
+import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:dominican_casino/ui/widgets/card_coin_hint.dart';
 import 'package:flutter/material.dart';
 
 class PlayingCard extends StatelessWidget {
@@ -13,6 +14,9 @@ class PlayingCard extends StatelessWidget {
   final Color? selectedBorderColor;
   final double selectedBorderWidth;
 
+  /// Extra coin hint (e.g. take-size preview). Specials are automatic.
+  final int extraCoinHint;
+
   const PlayingCard({
     super.key,
     required this.playingCardModel,
@@ -22,6 +26,7 @@ class PlayingCard extends StatelessWidget {
     required this.isSelected,
     this.selectedBorderColor,
     this.selectedBorderWidth = 2.4,
+    this.extraCoinHint = 0,
   });
 
   @override
@@ -30,6 +35,8 @@ class PlayingCard extends StatelessWidget {
     final suit = _normalizeSuit(playingCardModel.suit);
     final suitColor = _suitColor(suit);
     final height = width * heightMultiplyer;
+    final specialCoins = CasinoCoinBonuses.specialBonus(playingCardModel);
+    final coinHint = extraCoinHint > 0 ? extraCoinHint : specialCoins;
 
     final sel = selectedBorderColor ?? AppStyle.theme.turnHighlight;
 
@@ -46,7 +53,7 @@ class PlayingCard extends StatelessWidget {
 
           border: Border.all(
             color: isSelected ? sel : AppStyle.theme.cardBorder,
-            width: 1 ,
+            width: 1,
           ),
 
           boxShadow: [
@@ -66,6 +73,7 @@ class PlayingCard extends StatelessWidget {
           ],
         ),
         child: Stack(
+          clipBehavior: Clip.none,
           children: [
             // Top Left
             Positioned(
@@ -120,6 +128,16 @@ class PlayingCard extends StatelessWidget {
                 ),
               ),
             ),
+
+            if (coinHint > 0)
+              Positioned(
+                bottom: 4,
+                left: 4,
+                child: CardCoinHint(
+                  count: coinHint,
+                  size: (width * 0.18).clamp(10, 14),
+                ),
+              ),
           ],
         ),
       ),

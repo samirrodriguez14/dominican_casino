@@ -5,17 +5,26 @@ import 'package:dominican_casino/models/round.dart';
 
 /// Casino in-game coin bonuses. Accrued on the match and claimed at home.
 class CasinoCoinBonuses {
-  /// Takes of this many cards or fewer award no coins.
-  static const int takeBonusMinCards = 8;
+  /// Takes of this many cards or more award take-size coins.
+  static const int takeBonusMinCards = 6;
+
+  /// Table cards that, with one hand card, reach [takeBonusMinCards].
+  static const int takePreviewTableCards = takeBonusMinCards - 1;
 
   static int coinsForTake(PlayAction action) {
-    final cards = cardsFromTake(action);
-    if (cards.length <= takeBonusMinCards) return 0;
-    var total = cards.length;
-    for (final card in cards) {
-      total += specialBonus(card);
-    }
-    return total;
+    return coinsForTakeCards(cardsFromTake(action));
+  }
+
+  static int coinsForTakeCards(List<PlayingCardModel> cards) {
+    if (cards.length < takeBonusMinCards) return 0;
+    return cards.length;
+  }
+
+  /// Preview coins shown on a table stack of [tableCount] cards.
+  static int takePreviewForTableCount(int tableCount) {
+    final takeSize = tableCount + 1;
+    if (takeSize < takeBonusMinCards) return 0;
+    return takeSize;
   }
 
   static int specialBonus(PlayingCardModel card) {
@@ -24,6 +33,14 @@ class CasinoCoinBonuses {
     if (rank == '2' && card.suit == '♠') return 1;
     if (card.isAce) return 1;
     return 0;
+  }
+
+  static int specialCoinsForCards(List<PlayingCardModel> cards) {
+    var total = 0;
+    for (final card in cards) {
+      total += specialBonus(card);
+    }
+    return total;
   }
 
   static List<PlayingCardModel> cardsFromTake(PlayAction action) {
@@ -52,33 +69,56 @@ class CasinoCoinBonuses {
         action is PairAndTakeCardsAction;
   }
 
-  /// Accrue take + virao bonuses onto [game.pendingCoins]. Call on the
-  /// client that applied the action, before persist.
-  /// Take coins: only when more than [takeBonusMinCards] cards are captured.
+  /// Accrue take + special coins on capture; viraos only when the round ends.
   static void accrueAfterPlay(GameState game, PlayAction action) {
     if (game.gameMode != GameMode.casino) return;
     if (isTake(action)) {
       final pid = action.performedById;
-      if (!_isBot(game, pid)) {
-        game.addPendingCoins(pid, coinsForTake(action));
+      final cards = cardsFromTake(action);
+      final take = coinsForTakeCards(cards);
+      final special = specialCoinsForCards(cards);
+      if (take > 0) {
+        game.addPendingCoins(pid, take);
+        game.addRoundTakeCoins(pid, take);
+      }
+      if (special > 0) {
+        game.addPendingCoins(pid, special);
+        game.addRoundSpecialCoins(pid, special);
       }
     }
     accrueViraosIfNeeded(game);
   }
 
+  /// Once per completed round: virao coins only, then fold all round
+  /// coin totals into [game.round.roundScores] for the status sheet.
   static void accrueViraosIfNeeded(GameState game) {
     if (game.gameMode != GameMode.casino) return;
     if (game.round.roundStatus != RoundStatus.completed) return;
     if (game.viraosCreditedRoundId == game.round.id) return;
     game.viraosCreditedRoundId = game.round.id;
+
     final holder = game.extraPointsHolderId;
-    if (holder.isEmpty || game.extraPoints <= 0) return;
-    if (_isBot(game, holder)) return;
-    game.addPendingCoins(holder, game.extraPoints);
+    if (holder.isNotEmpty && game.extraPoints > 0) {
+      game.addPendingCoins(holder, game.extraPoints);
+      game.addRoundViraoCoins(holder, game.extraPoints);
+    }
+    _writeCoinsIntoRoundScores(game);
+    game.clearRoundCoinAccrual();
   }
 
-  static bool _isBot(GameState game, String pid) {
-    final bot = game.localBotPid;
-    return bot != null && bot.isNotEmpty && bot == pid;
+  static void _writeCoinsIntoRoundScores(GameState game) {
+    for (final pid in game.playersInfo.keys) {
+      final raw = game.round.roundScores[pid];
+      if (raw is! Map) continue;
+      final map = Map<String, dynamic>.from(raw);
+      final take = game.roundTakeCoins[pid] ?? 0;
+      final special = game.roundSpecialCoins[pid] ?? 0;
+      final virao = game.roundViraoCoins[pid] ?? 0;
+      map['coinsTake'] = take;
+      map['coinsSpecial'] = special;
+      map['coinsVirao'] = virao;
+      map['coins'] = take + special + virao;
+      game.round.roundScores[pid] = map;
+    }
   }
 }

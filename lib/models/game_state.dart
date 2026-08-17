@@ -95,6 +95,15 @@ class GameState {
   /// Round id whose virao coins were already added to [pendingCoins].
   int viraosCreditedRoundId;
 
+  /// Take-size coins accrued this round (folded into [round.roundScores]).
+  Map<String, int> roundTakeCoins;
+
+  /// Special-card coins accrued this round.
+  Map<String, int> roundSpecialCoins;
+
+  /// Virao coins accrued this round.
+  Map<String, int> roundViraoCoins;
+
   GameState({
     required this.gameStatus,
     required this.gameMode,
@@ -123,12 +132,18 @@ class GameState {
     this.payoutApplied = false,
     Map<String, int>? pendingCoins,
     this.viraosCreditedRoundId = -1,
+    Map<String, int>? roundTakeCoins,
+    Map<String, int>? roundSpecialCoins,
+    Map<String, int>? roundViraoCoins,
     List<String>? tableOrder,
   }) : settlementEvents = settlementEvents ?? [],
        tableOrder = tableOrder ?? [],
        entryCost = entryCost ?? WalletConfig.entryCost,
        entryPaidBy = entryPaidBy ?? [],
-       pendingCoins = pendingCoins ?? {};
+       pendingCoins = pendingCoins ?? {},
+       roundTakeCoins = roundTakeCoins ?? {},
+       roundSpecialCoins = roundSpecialCoins ?? {},
+       roundViraoCoins = roundViraoCoins ?? {};
 
   /// Bot pid from persisted fields, or a legacy "Pulilo" seat for older games.
   String? get localBotPid {
@@ -153,6 +168,27 @@ class GameState {
   void addPendingCoins(String pid, int amount) {
     if (amount <= 0 || pid.isEmpty) return;
     pendingCoins[pid] = pendingCoinsFor(pid) + amount;
+  }
+
+  void addRoundTakeCoins(String pid, int amount) {
+    if (amount <= 0 || pid.isEmpty) return;
+    roundTakeCoins[pid] = (roundTakeCoins[pid] ?? 0) + amount;
+  }
+
+  void addRoundSpecialCoins(String pid, int amount) {
+    if (amount <= 0 || pid.isEmpty) return;
+    roundSpecialCoins[pid] = (roundSpecialCoins[pid] ?? 0) + amount;
+  }
+
+  void addRoundViraoCoins(String pid, int amount) {
+    if (amount <= 0 || pid.isEmpty) return;
+    roundViraoCoins[pid] = (roundViraoCoins[pid] ?? 0) + amount;
+  }
+
+  void clearRoundCoinAccrual() {
+    roundTakeCoins.clear();
+    roundSpecialCoins.clear();
+    roundViraoCoins.clear();
   }
 
   int winPotCoins(String pid) {
@@ -197,6 +233,9 @@ class GameState {
       payoutApplied: false,
       pendingCoins: {},
       viraosCreditedRoundId: -1,
+      roundTakeCoins: {},
+      roundSpecialCoins: {},
+      roundViraoCoins: {},
     );
   }
 
@@ -301,6 +340,9 @@ class GameState {
     'payoutApplied': payoutApplied,
     'pendingCoins': pendingCoins,
     'viraosCreditedRoundId': viraosCreditedRoundId,
+    'roundTakeCoins': roundTakeCoins,
+    'roundSpecialCoins': roundSpecialCoins,
+    'roundViraoCoins': roundViraoCoins,
   };
 
   static GameState fromMap(Map<String, dynamic> m) {
@@ -338,15 +380,28 @@ class GameState {
           .map((e) => PlayingCardModel.fromMap(Map<String, dynamic>.from(e)))
           .toList();
     });
-    final round = Round.fromJson(m['round']);
+    final roundRaw = m['round'];
+    final round = Round.fromJson(
+      roundRaw is Map
+          ? Map<String, dynamic>.from(roundRaw)
+          : <String, dynamic>{},
+    );
     final cardMoveEvents =
         (m['cardMoveEvents'] as List?)
-            ?.map((e) => CardMoveEvent.fromDto(e))
+            ?.map(
+              (e) => CardMoveEvent.fromDto(
+                e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{},
+              ),
+            )
             .toList() ??
         [];
     final settlementEvents =
         (m['settlementEvents'] as List?)
-            ?.map((e) => CardMoveEvent.fromDto(e))
+            ?.map(
+              (e) => CardMoveEvent.fromDto(
+                e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{},
+              ),
+            )
             .toList() ??
         [];
     final tableOrder =
@@ -371,8 +426,8 @@ class GameState {
       lastTookCardId: (m['lastTookCardId'] as String?) ?? '',
       playersInfo: Map<String, dynamic>.from(m['playersInfo'] ?? {}),
       winnerId: m['winnerId'] as String?,
-      extraPoints: m['extraPoints'],
-      extraPointsHolderId: m['extraPointsHolderId'],
+      extraPoints: (m['extraPoints'] as num?)?.toInt() ?? 0,
+      extraPointsHolderId: (m['extraPointsHolderId'] as String?) ?? '',
       round: round,
       isLocalBot: m['isLocalBot'] == true,
       botPlayerId: m['botPlayerId'] as String?,
@@ -386,6 +441,9 @@ class GameState {
           : gameStatus == GameStatus.gameOver,
       pendingCoins: _intMap(m['pendingCoins']),
       viraosCreditedRoundId: (m['viraosCreditedRoundId'] as num?)?.toInt() ?? -1,
+      roundTakeCoins: _intMap(m['roundTakeCoins']),
+      roundSpecialCoins: _intMap(m['roundSpecialCoins']),
+      roundViraoCoins: _intMap(m['roundViraoCoins']),
     );
   }
 

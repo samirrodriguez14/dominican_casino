@@ -203,6 +203,11 @@ class AppLocalizations {
       ? 'Borra tu perfil en este dispositivo y el token de notificaciones. Las partidas en curso pueden quedar huérfanas.'
       : 'Clears your profile on this device and notification token. In-progress matches may be orphaned.';
   String get connectGoogle => isEs ? 'Conectar Google' : 'Connect Google';
+  String get googleRequiredForFriendsTitle =>
+      isEs ? 'Entra con Google' : 'Sign in with Google';
+  String get googleRequiredForFriendsBody => isEs
+      ? 'Las partidas con amigos y unirse por ID necesitan una cuenta de Google.'
+      : 'Friend matches and join by ID need a Google account.';
   String get googleConnected =>
       isEs ? 'Conectado con Google' : 'Connected with Google';
   String get account => isEs ? 'Cuenta' : 'Account';

@@ -90,7 +90,13 @@ class GamePillData {
     }).toList();
   }
 
-  bool containsPlayer(String pid) => playersInfo.containsKey(pid);
+  bool containsPlayer(String pid) {
+    if (playersInfo.containsKey(pid)) return true;
+    for (final raw in playersInfo.values) {
+      if (raw is Map && raw['id'] == pid) return true;
+    }
+    return false;
+  }
 
   bool isMyTurn(String pid) => currentTurnPlayerId == pid;
 

@@ -1,8 +1,8 @@
 /// Economy numbers for coins, energy, match stakes, and store packs.
 class WalletConfig {
-  static const int startingCoins = 1000;
-  static const int startingEnergy = 100;
-  static const int energyCap = 100;
+  static const int startingCoins = 500;
+  static const int startingEnergy = 50;
+  static const int energyCap = 50;
   static const Duration regenInterval = Duration(minutes: 5);
 
   static const int entryCost = 100;

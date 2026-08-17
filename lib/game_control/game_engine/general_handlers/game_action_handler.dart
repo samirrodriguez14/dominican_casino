@@ -199,6 +199,7 @@ class GameActionHandler {
     gameState.lastTookCardId = '';
     gameState.cardMoveEvents = [];
     gameState.settlementEvents = [];
+    gameState.clearRoundCoinAccrual();
 
     gameState.currentTurnPlayerId = '';
     gameState.controllerId = pid;

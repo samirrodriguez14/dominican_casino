@@ -20,6 +20,8 @@ class ProfileScreen extends StatefulWidget {
 class ProfileScreenState extends State<ProfileScreen> {
   late final PageController _pageController;
   double _page = 0;
+  int _settledPage = 0;
+  bool _playedSlideSound = false;
 
   static const _tabBarClearance = 110.0;
   static const _pageDuration = Duration(milliseconds: 320);
@@ -37,6 +39,20 @@ class ProfileScreenState extends State<ProfileScreen> {
     final next = _pageController.page ?? 0;
     if ((next - _page).abs() > 0.01) {
       setState(() => _page = next);
+    }
+    if (!_playedSlideSound) {
+      if (_settledPage == 0 && next > 0.08) {
+        _playedSlideSound = true;
+        SoundService.instance.playLayered(GameSound.softCard);
+      } else if (_settledPage == 1 && next < 0.92) {
+        _playedSlideSound = true;
+        SoundService.instance.playLayered(GameSound.softCard);
+      }
+    }
+    final rounded = next.round().clamp(0, 1);
+    if ((next - rounded).abs() < 0.02) {
+      _settledPage = rounded;
+      _playedSlideSound = false;
     }
   }
 
@@ -139,9 +155,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               Opacity(
                 opacity: profileHintOpacity,
                 child: GestureDetector(
-                  onTap: profileHintOpacity > 0.2
-                      ? SoundService.wrapTap(_goToSettings)
-                      : null,
+                  onTap: profileHintOpacity > 0.2 ? _goToSettings : null,
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -173,9 +187,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               Opacity(
                 opacity: settingsHintOpacity,
                 child: GestureDetector(
-                  onTap: settingsHintOpacity > 0.2
-                      ? SoundService.wrapTap(goToInitial)
-                      : null,
+                  onTap: settingsHintOpacity > 0.2 ? goToInitial : null,
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 8),

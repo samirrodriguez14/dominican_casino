@@ -187,16 +187,18 @@ class OpponentIdentityChip extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
-              if (!waiting) ...[
-                const SizedBox(width: 6),
-                CoinGainBadge(
-                  pending: vm.revealedPendingFor(oppId),
-                  compact: true,
-                ),
-              ],
             ],
           ),
         ),
+        if (!waiting)
+          Positioned(
+            left: 0,
+            bottom: -14,
+            child: CoinGainBadge(
+              pending: vm.revealedPendingFor(oppId),
+              compact: true,
+            ),
+          ),
         Positioned(
           left: 4,
           top: 40,

@@ -54,7 +54,7 @@ class _CardPose {
 }
 
 class _GameModeCarouselState extends State<GameModeCarousel>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late int _frontIndex;
   double _dragDx = 0;
   bool _dragging = false;
@@ -63,9 +63,11 @@ class _GameModeCarouselState extends State<GameModeCarousel>
   bool _howToOpen = false;
 
   late final AnimationController _anim;
+  late final AnimationController _reveal;
   final GlobalKey _frontCardKey = GlobalKey();
 
   static const _dismissThreshold = 110.0;
+  static const _revealDuration = Duration(milliseconds: 400);
 
   /// Peek pose for the under-card — offset + tilt so the next game is visible.
   static const _backRest = _CardPose(
@@ -83,15 +85,31 @@ class _GameModeCarouselState extends State<GameModeCarousel>
       gameModeCarouselModes.length - 1,
     );
     _anim = AnimationController.unbounded(vsync: this);
+    _reveal =
+        AnimationController(vsync: this, duration: _revealDuration, value: 0)
+          ..addListener(() {
+            if (mounted) setState(() {});
+          });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.onModeChanged?.call(gameModeCarouselModes[_frontIndex]);
+      _revealBack();
     });
   }
 
   @override
   void dispose() {
     _anim.dispose();
+    _reveal.dispose();
     super.dispose();
+  }
+
+  _CardPose get _peekPose =>
+      _CardPose.lerp(_frontRest, _backRest, _reveal.value);
+
+  Future<void> _revealBack() async {
+    if (!mounted || _reveal.value >= 0.99) return;
+    SoundService.instance.playLayered(GameSound.softCard);
+    await _reveal.animateTo(1, curve: Curves.easeOutCubic);
   }
 
   GameMode get _frontMode => gameModeCarouselModes[_frontIndex];
@@ -99,7 +117,9 @@ class _GameModeCarouselState extends State<GameModeCarousel>
       gameModeCarouselModes[(_frontIndex + 1) % gameModeCarouselModes.length];
 
   void _onDragStart(DragStartDetails _) {
-    if (_howToOpen || _anim.isAnimating || _restacking) return;
+    if (_howToOpen || _anim.isAnimating || _restacking || _reveal.isAnimating) {
+      return;
+    }
     _dragging = true;
   }
 
@@ -171,6 +191,7 @@ class _GameModeCarouselState extends State<GameModeCarousel>
       _dragDx = 0;
       _restacking = false;
       _anim.value = 0;
+      _reveal.value = 1;
     });
     widget.onModeChanged?.call(gameModeCarouselModes[_frontIndex]);
   }
@@ -186,7 +207,7 @@ class _GameModeCarouselState extends State<GameModeCarousel>
   /// Under-card eases toward front as the user drags, but stays tilted.
   _CardPose _backPoseWhileDragging() {
     final progress = (_dragDx.abs() / _dismissThreshold).clamp(0.0, 1.0);
-    return _CardPose.lerp(_backRest, _frontRest, progress * 0.35);
+    return _CardPose.lerp(_peekPose, _frontRest, progress * 0.35);
   }
 
   (_CardPose front, _CardPose back, bool dismissedUnder) _restackPoses(
@@ -223,6 +244,8 @@ class _GameModeCarouselState extends State<GameModeCarousel>
     }
 
     setState(() => _howToOpen = true);
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
     await showGameModeHowTo(
       context,
       mode,
@@ -230,7 +253,11 @@ class _GameModeCarouselState extends State<GameModeCarousel>
       anchor: anchor,
     );
     if (!mounted) return;
+    _reveal.value = 0;
     setState(() => _howToOpen = false);
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await _revealBack();
   }
 
   Widget _posedCard({
@@ -242,21 +269,18 @@ class _GameModeCarouselState extends State<GameModeCarousel>
   }) {
     return IgnorePointer(
       ignoring: !interactive || _howToOpen,
-      child: Opacity(
-        opacity: _howToOpen ? 0 : 1,
-        child: Transform.translate(
-          offset: pose.offset,
-          child: Transform.rotate(
-            angle: pose.angle,
-            child: Transform.scale(
-              scale: pose.scale,
-              child: SizedBox(
-                key: anchorKey,
-                width: cardWidth,
-                child: GameModeCard(
-                  mode: mode,
-                  onHowToPlay: () => _openHowTo(mode, cardWidth),
-                ),
+      child: Transform.translate(
+        offset: pose.offset,
+        child: Transform.rotate(
+          angle: pose.angle,
+          child: Transform.scale(
+            scale: pose.scale,
+            child: SizedBox(
+              key: anchorKey,
+              width: cardWidth,
+              child: GameModeCard(
+                mode: mode,
+                onHowToPlay: () => _openHowTo(mode, cardWidth),
               ),
             ),
           ),
@@ -286,6 +310,13 @@ class _GameModeCarouselState extends State<GameModeCarousel>
           dismissedUnder = false;
         }
 
+        final showUnder =
+            !_howToOpen &&
+            (_restacking ||
+                _dragging ||
+                _dragDx.abs() > 0.5 ||
+                _reveal.value > 0.001);
+
         final under = _posedCard(
           mode: dismissedUnder ? _frontMode : _backMode,
           pose: dismissedUnder ? frontPose : backPose,
@@ -310,10 +341,13 @@ class _GameModeCarouselState extends State<GameModeCarousel>
               // Room for the tilted under-card peek.
               width: cardWidth + 48,
               height: cardWidth * (3.5 / 2.5) + 36,
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [under, over],
+              child: Offstage(
+                offstage: _howToOpen,
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [if (showUnder) under, over],
+                ),
               ),
             ),
           ),

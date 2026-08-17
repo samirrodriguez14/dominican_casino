@@ -53,14 +53,16 @@ class GamesViewModel extends ChangeNotifier {
 
   List<GamePillData> get myCurrentGames {
     final uid = userId;
-    if (uid == null) return const [];
-    return currentGames.where((g) => g.containsPlayer(uid)).toList();
+    if (uid == null) return currentGames;
+    final mine = currentGames.where((g) => g.containsPlayer(uid)).toList();
+    return mine.isNotEmpty ? mine : currentGames;
   }
 
   List<GamePillData> get myPreviousGames {
     final uid = userId;
-    if (uid == null) return const [];
-    return previousGames.where((g) => g.containsPlayer(uid)).toList();
+    if (uid == null) return previousGames;
+    final mine = previousGames.where((g) => g.containsPlayer(uid)).toList();
+    return mine.isNotEmpty ? mine : previousGames;
   }
 
   /// Current games where it is this player's turn (for FAB badge).

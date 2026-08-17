@@ -299,7 +299,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       to: to,
       icon: coinIcon,
       color: AppStyle.theme.turnHighlight,
-      count: flight.amount.clamp(3, 10),
+      count: flight.amount.clamp(1, 12),
       jump: true,
     );
   }

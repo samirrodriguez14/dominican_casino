@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
@@ -6,6 +8,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/ui/app_shell/settings/theme_option.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:dominican_casino/ui/home/privacy_policy_copy.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -21,11 +24,16 @@ class ProfileSettingsBody extends StatefulWidget {
 }
 
 class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  static const _flipDuration = Duration(milliseconds: 420);
+
+  late final AnimationController _flip;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _flip = AnimationController(vsync: this, duration: _flipDuration);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppRepo>().refreshNotificationStatus();
     });
@@ -33,8 +41,21 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
 
   @override
   void dispose() {
+    _flip.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _openPrivacy() {
+    if (_flip.isAnimating || !_flip.isDismissed) return;
+    SoundService.instance.playLayered(GameSound.softCard);
+    _flip.forward();
+  }
+
+  void _closePrivacy() {
+    if (_flip.isAnimating || !_flip.isCompleted) return;
+    SoundService.instance.playLayered(GameSound.softCard);
+    _flip.reverse();
   }
 
   @override
@@ -57,252 +78,309 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const privacyReserve = 44.0;
-        final cardWidth = homeCardWidth(
-          constraints,
-          verticalInset: privacyReserve,
-        );
+        final cardWidth = homeCardWidth(constraints);
 
         return Center(
           child: SizedBox(
             width: cardWidth,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AspectRatio(
-                  aspectRatio: homeCardAspect,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: face,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: theme.textPrimary.withValues(alpha: .14),
-                          width: 1.2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: CupertinoColors.black.withValues(alpha: .30),
-                            blurRadius: 18,
-                            offset: const Offset(0, 10),
+            child: AspectRatio(
+              aspectRatio: homeCardAspect,
+              child: AnimatedBuilder(
+                animation: _flip,
+                builder: (context, _) {
+                  final t = Curves.easeInOutCubic.transform(
+                    _flip.value.clamp(0.0, 1.0),
+                  );
+                  final angle = t * math.pi;
+                  final showBack = t >= 0.5;
+                  return Transform(
+                    alignment: Alignment.center,
+                    filterQuality: FilterQuality.medium,
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.0012)
+                      ..rotateY(angle),
+                    child: showBack
+                        ? Transform(
+                            alignment: Alignment.center,
+                            transform: Matrix4.identity()..rotateY(math.pi),
+                            child: _privacyFace(theme, face, l10n),
+                          )
+                        : _settingsFace(
+                            theme: theme,
+                            face: face,
+                            l10n: l10n,
+                            vm: vm,
+                            appRepo: appRepo,
+                            sounds: sounds,
                           ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.settings,
-                              style: theme.title.copyWith(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w700,
-                                height: 1.05,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _SectionLabel(l10n.themes),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      for (
-                                        var i = 0;
-                                        i < ownedThemes.length;
-                                        i++
-                                      ) ...[
-                                        if (i > 0) const SizedBox(width: 8),
-                                        Expanded(
-                                          child: ThemeOptionChip(
-                                            themeType: ownedThemes[i],
-                                            previewTheme: themeFromEnum(
-                                              ownedThemes[i],
-                                            ),
-                                            selected:
-                                                vm.appTheme == ownedThemes[i],
-                                            onTap: () =>
-                                                vm.selectTheme(ownedThemes[i]),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  const _SectionDivider(),
-                                  _SectionLabel(l10n.language),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _LanguageButton(
-                                          label: 'English',
-                                          selected:
-                                              appRepo.locale.languageCode ==
-                                              'en',
-                                          onPressed: () => appRepo.setLocale(
-                                            const Locale('en'),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: _LanguageButton(
-                                          label: 'Español',
-                                          selected:
-                                              appRepo.locale.languageCode ==
-                                              'es',
-                                          onPressed: () => appRepo.setLocale(
-                                            const Locale('es'),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const _SectionDivider(),
-                                  _SectionLabel(l10n.sound),
-                                  const SizedBox(height: 2),
-                                  _SettingsToggleRow(
-                                    label: l10n.soundEffects,
-                                    value: sounds.sfxEnabled,
-                                    onChanged: sounds.setSfxEnabled,
-                                    volume: sounds.sfxVolume,
-                                    onVolumeChanged: sounds.setSfxVolume,
-                                  ),
-                                  _SettingsToggleRow(
-                                    label: l10n.backgroundMusic,
-                                    value: sounds.musicEnabled,
-                                    onChanged: sounds.setMusicEnabled,
-                                    volume: sounds.musicVolume,
-                                    onVolumeChanged: sounds.setMusicVolume,
-                                  ),
-                                  _SettingsToggleRow(
-                                    label: l10n.hapticFeedback,
-                                    value: sounds.hapticEnabled,
-                                    onChanged: (enabled) async {
-                                      await sounds.setHapticEnabled(enabled);
-                                      if (enabled) AppHaptics.mediumImpact();
-                                    },
-                                  ),
-                                  const _SectionDivider(),
-                                  _SectionLabel(l10n.notifications),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          appRepo.notificationsEnabled
-                                              ? l10n.notificationsOn
-                                              : l10n.notificationsOff,
-                                          style: theme.mutedText.copyWith(
-                                            color: appRepo.notificationsEnabled
-                                                ? theme.success
-                                                : theme.textPrimary.withValues(
-                                                    alpha: .7,
-                                                  ),
-                                          ),
-                                        ),
-                                      ),
-                                      if (!appRepo.notificationsEnabled)
-                                        CupertinoButton(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          minimumSize: Size.zero,
-                                          color: theme.textPrimary.withValues(
-                                            alpha: .14,
-                                          ),
-                                          onPressed: SoundService.wrapTap(
-                                            () => _requestNotifications(
-                                              context,
-                                              appRepo,
-                                              l10n,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            l10n.enableNotifications,
-                                            style: TextStyle(
-                                              color: theme.textPrimary,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const _SectionDivider(),
-                                  _SectionLabel(l10n.account),
-                                  const SizedBox(height: 4),
-                                  _GoogleAccountRow(
-                                    linked: appRepo.isGoogleLinked,
-                                    email: appRepo.googleEmail,
-                                    onConnect: () =>
-                                        _connectGoogle(context, appRepo, l10n),
-                                    onLogOut: () =>
-                                        _confirmLogOut(context, appRepo, l10n),
-                                  ),
-                                  const Spacer(),
-                                  Center(
-                                    child: CupertinoButton(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 4,
-                                      ),
-                                      minimumSize: Size.zero,
-                                      onPressed: SoundService.wrapTap(
-                                        () => _confirmDelete(
-                                          context,
-                                          appRepo,
-                                          l10n,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        l10n.deleteAccount,
-                                        style: const TextStyle(
-                                          color: CupertinoColors.destructiveRed,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                CupertinoButton(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  minimumSize: Size.zero,
-                  onPressed: SoundService.wrapTap(
-                    () => context.push('/privacy'),
-                  ),
-                  child: Text(
-                    l10n.privacyPolicy,
-                    style: theme.mutedText.copyWith(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      decoration: TextDecoration.underline,
-                      decorationColor: theme.muted.withValues(alpha: .45),
-                    ),
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _cardShell({required Color face, required Widget child}) {
+    final theme = AppStyle.theme;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: face,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: theme.textPrimary.withValues(alpha: .14),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: CupertinoColors.black.withValues(alpha: .30),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _privacyFace(AppTheme theme, Color face, AppLocalizations l10n) {
+    return _cardShell(
+      face: face,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.privacyPolicy,
+              style: theme.title.copyWith(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                height: 1.05,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Expanded(
+              child: SingleChildScrollView(
+                child: PrivacyPolicyCopy(compact: true),
+              ),
+            ),
+            Center(
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                minimumSize: Size.zero,
+                onPressed: _closePrivacy,
+                child: Text(
+                  l10n.back,
+                  style: theme.body.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _settingsFace({
+    required AppTheme theme,
+    required Color face,
+    required AppLocalizations l10n,
+    required AppThemeViewModel vm,
+    required AppRepo appRepo,
+    required SoundService sounds,
+  }) {
+    return _cardShell(
+      face: face,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.settings,
+              style: theme.title.copyWith(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                height: 1.05,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SectionLabel(l10n.themes),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      for (var i = 0; i < ownedThemes.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        Expanded(
+                          child: ThemeOptionChip(
+                            themeType: ownedThemes[i],
+                            previewTheme: themeFromEnum(ownedThemes[i]),
+                            selected: vm.appTheme == ownedThemes[i],
+                            onTap: () => vm.selectTheme(ownedThemes[i]),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const _SectionDivider(),
+                  _SectionLabel(l10n.language),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _LanguageButton(
+                          label: 'English',
+                          selected: appRepo.locale.languageCode == 'en',
+                          onPressed: () =>
+                              appRepo.setLocale(const Locale('en')),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _LanguageButton(
+                          label: 'Español',
+                          selected: appRepo.locale.languageCode == 'es',
+                          onPressed: () =>
+                              appRepo.setLocale(const Locale('es')),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const _SectionDivider(),
+                  _SectionLabel(l10n.sound),
+                  const SizedBox(height: 2),
+                  _SettingsToggleRow(
+                    label: l10n.soundEffects,
+                    value: sounds.sfxEnabled,
+                    onChanged: sounds.setSfxEnabled,
+                    volume: sounds.sfxVolume,
+                    onVolumeChanged: sounds.setSfxVolume,
+                  ),
+                  _SettingsToggleRow(
+                    label: l10n.backgroundMusic,
+                    value: sounds.musicEnabled,
+                    onChanged: sounds.setMusicEnabled,
+                    volume: sounds.musicVolume,
+                    onVolumeChanged: sounds.setMusicVolume,
+                  ),
+                  _SettingsToggleRow(
+                    label: l10n.hapticFeedback,
+                    value: sounds.hapticEnabled,
+                    onChanged: (enabled) async {
+                      await sounds.setHapticEnabled(enabled);
+                      if (enabled) AppHaptics.mediumImpact();
+                    },
+                  ),
+                  const _SectionDivider(),
+                  _SectionLabel(l10n.notifications),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          appRepo.notificationsEnabled
+                              ? l10n.notificationsOn
+                              : l10n.notificationsOff,
+                          style: theme.mutedText.copyWith(
+                            color: appRepo.notificationsEnabled
+                                ? theme.success
+                                : theme.textPrimary.withValues(alpha: .7),
+                          ),
+                        ),
+                      ),
+                      if (!appRepo.notificationsEnabled)
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          minimumSize: Size.zero,
+                          color: theme.textPrimary.withValues(alpha: .14),
+                          onPressed: SoundService.wrapTap(
+                            () => _requestNotifications(context, appRepo, l10n),
+                          ),
+                          child: Text(
+                            l10n.enableNotifications,
+                            style: TextStyle(
+                              color: theme.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const _SectionDivider(),
+                  _SectionLabel(l10n.account),
+                  const SizedBox(height: 4),
+                  _GoogleAccountRow(
+                    linked: appRepo.isGoogleLinked,
+                    email: appRepo.googleEmail,
+                    onConnect: () => _connectGoogle(context, appRepo, l10n),
+                    onLogOut: () => _confirmLogOut(context, appRepo, l10n),
+                  ),
+                  const Spacer(),
+                  Center(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      onPressed: SoundService.wrapTap(
+                        () => _confirmDelete(context, appRepo, l10n),
+                      ),
+                      child: Text(
+                        l10n.deleteAccount,
+                        style: const TextStyle(
+                          color: CupertinoColors.destructiveRed,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      onPressed: _openPrivacy,
+                      child: Text(
+                        l10n.privacyPolicy,
+                        style: theme.mutedText.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          decoration: TextDecoration.underline,
+                          decorationColor: theme.muted.withValues(alpha: .45),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

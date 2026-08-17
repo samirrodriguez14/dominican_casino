@@ -13,6 +13,8 @@ class StackedCardCarousel extends StatefulWidget {
     this.widthFactor = 0.78,
     this.maxCardWidth = 300,
     this.fitToHeight = false,
+    this.startBackCollapsed = false,
+    this.animateBackIn = false,
   });
 
   final int itemCount;
@@ -27,8 +29,14 @@ class StackedCardCarousel extends StatefulWidget {
   /// When true, also shrink to fit available height (home Privacy / How to play).
   final bool fitToHeight;
 
+  /// Peek card starts flush behind the front card.
+  final bool startBackCollapsed;
+
+  /// After layout, tilt the peek card into place with a soft card sound.
+  final bool animateBackIn;
+
   @override
-  State<StackedCardCarousel> createState() => _StackedCardCarouselState();
+  StackedCardCarouselState createState() => StackedCardCarouselState();
 }
 
 class _CardPose {
@@ -61,8 +69,8 @@ class _CardPose {
   }
 }
 
-class _StackedCardCarouselState extends State<StackedCardCarousel>
-    with SingleTickerProviderStateMixin {
+class StackedCardCarouselState extends State<StackedCardCarousel>
+    with TickerProviderStateMixin {
   late int _frontIndex;
   double _dragDx = 0;
   bool _dragging = false;
@@ -70,8 +78,10 @@ class _StackedCardCarouselState extends State<StackedCardCarousel>
   bool _dismissToLeft = true;
 
   late final AnimationController _anim;
+  late final AnimationController _reveal;
 
   static const _dismissThreshold = 110.0;
+  static const _revealDuration = Duration(milliseconds: 400);
 
   static const _backRest = _CardPose(
     offset: Offset(22, 16),
@@ -87,9 +97,21 @@ class _StackedCardCarouselState extends State<StackedCardCarousel>
         ? 0
         : widget.initialIndex.clamp(0, widget.itemCount - 1);
     _anim = AnimationController.unbounded(vsync: this);
+    final startCollapsed = widget.startBackCollapsed || widget.animateBackIn;
+    _reveal =
+        AnimationController(
+          vsync: this,
+          duration: _revealDuration,
+          value: startCollapsed ? 0 : 1,
+        )..addListener(() {
+          if (mounted) setState(() {});
+        });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.itemCount == 0) return;
       widget.onIndexChanged?.call(_frontIndex);
+      if (widget.animateBackIn) {
+        revealBack();
+      }
     });
   }
 
@@ -108,16 +130,41 @@ class _StackedCardCarouselState extends State<StackedCardCarousel>
   @override
   void dispose() {
     _anim.dispose();
+    _reveal.dispose();
     super.dispose();
   }
 
   bool get _canRestack => widget.itemCount > 1;
 
+  _CardPose get _peekPose =>
+      _CardPose.lerp(_frontRest, _backRest, _reveal.value);
+
+  Future<void> revealBack({bool playSound = true}) async {
+    if (!_canRestack || _reveal.value >= 0.99) return;
+    if (playSound) {
+      SoundService.instance.playLayered(GameSound.softCard);
+    }
+    await _reveal.animateTo(1, curve: Curves.easeOutCubic);
+  }
+
+  Future<void> collapseBack({bool playSound = true}) async {
+    if (_reveal.value <= 0.01) return;
+    if (playSound) {
+      SoundService.instance.playLayered(GameSound.softCard);
+    }
+    await _reveal.animateTo(0, curve: Curves.easeInCubic);
+  }
+
   int get _front => _frontIndex;
   int get _back => (_frontIndex + 1) % widget.itemCount;
 
   void _onDragStart(DragStartDetails _) {
-    if (!_canRestack || _anim.isAnimating || _restacking) return;
+    if (!_canRestack ||
+        _anim.isAnimating ||
+        _restacking ||
+        _reveal.isAnimating) {
+      return;
+    }
     _dragging = true;
   }
 
@@ -187,6 +234,7 @@ class _StackedCardCarouselState extends State<StackedCardCarousel>
       _dragDx = 0;
       _restacking = false;
       _anim.value = 0;
+      _reveal.value = 1;
     });
     widget.onIndexChanged?.call(_frontIndex);
   }
@@ -201,7 +249,7 @@ class _StackedCardCarouselState extends State<StackedCardCarousel>
 
   _CardPose _backPoseWhileDragging() {
     final progress = (_dragDx.abs() / _dismissThreshold).clamp(0.0, 1.0);
-    return _CardPose.lerp(_backRest, _frontRest, progress * 0.35);
+    return _CardPose.lerp(_peekPose, _frontRest, progress * 0.35);
   }
 
   (_CardPose front, _CardPose back, bool dismissedUnder) _restackPoses(
@@ -288,8 +336,15 @@ class _StackedCardCarouselState extends State<StackedCardCarousel>
           dismissedUnder = false;
         }
 
+        final showUnder =
+            _canRestack &&
+            (_restacking ||
+                _dragging ||
+                _dragDx.abs() > 0.5 ||
+                _reveal.value > 0.001);
+
         final children = <Widget>[
-          if (_canRestack)
+          if (showUnder)
             _posedCard(
               index: dismissedUnder ? _front : _back,
               pose: dismissedUnder ? frontPose : backPose,
