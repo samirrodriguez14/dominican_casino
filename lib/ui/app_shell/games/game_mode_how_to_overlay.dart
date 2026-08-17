@@ -24,6 +24,7 @@ Future<void> showGameModeHowTo(
   Rect? anchor,
 }) {
   final vm = context.read<GamesViewModel>();
+  final playable = vm.gamesInfo.any((g) => g.id == mode.name && g.enabled);
   final closed = Completer<void>();
   unawaited(
     showGeneralDialog<void>(
@@ -47,14 +48,16 @@ Future<void> showGameModeHowTo(
           cardWidth: cardWidth,
           anchor: anchor,
           onClose: () => Navigator.pop(dialogContext),
-          onPlay: () {
-            Navigator.pop(dialogContext);
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (context.mounted) {
-                showEnterGameDialog(context, vm, mode);
-              }
-            });
-          },
+          onPlay: playable
+              ? () {
+                  Navigator.pop(dialogContext);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) {
+                      showEnterGameDialog(context, vm, mode);
+                    }
+                  });
+                }
+              : null,
         );
       },
       transitionBuilder: (context, animation, secondary, child) => child,
@@ -82,7 +85,7 @@ class GameModeHowToOverlay extends StatefulWidget {
   final Animation<double> animation;
   final double cardWidth;
   final Rect? anchor;
-  final VoidCallback onPlay;
+  final VoidCallback? onPlay;
   final VoidCallback onClose;
 
   @override
@@ -152,9 +155,10 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
   }
 
   void _openPlay() {
-    if (_dismissing) return;
+    final play = widget.onPlay;
+    if (_dismissing || play == null) return;
     _dismissing = true;
-    widget.onPlay();
+    play();
   }
 
   @override
@@ -220,7 +224,9 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
                                       stageWidth: stageWidth,
                                       stageHeight: stageHeight,
                                       firstPageFace: modeFace,
-                                      onPlay: _openPlay,
+                                      onPlay: widget.onPlay == null
+                                          ? null
+                                          : _openPlay,
                                     ),
                                   )
                                 : SizedBox(
@@ -280,7 +286,7 @@ class _InstructionFace extends StatelessWidget {
   final double stageWidth;
   final double stageHeight;
   final Color firstPageFace;
-  final VoidCallback onPlay;
+  final VoidCallback? onPlay;
 
   @override
   Widget build(BuildContext context) {

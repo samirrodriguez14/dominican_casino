@@ -5,8 +5,12 @@ import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dar
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
 
-/// Casino starts on top; Tres y Dos sits stacked underneath.
-const gameModeCarouselModes = <GameMode>[GameMode.casino, GameMode.tresydos];
+/// Casino starts on top; Speed and Tres y Dos sit stacked underneath.
+const gameModeCarouselModes = <GameMode>[
+  GameMode.casino,
+  GameMode.casinoSpeed,
+  GameMode.tresydos,
+];
 
 class GameModeCarousel extends StatefulWidget {
   const GameModeCarousel({

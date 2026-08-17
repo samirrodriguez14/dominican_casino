@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
@@ -258,7 +259,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       showAppPopup(
         context: context,
         title: isGameOver ? 'Game Over' : 'Round Complete',
-        subtitle: gs.id,
+        subtitle: GameRegistry.displayTitle(gs.gameMode),
         content: GameStatusSheet(vm: vm, showActions: false),
         primaryText: 'Continue',
         barrierDismissible: false,
@@ -347,7 +348,24 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                   ),
                   Column(
                     children: [
-                      const SizedBox(height: 80),
+                      SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          child: Text(
+                            GameRegistry.displayTitle(vm.gameState.gameMode),
+                            textAlign: TextAlign.center,
+                            style: AppStyle.theme.caption.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                              color: AppStyle.theme.textPrimary.withValues(
+                                alpha: 0.85,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -444,6 +462,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       case GameMode.tresydos:
         return NewTresydosPlayingArea();
       case GameMode.casino:
+      case GameMode.casinoSpeed:
         return NewCasinoPlayingArea();
       case GameMode.robaito:
     }

@@ -1,3 +1,4 @@
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -19,10 +20,13 @@ Future<void> showGameStatusPopup(
   String? playerId,
   bool showActions = true,
 }) {
+  final state = gameState ?? vm?.gameState;
   return showAppPopup<void>(
     context: context,
-    title: 'Game Status',
-    subtitle: gameState?.id ?? vm?.gameState.id,
+    title: state?.gameStatus == GameStatus.gameOver
+        ? 'Game Over'
+        : 'Game Status',
+    subtitle: state != null ? GameRegistry.displayTitle(state.gameMode) : null,
     content: GameStatusSheet(
       vm: vm,
       gameState: gameState,
@@ -97,6 +101,14 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (gameState.gameStatus == GameStatus.gameOver) ...[
+              _WinSummary(
+                winnerLabel: _winnerLabel(),
+                winBy: GameRegistry.winConditionPhrase(gameState.gameMode),
+                youWon: gameState.winnerId == playerId,
+              ),
+              const SizedBox(height: 14),
+            ],
             Row(
               children: [
                 for (var i = 0; i < playerIds.length; i++) ...[
@@ -137,7 +149,9 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                           roundScores[playerIds[i]] ?? {},
                         ),
                         isYou: playerIds[i] == playerId,
-                        isCasino: gameState.gameMode == GameMode.casino,
+                        isCasino: GameRegistry.isCasinoFamily(
+                          gameState.gameMode,
+                        ),
                       ),
                     ),
                   ],
@@ -220,6 +234,12 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     return (info['name'] as String?) ?? pid;
   }
 
+  String _winnerLabel() {
+    final wid = gameState.winnerId;
+    if (wid == null || wid.isEmpty) return 'Someone';
+    return _playerLabel(wid);
+  }
+
   Future<void> _handleResign(
     BuildContext context,
     GeneralGameViewModel vm,
@@ -293,6 +313,51 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
           ],
         );
       },
+    );
+  }
+}
+
+class _WinSummary extends StatelessWidget {
+  const _WinSummary({
+    required this.winnerLabel,
+    required this.winBy,
+    required this.youWon,
+  });
+
+  final String winnerLabel;
+  final String winBy;
+  final bool youWon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: theme.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.turnHighlight.withValues(alpha: .4),
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            youWon ? 'You won' : '$winnerLabel won',
+            textAlign: TextAlign.center,
+            style: theme.title.copyWith(fontSize: 18),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'by $winBy.',
+            textAlign: TextAlign.center,
+            style: theme.body.copyWith(
+              color: theme.textPrimary.withValues(alpha: .85),
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -93,7 +93,7 @@ class _CardCoinHintState extends State<CardCoinHint>
                     style: TextStyle(
                       fontSize: 8,
                       fontWeight: FontWeight.w800,
-                      color: theme.textPrimary,
+                      color: theme.turnHighlight,
                       height: 1,
                     ),
                   ),

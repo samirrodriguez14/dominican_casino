@@ -102,7 +102,7 @@ class CasinoGameEngine extends GameEngine {
     InGameAction action,
     String pid,
   ) {
-    final counts = GameRegistry.dealCounts(GameMode.casino);
+    final counts = GameRegistry.dealCounts(state.gameMode);
     return GameActionHandler.handleGameAction(
       state,
       action,

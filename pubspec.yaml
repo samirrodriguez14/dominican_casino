@@ -41,6 +41,7 @@ flutter:
     - assets/sounds/
 
 flutter_launcher_icons:
+  android: "launcher_icon"
   ios: true
-  image_path: "assets/images/logo_icon_opaque.png"
+  image_path: "assets/images/logo_icon_sage.png"
   remove_alpha_ios: true

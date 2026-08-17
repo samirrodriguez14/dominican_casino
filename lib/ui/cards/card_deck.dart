@@ -98,6 +98,22 @@ class _CardDeckState extends State<CardDeck>
   void _syncExtraReveal() {
     final target = widget.extraPoints;
 
+    // Shuffle clears the collected pile while motion still holds the reveal.
+    // Drop the virao peek strip immediately so it does not flash when the
+    // deck becomes visible again after the overlay.
+    if (widget.cards.isEmpty &&
+        (_shownExtra > 0 || _extraFaces.isNotEmpty || _tucking)) {
+      _slide.stop();
+      _slide.value = 1;
+      setState(() {
+        _tucking = false;
+        _shownExtra = 0;
+        _settledExtra = 0;
+        _extraFaces = const [];
+      });
+      return;
+    }
+
     if (widget.holdExtraReveal) {
       // Wait for collect-to-deck flights to finish before reveal or tuck.
       return;

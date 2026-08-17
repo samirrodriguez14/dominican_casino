@@ -25,12 +25,14 @@ class GameModeCard extends StatelessWidget {
     if (theme is SageTheme) {
       return switch (mode) {
         GameMode.casino => theme.pickerFace,
+        GameMode.casinoSpeed => theme.pickerFaceEdge,
         GameMode.tresydos => theme.pickerFaceAlt,
         GameMode.robaito => theme.pickerFaceEdge,
       };
     }
     return switch (mode) {
       GameMode.casino => const Color(0xFF3A634F),
+      GameMode.casinoSpeed => const Color(0xFF4A6358),
       GameMode.tresydos => const Color(0xFF3D4F58),
       GameMode.robaito => const Color(0xFF2E3A36),
     };
@@ -42,13 +44,14 @@ class GameModeCard extends StatelessWidget {
     final theme = AppStyle.theme;
     final game = vm.gamesInfo.firstWhere((g) => g.id == mode.name);
     final face = pickerFaceFor(theme, mode);
-    final enabled = mode != GameMode.robaito;
+    final playEnabled = game.enabled;
+    final howToEnabled = mode != GameMode.robaito;
     final markColor = _suitColor(theme);
 
     return AspectRatio(
       aspectRatio: 2.5 / 3.5,
       child: GestureDetector(
-        onTap: enabled && onHowToPlay != null
+        onTap: howToEnabled && onHowToPlay != null
             ? SoundService.wrapTap(onHowToPlay)
             : null,
         behavior: HitTestBehavior.opaque,
@@ -80,7 +83,7 @@ class GameModeCard extends StatelessWidget {
                       Text(
                         game.title,
                         style: theme.title.copyWith(
-                          fontSize: 44,
+                          fontSize: game.title.length > 8 ? 30 : 44,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.15,
                           height: 1.02,
@@ -88,7 +91,7 @@ class GameModeCard extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
-                      _TapForInstructionsHint(enabled: enabled),
+                      _TapForInstructionsHint(enabled: howToEnabled),
                     ],
                   ),
                 ),
@@ -105,7 +108,7 @@ class GameModeCard extends StatelessWidget {
                   child: CupertinoButton(
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
-                    onPressed: enabled
+                    onPressed: playEnabled
                         ? SoundService.wrapTap(
                             () => showEnterGameDialog(context, vm, mode),
                           )
@@ -114,7 +117,7 @@ class GameModeCard extends StatelessWidget {
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: enabled
+                        color: playEnabled
                             ? theme.textPrimary.withValues(alpha: .14)
                             : theme.muted.withValues(alpha: .12),
                         shape: BoxShape.circle,
@@ -126,7 +129,7 @@ class GameModeCard extends StatelessWidget {
                       child: Icon(
                         CupertinoIcons.play_fill,
                         size: 22,
-                        color: enabled
+                        color: playEnabled
                             ? theme.textPrimary
                             : theme.muted.withValues(alpha: .5),
                       ),
@@ -143,7 +146,9 @@ class GameModeCard extends StatelessWidget {
   Color _suitColor(AppTheme theme) {
     return switch (mode) {
       GameMode.tresydos => theme.suitRed,
-      GameMode.casino || GameMode.robaito => theme.textPrimary,
+      GameMode.casino ||
+      GameMode.casinoSpeed ||
+      GameMode.robaito => theme.textPrimary,
     };
   }
 }
@@ -158,6 +163,7 @@ class _ModeMark extends StatelessWidget {
   Widget build(BuildContext context) {
     final glyph = switch (mode) {
       GameMode.casino => '♠',
+      GameMode.casinoSpeed => '♠',
       GameMode.tresydos => '♦',
       GameMode.robaito => '♣',
     };

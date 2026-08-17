@@ -4,12 +4,13 @@
         {
             "title": "General Info",
             "body": [
-                "Dominican Casino is a capture card game.",
-                "Estimated time: about 10–12 minutes.",
+                "Casino Speed is Dominican Casino played for a single decisive round.",
+                "Estimated time: about 2–5 minutes.",
                 "Players: 2.",
-                "Win by: reaching 21 points first.",
-                "Players use cards from their hand to capture cards from the table.",
-                "The goal is to collect scoring cards and reach the winning score."
+                "Win by: highest score after one round.",
+                "If scores are tied, the player with more coins awarded that round wins.",
+                "If coins are also tied, play another round until there is a winner.",
+                "Capture play, stacking, scoring cards, and coins work the same as classic Casino."
             ]
         },
         {
@@ -67,12 +68,13 @@
         {
             "title": "Coins",
             "body": [
-                "Coins are earned during Casino play and added to your wallet after the match.",
+                "Coins are earned during Casino Speed play and added to your wallet after the match.",
                 "A take awards coins when you capture 6 or more cards.",
                 "Those coins equal the number of cards in that take.",
                 "Special cards pay as soon as you capture them: 10♦ adds 2 coins, 2♠ adds 1, and each Ace adds 1.",
                 "Look for the bouncing coin markers on special cards and on big stacks that are ready to pay.",
-                "At the end of a round, only viraos add extra coins, equal to the virao points."
+                "At the end of a round, only viraos add extra coins, equal to the virao points.",
+                "If the round score is tied, coins awarded in that round break the tie."
             ],
             "specialCards": [
                 {
@@ -96,11 +98,11 @@
             ]
         },
         {
-            "title": "Endgame Rules",
+            "title": "Winning",
             "body": [
-                "At 17 points, the player needs both carta and pi to keep those points.",
-                "At 18 or 19 points, only carta and pi can count.",
-                "At 20 points, the player must get pi or they score 0 for the round."
+                "After one full round, the player with the most points wins the match.",
+                "If points are tied, the player with more coins awarded that round wins.",
+                "If coins are also tied, deal another round and repeat until someone wins."
             ]
         }
     ]

@@ -9,16 +9,51 @@ class GameRegistry {
 
   static const Set<GameMode> playableModes = {
     GameMode.casino,
+    GameMode.casinoSpeed,
     GameMode.tresydos,
   };
 
   static bool isPlayable(GameMode mode) => playableModes.contains(mode);
+
+  /// Classic Casino and Casino Speed share capture rules / UI / coins.
+  static bool isCasinoFamily(GameMode mode) =>
+      mode == GameMode.casino || mode == GameMode.casinoSpeed;
+
+  /// In-match label (top of board / status popup).
+  static String displayTitle(GameMode mode) {
+    switch (mode) {
+      case GameMode.casino:
+        return 'Casino: Classic';
+      case GameMode.casinoSpeed:
+        return 'Casino: Speed Mode';
+      case GameMode.tresydos:
+        return 'Tres y Dos';
+      case GameMode.robaito:
+        return 'Robaito';
+    }
+  }
+
+  /// How a match is won — for game-over / status copy.
+  static String winConditionPhrase(GameMode mode) {
+    switch (mode) {
+      case GameMode.casino:
+        return 'reaching 21 across many rounds';
+      case GameMode.casinoSpeed:
+        return 'making the most points in a single round';
+      case GameMode.tresydos:
+        return 'winning 3 rounds';
+      case GameMode.robaito:
+        return 'collecting the most cards';
+    }
+  }
 
   static GameMode? modeFromRoute(String? raw) {
     if (raw == null || raw.isEmpty) return null;
     switch (raw) {
       case 'casino':
         return GameMode.casino;
+      case 'casinoSpeed':
+        return GameMode.casinoSpeed;
       case 'tresydos':
         return GameMode.tresydos;
       case 'robaito':
@@ -31,6 +66,7 @@ class GameRegistry {
   static GameEngine? createEngine(GameMode mode) {
     switch (mode) {
       case GameMode.casino:
+      case GameMode.casinoSpeed:
         return CasinoGameEngine();
       case GameMode.tresydos:
         return TresDosGameEngine();
@@ -49,6 +85,7 @@ class GameRegistry {
   static (int, int, int, int) dealCounts(GameMode mode) {
     switch (mode) {
       case GameMode.casino:
+      case GameMode.casinoSpeed:
         return (4, 4, 4, 0);
       case GameMode.tresydos:
         return (5, 1, 0, 1);

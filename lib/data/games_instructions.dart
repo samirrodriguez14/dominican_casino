@@ -4,6 +4,10 @@ const gamesData = {
       "of the card you play. Special cards earn "
       "extra points. First player to reach the target "
       "score wins the game.",
+  "casinoSpeed":
+      "Same Casino capture rules in a single round. "
+      "Highest score wins; coins break ties; "
+      "still tied means another round.",
   "tresydos":
       "Form a set of 3 and a set of 2 of the sames card ranks "
       "before the other players do."

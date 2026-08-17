@@ -1,3 +1,4 @@
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
@@ -71,7 +72,7 @@ class CasinoCoinBonuses {
 
   /// Accrue take + special coins on capture; viraos only when the round ends.
   static void accrueAfterPlay(GameState game, PlayAction action) {
-    if (game.gameMode != GameMode.casino) return;
+    if (!GameRegistry.isCasinoFamily(game.gameMode)) return;
     if (isTake(action)) {
       final pid = action.performedById;
       final cards = cardsFromTake(action);
@@ -92,7 +93,7 @@ class CasinoCoinBonuses {
   /// Once per completed round: virao coins only, then fold all round
   /// coin totals into [game.round.roundScores] for the status sheet.
   static void accrueViraosIfNeeded(GameState game) {
-    if (game.gameMode != GameMode.casino) return;
+    if (!GameRegistry.isCasinoFamily(game.gameMode)) return;
     if (game.round.roundStatus != RoundStatus.completed) return;
     if (game.viraosCreditedRoundId == game.round.id) return;
     game.viraosCreditedRoundId = game.round.id;

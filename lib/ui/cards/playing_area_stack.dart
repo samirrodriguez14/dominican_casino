@@ -1,10 +1,13 @@
 import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
+import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 /// Table stack laid out at its final fanned width so flight destinations can
 /// land on each card's offset slot (not a center pile that later spreads).
@@ -49,7 +52,9 @@ class PlayingAreaStack extends StatelessWidget {
     final n = stack.cards.length;
     final totalWidth = n <= 1 ? cardWidth : cardWidth + (n - 1) * step;
     final landing = stack.cards.any((c) => cardInFlight?.call(c) ?? false);
-    final takePreview = CasinoCoinBonuses.takePreviewForTableCount(n);
+    final showTakePreview = _casinoFamilyCoinHints(context);
+    final takePreview =
+        showTakePreview ? CasinoCoinBonuses.takePreviewForTableCount(n) : 0;
     final previewIndex = n > 0 ? n - 1 : -1;
 
     return GestureDetector(
@@ -161,5 +166,14 @@ class PlayingAreaStack extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+bool _casinoFamilyCoinHints(BuildContext context) {
+  try {
+    final vm = Provider.of<GeneralGameViewModel>(context, listen: false);
+    return GameRegistry.isCasinoFamily(vm.gameState.gameMode);
+  } on ProviderNotFoundException {
+    return false;
   }
 }

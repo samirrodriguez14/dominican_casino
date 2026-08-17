@@ -45,9 +45,9 @@ class CasinoGameStateHandler {
     gameState.round.roundStatus = RoundStatus.completed;
     gameState.round.nextAcknowledged = false;
     gameState.controllerId = GameActionHandler.getNextControllerId(gameState);
-    gameState.winnerId = _handleWinner(
-      gameState.scores,
-    );
+    gameState.winnerId = gameState.gameMode == GameMode.casinoSpeed
+        ? _handleSpeedWinner(gameState)
+        : _handleWinner(gameState.scores);
 
     if (gameState.winnerId != null && gameState.winnerId != "") {
       gameState.gameStatus = GameStatus.gameOver;
@@ -71,12 +71,49 @@ class CasinoGameStateHandler {
     });
 
     for (final pid in playerIds) {
-      final prev = scores[pid] ;
+      final prev = scores[pid];
       if (prev >= 21) {
         return pid;
       }
     }
 
+    return null;
+  }
+
+  /// Highest round score wins; round coins break ties; still tied → rematch.
+  static String? _handleSpeedWinner(GameState gameState) {
+    final playerIds = gameState.playersInfo.keys.toList();
+    if (playerIds.isEmpty) return null;
+
+    int roundTotal(String pid) {
+      final raw = gameState.round.roundScores[pid];
+      if (raw is Map) return (raw['total'] as int?) ?? 0;
+      return 0;
+    }
+
+    // Virao coins are accrued after handleRoundEnded in the VM; include them
+    // here so Speed tiebreak matches the round coin total players will see.
+    int roundCoins(String pid) {
+      final take = gameState.roundTakeCoins[pid] ?? 0;
+      final special = gameState.roundSpecialCoins[pid] ?? 0;
+      final virao = gameState.extraPointsHolderId == pid
+          ? gameState.extraPoints
+          : 0;
+      return take + special + virao;
+    }
+
+    playerIds.sort((a, b) {
+      final byScore = roundTotal(b).compareTo(roundTotal(a));
+      if (byScore != 0) return byScore;
+      return roundCoins(b).compareTo(roundCoins(a));
+    });
+
+    final leader = playerIds.first;
+    final runnerUp = playerIds.length > 1 ? playerIds[1] : null;
+    if (runnerUp == null) return leader;
+
+    if (roundTotal(leader) != roundTotal(runnerUp)) return leader;
+    if (roundCoins(leader) != roundCoins(runnerUp)) return leader;
     return null;
   }
 
@@ -96,13 +133,16 @@ class CasinoGameStateHandler {
 
     final playerIds = (gameState.playersInfo.keys).toList();
 
+    // Speed never applies classic closing restrictions (17–20).
+    final applyPrevScore = gameState.gameMode != GameMode.casinoSpeed;
+
     for (final pid in playerIds) {
       final playerDeck = gameState.playersDeck[pid] ?? [];
 
       roundScores[pid] = _createScoreMap(
         playerDeck,
         gameState.extraPointsHolderId == pid ? gameState.extraPoints : 0,
-        gameState.scores[pid] ?? 0,
+        applyPrevScore ? (gameState.scores[pid] ?? 0) : 0,
       );
 
       totalScores[pid] =

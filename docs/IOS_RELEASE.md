@@ -8,7 +8,7 @@ Version in `pubspec.yaml`: `0.1.0+1`. Bundle id in Firebase/Xcode: `com.example.
 |------|----------|
 | Bundle id | Own `com.<org>.<app>` in Xcode, Firebase, AASA, entitlements |
 | Push | `aps-environment` = `production` for TestFlight/App Store (`ios/Runner/Runner.entitlements` is `development`) |
-| Marketing icon | 1024×1024, **no alpha**. `flutter_launcher_icons` source is `logo_icon_wooden_transparent.png` — replace |
+| Marketing icon | 1024×1024, **no alpha**. `flutter_launcher_icons` source is `logo_icon_sage.png` |
 | Launch screen | Branded; current storyboard is default Flutter white + LaunchImage |
 | Privacy policy | URL in App Store Connect and in Settings |
 | App Privacy nutrition | Firestore + FCM: Device ID, Product Interaction, Identifiers |

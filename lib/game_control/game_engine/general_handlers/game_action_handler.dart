@@ -1,5 +1,6 @@
 import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
@@ -156,7 +157,7 @@ class GameActionHandler {
 
           case RoundStatus.playing:
             // dealSame is Casino-only; Tres y Dos reshuffles via its state handler.
-            if (gameState.gameMode == GameMode.casino &&
+            if (GameRegistry.isCasinoFamily(gameState.gameMode) &&
                 CasinoGameStateHandler.shouldDealSameRound(gameState)) {
               return gameState.controllerId == pid
                   ? InGameAction.dealSame

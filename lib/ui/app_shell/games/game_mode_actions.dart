@@ -167,6 +167,7 @@ String _modeTitle(GamesViewModel vm, GameMode mode) {
   }
   return switch (mode) {
     GameMode.casino => 'Casino',
+    GameMode.casinoSpeed => 'Casino Speed',
     GameMode.tresydos => 'Tres y Dos',
     GameMode.robaito => 'Robaito',
   };
@@ -193,10 +194,12 @@ class _EnterGamePopup extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final suitColor = switch (mode) {
       GameMode.tresydos => theme.suitRed,
-      GameMode.casino || GameMode.robaito => theme.textPrimary,
+      GameMode.casino ||
+      GameMode.casinoSpeed ||
+      GameMode.robaito => theme.textPrimary,
     };
     final suit = switch (mode) {
-      GameMode.casino => '♠',
+      GameMode.casino || GameMode.casinoSpeed => '♠',
       GameMode.tresydos => '♦',
       GameMode.robaito => '♣',
     };
@@ -478,6 +481,7 @@ Future<InstructionsData> loadInstructions(GameMode mode) async {
     GameMode.tresydos => 'assets/config/tresydos_instructions.json',
     GameMode.robaito => 'assets/config/robaito_instructions.json',
     GameMode.casino => 'assets/config/casino_instructions.json',
+    GameMode.casinoSpeed => 'assets/config/casino_speed_instructions.json',
   };
   final raw = await rootBundle.loadString(path);
   return InstructionsData.fromJson(jsonDecode(raw));

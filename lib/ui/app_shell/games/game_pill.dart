@@ -210,6 +210,7 @@ class _ModeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = switch (mode) {
       GameMode.casino => 'Casino',
+      GameMode.casinoSpeed => 'Casino Speed',
       GameMode.tresydos => 'Tres y Dos',
       GameMode.robaito => 'Robaito',
     };

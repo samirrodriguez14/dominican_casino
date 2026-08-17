@@ -15,12 +15,14 @@ GameStatus gameStatusFrom(String? s) {
   return GameStatus.values.firstWhere((g) => g.name == s);
 }
 
-enum GameMode { tresydos, casino, robaito }
+enum GameMode { tresydos, casino, casinoSpeed, robaito }
 
 GameMode gameModeFrom(String? s) {
   switch (s) {
     case 'casino':
       return GameMode.casino;
+    case 'casinoSpeed':
+      return GameMode.casinoSpeed;
     case 'tresydos':
       return GameMode.tresydos;
     case 'robaito':
@@ -34,6 +36,8 @@ String gameModeTo(GameMode s) {
   switch (s) {
     case GameMode.casino:
       return 'casino';
+    case GameMode.casinoSpeed:
+      return 'casinoSpeed';
     case GameMode.tresydos:
       return 'tresydos';
     case GameMode.robaito:

@@ -1,8 +1,11 @@
 import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/widgets/card_coin_hint.dart';
+import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class PlayingCard extends StatelessWidget {
   final PlayingCardModel playingCardModel;
@@ -35,8 +38,11 @@ class PlayingCard extends StatelessWidget {
     final suit = _normalizeSuit(playingCardModel.suit);
     final suitColor = _suitColor(suit);
     final height = width * heightMultiplyer;
-    final specialCoins = CasinoCoinBonuses.specialBonus(playingCardModel);
-    final coinHint = extraCoinHint > 0 ? extraCoinHint : specialCoins;
+    final hintsEnabled = _casinoCoinHintsEnabled(context);
+    final specialCoins =
+        hintsEnabled ? CasinoCoinBonuses.specialBonus(playingCardModel) : 0;
+    final coinHint =
+        hintsEnabled ? (extraCoinHint > 0 ? extraCoinHint : specialCoins) : 0;
 
     final sel = selectedBorderColor ?? AppStyle.theme.turnHighlight;
 
@@ -142,6 +148,16 @@ class PlayingCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Coin markers are Casino / Casino Speed only (not Tres y Dos).
+bool _casinoCoinHintsEnabled(BuildContext context) {
+  try {
+    final vm = Provider.of<GeneralGameViewModel>(context, listen: false);
+    return GameRegistry.isCasinoFamily(vm.gameState.gameMode);
+  } on ProviderNotFoundException {
+    return false;
   }
 }
 

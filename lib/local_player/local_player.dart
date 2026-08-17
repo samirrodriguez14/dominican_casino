@@ -122,7 +122,7 @@ class LocalPlayer extends ChangeNotifier {
     switch (state.round.roundStatus) {
       case RoundStatus.playing:
         if (state.controllerId == pid &&
-            state.gameMode == GameMode.casino &&
+            GameRegistry.isCasinoFamily(state.gameMode) &&
             CasinoGameStateHandler.shouldDealSameRound(state)) {
           await Future.delayed(const Duration(milliseconds: 700));
           if (_disposed) return false;

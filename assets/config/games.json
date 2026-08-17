@@ -3,8 +3,8 @@
     {
       "id": "casino",
       "title": "Casino",
-      "subtitle": "Classic Dominican Casino Game",
-      "description": "Capture cards from the table that match the value of the card you play. Special cards earn extra points. First player to reach the target score wins the game.",
+      "subtitle": "Classic Dominican Casino",
+      "description": "Capture cards from the table that match the value of the card you play. Special cards earn extra points. First player to 21 wins. About 10–12 minutes · 2 players.",
       "players": {
         "min": 2,
         "max": 2,
@@ -18,14 +18,35 @@
         "Match cards with equal value",
         "Capture cards from the table",
         "Special cards give bonus points",
-        "Reach the target score to win"
+        "First to 21 points wins"
+      ]
+    },
+    {
+      "id": "casinoSpeed",
+      "title": "Casino Speed",
+      "subtitle": "One-round Casino",
+      "description": "Same Casino capture rules, decided in a single round. Highest score wins; coin awards break ties; still tied means another round. About 2–5 minutes · 2 players.",
+      "players": {
+        "min": 2,
+        "max": 2,
+        "label": "2 Players"
+      },
+      "icon": "plus_app",
+      "aiSupported": true,
+      "enabled": true,
+      "themeColor": "#D97706",
+      "rules": [
+        "Same capture rules as Casino",
+        "One round decides the match",
+        "Most points wins",
+        "Coins break ties; else replay"
       ]
     },
     {
       "id": "tresydos",
       "title": "Tres y Dos",
       "subtitle": "Form a 3 and a 2 of matching ranks",
-      "description": "Form a set of 3 and a set of 2 of the same card ranks before the other players do. First player to claim the sets wins!",
+      "description": "Form a set of 3 and a set of 2 of the same card ranks before the other players do. Win 3 rounds to take the match. About 5–7 minutes · 2–4 players.",
       "players": {
         "min": 2,
         "max": 4,
@@ -39,7 +60,7 @@
         "Collect matching card ranks",
         "Create one set of 3",
         "Create one set of 2",
-        "Claim your hand before others"
+        "Win 3 rounds to win the match"
       ]
     },
     {
