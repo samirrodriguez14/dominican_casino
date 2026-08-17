@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
+import 'package:dominican_casino/models/game_reaction.dart';
 import 'package:dominican_casino/services/game_service.dart';
 import '../models/game_state.dart';
 
@@ -78,16 +79,22 @@ class FirestoreService extends GameService {
     return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
   }
 
+  Map<String, dynamic> _gamePayload(GameState gState) {
+    final data = gState.toJson();
+    data['updatedAt'] = FieldValue.serverTimestamp();
+    return data;
+  }
+
   @override
   Future<String> newCreateGame(GameState gState) async {
     final doc = _games.doc(gState.id);
-    await doc.set(gState.toJson());
+    await doc.set(_gamePayload(gState));
     return gState.id;
   }
 
   @override
   Future<GameState> updateGame(GameState gState) async {
-    await _games.doc(gState.id).set(gState.toJson());
+    await _games.doc(gState.id).set(_gamePayload(gState));
     final snap = await _games.doc(gState.id).get();
     return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
   }
@@ -95,5 +102,29 @@ class FirestoreService extends GameService {
   @override
   Future<void> deleteGame(String gameId) async {
     await _games.doc(gameId).delete();
+  }
+
+  /// Side-channel so reactions never ride on [updateGame]'s full document set.
+  DocumentReference _reactionDoc(String gid) {
+    return _games.doc(gid).collection('signals').doc('reaction');
+  }
+
+  Future<void> sendReaction({
+    required String gid,
+    required GameReaction reaction,
+  }) {
+    return _reactionDoc(gid).set({
+      ...reaction.toMap(),
+      'at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<GameReaction?> streamReaction(String gid) {
+    return _reactionDoc(gid).snapshots().map((snap) {
+      if (!snap.exists) return null;
+      final data = snap.data();
+      if (data is! Map) return null;
+      return GameReaction.fromMap(Map<String, dynamic>.from(data));
+    });
   }
 }

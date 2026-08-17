@@ -145,8 +145,6 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             child: KeyedSubtree(
-                              // Tutorial targets need a stable GlobalKey, but each
-                              // GlobalKey may appear on at most one widget.
                               key: _widgetKeyForAction(vm, actions, index),
                               child: _ActionChipButton(
                                 label: _actionLabel(actions[index]),
@@ -330,7 +328,7 @@ class _ActionChipButton extends StatelessWidget {
 
     return CupertinoButton(
       padding: EdgeInsets.zero,
-      minSize: 0,
+      minimumSize: Size.zero,
       onPressed: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),

@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:math';
 
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/models/game_reaction.dart';
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
@@ -18,6 +21,8 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:flutter/cupertino.dart' hide Action;
+import 'package:flutter/services.dart';
+import 'package:uuid/uuid.dart';
 
 typedef ActionGuard =
     bool Function(
@@ -43,6 +48,18 @@ class GeneralGameViewModel extends ChangeNotifier {
   bool _pendingRepoSync = false;
   bool _syncScheduled = false;
   bool _disposed = false;
+
+  GameReaction? outgoingReaction;
+  GameReaction? incomingReaction;
+  StreamSubscription<GameReaction?>? _reactionSub;
+  Timer? _outgoingHideTimer;
+  Timer? _incomingHideTimer;
+  String? _lastSeenReactionId;
+  static const _reactionVisibleFor = Duration(milliseconds: 2200);
+  static const _botReactCooldown = Duration(seconds: 5);
+  final Random _reactionRandom = Random();
+  Timer? _botReactTimer;
+  DateTime? _lastBotReactAt;
 
   /// Round id whose gather-wash already played — skip a second overlay on repo echo.
   int? _shuffleOverlayRoundId;
@@ -127,6 +144,19 @@ class GeneralGameViewModel extends ChangeNotifier {
             newEvents,
             settlementEvents: newSettlement,
           );
+        }
+
+        final botId = gameState.localBotPid ?? opp;
+        final botPlayed = botId != null &&
+            newEvents.any(
+              (e) =>
+                  e.performedBy == botId && e.from.type == ZoneType.playerHand,
+            );
+        if (botPlayed) {
+          final botTook = newEvents.any(
+            (e) => e.performedBy == botId && e.to.type == ZoneType.playerDeck,
+          );
+          _maybeBotReact(took: botTook, botPlayed: true);
         }
       } while (_pendingRepoSync);
     } catch (e) {
@@ -520,6 +550,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     try {
       await _commitPlay(action, cardSelection);
       if (_disposed) return;
+      _maybeBotReact(took: _isTakeAction(action), botPlayed: false);
       try {
         await _playTutorialOpponentIfNeeded();
       } catch (e) {
@@ -642,6 +673,10 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (_disposed || gameState.currentTurnPlayerId != botId) return;
 
     await _commitPlay(best.playAction, best.cardSelection);
+    _maybeBotReact(
+      took: _isTakeAction(best.playAction),
+      botPlayed: true,
+    );
   }
 
   InGameAction get inGameAction => gameEngine.getInGameAction(gameState, me);
@@ -731,7 +766,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   Future<bool> joinGame() async {
     try {
-      gameState.playersInfo[player.id] = {'id': player.id, 'name': player.name};
+      gameState.playersInfo[player.id] = player.toGameSeat();
       if (gameEngine.shouldMarkReadyToStart(gameState) &&
           gameState.gameStatus == GameStatus.waitingForPlayers) {
         gameState.gameStatus = GameStatus.readyToStart;
@@ -934,9 +969,122 @@ class GeneralGameViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void listenToReactions() {
+    _reactionSub?.cancel();
+    _reactionSub = gameRepo.fs.streamReaction(gid).listen(
+      _onRemoteReaction,
+      onError: (e, st) {
+        developer.log('listenToReactions Error: $e');
+      },
+    );
+  }
+
+  void _onRemoteReaction(GameReaction? reaction) {
+    if (_disposed || reaction == null) return;
+    if (reaction.id.isEmpty || reaction.emoji.isEmpty) return;
+    if (reaction.id == _lastSeenReactionId) return;
+    if (DateTime.now().difference(reaction.sentAt).inSeconds > 8) {
+      _lastSeenReactionId = reaction.id;
+      return;
+    }
+    _lastSeenReactionId = reaction.id;
+    if (reaction.fromPid == me) return;
+    _showIncomingReaction(reaction);
+  }
+
+  void _showIncomingReaction(GameReaction reaction) {
+    incomingReaction = reaction;
+    _lastSeenReactionId = reaction.id;
+    _incomingHideTimer?.cancel();
+    _incomingHideTimer = Timer(_reactionVisibleFor, () {
+      if (_disposed) return;
+      incomingReaction = null;
+      notifyListeners();
+    });
+    notifyListeners();
+    HapticFeedback.lightImpact();
+  }
+
+  bool _isTakeAction(PlayAction action) {
+    return action is TakeCardAction ||
+        action is TakeStackAction ||
+        action is AddAndTakeAction ||
+        action is PairAndTakeCardsAction;
+  }
+
+  /// Occasional local-bot emoji after a play/take. Never writes game state.
+  void _maybeBotReact({required bool took, required bool botPlayed}) {
+    if (_disposed) return;
+    if (!gameState.isLocalBot && !tutorialMode) return;
+    if (gameState.round.roundStatus != RoundStatus.playing) return;
+    if (gameState.gameStatus == GameStatus.gameOver) return;
+    final botId = gameState.localBotPid ?? opp;
+    if (botId == null || botId.isEmpty) return;
+
+    final now = DateTime.now();
+    if (_lastBotReactAt != null &&
+        now.difference(_lastBotReactAt!) < _botReactCooldown) {
+      return;
+    }
+
+    final chance = took
+        ? 0.48
+        : botPlayed
+        ? 0.36
+        : 0.28;
+    if (_reactionRandom.nextDouble() > chance) return;
+
+    final pool = took
+        ? (botPlayed ? const ['🔥', '👏', '👍'] : const ['😮', '😂', '👏', '🔥'])
+        : GameReaction.options;
+    final delayMs = 380 + _reactionRandom.nextInt(720);
+    _botReactTimer?.cancel();
+    _botReactTimer = Timer(Duration(milliseconds: delayMs), () {
+      if (_disposed) return;
+      if (gameState.round.roundStatus != RoundStatus.playing) return;
+      _lastBotReactAt = DateTime.now();
+      _showIncomingReaction(
+        GameReaction(
+          id: const Uuid().v4().substring(0, 8),
+          emoji: pool[_reactionRandom.nextInt(pool.length)],
+          fromPid: botId,
+          sentAt: DateTime.now(),
+        ),
+      );
+    });
+  }
+
+  Future<void> sendReaction(String emoji) async {
+    final reaction = GameReaction(
+      id: const Uuid().v4().substring(0, 8),
+      emoji: emoji,
+      fromPid: me,
+      sentAt: DateTime.now(),
+    );
+    outgoingReaction = reaction;
+    _lastSeenReactionId = reaction.id;
+    _outgoingHideTimer?.cancel();
+    _outgoingHideTimer = Timer(_reactionVisibleFor, () {
+      if (_disposed) return;
+      outgoingReaction = null;
+      notifyListeners();
+    });
+    notifyListeners();
+    if (tutorialMode) return;
+    try {
+      await gameRepo.fs.sendReaction(gid: gid, reaction: reaction);
+    } catch (e) {
+      developer.log('sendReaction Error $e');
+    }
+  }
+
   @override
   void dispose() {
     _disposed = true;
+    _reactionSub?.cancel();
+    _outgoingHideTimer?.cancel();
+    _incomingHideTimer?.cancel();
+    _botReactTimer?.cancel();
     gameRepo.removeListener(_onGameRepoChanged);
     motion.removeListener(notifyListeners);
     motion.dispose();

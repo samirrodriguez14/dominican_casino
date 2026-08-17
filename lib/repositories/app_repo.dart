@@ -427,13 +427,20 @@ class AppRepo extends ChangeNotifier {
   Future<String> createNewGame(GameMode mode, String pid, bool local) async {
     String gid = _uuid.v4().substring(0, 8);
     GameState gameState = GameState.create(gid, pid, mode);
+    final host = player;
+    if (host != null) {
+      gameState.playersInfo[pid] = host.toGameSeat();
+    } else {
+      gameState.playersInfo[pid] = {'id': pid};
+    }
     if (local) {
       final botPid = _uuid.v4().substring(0, 8);
       gameState.isLocalBot = true;
       gameState.botPlayerId = botPid;
       gameState.playersInfo[botPid] = {
-        "id": botPid,
-        "name": GameState.localBotName,
+        'id': botPid,
+        'name': GameState.localBotName,
+        'avatarId': GameState.localBotAvatarId,
       };
     }
     gid = await fs.newCreateGame(gameState);

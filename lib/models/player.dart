@@ -28,6 +28,13 @@ class Player {
     'completedTutorial': completedTutorial,
   };
 
+  /// Seat snapshot stored on a game document (no auth/token fields).
+  Map<String, dynamic> toGameSeat() => {
+    'id': id,
+    'name': name,
+    'avatarId': avatarId,
+  };
+
   Player copyWith({
     String? id,
     bool? completedTutorial,

@@ -71,6 +71,9 @@ class GameState {
   /// Display name of the on-device AI seat ("Puli").
   static const String localBotName = 'Pulilo';
 
+  /// Avatar used for the on-device AI seat.
+  static const String localBotAvatarId = 'palm';
+
   /// True when the opponent seat is the on-device AI, not a remote player.
   bool isLocalBot;
   String? botPlayerId;

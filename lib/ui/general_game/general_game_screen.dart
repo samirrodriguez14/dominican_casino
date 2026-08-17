@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
@@ -11,16 +13,17 @@ import 'package:dominican_casino/ui/app_shell/games/account_setup_popup.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
-import 'package:dominican_casino/ui/general_game/game_info_sheet.dart';
 import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
+import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -89,6 +92,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         await initvm.joinGame();
         if (!initvm.tutorialMode) {
           initvm.gameRepo.listenToGame(initvm.gid);
+          initvm.listenToReactions();
         }
 
         if (initvm.tutorialMode &&
@@ -223,7 +227,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       showAppPopup(
         context: context,
         title: isGameOver ? 'Game Over' : 'Round Complete',
-        content: GameStatusSheet(vm: vm),
+        subtitle: gs.id,
+        content: GameStatusSheet(vm: vm, showActions: false),
         primaryText: 'Continue',
         barrierDismissible: false,
         onPrimary: () {
@@ -274,6 +279,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
           child: AnimatedBuilder(
             animation: tutorialVm,
             builder: (context, _) {
+              final bottomInset = MediaQuery.paddingOf(context).bottom;
               return Stack(
                 children: [
                   Padding(
@@ -282,8 +288,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                   ),
                   Column(
                     children: [
-                      const SizedBox(height: 40),
-
+                      const SizedBox(height: 80),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -292,10 +297,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                       ),
                       const SizedBox(height: 10),
                       GenPlayerArea(),
-                      const SizedBox(height: 10),
-
-                      _buildGameTopBar(context, vm),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 16 + bottomInset),
                     ],
                   ),
                   AnimatedAlign(
@@ -304,15 +306,51 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                     alignment: vm.showInGameControl
                         ? Alignment.center
                         : Alignment.centerRight,
-
                     child: Padding(
                       padding: EdgeInsetsGeometry.only(right: 18),
                       child: GenGameControl(),
                     ),
                   ),
+                  Positioned(
+                    right: 16,
+                    bottom: 16 + bottomInset,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        PopupCircleButton(
+                          emphasized: true,
+                          onPressed: () {
+                            HapticFeedback.mediumImpact();
+                            vm.sortHandCards();
+                          },
+                          child: Transform.rotate(
+                            angle: math.pi / 2,
+                            child: Icon(
+                              CupertinoIcons.arrow_up_arrow_down,
+                              size: 22,
+                              color: AppStyle.theme.textPrimary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const _PlayerReactionButton(),
+                        const SizedBox(height: 10),
+                        _PlayerScoreAvatar(
+                          key: vm.scoreKey,
+                          avatarId: vm.player.avatarId,
+                          score: vm.gameState.scores[vm.me] ?? 0,
+                          onPressed: () {
+                            HapticFeedback.mediumImpact();
+                            showGameStatusPopup(context, vm: vm);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                   AnimatedBuilder(
                     animation: tutorialVm,
-                    builder: (_, __) {
+                    builder: (context, _) {
                       if (!tutorialVm.active ||
                           vm.isAnimating ||
                           tutorialVm.step.awaitRoundStatus) {
@@ -351,87 +389,134 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     }
     return null;
   }
+}
 
-  Widget _buildGameTopBar(BuildContext context, GeneralGameViewModel vm) {
-    return Row(
-      mainAxisAlignment: .center,
-      spacing: 10,
-      children: [
-        GestureDetector(
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            vm.sortHandCards();
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: AppStyle.theme.raisedSurfaceBox(),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Center: Joined As
-                Icon(
-                  CupertinoIcons.arrow_up_arrow_down,
-                  color: AppStyle.theme.cardBorder,
-                  size: 18,
-                ),
-              ],
+class _PlayerReactionButton extends StatefulWidget {
+  const _PlayerReactionButton();
+
+  @override
+  State<_PlayerReactionButton> createState() => _PlayerReactionButtonState();
+}
+
+class _PlayerReactionButtonState extends State<_PlayerReactionButton> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<GeneralGameViewModel>();
+    final outgoing = vm.outgoingReaction;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      alignment: Alignment.centerRight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!_open) ...[
+            ReactionBubblePopup(
+              emoji: outgoing?.emoji,
+              reactionId: outgoing?.id,
             ),
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            showAppPopup(
-              context: context,
-              title: "Game Info",
-              content: GameInfoSheet(vm: vm),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: AppStyle.theme.raisedSurfaceBox(),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Center: Joined As
-                Icon(
-                  CupertinoIcons.info,
-                  color: AppStyle.theme.cardBorder,
-                  size: 18,
-                ),
-              ],
+            if (outgoing != null) const SizedBox(width: 8),
+          ],
+          if (_open) ...[
+            GameReactionPicker(
+              onSelected: (emoji) {
+                HapticFeedback.lightImpact();
+                setState(() => _open = false);
+                vm.sendReaction(emoji);
+              },
             ),
+            const SizedBox(width: 8),
+          ],
+          PopupCircleButton(
+            icon: CupertinoIcons.smiley,
+            emphasized: true,
+            selected: _open,
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              setState(() => _open = !_open);
+            },
           ),
-        ),
-        GestureDetector(
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            showAppPopup(
-              context: context,
-              title: "Game Status",
-              content: GameStatusSheet(vm: vm),
-            );
-          },
-          child: Container(
-            key: vm.scoreKey,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: AppStyle.theme.raisedSurfaceBox(),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Icon(
-                  Icons.keyboard_control_key_sharp,
-                  color: AppStyle.theme.cardBorder,
-                  size: 18,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
+
+class _PlayerScoreAvatar extends StatelessWidget {
+  const _PlayerScoreAvatar({
+    super.key,
+    required this.avatarId,
+    required this.score,
+    required this.onPressed,
+  });
+
+  final String? avatarId;
+  final dynamic score;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: onPressed,
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: theme.textPrimary.withValues(alpha: .18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: CupertinoColors.black.withValues(alpha: .28),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: PlayerAvatarView(
+                avatarId: avatarId,
+                size: 64,
+                showBorder: false,
+              ),
+            ),
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 22),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.surfaceAlt,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: theme.background, width: 2),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$score',
+                  style: theme.caption.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.textPrimary,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

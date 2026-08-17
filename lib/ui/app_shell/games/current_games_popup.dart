@@ -2,7 +2,9 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
+import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -18,8 +20,15 @@ Future<void> showCurrentGamesPopup(BuildContext context) {
   );
 }
 
-class CurrentGamesPopup extends StatelessWidget {
+class CurrentGamesPopup extends StatefulWidget {
   const CurrentGamesPopup({super.key});
+
+  @override
+  State<CurrentGamesPopup> createState() => _CurrentGamesPopupState();
+}
+
+class _CurrentGamesPopupState extends State<CurrentGamesPopup> {
+  bool _showHistory = false;
 
   @override
   Widget build(BuildContext context) {
@@ -51,21 +60,49 @@ class CurrentGamesPopup extends StatelessWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-                  child: Text(
-                    l10n.currentGames,
-                    textAlign: TextAlign.center,
-                    style: theme.title.copyWith(fontSize: 18),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: Text(
+                      _showHistory ? l10n.gameHistory : l10n.currentGames,
+                      key: ValueKey(_showHistory),
+                      textAlign: TextAlign.center,
+                      style: theme.title.copyWith(fontSize: 18),
+                    ),
                   ),
                 ),
-                Expanded(child: _CurrentGamesList(vm: vm)),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    child: _CurrentGamesList(
+                      key: ValueKey(_showHistory),
+                      vm: vm,
+                      history: _showHistory,
+                    ),
+                  ),
+                ),
               ],
             ),
             Positioned(
               right: 16,
               bottom: 16,
-              child: PopupCircleButton(
-                icon: CupertinoIcons.xmark,
-                onPressed: () => Navigator.of(context).pop(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PopupCircleButton(
+                    icon: _showHistory
+                        ? CupertinoIcons.clock_fill
+                        : CupertinoIcons.clock,
+                    selected: _showHistory,
+                    onPressed: () {
+                      setState(() => _showHistory = !_showHistory);
+                    },
+                  ),
+                  const SizedBox(width: 10),
+                  PopupCircleButton(
+                    icon: CupertinoIcons.xmark,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
               ),
             ),
           ],
@@ -76,14 +113,19 @@ class CurrentGamesPopup extends StatelessWidget {
 }
 
 class _CurrentGamesList extends StatelessWidget {
-  const _CurrentGamesList({required this.vm});
+  const _CurrentGamesList({
+    super.key,
+    required this.vm,
+    required this.history,
+  });
 
   final GamesViewModel vm;
+  final bool history;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final list = vm.myCurrentGames;
+    final list = history ? vm.myPreviousGames : vm.myCurrentGames;
 
     if (vm.loading && list.isEmpty) {
       return const Center(child: CupertinoActivityIndicator());
@@ -104,7 +146,10 @@ class _CurrentGamesList extends StatelessWidget {
 
     if (list.isEmpty) {
       return Center(
-        child: Text(l10n.noCurrentGames, style: AppStyle.theme.mutedText),
+        child: Text(
+          history ? l10n.noPreviousGames : l10n.noCurrentGames,
+          style: AppStyle.theme.mutedText,
+        ),
       );
     }
 
@@ -112,32 +157,45 @@ class _CurrentGamesList extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
       itemCount: list.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, i) => _CurrentGamePill(vm: vm, game: list[i]),
+      itemBuilder: (context, i) =>
+          _CurrentGamePill(vm: vm, game: list[i], history: history),
     );
   }
 }
 
 class _CurrentGamePill extends StatelessWidget {
-  const _CurrentGamePill({required this.vm, required this.game});
+  const _CurrentGamePill({
+    required this.vm,
+    required this.game,
+    required this.history,
+  });
 
   final GamesViewModel vm;
   final GamePillData game;
+  final bool history;
 
   @override
   Widget build(BuildContext context) {
+    final waiting = game.gameStatus == GameStatus.waitingForPlayers;
+
+    void enter() {
+      Navigator.of(context).pop();
+      context.go('/game/${game.id}/${game.gameMode.name}/false');
+    }
+
     return GamePill(
       game: game,
       myPid: vm.userId ?? '',
-      onEnter: () {
-        Navigator.of(context).pop();
-        context.go('/game/${game.id}/${game.gameMode.name}/false');
-      },
+      myAvatarId: vm.myAvatarId,
+      onOpen: history ? null : enter,
+      onPlay: history ? null : enter,
+      onInfo: history ? () => _showGameStatus(context, vm, game) : null,
       onDelete: () async {
         final ok = await vm.confirmDelete(context, game.id);
         if (!ok) return;
         await vm.deleteGame(game.id);
       },
-      onShare: game.gameStatus == GameStatus.waitingForPlayers
+      onShare: !history && waiting
           ? () async {
               final link =
                   'https://dominican-casino.web.app/join/${game.id}/${game.gameMode}';
@@ -148,7 +206,63 @@ class _CurrentGamePill extends StatelessWidget {
                 ''';
               await SharePlus.instance.share(ShareParams(text: message));
             }
-          : () {},
+          : null,
+    );
+  }
+}
+
+Future<void> _showGameStatus(
+  BuildContext context,
+  GamesViewModel vm,
+  GamePillData game,
+) {
+  final future = vm.loadGameState(game.id);
+  return showAppPopup<void>(
+    context: context,
+    title: 'Game Status',
+    subtitle: game.id,
+    content: _GameStatusLoader(
+      future: future,
+      playerId: vm.userId ?? '',
+    ),
+  );
+}
+
+class _GameStatusLoader extends StatelessWidget {
+  const _GameStatusLoader({required this.future, required this.playerId});
+
+  final Future<GameState> future;
+  final String playerId;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<GameState>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return SizedBox(
+            height: 120,
+            child: Center(
+              child: Text(
+                'Could not load this game.',
+                style: TextStyle(color: AppStyle.theme.danger),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
+        }
+        if (!snap.hasData) {
+          return const SizedBox(
+            height: 180,
+            child: Center(child: CupertinoActivityIndicator()),
+          );
+        }
+        return GameStatusSheet(
+          gameState: snap.data,
+          playerId: playerId,
+          showActions: false,
+        );
+      },
     );
   }
 }

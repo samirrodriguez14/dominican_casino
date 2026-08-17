@@ -1,209 +1,197 @@
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/layouts/app_popup.dart';
+import 'package:dominican_casino/ui/general_game/game_info_sheet.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+Future<void> showGameStatusPopup(
+  BuildContext context, {
+  GeneralGameViewModel? vm,
+  GameState? gameState,
+  String? playerId,
+  bool showActions = true,
+}) {
+  return showAppPopup<void>(
+    context: context,
+    title: 'Game Status',
+    subtitle: gameState?.id ?? vm?.gameState.id,
+    content: GameStatusSheet(
+      vm: vm,
+      gameState: gameState,
+      playerId: playerId,
+      showActions: showActions,
+    ),
+  );
+}
+
 class GameStatusSheet extends StatefulWidget {
-  const GameStatusSheet({super.key, required this.vm, this.scrollController});
-  final GeneralGameViewModel vm;
+  const GameStatusSheet({
+    super.key,
+    this.vm,
+    this.gameState,
+    this.playerId,
+    this.scrollController,
+    this.showActions,
+  }) : assert(vm != null || (gameState != null && playerId != null));
+
+  final GeneralGameViewModel? vm;
+  final GameState? gameState;
+  final String? playerId;
   final ScrollController? scrollController;
+  final bool? showActions;
 
   @override
   State<GameStatusSheet> createState() => _GameStatusSheetState();
 }
 
 class _GameStatusSheetState extends State<GameStatusSheet> {
+  GameState get gameState => widget.vm?.gameState ?? widget.gameState!;
+  String get playerId => widget.vm?.player.id ?? widget.playerId!;
+  bool get showActions => widget.showActions ?? widget.vm != null;
+
   @override
   Widget build(BuildContext context) {
     final vm = widget.vm;
-    final gameState = vm.gameState;
-
+    final theme = AppStyle.theme;
     final playerIds = gameState.playersInfo.keys.toList();
     final totalScores = gameState.scores;
     final roundScores = gameState.round.roundScores;
 
-    return Container(
-      height: 250,
-      decoration: BoxDecoration(
-        color: AppStyle.theme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: const [
-          BoxShadow(
-            blurRadius: 18,
-            offset: Offset(0, -4),
-            color: Color(0x22000000),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-
-          Expanded(
-            child: ListView(
-              controller: widget.scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 400, maxHeight: 360),
+      child: SingleChildScrollView(
+        controller: widget.scrollController,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                Text(
-                  "Room ID: ${vm.gameState.id}",
-                  textAlign: TextAlign.center,
-                  style: AppStyle.theme.mutedText,
-                ),
-
-                const SizedBox(height: 16),
-
-                _SectionCard(
-                  title: "Scores",
-                  child: Column(
-                    children: playerIds.map((pid) {
-                      final score = totalScores[pid] ?? 0;
-                      return _ScoreRow(
-                        label:
-                            "${_playerLabel(vm, pid)} ${vm.gameState.controllerId == pid ? "(dealer)" : ""}",
-                        value: "$score",
-                      );
-                    }).toList(),
+                for (var i = 0; i < playerIds.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  Expanded(
+                    child: _ScoreCard(
+                      score: totalScores[playerIds[i]] ?? 0,
+                      name: _playerLabel(playerIds[i]),
+                      avatarId: _playerAvatarId(playerIds[i]),
+                      isYou: playerIds[i] == playerId,
+                      isDealer: gameState.controllerId == playerIds[i],
+                    ),
                   ),
-                ),
-
-                const SizedBox(height: 12),
-
-                _SectionCard(
-                  title: "Last Round",
-                  child: roundScores.isEmpty
-                      ? Text(
-                          "No round scores yet",
-                          style: AppStyle.theme.mutedText,
-                        )
-                      : Column(
-                          children: playerIds.map((pid) {
-                            final scoreMap = Map<String, dynamic>.from(
-                              roundScores[pid] ?? {},
-                            );
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _playerLabel(vm, pid),
-                                    style: AppStyle.theme.body.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      if ((scoreMap['A'] ?? 0) != 0)
-                                        _MiniScoreChip(
-                                          label: "A",
-                                          value: "${scoreMap['A'] ?? 0}",
-                                        ),
-                                      if ((scoreMap['2♠'] ?? 0) != 0)
-                                        _MiniScoreChip(
-                                          label: "2♠",
-                                          value: "${scoreMap['2♠'] ?? 0}",
-                                        ),
-                                      if ((scoreMap['10♦'] ?? 0) != 0)
-                                        _MiniScoreChip(
-                                          label: "10♦",
-                                          value: "${scoreMap['10♦'] ?? 0}",
-                                        ),
-                                      if ((scoreMap['pi'] ?? 0) != 0)
-                                        _MiniScoreChip(
-                                          label: "Pi",
-                                          value: "${scoreMap['pi'] ?? 0}",
-                                        ),
-                                      if ((scoreMap['carta'] ?? 0) != 0)
-                                        _MiniScoreChip(
-                                          label: "Carta",
-                                          value: "${scoreMap['carta'] ?? 0}",
-                                        ),
-                                      if ((scoreMap['virao'] ?? 0) != 0)
-                                        _MiniScoreChip(
-                                          label: "Virao",
-                                          value: "${scoreMap['virao'] ?? 0}",
-                                        ),
-                                      _MiniScoreChip(
-                                        label: "Total",
-                                        value: "${scoreMap['total'] ?? 0}",
-                                        highlight: true,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                ),
-
-                const SizedBox(height: 12),
-
-                _SectionCard(
-                  title: "Actions",
-                  child: Column(
-                    children: [
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () async {
-                          context.go('/landing');
-                        },
-                        child: const _ActionRow(
-                          title: "Back to Lobby",
-                          subtitle: "Return without leaving the match",
-                          icon: CupertinoIcons.house,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () async {
-                          bool? shouldLeave = false;
-                          if (vm.opp == null) {
-                            shouldLeave = await _confirmExitEmptyGame(context);
-                          } else {
-                            shouldLeave = await _confirmResignGame(context);
-                          }
-                          if (shouldLeave != true) return;
-                          await vm.resign();
-                          if (context.mounted) {
-                            context.go('/landing');
-                          }
-                        },
-                        child: const _ActionRow(
-                          title: "Leave/Resign",
-                          subtitle: "Exit this match",
-                          icon: CupertinoIcons.escape,
-                          danger: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 12),
+                ],
               ],
             ),
-          ),
-          const SizedBox(height: 2),
-        ],
+            if (roundScores.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Text(
+                'Last round',
+                style: theme.caption.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...playerIds.map((pid) {
+                final scoreMap = Map<String, dynamic>.from(
+                  roundScores[pid] ?? {},
+                );
+                if (scoreMap.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _LastRoundRow(
+                    name: _playerLabel(pid),
+                    avatarId: _playerAvatarId(pid),
+                    scoreMap: scoreMap,
+                  ),
+                );
+              }),
+            ] else ...[
+              const SizedBox(height: 10),
+              Text(
+                'No round scores yet',
+                textAlign: TextAlign.center,
+                style: theme.mutedText,
+              ),
+            ],
+            if (vm != null || showActions) ...[
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  if (vm != null) ...[
+                    Expanded(
+                      child: _CompactActionButton(
+                        label: 'Rules',
+                        icon: CupertinoIcons.info,
+                        onPressed: () {
+                          showAppPopup(
+                            context: context,
+                            title: 'How to play',
+                            content: GameInfoSheet(vm: vm),
+                          );
+                        },
+                      ),
+                    ),
+                    if (showActions) const SizedBox(width: 10),
+                  ],
+                  if (showActions && vm != null) ...[
+                    Expanded(
+                      child: _CompactActionButton(
+                        label: 'Lobby',
+                        icon: CupertinoIcons.house_fill,
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          context.go('/landing');
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CompactActionButton(
+                        label: 'Resign',
+                        icon: CupertinoIcons.arrow_right_square_fill,
+                        danger: true,
+                        onPressed: () => _handleResign(context, vm),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  String _playerLabel(GeneralGameViewModel vm, String pid) {
-    if (pid == vm.player.id) return "You";
+  String? _playerAvatarId(String pid) {
+    final raw = gameState.playersInfo[pid];
+    if (raw is! Map) return null;
+    return Map<String, dynamic>.from(raw)['avatarId'] as String?;
+  }
 
+  String _playerLabel(String pid) {
+    if (pid == playerId) return 'You';
     final info = Map<String, dynamic>.from(
-      vm.gameState.playersInfo[pid] ?? <String, dynamic>{},
+      gameState.playersInfo[pid] ?? <String, dynamic>{},
     );
-
     return (info['name'] as String?) ?? pid;
+  }
+
+  Future<void> _handleResign(
+    BuildContext context,
+    GeneralGameViewModel vm,
+  ) async {
+    final shouldLeave = vm.opp == null
+        ? await _confirmExitEmptyGame(context)
+        : await _confirmResignGame(context);
+    if (shouldLeave != true || !context.mounted) return;
+    await vm.resign();
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
+    context.go('/landing');
   }
 
   Future<bool?> _confirmResignGame(BuildContext context) {
@@ -211,20 +199,20 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
       context: context,
       builder: (context) {
         return CupertinoAlertDialog(
-          title: const Text("Are you sure?"),
+          title: const Text('Resign?'),
           content: const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text("Opponent will automatically win this match."),
+            child: Text('Your opponent wins this match.'),
           ),
           actions: [
             CupertinoDialogAction(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text("Cancel", style: AppStyle.theme.mutedText),
+              child: Text('Cancel', style: AppStyle.theme.mutedText),
             ),
             CupertinoDialogAction(
               isDestructiveAction: true,
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text("Resign"),
+              child: const Text('Resign'),
             ),
           ],
         );
@@ -237,20 +225,20 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
       context: context,
       builder: (context) {
         return CupertinoAlertDialog(
-          title: const Text("Exit Game?"),
+          title: const Text('Exit game?'),
           content: const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text("This will delete the current Game."),
+            child: Text('This will delete the current game.'),
           ),
           actions: [
             CupertinoDialogAction(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text("Cancel", style: AppStyle.theme.mutedText),
+              child: Text('Cancel', style: AppStyle.theme.mutedText),
             ),
             CupertinoDialogAction(
               isDestructiveAction: true,
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text("Resign"),
+              child: const Text('Exit'),
             ),
           ],
         );
@@ -259,52 +247,133 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child});
+class _ScoreCard extends StatelessWidget {
+  const _ScoreCard({
+    required this.score,
+    required this.name,
+    required this.avatarId,
+    required this.isYou,
+    required this.isDealer,
+  });
 
-  final String title;
-  final Widget child;
+  final dynamic score;
+  final String name;
+  final String? avatarId;
+  final bool isYou;
+  final bool isDealer;
 
   @override
   Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final accent = isYou ? theme.turnHighlight : theme.textPrimary;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
       decoration: BoxDecoration(
-        color: AppStyle.theme.background,
+        color: theme.background,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isYou
+              ? theme.turnHighlight.withValues(alpha: .45)
+              : theme.border.withValues(alpha: .5),
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: AppStyle.theme.body.copyWith(fontWeight: FontWeight.w700),
+          PlayerAvatarView(avatarId: avatarId, size: 40, showBorder: false),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.body.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (isDealer) ...[
+                const SizedBox(width: 6),
+                Text(
+                  'Dealer',
+                  style: theme.caption.copyWith(color: theme.muted),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 10),
-          child,
+          const SizedBox(height: 8),
+          Text(
+            '$score',
+            style: theme.title.copyWith(
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+              color: accent,
+              height: 1,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _ScoreRow extends StatelessWidget {
-  const _ScoreRow({required this.label, required this.value});
+class _LastRoundRow extends StatelessWidget {
+  const _LastRoundRow({
+    required this.name,
+    required this.avatarId,
+    required this.scoreMap,
+  });
 
-  final String label;
-  final String value;
+  final String name;
+  final String? avatarId;
+  final Map<String, dynamic> scoreMap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
+    final theme = AppStyle.theme;
+    final chips = <Widget>[
+      if ((scoreMap['A'] ?? 0) != 0)
+        _MiniScoreChip(label: 'A', value: '${scoreMap['A']}'),
+      if ((scoreMap['2♠'] ?? 0) != 0)
+        _MiniScoreChip(label: '2♠', value: '${scoreMap['2♠']}'),
+      if ((scoreMap['10♦'] ?? 0) != 0)
+        _MiniScoreChip(label: '10♦', value: '${scoreMap['10♦']}'),
+      if ((scoreMap['pi'] ?? 0) != 0)
+        _MiniScoreChip(label: 'Pi', value: '${scoreMap['pi']}'),
+      if ((scoreMap['carta'] ?? 0) != 0)
+        _MiniScoreChip(label: 'Carta', value: '${scoreMap['carta']}'),
+      if ((scoreMap['virao'] ?? 0) != 0)
+        _MiniScoreChip(label: 'Virao', value: '${scoreMap['virao']}'),
+      _MiniScoreChip(
+        label: 'Total',
+        value: '${scoreMap['total'] ?? 0}',
+        highlight: true,
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: theme.background.withValues(alpha: .65),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.border.withValues(alpha: .35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label, style: AppStyle.theme.body)),
-          Text(
-            value,
-            style: AppStyle.theme.body.copyWith(fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              PlayerAvatarView(avatarId: avatarId, size: 22, showBorder: false),
+              const SizedBox(width: 8),
+              Text(
+                name,
+                style: theme.body.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
           ),
+          const SizedBox(height: 6),
+          Wrap(spacing: 6, runSpacing: 6, children: chips),
         ],
       ),
     );
@@ -324,27 +393,28 @@ class _MiniScoreChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: highlight
-            ? AppStyle.theme.turnHighlight.withValues(alpha: .12)
-            : AppStyle.theme.surface,
-        borderRadius: BorderRadius.circular(12),
+            ? theme.turnHighlight.withValues(alpha: .14)
+            : theme.surface,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: highlight
-              ? AppStyle.theme.turnHighlight.withValues(alpha: .35)
-              : AppStyle.theme.muted.withValues(alpha: .18),
+              ? theme.turnHighlight.withValues(alpha: .35)
+              : theme.border.withValues(alpha: .25),
         ),
       ),
-      child: Column(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: AppStyle.theme.mutedText),
-          const SizedBox(height: 2),
+          Text(label, style: theme.caption),
+          const SizedBox(width: 4),
           Text(
             value,
-            style: AppStyle.theme.body.copyWith(fontWeight: FontWeight.w700),
+            style: theme.caption.copyWith(fontWeight: FontWeight.w800),
           ),
         ],
       ),
@@ -352,72 +422,60 @@ class _MiniScoreChip extends StatelessWidget {
   }
 }
 
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.title,
-    required this.subtitle,
+class _CompactActionButton extends StatelessWidget {
+  const _CompactActionButton({
+    required this.label,
     required this.icon,
+    required this.onPressed,
     this.danger = false,
   });
 
-  final String title;
-  final String subtitle;
+  final String label;
   final IconData icon;
+  final VoidCallback onPressed;
   final bool danger;
 
   @override
   Widget build(BuildContext context) {
-    final accent = danger
-        ? AppStyle.theme.danger
-        : AppStyle.theme.turnHighlight;
+    final theme = AppStyle.theme;
+    final fg = danger ? theme.danger : theme.textPrimary;
+    final bg = danger
+        ? theme.danger.withValues(alpha: .12)
+        : theme.surfaceAlt.withValues(alpha: .55);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppStyle.theme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: danger
-              ? AppStyle.theme.danger.withValues(alpha: .25)
-              : AppStyle.theme.muted.withValues(alpha: .15),
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: () {
+        HapticFeedback.lightImpact();
+        onPressed();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: danger
+                ? theme.danger.withValues(alpha: .35)
+                : theme.border.withValues(alpha: .4),
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: fg),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.body.copyWith(
+                fontWeight: FontWeight.w700,
+                color: fg,
+                fontSize: 14,
+              ),
             ),
-            child: Icon(icon, size: 18, color: accent),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppStyle.theme.body.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: danger ? AppStyle.theme.danger : null,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(subtitle, style: AppStyle.theme.mutedText),
-              ],
-            ),
-          ),
-          Icon(
-            CupertinoIcons.chevron_right,
-            size: 16,
-            color: AppStyle.theme.muted,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

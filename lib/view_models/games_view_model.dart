@@ -34,16 +34,20 @@ class GamesViewModel extends ChangeNotifier {
     await _appRepo.fs.deleteGame(gameId);
   }
 
+  Future<GameState> loadGameState(String gameId) {
+    return _appRepo.fs.loadGame(gameId);
+  }
+
   StreamSubscription<List<GamePillData>>? _sub;
 
   List<GamePillData> currentGames = const [];
-  /// Kept for a future history surface; not shown in the UI yet.
   List<GamePillData> previousGames = const [];
 
   /// Back-compat alias used by older call sites.
   List<GamePillData> get games => currentGames;
 
   String? get userId => _appRepo.player?.id;
+  String? get myAvatarId => _appRepo.player?.avatarId;
 
   bool loading = true;
   String? error;
@@ -52,6 +56,12 @@ class GamesViewModel extends ChangeNotifier {
     final uid = userId;
     if (uid == null) return const [];
     return currentGames.where((g) => g.containsPlayer(uid)).toList();
+  }
+
+  List<GamePillData> get myPreviousGames {
+    final uid = userId;
+    if (uid == null) return const [];
+    return previousGames.where((g) => g.containsPlayer(uid)).toList();
   }
 
   /// Current games where it is this player's turn (for FAB badge).
@@ -65,6 +75,15 @@ class GamesViewModel extends ChangeNotifier {
 
   bool get hasCurrentGames => myCurrentGames.isNotEmpty;
 
+  static int _byUpdatedAtDesc(GamePillData a, GamePillData b) {
+    final at = a.updatedAt;
+    final bt = b.updatedAt;
+    if (at == null && bt == null) return 0;
+    if (at == null) return 1;
+    if (bt == null) return -1;
+    return bt.compareTo(at);
+  }
+
   void startListening(String pid) {
     _sub?.cancel();
     loading = true;
@@ -77,10 +96,12 @@ class GamesViewModel extends ChangeNotifier {
           (list) {
             currentGames = list
                 .where((g) => g.gameStatus != GameStatus.gameOver)
-                .toList();
+                .toList()
+              ..sort(_byUpdatedAtDesc);
             previousGames = list
                 .where((g) => g.gameStatus == GameStatus.gameOver)
-                .toList();
+                .toList()
+              ..sort(_byUpdatedAtDesc);
             loading = false;
             error = null;
             notifyListeners();

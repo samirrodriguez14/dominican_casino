@@ -86,10 +86,45 @@ class AppLocalizations {
       isEs ? 'Desliza hacia arriba para el perfil' : 'Scroll up for profile';
   String get currentGames => isEs ? 'Actuales' : 'Current';
   String get previousGames => isEs ? 'Anteriores' : 'Previous';
+  String get gameHistory => isEs ? 'Historial' : 'History';
   String get noCurrentGames =>
       isEs ? 'No hay partidas actuales' : 'No current games';
   String get noPreviousGames =>
       isEs ? 'No hay partidas anteriores' : 'No previous games';
+  String get won => isEs ? 'Ganaste' : 'Won';
+  String get lost => isEs ? 'Perdiste' : 'Lost';
+
+  String timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inSeconds < 45) return isEs ? 'ahora' : 'just now';
+    if (diff.inMinutes < 60) {
+      final n = diff.inMinutes.clamp(1, 59);
+      return isEs ? 'hace $n min' : '$n min ago';
+    }
+    if (diff.inHours < 24) {
+      final n = diff.inHours;
+      if (isEs) return n == 1 ? 'hace 1 h' : 'hace $n h';
+      return n == 1 ? '1 hr ago' : '$n hr ago';
+    }
+    if (diff.inDays < 7) {
+      final n = diff.inDays;
+      if (isEs) return n == 1 ? 'hace 1 día' : 'hace $n días';
+      return n == 1 ? '1 day ago' : '$n days ago';
+    }
+    if (diff.inDays < 30) {
+      final n = (diff.inDays / 7).floor().clamp(1, 4);
+      if (isEs) return n == 1 ? 'hace 1 sem' : 'hace $n sem';
+      return n == 1 ? '1 wk ago' : '$n wk ago';
+    }
+    if (diff.inDays < 365) {
+      final n = (diff.inDays / 30).floor().clamp(1, 11);
+      if (isEs) return n == 1 ? 'hace 1 mes' : 'hace $n meses';
+      return n == 1 ? '1 mo ago' : '$n mo ago';
+    }
+    final n = (diff.inDays / 365).floor().clamp(1, 99);
+    if (isEs) return n == 1 ? 'hace 1 año' : 'hace $n años';
+    return n == 1 ? '1 yr ago' : '$n yr ago';
+  }
   String get language => isEs ? 'Idioma' : 'Language';
   String get sound => isEs ? 'Sonido' : 'Sound';
   String get soundEffects => isEs ? 'Efectos de sonido' : 'Sound effects';

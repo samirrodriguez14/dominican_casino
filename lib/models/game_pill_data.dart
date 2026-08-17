@@ -1,4 +1,24 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_state.dart';
+
+class GamePillSeat {
+  final String id;
+  final String name;
+  final String? avatarId;
+
+  const GamePillSeat({
+    required this.id,
+    required this.name,
+    this.avatarId,
+  });
+
+  bool get isOpen =>
+      name.isEmpty ||
+      name == 'Open' ||
+      name == 'Waiting...' ||
+      name == 'Unknown';
+}
+
 class GamePillData {
   final String id;
   final Map<String, dynamic> playersInfo;
@@ -6,6 +26,7 @@ class GamePillData {
   final GameMode gameMode;
   final GameStatus gameStatus;
   final String? winnerId;
+  final DateTime? updatedAt;
 
   GamePillData({
     required this.id,
@@ -14,6 +35,7 @@ class GamePillData {
     required this.gameMode,
     required this.gameStatus,
     required this.winnerId,
+    this.updatedAt,
   });
 
   factory GamePillData.fromDoc(String id, Map<String, dynamic> data) {
@@ -24,6 +46,7 @@ class GamePillData {
       gameMode: _parseGameMode(data['gameMode']),
       gameStatus: _parseGameStatus(data['gameStatus']),
       winnerId: data['winnerId'] as String?,
+      updatedAt: parseUpdatedAt(data['updatedAt']),
     );
   }
 
@@ -35,6 +58,7 @@ class GamePillData {
       gameMode: _parseGameMode(json['gameMode']),
       gameStatus: _parseGameStatus(json['gameStatus']),
       winnerId: json['winnerId'] as String?,
+      updatedAt: parseUpdatedAt(json['updatedAt']),
     );
   }
 
@@ -46,10 +70,25 @@ class GamePillData {
       'gameMode': gameMode.name,
       'gameStatus': gameStatus.name,
       'winnerId': winnerId,
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
   List<String> get playerIds => playersInfo.keys.toList();
+
+  List<GamePillSeat> get seats {
+    return playersInfo.entries.map((entry) {
+      final raw = entry.value;
+      final map = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : <String, dynamic>{};
+      return GamePillSeat(
+        id: entry.key,
+        name: (map['name'] as String?) ?? 'Unknown',
+        avatarId: map['avatarId'] as String?,
+      );
+    }).toList();
+  }
 
   bool containsPlayer(String pid) => playersInfo.containsKey(pid);
 
@@ -65,10 +104,15 @@ class GamePillData {
   }
 
   List<String> get playerNames {
-    return playersInfo.values.map((raw) {
-      final map = Map<String, dynamic>.from(raw);
-      return (map['name'] as String?) ?? 'Unknown';
-    }).toList();
+    return seats.map((seat) => seat.name).toList();
+  }
+
+  static DateTime? parseUpdatedAt(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is Timestamp) return raw.toDate();
+    if (raw is DateTime) return raw;
+    if (raw is String) return DateTime.tryParse(raw);
+    return null;
   }
 
   static GameMode _parseGameMode(dynamic raw) {
