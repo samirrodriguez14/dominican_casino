@@ -30,6 +30,12 @@ class AppLocalizations {
   String get privacyPolicy => isEs ? 'Política de privacidad' : 'Privacy Policy';
   String get chooseTable => isEs ? 'Elige tu mesa' : 'Choose Your Table';
   String get language => isEs ? 'Idioma' : 'Language';
+  String get sound => isEs ? 'Sonido' : 'Sound';
+  String get soundEffects => isEs ? 'Efectos de sonido' : 'Sound effects';
+  String get backgroundMusic => isEs ? 'Música de fondo' : 'Background music';
+  String get notifications => isEs ? 'Notificaciones' : 'Notifications';
+  String get notificationsOn => isEs ? 'Activadas' : 'On';
+  String get notificationsOff => isEs ? 'Desactivadas' : 'Off';
   String get noRealMoney =>
       isEs
           ? 'Este juego no usa dinero real. Las fichas son solo puntos de partida.'

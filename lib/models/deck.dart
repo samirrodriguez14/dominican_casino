@@ -86,13 +86,15 @@ class Deck {
       card(id: 'tutorial_8', rank: '8', suit: '♠'),
       card(id: 'tutorial_13', rank: 'K', suit: '♣'),
 
-      // Opponent hand — one 9 so they capture table_9 and leave the King.
+      // Opponent: 9 takes table 9; 2 is dumped after the stack take; 4 leftover after sweep.
       card(id: 'opp_9', rank: '9', suit: '♦'),
+      card(id: 'opp_2', rank: '2', suit: '♥'),
+      card(id: 'opp_4', rank: '4', suit: '♣'),
 
       // Initial table
       card(id: 'table_3', rank: '3', suit: '♥'),
       card(id: 'table_9', rank: '9', suit: '♠'),
-      card(id: 'table_13', rank: 'K', suit: '♣'),
+      card(id: 'table_J', rank: 'J', suit: '♣'),
 
     ];
   }

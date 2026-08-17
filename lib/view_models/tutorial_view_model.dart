@@ -15,6 +15,15 @@ class TutorialViewModel extends ChangeNotifier {
 
   int get currentStep => _current;
   int get totalSteps => steps.length;
+  int get currentSection => steps.isEmpty ? 0 : step.section;
+  int get totalSections {
+    if (steps.isEmpty) return 0;
+    var maxSection = 0;
+    for (final s in steps) {
+      if (s.section > maxSection) maxSection = s.section;
+    }
+    return maxSection + 1;
+  }
 
   TutorialStep get step => steps[_current];
   TutorialStep get currentStepData => step;
@@ -85,9 +94,12 @@ class TutorialViewModel extends ChangeNotifier {
     }
 
     if (step.expectedCardIds != null && step.expectedCardIds!.isNotEmpty) {
-      final selectedSet = selectedCardIds.toSet();
       final expectedSet = step.expectedCardIds!.toSet();
+      if (cardId != null && !expectedSet.contains(cardId)) {
+        return false;
+      }
 
+      final selectedSet = selectedCardIds.toSet();
       final hasAllExpected = expectedSet.every(selectedSet.contains);
 
       if (!hasAllExpected) {

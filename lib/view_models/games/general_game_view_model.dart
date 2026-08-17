@@ -52,6 +52,9 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   ActionGuard? actionGuard;
 
+  /// Tutorial only: true when the current scripted step wants the bot to move.
+  bool Function()? tutorialAllowsOpponentPlay;
+
   GeneralGameViewModel({
     required this.gameRepo,
     required this.gameEngine,
@@ -541,18 +544,17 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   TutorialAction _tutorialActionFor(PlayAction action) {
+    if (action is AddAndTakeAction || action is TakeCardAction) {
+      return TutorialAction.sweepTable;
+    }
     if (action is AddCardsAction ||
         action is AddCardStackAction ||
         action is AddTableCardsAction ||
-        action is AddAndPairCardsAction ||
-        action is AddAndTakeAction) {
+        action is AddAndPairCardsAction) {
       return TutorialAction.addStack;
     }
     if (action is TakeStackAction) {
       return TutorialAction.takeStack;
-    }
-    if (action is TakeCardAction) {
-      return TutorialAction.sweepTable;
     }
     return TutorialAction.playMove;
   }
@@ -606,17 +608,31 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (!tutorialMode || _disposed) return;
     final botId = opp;
     if (botId == null) return;
-    if (gameState.currentTurnPlayerId != botId) return;
     if (gameState.round.roundStatus != RoundStatus.playing) return;
 
     final botHand = gameState.hands[botId] ?? [];
+    final allowBot = tutorialAllowsOpponentPlay?.call() ?? false;
+
     if (botHand.isEmpty) {
-      // Pass the turn back so the human can finish (the sweep).
-      if ((gameState.hands[me] ?? []).isNotEmpty) {
+      if ((gameState.hands[me] ?? []).isNotEmpty &&
+          gameState.currentTurnPlayerId == botId) {
         gameState.currentTurnPlayerId = me;
         notifyListeners();
       }
       return;
+    }
+
+    if (!allowBot) {
+      if (gameState.currentTurnPlayerId == botId &&
+          (gameState.hands[me] ?? []).isNotEmpty) {
+        gameState.currentTurnPlayerId = me;
+        notifyListeners();
+      }
+      return;
+    }
+
+    if (gameState.currentTurnPlayerId != botId) {
+      gameState.currentTurnPlayerId = botId;
     }
 
     await Future<void>.delayed(const Duration(milliseconds: 700));
@@ -882,7 +898,14 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   void selectCardToStack(PlayingCardModel card) {
     if (isAnimating || !isMyTurn) return;
-    if (!_canPerform(TutorialAction.selectTableCard, cardId: card.id)) {
+    final nextIds = selectedCards.contains(card)
+        ? selectedCards.where((c) => c.id != card.id).map((c) => c.id).toList()
+        : [...selectedCards.map((c) => c.id), card.id];
+    if (!_canPerform(
+      TutorialAction.selectTableCard,
+      cardId: card.id,
+      selectedCardIds: nextIds,
+    )) {
       return;
     }
 

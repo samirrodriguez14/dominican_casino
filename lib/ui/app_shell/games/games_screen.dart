@@ -1,14 +1,24 @@
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/current_game_sheet.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
+import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
 class GamesScreen extends StatelessWidget {
   const GamesScreen({super.key});
 
+  static const _emptySheetSize = 0.10;
+  static const _withGamesSheetSize = 0.28;
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final vm = context.watch<GamesViewModel>();
+    final uid = vm.userId;
+    final hasCurrentGames =
+        uid != null && vm.games.any((g) => g.containsPlayer(uid));
+    final sheetSize = hasCurrentGames ? _withGamesSheetSize : _emptySheetSize;
 
     return CupertinoPageScaffold(
       child: SafeArea(
@@ -38,21 +48,20 @@ class GamesScreen extends StatelessWidget {
                     ),
 
                     GameModeCarousel(),
-                   
+
                     const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
 
-            // Draggable challenge sheet
             DraggableScrollableSheet(
-              initialChildSize: 0.10,
-              minChildSize: 0.10,
+              key: ValueKey(hasCurrentGames ? 'sheet-games' : 'sheet-empty'),
+              initialChildSize: sheetSize,
+              minChildSize: sheetSize,
               maxChildSize: 0.82,
               snap: true,
-              // expand: false,
-              snapSizes: const [0.10, .82],
+              snapSizes: [sheetSize, 0.82],
               builder: (context, scrollController) {
                 return CurrentGamesSheet(scrollController: scrollController);
               },

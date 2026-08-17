@@ -10,6 +10,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -29,6 +30,7 @@ class AppRepo extends ChangeNotifier {
   Locale _locale = const Locale('es');
   Locale get locale => _locale;
   bool notificationsEnabled = false;
+  AuthorizationStatus notificationStatus = AuthorizationStatus.notDetermined;
 
   AppRepo({required this.fs});
 
@@ -59,6 +61,7 @@ class AppRepo extends ChangeNotifier {
       await _loadLocale();
       player = await _loadPlayer();
       gamesInfo = await loadGames();
+      await refreshNotificationStatus();
       if (player != null) appStatus = AppStatus.appReady;
     } catch (e, st) {
       developer.log("AppRepo.loadApp Error: $e", error: e, stackTrace: st);
@@ -68,6 +71,24 @@ class AppRepo extends ChangeNotifier {
       try {
         gamesInfo = await loadGames();
       } catch (_) {}
+      try {
+        await refreshNotificationStatus();
+      } catch (_) {}
+    }
+    notifyListeners();
+  }
+
+  /// Reads OS notification permission without prompting or opening Settings.
+  Future<void> refreshNotificationStatus() async {
+    try {
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      notificationStatus = settings.authorizationStatus;
+      notificationsEnabled =
+          notificationStatus == AuthorizationStatus.authorized ||
+          notificationStatus == AuthorizationStatus.provisional;
+    } catch (e) {
+      developer.log('AppRepo.refreshNotificationStatus: $e');
     }
     notifyListeners();
   }
@@ -137,6 +158,7 @@ class AppRepo extends ChangeNotifier {
 
   /// Request notification permission after an in-app rationale, then store
   /// the FCM token under users/{uid} — never on game documents.
+  /// Does not open the system Settings app.
   Future<bool> enableNotifications() async {
     final messaging = FirebaseMessaging.instance;
     final settings = await messaging.requestPermission(
@@ -145,21 +167,31 @@ class AppRepo extends ChangeNotifier {
       sound: true,
       provisional: false,
     );
+    notificationStatus = settings.authorizationStatus;
     if (settings.authorizationStatus != AuthorizationStatus.authorized &&
         settings.authorizationStatus != AuthorizationStatus.provisional) {
       notificationsEnabled = false;
+      notifyListeners();
       return false;
     }
 
     // APNS must be ready on iOS before getToken.
-    final apns = await messaging.getAPNSToken();
-    if (apns == null) {
-      developer.log('APNS token not ready yet');
-      return false;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      final apns = await messaging.getAPNSToken();
+      if (apns == null) {
+        developer.log('APNS token not ready yet');
+        notificationsEnabled = true;
+        notifyListeners();
+        return true;
+      }
     }
 
     final fcmToken = await messaging.getToken();
-    if (fcmToken == null || player == null) return false;
+    if (fcmToken == null || player == null) {
+      notificationsEnabled = true;
+      notifyListeners();
+      return true;
+    }
 
     player = player!.copyWith(token: fcmToken);
     await _persistPlayerLocal();

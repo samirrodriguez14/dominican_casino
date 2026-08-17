@@ -15,12 +15,13 @@ import 'package:dominican_casino/ui/home/privacy_policy_screen.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_screen.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model_base.dart';
+import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:dominican_casino/l10n/app_localizations.dart';
 
 class App extends StatefulWidget {
   const App({super.key});
@@ -29,7 +30,7 @@ class App extends StatefulWidget {
   State<App> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<App> {
+class _MyAppState extends State<App> with WidgetsBindingObserver {
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSub;
   late final GoRouter _router;
@@ -39,6 +40,7 @@ class _MyAppState extends State<App> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _appLinks = AppLinks();
 
@@ -165,9 +167,26 @@ class _MyAppState extends State<App> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _linkSub?.cancel();
     _router.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final sounds = SoundService.instance;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        sounds.startMusic();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        sounds.pauseMusic();
+        break;
+    }
   }
 
   @override

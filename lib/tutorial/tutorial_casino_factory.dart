@@ -25,16 +25,18 @@ class TutorialCasinoFactory {
     final botPid = Uuid().v4().substring(0, 8);
 
     final oppHand = [
-      tutorialDeck[3], // 9♦ — captures the table 9, then is out of cards
+      tutorialDeck[3], // 9♦ — captures the table 9
+      tutorialDeck[4], // 2♥ — dumped after the stack take (next to the J)
+      tutorialDeck[5], // 4♣ — played after the sweep, leftover at round end
     ];
 
     final table = [
-      tutorialDeck[4], // 3♥
-      tutorialDeck[5], // 9♠
-      tutorialDeck[6], // K♣
+      tutorialDeck[6], // 3♥
+      tutorialDeck[7], // 9♠
+      tutorialDeck[8], // J♣
     ];
 
-    final remainingDeck = tutorialDeck.sublist(7);
+    final remainingDeck = tutorialDeck.sublist(9);
     return GameState(
       gameStatus: GameStatus.inProgress,
       gameMode: GameMode.casino,

@@ -18,10 +18,10 @@ class GameModeCarousel extends StatefulWidget {
 class _GameModeCarouselState extends State<GameModeCarousel> {
   final PageController controller = PageController(
     viewportFraction: 0.7,
-    initialPage: 1,
+    initialPage: 0,
   );
 
-  double page = 1;
+  double page = 0;
 
   @override
   void initState() {
@@ -36,9 +36,8 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
-    final modes = GameMode.values
-        .where((m) => m != GameMode.robaito)
-        .toList();
+    // Casino first (centered), Tres y Dos to the right.
+    final modes = <GameMode>[GameMode.casino, GameMode.tresydos];
 
     return SizedBox(
       height: screenHeight * 0.5,

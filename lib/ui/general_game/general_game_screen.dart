@@ -80,6 +80,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         ),
       );
       initvm.actionGuard = tutorialVm.tryProgress;
+      initvm.tutorialAllowsOpponentPlay = () =>
+          tutorialVm.active && tutorialVm.step.playOpponent;
       final ok = await initvm.loadGame();
 
       if (ok && mounted) {
@@ -124,11 +126,14 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   }
 
   void _onTutorialNext() {
-    if (tutorialVm.isLastStep) {
-      _onTutorialFinished(context);
-      return;
-    }
+    if (tutorialVm.isLastStep) return;
     tutorialVm.nextStep();
+    if (tutorialVm.step.playOpponent) {
+      vm.playTutorialOpponentIfNeeded();
+    }
+    if (tutorialVm.step.awaitRoundStatus) {
+      _onVmChanged();
+    }
   }
 
   void _onTutorialSkip(BuildContext context) {
@@ -136,23 +141,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       context: context,
       title: 'Skip tutorial?',
       content: Text(
-        'Leave the guided tips and keep playing this game, or return home.',
-        textAlign: TextAlign.center,
-        style: AppStyle.theme.body,
-      ),
-      primaryText: 'Skip and continue tutorial',
-      onPrimary: _finishTutorialKeepPlaying,
-      secondaryText: 'Skip and return home',
-      onSecondary: _finishTutorialReturnHome,
-    );
-  }
-
-  void _onTutorialFinished(BuildContext context) {
-    showAppPopup(
-      context: context,
-      title: "You're ready!",
-      content: Text(
-        'Play a real game against Puli, or go home.',
+        'Start a real game against Puli, or cancel and go home.',
         textAlign: TextAlign.center,
         style: AppStyle.theme.body,
       ),
@@ -160,17 +149,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       onPrimary: _finishTutorialPlayPuli,
       secondaryText: 'Exit',
       onSecondary: _finishTutorialReturnHome,
-      barrierDismissible: false,
     );
-  }
-
-  Future<void> _finishTutorialKeepPlaying() async {
-    tutorialVm.finish();
-    await context.read<AppRepo>().completeTutorial();
-    if (!mounted) return;
-    await vm.playTutorialOpponentIfNeeded();
-    if (!mounted) return;
-    _onVmChanged();
   }
 
   Future<void> _finishTutorialPlayPuli() async {
@@ -206,7 +185,6 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       // Wait until card flights finish (incl. leftover collect) before status UI.
       if (vm.isAnimating) return;
       if (_leavingTutorial) return;
-      if (vm.tutorialMode && tutorialVm.active) return;
 
       final gs = vm.gameState;
       final isGameOver = gs.gameStatus == GameStatus.gameOver;
@@ -216,6 +194,15 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
       if (!isGameOver && !isRoundDone) return;
 
+      final waitingForTutorialStatus =
+          vm.tutorialMode &&
+          tutorialVm.active &&
+          tutorialVm.step.awaitRoundStatus;
+
+      if (vm.tutorialMode && tutorialVm.active && !waitingForTutorialStatus) {
+        return;
+      }
+
       final key = isGameOver
           ? 'game_over_${gs.round.id}_${gs.winnerId}'
           : 'round_${gs.round.id}_completed';
@@ -223,6 +210,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       if (_statusPopupOpen || _shownStatusKey == key) return;
       _shownStatusKey = key;
       _statusPopupOpen = true;
+
+      final tutorialContinue = waitingForTutorialStatus;
 
       showAppPopup(
         context: context,
@@ -232,6 +221,10 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         barrierDismissible: false,
         onPrimary: () {
           _statusPopupOpen = false;
+          if (tutorialContinue) {
+            tutorialVm.nextStep();
+            return;
+          }
           vm.continueAfterRound();
         },
       ).whenComplete(() {
@@ -313,16 +306,21 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                   AnimatedBuilder(
                     animation: tutorialVm,
                     builder: (_, __) {
-                      if (!tutorialVm.active || vm.isAnimating) {
+                      if (!tutorialVm.active ||
+                          vm.isAnimating ||
+                          tutorialVm.step.awaitRoundStatus) {
                         return const SizedBox.shrink();
                       }
 
                       return TutorialOverlay(
                         step: tutorialVm.currentStepData,
-                        currentStep: tutorialVm.currentStep,
-                        totalSteps: tutorialVm.totalSteps,
+                        currentStep: tutorialVm.currentSection,
+                        totalSteps: tutorialVm.totalSections,
+                        isLastScreen: tutorialVm.isLastStep,
                         onNext: _onTutorialNext,
                         onSkip: () => _onTutorialSkip(context),
+                        onPlay: _finishTutorialPlayPuli,
+                        onExit: _finishTutorialReturnHome,
                         canGoNext: true,
                       );
                     },

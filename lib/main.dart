@@ -1,10 +1,11 @@
-import 'dart:developer' as devloper;
+import 'dart:developer' as developer;
 
 import 'package:dominican_casino/app.dart';
 import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/felt_walnut_theme.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
@@ -24,18 +25,20 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    ;
   } catch (e) {
-    devloper.log("Error initializing Firebase");
+    developer.log("Error initializing Firebase");
   }
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await SoundService.instance.load();
 
   runApp(
     MultiProvider(
       providers: [
         Provider(create: (context) => FirestoreService()),
-
+        ChangeNotifierProvider<SoundService>.value(
+          value: SoundService.instance,
+        ),
         ChangeNotifierProvider(
           create: (context) => GameRepo(fs: context.read<FirestoreService>()),
         ),
@@ -61,7 +64,6 @@ void main() async {
               AppThemeViewModel(appRepo: context.read<AppRepo>()),
         ),
       ],
-
       child: App(),
     ),
   );

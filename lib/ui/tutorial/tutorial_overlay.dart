@@ -7,9 +7,12 @@ class TutorialOverlay extends StatefulWidget {
   final TutorialStep step;
   final VoidCallback onNext;
   final VoidCallback onSkip;
+  final VoidCallback? onPlay;
+  final VoidCallback? onExit;
   final int currentStep;
   final int totalSteps;
   final bool canGoNext;
+  final bool isLastScreen;
 
   const TutorialOverlay({
     super.key,
@@ -19,6 +22,9 @@ class TutorialOverlay extends StatefulWidget {
     required this.currentStep,
     required this.totalSteps,
     required this.canGoNext,
+    this.isLastScreen = false,
+    this.onPlay,
+    this.onExit,
   });
 
   @override
@@ -180,7 +186,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
 
   Widget _buildTooltipContent() {
     final theme = AppStyle.theme;
-    final isLastStep = widget.currentStep == widget.totalSteps - 1;
+    final isLastStep = widget.isLastScreen;
     final canPressNext = widget.canGoNext || widget.step.onShow != null;
     return Container(
       width: _tooltipWidth,
@@ -214,24 +220,29 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                   letterSpacing: .2,
                 ),
               ),
-              const Spacer(),
-              Row(
-                children: List.generate(widget.totalSteps, (index) {
-                  final isCurrent = index == widget.currentStep;
+              const SizedBox(width: 10),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: List.generate(widget.totalSteps, (index) {
+                    final isCurrent = index == widget.currentStep;
+                    final isDone = index < widget.currentStep;
 
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                    width: isCurrent ? 14 : 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: isCurrent
-                          ? theme.turnHighlight
-                          : theme.muted.withValues(alpha: .35),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  );
-                }),
+                    return Flexible(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: isCurrent || isDone
+                              ? theme.turnHighlight
+                              : theme.muted.withValues(alpha: .35),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
               ),
             ],
           ),
@@ -262,15 +273,15 @@ class _TutorialOverlayState extends State<TutorialOverlay>
 
           Row(
             children: [
-              if (widget.step.showSkipButton) ...[
+              if (isLastStep) ...[
                 Expanded(
                   child: CupertinoButton(
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     color: theme.surface,
                     borderRadius: BorderRadius.circular(theme.radius),
-                    onPressed: widget.onSkip,
+                    onPressed: widget.onExit,
                     child: Text(
-                      'Skip',
+                      'Exit',
                       style: theme.body.copyWith(
                         color: theme.muted,
                         fontWeight: FontWeight.w700,
@@ -279,31 +290,65 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                   ),
                 ),
                 const SizedBox(width: 10),
-              ],
-              if (widget.step.showNextButton)
                 Expanded(
                   child: CupertinoButton(
                     padding: const EdgeInsets.symmetric(vertical: 9),
-                    color: canPressNext
-                        ? theme.turnHighlight
-                        : theme.muted.withValues(alpha: .35),
+                    color: theme.turnHighlight,
                     borderRadius: BorderRadius.circular(theme.radius),
-                    onPressed: canPressNext
-                        ? widget.step.onShow != null
-                              ? () => widget.step.onShow!(context)
-                              : widget.onNext
-                        : null,
+                    onPressed: widget.onPlay,
                     child: Text(
-                      isLastStep ? 'Finish' : 'Next',
+                      'Play',
                       style: theme.body.copyWith(
-                        color: canPressNext
-                            ? theme.background
-                            : theme.textPrimary.withValues(alpha: .45),
+                        color: theme.background,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                 ),
+              ] else ...[
+                if (widget.step.showSkipButton) ...[
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      color: theme.surface,
+                      borderRadius: BorderRadius.circular(theme.radius),
+                      onPressed: widget.onSkip,
+                      child: Text(
+                        'Skip',
+                        style: theme.body.copyWith(
+                          color: theme.muted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                if (widget.step.showNextButton)
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      color: canPressNext
+                          ? theme.turnHighlight
+                          : theme.muted.withValues(alpha: .35),
+                      borderRadius: BorderRadius.circular(theme.radius),
+                      onPressed: canPressNext
+                          ? widget.step.onShow != null
+                                ? () => widget.step.onShow!(context)
+                                : widget.onNext
+                          : null,
+                      child: Text(
+                        'Next',
+                        style: theme.body.copyWith(
+                          color: canPressNext
+                              ? theme.background
+                              : theme.textPrimary.withValues(alpha: .45),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ],
           ),
         ],

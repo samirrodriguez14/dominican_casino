@@ -17,10 +17,10 @@ enum GameMode { tresydos, casino, robaito }
 
 GameMode gameModeFrom(String? s) {
   switch (s) {
-    case 'tresydos':
-      return GameMode.tresydos;
     case 'casino':
       return GameMode.casino;
+    case 'tresydos':
+      return GameMode.tresydos;
     case 'robaito':
       return GameMode.robaito;
     default:
@@ -30,10 +30,10 @@ GameMode gameModeFrom(String? s) {
 
 String gameModeTo(GameMode s) {
   switch (s) {
-    case GameMode.tresydos:
-      return 'tresydos';
     case GameMode.casino:
       return 'casino';
+    case GameMode.tresydos:
+      return 'tresydos';
     case GameMode.robaito:
       return 'robaito';
   }

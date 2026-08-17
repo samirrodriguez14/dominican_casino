@@ -175,8 +175,22 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
     final name = action.runtimeType.toString();
 
     // Assign each tutorial GlobalKey to at most one chip in this row.
-    final isFirstAdd = name.startsWith('Add') &&
-        actions.indexWhere((a) => a.runtimeType.toString().startsWith('Add')) ==
+    final isFirstAddAndTake = name == 'AddAndTakeAction' &&
+        actions.indexWhere(
+              (a) => a.runtimeType.toString() == 'AddAndTakeAction',
+            ) ==
+            index;
+    if (isFirstAddAndTake) return vm.playButtonKey;
+
+    final isFirstAdd = (name == 'AddCardsAction' ||
+            name == 'AddCardStackAction' ||
+            name == 'AddTableCardsAction') &&
+        actions.indexWhere((a) {
+              final n = a.runtimeType.toString();
+              return n == 'AddCardsAction' ||
+                  n == 'AddCardStackAction' ||
+                  n == 'AddTableCardsAction';
+            }) ==
             index;
     if (isFirstAdd) return vm.addButtonKey;
 
