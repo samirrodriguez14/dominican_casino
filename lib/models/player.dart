@@ -29,10 +29,11 @@ class Player {
   };
 
   /// Seat snapshot stored on a game document (no auth/token fields).
+  /// Omit nulls — Firestore rejects them on `set()`.
   Map<String, dynamic> toGameSeat() => {
     'id': id,
-    'name': name,
-    'avatarId': avatarId,
+    'name': ?name,
+    'avatarId': ?avatarId,
   };
 
   Player copyWith({

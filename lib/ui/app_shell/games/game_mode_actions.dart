@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
@@ -208,7 +209,8 @@ class _EnterGamePopup extends StatelessWidget {
                   icon: CupertinoIcons.bolt_fill,
                   title: l10n.playVsPuli,
                   subtitle: l10n.playVsPuliHint,
-                  costLabel: '${WalletConfig.puliloEnergyCost}',
+                  costLabel:
+                      '${WalletConfig.puliloEnergyCostFor(mode.name)}',
                   costIcon: CupertinoIcons.bolt_fill,
                   onTap: onPuli,
                 ),
@@ -377,8 +379,10 @@ Future<void> gameEnter(
 ) async {
   if (mode == GameMode.robaito) return;
   final repo = context.read<AppRepo>();
+  final router = GoRouter.of(context);
+  final l10n = AppLocalizations.of(context);
   if (local) {
-    if (!repo.canAffordPulilo) {
+    if (!repo.canAffordPulilo(mode)) {
       await showInsufficientFundsDialog(context, energy: true);
       return;
     }
@@ -386,9 +390,32 @@ Future<void> gameEnter(
     await showInsufficientFundsDialog(context, energy: false);
     return;
   }
-  final gid = await vm.newGame(mode, local);
-  if (gid != null && context.mounted) {
-    context.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
+  try {
+    final gid = await vm.newGame(mode, local);
+    if (gid != null) {
+      router.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
+    }
+  } on InsufficientFundsException catch (e) {
+    if (context.mounted) {
+      await showInsufficientFundsDialog(context, energy: e.energy);
+    }
+  } catch (e, st) {
+    developer.log('gameEnter: $e', stackTrace: st);
+    if (!context.mounted) return;
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.couldNotStartGame),
+        content: Text(l10n.tryAgain),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
+            child: Text(l10n.back),
+          ),
+        ],
+      ),
+    );
   }
 }
 

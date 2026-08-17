@@ -136,7 +136,7 @@ class _CurrentGamesList extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            vm.error!,
+            l10n.couldNotLoadGames,
             style: TextStyle(color: AppStyle.theme.danger),
             textAlign: TextAlign.center,
           ),

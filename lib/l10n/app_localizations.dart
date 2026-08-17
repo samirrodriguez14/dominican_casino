@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 
-/// Minimal bilingual strings (en / es). Prefer Spanish when device locale is es.
+/// Minimal bilingual strings (en / es). Default language is English.
 class AppLocalizations {
   AppLocalizations(this.locale);
 
@@ -90,6 +90,10 @@ class AppLocalizations {
   String get back => isEs ? 'Atrás' : 'Back';
   String get couldNotStart =>
       isEs ? 'No se pudo iniciar la app' : 'Could not start the app';
+  String get couldNotStartGame =>
+      isEs ? 'No se pudo empezar la partida' : 'Could not start the game';
+  String get couldNotLoadGames =>
+      isEs ? 'No se pudieron cargar las partidas.' : 'Could not load your games.';
   String get tryAgain => isEs ? 'Inténtalo de nuevo.' : 'Please try again.';
   String get retry => isEs ? 'Reintentar' : 'Retry';
   String get welcomeTitle =>
@@ -106,6 +110,9 @@ class AppLocalizations {
   String get saveProgressBody => isEs
       ? 'Elige un nombre. Conecta Google si quieres guardar esta cuenta.'
       : 'Pick a name. Connect Google if you want to keep this account.';
+  String get saveProgressGoogleBody => isEs
+      ? 'Conecta Google si quieres guardar esta cuenta en otros dispositivos.'
+      : 'Connect Google if you want to keep this account on other devices.';
   String get chooseTable => isEs ? 'Elige tu mesa' : 'Choose Your Table';
   String get themes => isEs ? 'Temas' : 'Themes';
   String get owned => isEs ? 'Tuyo' : 'Owned';
@@ -204,8 +211,8 @@ class AppLocalizations {
       ? 'Sales de Google en este dispositivo. Nombre, avatar, tutorial, monedas y energía se restauran al volver a entrar.'
       : 'Signs out of Google on this device. Your name, avatar, tutorial, coins, and energy restore when you sign in again.';
   String get deleteLocalDataGoogleBody => isEs
-      ? 'Borra el caché de este dispositivo. Tu cuenta de Google, nombre, avatar, tutorial, monedas y energía se quedan en la nube.'
-      : 'Clears this device\'s cache. Your Google account, name, avatar, tutorial, coins, and energy stay in the cloud.';
+      ? 'Borra el caché de este dispositivo y cierra sesión. Tu cuenta de Google, nombre, avatar, tutorial, monedas y energía se quedan en la nube.'
+      : 'Clears this device\'s cache and signs you out. Your Google account, name, avatar, tutorial, coins, and energy stay in the cloud.';
 
   String googleSignInError(String? code) {
     switch (code) {

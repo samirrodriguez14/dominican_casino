@@ -8,7 +8,7 @@ import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class AppStyle {
-  static AppTheme theme = CasinoTheme();
+  static AppTheme theme = SageTheme();
 }
 
 abstract class AppTheme {
@@ -88,7 +88,7 @@ enum Theme {
 }
 
 /// Themes the player already owns (selectable in Profile).
-const ownedThemes = <Theme>[Theme.feltWaltnut, Theme.sage];
+const ownedThemes = <Theme>[Theme.sage, Theme.feltWaltnut];
 
 enum Cardtheme { blue, dark, wood }
 

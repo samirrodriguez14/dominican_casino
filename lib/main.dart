@@ -7,7 +7,7 @@ import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/felt_walnut_theme.dart';
+import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:dominican_casino/view_models/home_view_model.dart';
@@ -18,7 +18,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
-  AppStyle.theme = FeltWalnutTheme();
+  AppStyle.theme = SageTheme();
 
   WidgetsFlutterBinding.ensureInitialized();
   try {

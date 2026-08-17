@@ -57,234 +57,248 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardWidth = homeCardWidth(constraints);
+        const privacyReserve = 44.0;
+        final cardWidth = homeCardWidth(
+          constraints,
+          verticalInset: privacyReserve,
+        );
 
         return Center(
           child: SizedBox(
             width: cardWidth,
-            child: AspectRatio(
-              aspectRatio: homeCardAspect,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: face,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: theme.textPrimary.withValues(alpha: .14),
-                    width: 1.2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: CupertinoColors.black.withValues(alpha: .30),
-                      blurRadius: 18,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.settings,
-                        style: theme.title.copyWith(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          height: 1.05,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AspectRatio(
+                  aspectRatio: homeCardAspect,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: face,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: theme.textPrimary.withValues(alpha: .14),
+                          width: 1.2,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: CupertinoColors.black.withValues(alpha: .30),
+                            blurRadius: 18,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          physics: const NeverScrollableScrollPhysics(),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _SectionLabel(l10n.themes),
-                              const SizedBox(height: 8),
-                              Row(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.settings,
+                              style: theme.title.copyWith(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                                height: 1.05,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  for (
-                                    var i = 0;
-                                    i < ownedThemes.length;
-                                    i++
-                                  ) ...[
-                                    if (i > 0) const SizedBox(width: 8),
-                                    Expanded(
-                                      child: ThemeOptionChip(
-                                        themeType: ownedThemes[i],
-                                        previewTheme: themeFromEnum(
-                                          ownedThemes[i],
+                                  _SectionLabel(l10n.themes),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      for (
+                                        var i = 0;
+                                        i < ownedThemes.length;
+                                        i++
+                                      ) ...[
+                                        if (i > 0) const SizedBox(width: 8),
+                                        Expanded(
+                                          child: ThemeOptionChip(
+                                            themeType: ownedThemes[i],
+                                            previewTheme: themeFromEnum(
+                                              ownedThemes[i],
+                                            ),
+                                            selected:
+                                                vm.appTheme == ownedThemes[i],
+                                            onTap: () =>
+                                                vm.selectTheme(ownedThemes[i]),
+                                          ),
                                         ),
-                                        selected: vm.appTheme == ownedThemes[i],
-                                        onTap: () =>
-                                            vm.selectTheme(ownedThemes[i]),
+                                      ],
+                                    ],
+                                  ),
+                                  const _SectionDivider(),
+                                  _SectionLabel(l10n.language),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _LanguageButton(
+                                          label: 'English',
+                                          selected:
+                                              appRepo.locale.languageCode ==
+                                              'en',
+                                          onPressed: () => appRepo.setLocale(
+                                            const Locale('en'),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const _SectionDivider(),
-                              _SectionLabel(l10n.language),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _LanguageButton(
-                                      label: 'Español',
-                                      selected:
-                                          appRepo.locale.languageCode == 'es',
-                                      onPressed: () =>
-                                          appRepo.setLocale(const Locale('es')),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _LanguageButton(
-                                      label: 'English',
-                                      selected:
-                                          appRepo.locale.languageCode == 'en',
-                                      onPressed: () =>
-                                          appRepo.setLocale(const Locale('en')),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const _SectionDivider(),
-                              _SectionLabel(l10n.sound),
-                              const SizedBox(height: 2),
-                              _SettingsToggleRow(
-                                label: l10n.soundEffects,
-                                value: sounds.sfxEnabled,
-                                onChanged: sounds.setSfxEnabled,
-                                volume: sounds.sfxVolume,
-                                onVolumeChanged: sounds.setSfxVolume,
-                              ),
-                              _SettingsToggleRow(
-                                label: l10n.backgroundMusic,
-                                value: sounds.musicEnabled,
-                                onChanged: sounds.setMusicEnabled,
-                                volume: sounds.musicVolume,
-                                onVolumeChanged: sounds.setMusicVolume,
-                              ),
-                              _SettingsToggleRow(
-                                label: l10n.hapticFeedback,
-                                value: sounds.hapticEnabled,
-                                onChanged: (enabled) async {
-                                  await sounds.setHapticEnabled(enabled);
-                                  if (enabled) AppHaptics.mediumImpact();
-                                },
-                              ),
-                              const _SectionDivider(),
-                              _SectionLabel(l10n.notifications),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      appRepo.notificationsEnabled
-                                          ? l10n.notificationsOn
-                                          : l10n.notificationsOff,
-                                      style: theme.mutedText.copyWith(
-                                        color: appRepo.notificationsEnabled
-                                            ? theme.success
-                                            : theme.textPrimary.withValues(
-                                                alpha: .7,
-                                              ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _LanguageButton(
+                                          label: 'Español',
+                                          selected:
+                                              appRepo.locale.languageCode ==
+                                              'es',
+                                          onPressed: () => appRepo.setLocale(
+                                            const Locale('es'),
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  if (!appRepo.notificationsEnabled)
-                                    CupertinoButton(
+                                  const _SectionDivider(),
+                                  _SectionLabel(l10n.sound),
+                                  const SizedBox(height: 2),
+                                  _SettingsToggleRow(
+                                    label: l10n.soundEffects,
+                                    value: sounds.sfxEnabled,
+                                    onChanged: sounds.setSfxEnabled,
+                                    volume: sounds.sfxVolume,
+                                    onVolumeChanged: sounds.setSfxVolume,
+                                  ),
+                                  _SettingsToggleRow(
+                                    label: l10n.backgroundMusic,
+                                    value: sounds.musicEnabled,
+                                    onChanged: sounds.setMusicEnabled,
+                                    volume: sounds.musicVolume,
+                                    onVolumeChanged: sounds.setMusicVolume,
+                                  ),
+                                  _SettingsToggleRow(
+                                    label: l10n.hapticFeedback,
+                                    value: sounds.hapticEnabled,
+                                    onChanged: (enabled) async {
+                                      await sounds.setHapticEnabled(enabled);
+                                      if (enabled) AppHaptics.mediumImpact();
+                                    },
+                                  ),
+                                  const _SectionDivider(),
+                                  _SectionLabel(l10n.notifications),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          appRepo.notificationsEnabled
+                                              ? l10n.notificationsOn
+                                              : l10n.notificationsOff,
+                                          style: theme.mutedText.copyWith(
+                                            color: appRepo.notificationsEnabled
+                                                ? theme.success
+                                                : theme.textPrimary.withValues(
+                                                    alpha: .7,
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (!appRepo.notificationsEnabled)
+                                        CupertinoButton(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          minimumSize: Size.zero,
+                                          color: theme.textPrimary.withValues(
+                                            alpha: .14,
+                                          ),
+                                          onPressed: SoundService.wrapTap(
+                                            () => _requestNotifications(
+                                              context,
+                                              appRepo,
+                                              l10n,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            l10n.enableNotifications,
+                                            style: TextStyle(
+                                              color: theme.textPrimary,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const _SectionDivider(),
+                                  _SectionLabel(l10n.account),
+                                  const SizedBox(height: 4),
+                                  _GoogleAccountRow(
+                                    linked: appRepo.isGoogleLinked,
+                                    email: appRepo.googleEmail,
+                                    onConnect: () =>
+                                        _connectGoogle(context, appRepo, l10n),
+                                    onLogOut: () =>
+                                        _confirmLogOut(context, appRepo, l10n),
+                                  ),
+                                  const Spacer(),
+                                  Center(
+                                    child: CupertinoButton(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
+                                        horizontal: 12,
+                                        vertical: 4,
                                       ),
                                       minimumSize: Size.zero,
-                                      color: theme.textPrimary.withValues(
-                                        alpha: .14,
-                                      ),
                                       onPressed: SoundService.wrapTap(
-                                        () => _requestNotifications(
+                                        () => _confirmDelete(
                                           context,
                                           appRepo,
                                           l10n,
                                         ),
                                       ),
                                       child: Text(
-                                        l10n.enableNotifications,
-                                        style: TextStyle(
-                                          color: theme.textPrimary,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
+                                        l10n.deleteAccount,
+                                        style: const TextStyle(
+                                          color: CupertinoColors.destructiveRed,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
+                                  ),
                                 ],
                               ),
-                              const _SectionDivider(),
-                              _SectionLabel(l10n.account),
-                              const SizedBox(height: 4),
-                              _GoogleAccountRow(
-                                linked: appRepo.isGoogleLinked,
-                                email: appRepo.googleEmail,
-                                onConnect: () =>
-                                    _connectGoogle(context, appRepo, l10n),
-                                onLogOut: () =>
-                                    _confirmLogOut(context, appRepo, l10n),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Center(
-                        child: CupertinoButton(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          minimumSize: Size.zero,
-                          onPressed: SoundService.wrapTap(
-                            () => context.push('/privacy'),
-                          ),
-                          child: Text(
-                            l10n.privacyPolicy,
-                            style: theme.mutedText.copyWith(
-                              color: theme.textPrimary.withValues(alpha: .78),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
-                              decorationColor: theme.textPrimary.withValues(
-                                alpha: .35,
-                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                      Center(
-                        child: CupertinoButton(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          minimumSize: Size.zero,
-                          onPressed: SoundService.wrapTap(
-                            () => _confirmDelete(context, appRepo, l10n),
-                          ),
-                          child: Text(
-                            l10n.deleteAccount,
-                            style: const TextStyle(
-                              color: CupertinoColors.destructiveRed,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  minimumSize: Size.zero,
+                  onPressed: SoundService.wrapTap(
+                    () => context.push('/privacy'),
+                  ),
+                  child: Text(
+                    l10n.privacyPolicy,
+                    style: theme.mutedText.copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.underline,
+                      decorationColor: theme.muted.withValues(alpha: .45),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -381,8 +395,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     );
     if (go == true) {
       await appRepo.deleteLocalAccount();
-      if (!context.mounted) return;
-      if (!appRepo.isGoogleLinked) context.go('/home');
+      if (context.mounted) context.go('/home');
     }
   }
 
@@ -441,7 +454,7 @@ class _SectionDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 1,
-      margin: const EdgeInsets.symmetric(vertical: 10),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       color: AppStyle.theme.textPrimary.withValues(alpha: .12),
     );
   }
@@ -559,49 +572,51 @@ class _GoogleAccountRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final l10n = AppLocalizations.of(context);
+    final address = email?.trim();
+
     return Row(
       children: [
         const GoogleGMark(size: 16),
         const SizedBox(width: 8),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                linked ? l10n.googleConnected : l10n.google,
-                style: theme.mutedText.copyWith(
-                  color: linked
-                      ? theme.success
-                      : theme.textPrimary.withValues(alpha: .7),
-                ),
-              ),
-              if (linked && email != null && email!.isNotEmpty)
-                Text(
-                  email!,
+          child: !linked
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    onPressed: SoundService.wrapTap(onConnect),
+                    child: Text(
+                      l10n.connectGoogle,
+                      style: theme.body.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                )
+              : Text(
+                  address ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.caption.copyWith(
-                    color: theme.textPrimary.withValues(alpha: .62),
-                    fontSize: 12,
-                  ),
+                  style: theme.body.copyWith(fontSize: 14),
                 ),
-            ],
-          ),
         ),
-        CupertinoButton(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          minimumSize: Size.zero,
-          color: theme.textPrimary.withValues(alpha: .14),
-          onPressed: SoundService.wrapTap(linked ? onLogOut : onConnect),
-          child: Text(
-            linked ? l10n.logOut : l10n.connectGoogle,
-            style: TextStyle(
-              color: theme.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+        if (linked)
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            minimumSize: Size.zero,
+            color: theme.textPrimary.withValues(alpha: .14),
+            onPressed: SoundService.wrapTap(onLogOut),
+            child: Text(
+              l10n.logOut,
+              style: TextStyle(
+                color: theme.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
       ],
     );
   }

@@ -194,16 +194,20 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       if (!mounted) return;
     }
 
-    final gid = await context.read<GamesViewModel>().newGame(
-      GameMode.casino,
-      true,
-    );
-    if (!mounted) return;
-    if (gid == null) {
-      context.go('/landing');
-      return;
+    try {
+      final gid = await context.read<GamesViewModel>().newGame(
+        GameMode.casino,
+        true,
+      );
+      if (!mounted) return;
+      if (gid == null) {
+        context.go('/landing');
+        return;
+      }
+      context.go(GameRoutes.game(gameId: gid, gameMode: GameMode.casino.name));
+    } catch (_) {
+      if (mounted) context.go('/landing');
     }
-    context.go(GameRoutes.game(gameId: gid, gameMode: GameMode.casino.name));
   }
 
   void _onVmChanged() {

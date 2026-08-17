@@ -21,6 +21,7 @@ Future<void> showGameModeHowTo(
   required double cardWidth,
   Rect? anchor,
 }) {
+  final vm = context.read<GamesViewModel>();
   return showGeneralDialog<void>(
     context: context,
     useRootNavigator: true,
@@ -34,6 +35,14 @@ Future<void> showGameModeHowTo(
         animation: animation,
         cardWidth: cardWidth,
         anchor: anchor,
+        onPlay: () {
+          Navigator.pop(dialogContext);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              showEnterGameDialog(context, vm, mode);
+            }
+          });
+        },
       );
     },
     transitionBuilder: (context, animation, secondary, child) => child,
@@ -46,6 +55,7 @@ class GameModeHowToOverlay extends StatefulWidget {
     required this.mode,
     required this.animation,
     required this.cardWidth,
+    required this.onPlay,
     this.anchor,
   });
 
@@ -53,6 +63,7 @@ class GameModeHowToOverlay extends StatefulWidget {
   final Animation<double> animation;
   final double cardWidth;
   final Rect? anchor;
+  final VoidCallback onPlay;
 
   @override
   State<GameModeHowToOverlay> createState() => _GameModeHowToOverlayState();
@@ -88,8 +99,7 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
   }
 
   void _openPlay() {
-    final vm = context.read<GamesViewModel>();
-    showEnterGameDialog(context, vm, widget.mode);
+    widget.onPlay();
   }
 
   @override

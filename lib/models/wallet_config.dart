@@ -3,11 +3,20 @@ class WalletConfig {
   static const int startingCoins = 1000;
   static const int startingEnergy = 100;
   static const int energyCap = 100;
-  static const Duration regenInterval = Duration(minutes: 1);
+  static const Duration regenInterval = Duration(minutes: 5);
 
   static const int entryCost = 100;
   static const int winPayoutMultiplier = 2;
+
+  /// Energy to start a Tres y Dos (or Robaito) match vs Puli.
   static const int puliloEnergyCost = 5;
+
+  /// Energy to start a Casino match vs Puli.
+  static const int casinoPuliloEnergyCost = 10;
+
+  static int puliloEnergyCostFor(String gameMode) {
+    return gameMode == 'casino' ? casinoPuliloEnergyCost : puliloEnergyCost;
+  }
 
   static int winPayout(int entry) => entry * winPayoutMultiplier;
 }

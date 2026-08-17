@@ -133,13 +133,12 @@ class HomeScreenState extends State<HomeScreen> {
 
   Future<void> _enter() async {
     if (_entering) return;
+    final typed = _nameController.text.trim();
+    if (typed.isEmpty) return;
     setState(() => _entering = true);
     try {
       final vm = context.read<HomeViewModel>();
-      final typed = _nameController.text.trim();
-      if (typed.isNotEmpty && typed != vm.name) {
-        await vm.updatePlayerName(typed);
-      }
+      await vm.updatePlayerName(typed);
       if (!mounted) return;
       context.go('/landing');
     } finally {

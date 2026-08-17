@@ -4,7 +4,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/player.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
@@ -18,17 +18,15 @@ class GamesViewModel extends ChangeNotifier {
 
   Future<String?> newGame(GameMode mode, bool local) async {
     try {
-      String? pid = _appRepo.player?.id;
-      Player? playersInfo = _appRepo.player;
-      if (pid != null && playersInfo != null) {
-        String gid = await _appRepo.createNewGame(mode, pid, local);
-        developer.log("game $gid, player $pid");
-        return gid;
-      }
+      final gid = await _appRepo.createNewGame(mode, '', local);
+      debugPrint('newGame $gid local=$local');
+      return gid;
+    } on InsufficientFundsException {
+      rethrow;
     } catch (e) {
-      developer.log("Error Creating Game $e");
+      debugPrint('Error Creating Game $e');
+      rethrow;
     }
-    return null;
   }
 
   Future<void> deleteGame(String gameId) async {
@@ -85,7 +83,7 @@ class GamesViewModel extends ChangeNotifier {
     return bt.compareTo(at);
   }
 
-  void startListening(String pid) {
+  void startListening(String pid, {bool retried = false}) {
     _sub?.cancel();
     loading = true;
     error = null;
@@ -107,13 +105,27 @@ class GamesViewModel extends ChangeNotifier {
             error = null;
             notifyListeners();
           },
-          onError: (e, st) {
+          onError: (e, st) async {
             developer.log(
               "GamesViewModel.listenGames Error: $e",
               stackTrace: st,
             );
+            if (!retried &&
+                e is FirebaseException &&
+                e.code == 'permission-denied') {
+              try {
+                final uid = await _appRepo.ensurePlayableUid();
+                startListening(uid, retried: true);
+                return;
+              } catch (retryError) {
+                developer.log('GamesViewModel.listenGames retry: $retryError');
+              }
+            }
             loading = false;
-            error = e.toString();
+            final code = e is FirebaseException ? e.code : '';
+            error = code == 'permission-denied'
+                ? 'permission-denied'
+                : e.toString();
             notifyListeners();
           },
         );

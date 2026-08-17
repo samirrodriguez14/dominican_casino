@@ -67,7 +67,7 @@ class HomeCoinClaim {
 }
 
 class AppRepo extends ChangeNotifier {
-  Theme _appTheme = Theme.feltWaltnut;
+  Theme _appTheme = Theme.sage;
   Theme get appTheme => _appTheme;
   AppTheme get selectedTheme => themeFromEnum(_appTheme);
   List<GameInfo> gamesInfo = [];
@@ -76,7 +76,7 @@ class AppRepo extends ChangeNotifier {
   final List<GameState> games = [];
   final FirestoreService fs;
   final Uuid _uuid = const Uuid();
-  Locale _locale = const Locale('es');
+  Locale _locale = const Locale('en');
   Locale get locale => _locale;
   bool notificationsEnabled = false;
   AuthorizationStatus notificationStatus = AuthorizationStatus.notDetermined;
@@ -84,6 +84,7 @@ class AppRepo extends ChangeNotifier {
   Wallet get wallet => _wallet;
   bool _googleSignInReady = false;
   String? _walletUid;
+  bool _walletPersistPaused = false;
   Timer? _energyTimer;
   int? _shellTabRequest;
   int? get shellTabRequest => _shellTabRequest;
@@ -193,6 +194,7 @@ class AppRepo extends ChangeNotifier {
 
   /// Apply pending regen. Notifies only when energy actually changes.
   void tickEnergy() {
+    if (_walletPersistPaused) return;
     final next = _wallet.applyRegen();
     if (next.energy == _wallet.energy &&
         next.energyUpdatedAt == _wallet.energyUpdatedAt) {
@@ -207,27 +209,48 @@ class AppRepo extends ChangeNotifier {
 
   Future<void> _loadWallet() async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? player?.id;
-    _walletUid = uid;
     if (uid == null) {
       _wallet = Wallet.starter();
+      _walletUid = null;
       return;
     }
 
-    Map<String, dynamic>? remote;
+    // Pause so the energy ticker cannot write the previous session's
+    // in-memory wallet (often a starter guest balance) to this uid.
+    _walletPersistPaused = true;
+    var remoteOk = false;
     try {
-      remote = await fs.loadUserProfile(uid);
-    } catch (e) {
-      developer.log('AppRepo.loadWallet remote: $e');
+      Map<String, dynamic>? remote;
+      try {
+        remote = await fs.loadUserProfile(uid);
+        remoteOk = true;
+      } catch (e) {
+        developer.log('AppRepo.loadWallet remote: $e');
+      }
+
+      final local = await _loadWalletPrefs(uid);
+      Wallet loaded;
+      if (Wallet.hasWalletFields(remote)) {
+        loaded = Wallet.fromJson(remote!);
+        // Prefer a non-starter local cache if cloud looks freshly reset.
+        if (local != null &&
+            loaded.coins == WalletConfig.startingCoins &&
+            loaded.energy == WalletConfig.startingEnergy &&
+            (local.coins != loaded.coins || local.energy != loaded.energy)) {
+          loaded = local;
+        }
+      } else {
+        loaded = local ?? Wallet.starter();
+      }
+      _wallet = loaded.applyRegen();
+      _walletUid = uid;
+    } finally {
+      _walletPersistPaused = false;
     }
 
-    Wallet loaded;
-    if (Wallet.hasWalletFields(remote)) {
-      loaded = Wallet.fromJson(remote!);
-    } else {
-      loaded = await _loadWalletPrefs(uid) ?? Wallet.starter();
+    if (remoteOk) {
+      await _persistWallet();
     }
-    _wallet = loaded.applyRegen();
-    await _persistWallet();
     await _loadHomeCoinClaim(uid);
   }
 
@@ -251,7 +274,7 @@ class AppRepo extends ChangeNotifier {
   }
 
   Future<void> _persistHomeCoinClaim() async {
-    final uid = _walletUid ?? _currentUid;
+    final uid = _walletUid;
     if (uid == null) return;
     final sp = await SharedPreferences.getInstance();
     final key = _homeCoinClaimPrefsKey(uid);
@@ -314,7 +337,8 @@ class AppRepo extends ChangeNotifier {
   }
 
   Future<void> _persistWallet() async {
-    final uid = _walletUid ?? _currentUid;
+    if (_walletPersistPaused) return;
+    final uid = _walletUid;
     if (uid == null) return;
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_walletPrefsKey(uid), jsonEncode(_wallet.toJson()));
@@ -385,8 +409,11 @@ class AppRepo extends ChangeNotifier {
   }
 
   bool get canAffordFriendGame => _wallet.coins >= WalletConfig.entryCost;
-  bool get canAffordPulilo =>
-      _wallet.energy >= WalletConfig.puliloEnergyCost;
+
+  bool canAffordPulilo([GameMode? mode]) {
+    final cost = WalletConfig.puliloEnergyCostFor(mode?.name ?? '');
+    return _wallet.energy >= cost;
+  }
 
   Future<bool> refundEntryIfNeeded(GameState game) async {
     final uid = _currentUid;
@@ -448,12 +475,32 @@ class AppRepo extends ChangeNotifier {
 
   Future<void> _ensureAnonymousAuth() async {
     final auth = FirebaseAuth.instance;
-    if (auth.currentUser != null) {
-      developer.log("AppRepo: auth uid ${auth.currentUser!.uid}");
+    User? user = auth.currentUser;
+    if (user == null) {
+      try {
+        user = await auth.authStateChanges().first.timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => auth.currentUser,
+        );
+      } catch (e) {
+        developer.log("AppRepo: auth restore wait: $e");
+        user = auth.currentUser;
+      }
+    }
+    if (user != null) {
+      developer.log("AppRepo: auth uid ${user.uid}");
+      try {
+        await user.getIdToken();
+      } catch (e) {
+        developer.log("AppRepo: getIdToken $e");
+      }
       return;
     }
     try {
-      await auth.signInAnonymously().timeout(const Duration(seconds: 12));
+      final cred = await auth.signInAnonymously().timeout(
+        const Duration(seconds: 12),
+      );
+      await cred.user?.getIdToken();
       developer.log("AppRepo: auth uid ${auth.currentUser?.uid}");
     } on FirebaseAuthException catch (e) {
       // Common when Anonymous sign-in is off in Firebase Console.
@@ -465,6 +512,37 @@ class AppRepo extends ChangeNotifier {
     } catch (e) {
       developer.log("AppRepo: Anonymous Auth error: $e");
     }
+  }
+
+  /// Firebase uid for game docs and wallet. Signs in anonymously if needed
+  /// and rebinds a stale local player id so Firestore rules can succeed.
+  Future<String> ensurePlayableUid() async {
+    await _ensureAnonymousAuth();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw StateError('Not signed in');
+    }
+    try {
+      await user.getIdToken();
+    } catch (e) {
+      developer.log('AppRepo.ensurePlayableUid token: $e');
+    }
+    final uid = user.uid;
+    final current = player;
+    if (current == null) {
+      player = await _playerFromRemoteOrLocal(uid, null);
+      await _persistPlayer();
+      await _loadWallet();
+      notifyListeners();
+    } else if (current.id != uid) {
+      player = current.copyWith(id: uid);
+      await _persistPlayer();
+      await _loadWallet();
+      notifyListeners();
+    } else if (_walletUid != uid) {
+      await _loadWallet();
+    }
+    return uid;
   }
 
   Future<void> _ensureGoogleSignIn() async {
@@ -689,13 +767,39 @@ class AppRepo extends ChangeNotifier {
       _locale = Locale(code);
       return;
     }
-    final device = WidgetsBinding.instance.platformDispatcher.locale;
-    _locale = device.languageCode == 'es'
-        ? const Locale('es')
-        : const Locale('en');
+    _locale = const Locale('en');
   }
 
   Future<String> createNewGame(GameMode mode, String pid, bool local) async {
+    final existingAuth = FirebaseAuth.instance.currentUser;
+    if (local && existingAuth == null) {
+      pid = player?.id ?? '';
+      if (pid.isEmpty) {
+        player = await _fallbackLocalPlayer();
+        pid = player!.id;
+      }
+    } else {
+      try {
+        pid = await ensurePlayableUid();
+      } catch (e) {
+        debugPrint('createNewGame auth: $e');
+        if (!local) rethrow;
+        pid = player?.id ?? '';
+        if (pid.isEmpty) {
+          player = await _fallbackLocalPlayer();
+          pid = player!.id;
+        }
+      }
+    }
+    final energyCost = WalletConfig.puliloEnergyCostFor(mode.name);
+    if (local) {
+      if (_wallet.energy < energyCost) {
+        throw const InsufficientFundsException(energy: true);
+      }
+    } else if (_wallet.coins < WalletConfig.entryCost) {
+      throw const InsufficientFundsException(energy: false);
+    }
+
     String gid = _uuid.v4().substring(0, 8);
     GameState gameState = GameState.create(gid, pid, mode);
     gameState.entryCost = WalletConfig.entryCost;
@@ -706,9 +810,6 @@ class AppRepo extends ChangeNotifier {
       gameState.playersInfo[pid] = {'id': pid};
     }
     if (local) {
-      if (!await trySpendEnergy(WalletConfig.puliloEnergyCost)) {
-        throw const InsufficientFundsException(energy: true);
-      }
       final botPid = _uuid.v4().substring(0, 8);
       gameState.isLocalBot = true;
       gameState.botPlayerId = botPid;
@@ -718,22 +819,23 @@ class AppRepo extends ChangeNotifier {
         'avatarId': GameState.localBotAvatarId,
       };
     } else {
-      if (!await trySpendCoins(WalletConfig.entryCost)) {
-        throw const InsufficientFundsException(energy: false);
-      }
       gameState.entryPaidBy = [pid];
     }
-    try {
-      gid = await fs.newCreateGame(gameState);
-      return gid;
-    } catch (e) {
-      if (local) {
-        await grantEnergy(WalletConfig.puliloEnergyCost);
-      } else {
-        await grantCoins(WalletConfig.entryCost);
-      }
-      rethrow;
+    debugPrint(
+      'createNewGame uid=$pid controller=${gameState.controllerId} '
+      'auth=${FirebaseAuth.instance.currentUser?.uid} local=$local',
+    );
+    gid = await fs.newCreateGame(gameState);
+    final spent = local
+        ? await trySpendEnergy(energyCost)
+        : await trySpendCoins(WalletConfig.entryCost);
+    if (!spent) {
+      try {
+        await fs.deleteGame(gid);
+      } catch (_) {}
+      throw InsufficientFundsException(energy: local);
     }
+    return gid;
   }
 
   /// Request notification permission after an in-app rationale, then store
@@ -797,13 +899,24 @@ class AppRepo extends ChangeNotifier {
   }
 
   Future<bool> updatePlayer(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return false;
     try {
+      try {
+        await ensurePlayableUid();
+      } catch (e) {
+        developer.log('AppRepo.updatePlayer auth: $e');
+      }
       if (player == null) {
-        await _ensureAnonymousAuth();
-        final uid = FirebaseAuth.instance.currentUser!.uid;
-        player = Player(id: uid, name: name);
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          player = Player(id: uid, name: trimmed);
+        } else {
+          final local = await _fallbackLocalPlayer();
+          player = local.copyWith(name: trimmed);
+        }
       } else {
-        player = player!.copyWith(name: name);
+        player = player!.copyWith(name: trimmed);
       }
       await _persistPlayer();
       if (player!.token != null) {
@@ -832,13 +945,52 @@ class AppRepo extends ChangeNotifier {
 
   /// Sign out of Google on this device. Cloud profile and wallet stay.
   Future<void> logOut() async {
-    try {
-      await _persistPlayerRemote();
-    } catch (_) {}
-    await _clearLocalPlayer();
-    _wallet = Wallet.starter();
-    _walletUid = null;
-    _pendingHomeCoinClaim = null;
+    await _endAuthSession(wipeLocalWallet: false);
+  }
+
+  /// Wipe this device's cached profile and sign out.
+  /// Guest cloud docs are deleted. Google cloud data stays for next sign-in.
+  Future<void> deleteLocalAccount() async {
+    await _endAuthSession(
+      wipeLocalWallet: true,
+      deleteGuestCloudProfile: !isGoogleLinked,
+    );
+  }
+
+  /// Flush the live wallet to the cloud, then drop the local session.
+  /// Never write a starter wallet while the previous user is still signed in.
+  Future<void> _endAuthSession({
+    required bool wipeLocalWallet,
+    bool deleteGuestCloudProfile = false,
+  }) async {
+    final uid = player?.id ?? FirebaseAuth.instance.currentUser?.uid;
+    final walletUid = _walletUid ?? uid;
+    final walletToFlush = _wallet;
+
+    _walletPersistPaused = true;
+    _energyTimer?.cancel();
+    _energyTimer = null;
+
+    if (!deleteGuestCloudProfile && walletUid != null) {
+      try {
+        final sp = await SharedPreferences.getInstance();
+        await sp.setString(
+          _walletPrefsKey(walletUid),
+          jsonEncode(walletToFlush.toJson()),
+        );
+        await fs.saveWallet(uid: walletUid, wallet: walletToFlush);
+      } catch (e) {
+        developer.log('AppRepo.flushWallet: $e');
+      }
+      try {
+        await _persistPlayerRemote();
+      } catch (_) {}
+    } else if (deleteGuestCloudProfile && uid != null) {
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+      } catch (_) {}
+    }
+
     try {
       await FirebaseAuth.instance.signOut();
     } catch (_) {}
@@ -847,43 +999,27 @@ class AppRepo extends ChangeNotifier {
         await GoogleSignIn.instance.signOut();
       } catch (_) {}
     }
+
+    await _clearLocalSession(uid, wipeLocalWallet: wipeLocalWallet);
     _loadFuture = null;
+    _walletPersistPaused = false;
     await loadApp();
   }
 
-  /// Wipe this device's cached profile. Guest accounts are fully reset.
-  /// Google accounts stay signed in and reload name / avatar / tutorial
-  /// and wallet from the cloud.
-  Future<void> deleteLocalAccount() async {
-    final linked = isGoogleLinked;
-    final uid = player?.id ?? FirebaseAuth.instance.currentUser?.uid;
-    if (!linked && uid != null) {
-      try {
-        await FirebaseFirestore.instance.collection('users').doc(uid).delete();
-      } catch (_) {}
+  Future<void> _clearLocalSession(
+    String? uid, {
+    bool wipeLocalWallet = true,
+  }) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove('player_id');
+    if (wipeLocalWallet && uid != null) {
+      await sp.remove(_walletPrefsKey(uid));
+      await sp.remove(_homeCoinClaimPrefsKey(uid));
     }
-    await _clearLocalPlayer();
+    player = null;
     _wallet = Wallet.starter();
     _walletUid = null;
     _pendingHomeCoinClaim = null;
-    if (!linked) {
-      try {
-        await FirebaseAuth.instance.signOut();
-      } catch (_) {}
-      if (!kIsWeb) {
-        try {
-          await GoogleSignIn.instance.signOut();
-        } catch (_) {}
-      }
-    }
-    _loadFuture = null;
-    await loadApp();
-  }
-
-  Future<void> _clearLocalPlayer() async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.remove('player_id');
-    player = null;
     appStatus = AppStatus.notReady;
   }
 
@@ -988,6 +1124,11 @@ class AppRepo extends ChangeNotifier {
     } catch (e) {
       developer.log("AppRepo.loadPlayer Error: $e");
       appStatus = AppStatus.appError;
+    }
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      player = _mergePlayer(uid, local: null, remote: null);
+      return player;
     }
     return await _fallbackLocalPlayer();
   }

@@ -33,16 +33,17 @@ class Wallet {
   Wallet applyRegen([DateTime? now]) {
     if (isAtOrAboveCap) return this;
     final at = now ?? DateTime.now();
-    final gained = at.difference(energyUpdatedAt).inMinutes;
+    final interval = WalletConfig.regenInterval;
+    if (interval <= Duration.zero) return this;
+    final gained =
+        at.difference(energyUpdatedAt).inMilliseconds ~/ interval.inMilliseconds;
     if (gained <= 0) return this;
     final room = WalletConfig.energyCap - energy;
     final actual = gained < room ? gained : room;
     if (actual <= 0) return this;
     return copyWith(
       energy: energy + actual,
-      energyUpdatedAt: energyUpdatedAt.add(
-        Duration(minutes: actual),
-      ),
+      energyUpdatedAt: energyUpdatedAt.add(interval * actual),
     );
   }
 

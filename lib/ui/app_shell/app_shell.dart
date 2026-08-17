@@ -30,18 +30,28 @@ class AppShellState extends State<AppShell> {
   final _profileKey = GlobalKey<ProfileScreenState>();
   bool _offeredTutorial = false;
   HomeCoinClaim? _activeCelebration;
+  String? _listeningPid;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: currentIndex);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final pid = context.read<AppRepo>().player?.id;
-      if (pid != null) {
-        context.read<GamesViewModel>().startListening(pid);
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await context.read<AppRepo>().ensurePlayableUid();
+      } catch (_) {}
+      if (!mounted) return;
+      _syncGameListener();
       _maybeOfferFirstRun();
     });
+  }
+
+  void _syncGameListener() {
+    final repo = context.read<AppRepo>();
+    final pid = repo.player?.id;
+    if (pid == null || pid == _listeningPid) return;
+    _listeningPid = pid;
+    context.read<GamesViewModel>().startListening(pid);
   }
 
   void _maybeOfferFirstRun() {
@@ -120,6 +130,11 @@ class AppShellState extends State<AppShell> {
       });
     }
     _maybeStartHomeCoinCelebration(appRepo);
+    if (player?.id != _listeningPid) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncGameListener();
+      });
+    }
 
     return CupertinoPageScaffold(
       child: Stack(

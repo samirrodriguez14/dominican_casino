@@ -295,7 +295,7 @@ class GameState {
     'winnerId': winnerId,
     'round': round.toJson(),
     'isLocalBot': isLocalBot,
-    'botPlayerId': botPlayerId,
+    'botPlayerId': ?botPlayerId,
     'entryCost': entryCost,
     'entryPaidBy': entryPaidBy,
     'payoutApplied': payoutApplied,

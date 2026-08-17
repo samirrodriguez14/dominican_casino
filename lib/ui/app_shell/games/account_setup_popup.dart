@@ -40,6 +40,21 @@ class _AccountSetupCard extends StatefulWidget {
 class _AccountSetupCardState extends State<_AccountSetupCard> {
   final TextEditingController _controller = TextEditingController();
   bool _busy = false;
+  bool _hasName = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final player = context.read<AppRepo>().player;
+      final name = player?.name?.trim() ?? '';
+      if (name.isNotEmpty && !(player?.needsAccountSetup ?? true)) {
+        _controller.text = name;
+        setState(() => _hasName = true);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -139,19 +154,21 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
             ),
             const SizedBox(height: 10),
             Text(
-              l10n.saveProgressBody,
+              _hasName ? l10n.saveProgressGoogleBody : l10n.saveProgressBody,
               textAlign: TextAlign.center,
               style: theme.body.copyWith(height: 1.4),
             ),
-            const SizedBox(height: 18),
-            CupertinoTextField(
-              controller: _controller,
-              maxLength: 10,
-              textAlign: TextAlign.center,
-              placeholder: l10n.yourName,
-              enabled: !_busy,
-              autofocus: true,
-            ),
+            if (!_hasName) ...[
+              const SizedBox(height: 18),
+              CupertinoTextField(
+                controller: _controller,
+                maxLength: 10,
+                textAlign: TextAlign.center,
+                placeholder: l10n.yourName,
+                enabled: !_busy,
+                autofocus: true,
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [
