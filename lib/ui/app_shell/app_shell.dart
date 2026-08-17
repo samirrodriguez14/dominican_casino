@@ -2,7 +2,7 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
-import 'package:dominican_casino/ui/app_shell/settings/settings_screen.dart';
+import 'package:dominican_casino/ui/app_shell/store/store_screen.dart';
 import 'package:flutter/cupertino.dart';
 
 class AppShell extends StatefulWidget {
@@ -24,15 +24,15 @@ class AppShellState extends State<AppShell> {
         return CupertinoTabView(
           builder: (BuildContext context) {
             if (index == 0) {
-              return const SettingsScreen();
+              return const StoreScreen(key: ValueKey('store-tab'));
             }
             if (index == 1) {
-              return const GamesScreen();
+              return const GamesScreen(key: ValueKey('games-tab'));
             }
             if (index == 2) {
-              return const ProfileScreen();
+              return const ProfileScreen(key: ValueKey('profile-tab-v2'));
             }
-            return const GamesScreen();
+            return const GamesScreen(key: ValueKey('games-tab'));
           },
         );
       },
@@ -50,8 +50,8 @@ class AppShellState extends State<AppShell> {
         },
         items: [
           BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.settings, size: iconSize),
-            label: l10n.settings,
+            icon: Icon(CupertinoIcons.bag, size: iconSize),
+            label: l10n.store,
           ),
           BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.game_controller, size: iconSize),

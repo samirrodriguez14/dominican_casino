@@ -25,10 +25,24 @@ class AppLocalizations {
   String get yourTurn => isEs ? 'Tu turno' : 'Your Turn';
   String get opponentTurn => isEs ? 'Turno del rival' : 'Opponent Turn';
   String get settings => isEs ? 'Ajustes' : 'Settings';
+  String get store => isEs ? 'Tienda' : 'Store';
   String get games => isEs ? 'Juegos' : 'Games';
   String get profile => isEs ? 'Perfil' : 'Profile';
   String get privacyPolicy => isEs ? 'Política de privacidad' : 'Privacy Policy';
   String get chooseTable => isEs ? 'Elige tu mesa' : 'Choose Your Table';
+  String get themes => isEs ? 'Temas' : 'Themes';
+  String get owned => isEs ? 'Tuyo' : 'Owned';
+  String get locked => isEs ? 'Bloqueado' : 'Locked';
+  String get buyEnergy => isEs ? 'Comprar energía' : 'Buy energy';
+  String get buyCoins => isEs ? 'Comprar monedas' : 'Buy coins';
+  String get scrollForSettings =>
+      isEs ? 'Desliza hacia arriba para ajustes' : 'Scroll up for settings';
+  String get currentGames => isEs ? 'Actuales' : 'Current';
+  String get previousGames => isEs ? 'Anteriores' : 'Previous';
+  String get noCurrentGames =>
+      isEs ? 'No hay partidas actuales' : 'No current games';
+  String get noPreviousGames =>
+      isEs ? 'No hay partidas anteriores' : 'No previous games';
   String get language => isEs ? 'Idioma' : 'Language';
   String get sound => isEs ? 'Sonido' : 'Sound';
   String get soundEffects => isEs ? 'Efectos de sonido' : 'Sound effects';

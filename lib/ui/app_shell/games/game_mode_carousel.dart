@@ -40,7 +40,7 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
     final modes = <GameMode>[GameMode.casino, GameMode.tresydos];
 
     return SizedBox(
-      height: screenHeight * 0.5,
+      height: screenHeight * 0.42,
       child: PageView.builder(
         controller: controller,
         itemCount: modes.length,

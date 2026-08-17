@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
+import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -31,6 +32,10 @@ class AppRepo extends ChangeNotifier {
   Locale get locale => _locale;
   bool notificationsEnabled = false;
   AuthorizationStatus notificationStatus = AuthorizationStatus.notDetermined;
+  Wallet _wallet = const Wallet();
+  Wallet get wallet => _wallet;
+
+  static const _walletKey = 'wallet';
 
   AppRepo({required this.fs});
 
@@ -59,6 +64,7 @@ class AppRepo extends ChangeNotifier {
     try {
       await _ensureAnonymousAuth();
       await _loadLocale();
+      await _loadWallet();
       player = await _loadPlayer();
       gamesInfo = await loadGames();
       await refreshNotificationStatus();
@@ -72,9 +78,38 @@ class AppRepo extends ChangeNotifier {
         gamesInfo = await loadGames();
       } catch (_) {}
       try {
+        await _loadWallet();
+      } catch (_) {}
+      try {
         await refreshNotificationStatus();
       } catch (_) {}
     }
+    notifyListeners();
+  }
+
+  Future<void> _loadWallet() async {
+    final sp = await SharedPreferences.getInstance();
+    final raw = sp.getString(_walletKey);
+    if (raw == null) {
+      _wallet = const Wallet();
+      await _persistWallet();
+      return;
+    }
+    try {
+      _wallet = Wallet.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      _wallet = const Wallet();
+    }
+  }
+
+  Future<void> _persistWallet() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_walletKey, jsonEncode(_wallet.toJson()));
+  }
+
+  Future<void> setWallet(Wallet wallet) async {
+    _wallet = wallet;
+    await _persistWallet();
     notifyListeners();
   }
 
