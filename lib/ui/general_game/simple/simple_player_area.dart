@@ -178,6 +178,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
     final actions = pending != null ? pending.actions : vm.possiblePlayActions;
     final canPlay = vm.canPlayTurn;
     final liveTurn = vm.isLiveTurn;
+    final showSpeedClock = vm.speedTurnRemainingSeconds > 0;
 
     if (!liveTurn && pending == null) {
       return const SizedBox.shrink();
@@ -186,7 +187,18 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
     return !canPlay && pending == null
         ? Center(child: _TurnHint(isMyTurn: canPlay))
         : actions.isEmpty && pending == null
-        ? Center(child: _TurnHint(isMyTurn: canPlay))
+        ? Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _TurnHint(isMyTurn: canPlay),
+                if (showSpeedClock) ...[
+                  const SizedBox(width: 10),
+                  _SpeedTurnClock(remainingSeconds: vm.speedTurnRemainingSeconds),
+                ]
+              ],
+            ),
+          )
         : LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
@@ -205,6 +217,13 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                             onTap: vm.cancelDropPending,
                           ),
                         ),
+                        if (showSpeedClock)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: _SpeedTurnClock(
+                              remainingSeconds: vm.speedTurnRemainingSeconds,
+                            ),
+                          ),
                       for (var index = 0; index < actions.length; index++)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -326,6 +345,51 @@ class _TurnHint extends StatelessWidget {
         color: isMyTurn
             ? theme.turnHighlight
             : theme.textPrimary.withValues(alpha: .7),
+      ),
+    );
+  }
+}
+
+class _SpeedTurnClock extends StatelessWidget {
+  const _SpeedTurnClock({required this.remainingSeconds});
+
+  final int remainingSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final urgent = remainingSeconds <= 3;
+    final fill = urgent
+        ? CupertinoColors.systemRed.withValues(alpha: .18)
+        : theme.turnHighlight.withValues(alpha: .18);
+    final border = urgent
+        ? CupertinoColors.systemRed.withValues(alpha: .45)
+        : theme.turnHighlight.withValues(alpha: .35);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            CupertinoIcons.timer,
+            size: 16,
+            color: urgent ? CupertinoColors.systemRed : theme.turnHighlight,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${remainingSeconds}s',
+            style: theme.caption.copyWith(
+              fontWeight: FontWeight.w800,
+              color: urgent ? CupertinoColors.systemRed : theme.turnHighlight,
+            ),
+          ),
+        ],
       ),
     );
   }

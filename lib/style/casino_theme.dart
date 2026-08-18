@@ -7,11 +7,6 @@ class CasinoTheme extends AppTheme {
   @override
   double get radius => 12;
   @override
-  String get appLogo => 'assets/images/logo_icon_transparent.png';
-
-  @override
-  String get cardBack => "assets/images/card_back.png";
-  @override
   Color get background => const Color(0xFF0D1B2A);
   @override
   Color get surface => const Color(0xFF1B263B);

@@ -17,7 +17,7 @@ class AvatarOption {
   paint;
 }
 
-/// Simple painted avatars (sun, palm, suits, moon, star).
+/// Simple painted avatars (sun, palm, suits, moon, star, acorn, leaf).
 class PlayerAvatars {
   static const defaultId = 'spade';
 
@@ -69,6 +69,18 @@ class PlayerAvatars {
       background: const Color(0xFFC4B07A),
       foreground: const Color(0xFF2A2418),
       paint: _paintStar,
+    ),
+    AvatarOption(
+      id: 'acorn',
+      background: const Color(0xFF4A3D32),
+      foreground: const Color(0xFFF3ECE2),
+      paint: _paintAcorn,
+    ),
+    AvatarOption(
+      id: 'leaf',
+      background: const Color(0xFF3E4A38),
+      foreground: const Color(0xFFE8D9A8),
+      paint: _paintLeaf,
     ),
   ];
 
@@ -351,4 +363,70 @@ void _paintStar(Canvas canvas, Offset c, double r, Color color) {
   }
   path.close();
   canvas.drawPath(path, Paint()..color = color);
+}
+
+void _paintAcorn(Canvas canvas, Offset c, double r, Color color) {
+  final paint = Paint()..color = color;
+  canvas.drawOval(
+    Rect.fromCenter(
+      center: Offset(c.dx, c.dy + r * 0.22),
+      width: r * 1.18,
+      height: r * 1.22,
+    ),
+    paint,
+  );
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(c.dx, c.dy - r * 0.22),
+        width: r * 1.42,
+        height: r * 0.62,
+      ),
+      Radius.circular(r * 0.28),
+    ),
+    paint,
+  );
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(c.dx, c.dy - r * 0.72),
+        width: r * 0.18,
+        height: r * 0.42,
+      ),
+      Radius.circular(r * 0.08),
+    ),
+    paint,
+  );
+}
+
+void _paintLeaf(Canvas canvas, Offset c, double r, Color color) {
+  final paint = Paint()..color = color;
+  final path = Path()
+    ..moveTo(c.dx, c.dy - r)
+    ..cubicTo(
+      c.dx + r * 0.95,
+      c.dy - r * 0.45,
+      c.dx + r * 0.88,
+      c.dy + r * 0.28,
+      c.dx,
+      c.dy + r * 0.78,
+    )
+    ..cubicTo(
+      c.dx - r * 0.88,
+      c.dy + r * 0.28,
+      c.dx - r * 0.95,
+      c.dy - r * 0.45,
+      c.dx,
+      c.dy - r,
+    );
+  canvas.drawPath(path, paint);
+  final vein = Paint()
+    ..color = color
+    ..strokeWidth = r * 0.12
+    ..strokeCap = StrokeCap.round;
+  canvas.drawLine(
+    Offset(c.dx, c.dy - r * 0.55),
+    Offset(c.dx, c.dy + r * 0.98),
+    vein,
+  );
 }

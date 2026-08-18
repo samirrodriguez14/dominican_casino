@@ -37,11 +37,11 @@ class HomeLoginCard extends StatelessWidget {
       aspectRatio: homeCardAspect,
       child: DecoratedBox(
         decoration: BoxDecoration(
+          color: theme.pickerFace,
           borderRadius: BorderRadius.circular(18),
-          image: DecorationImage(
-            image: AssetImage(theme.loginCardBack),
-            fit: BoxFit.cover,
-            alignment: Alignment.center,
+          border: Border.all(
+            color: theme.textPrimary.withValues(alpha: .14),
+            width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
@@ -53,155 +53,105 @@ class HomeLoginCard extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
-          child: Stack(
-            children: [
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 160,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        CupertinoColors.transparent,
-                        theme.background.withValues(alpha: .55),
-                      ],
-                    ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+            child: Column(
+              children: [
+                Text(
+                  l10n.welcome,
+                  style: theme.caption.copyWith(
+                    color: theme.textPrimary.withValues(alpha: .72),
+                    letterSpacing: 3.2,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-                child: Column(
-                  children: [
-                    Text(
-                      l10n.welcome,
-                      style: theme.caption.copyWith(
-                        color: theme.textPrimary.withValues(alpha: .92),
-                        letterSpacing: 3.2,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                const Spacer(),
+                if (askingName) ...[
+                  CupertinoTextField(
+                    controller: nameController,
+                    maxLength: 10,
+                    textAlign: TextAlign.center,
+                    enabled: !busy,
+                    autofocus: true,
+                    placeholder: l10n.yourName,
+                    placeholderStyle: theme.mutedText.copyWith(
+                      color: theme.textPrimary.withValues(alpha: .55),
+                    ),
+                    style: theme.body.copyWith(
+                      color: theme.textPrimary,
+                      fontSize: 16,
+                    ),
+                    padding: const EdgeInsets.only(bottom: 8, top: 4),
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.transparent,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: theme.textPrimary.withValues(alpha: .28),
+                        ),
                       ),
                     ),
-                    const Spacer(),
-                    if (askingName) ...[
-                      CupertinoTextField(
-                        controller: nameController,
-                        maxLength: 10,
-                        textAlign: TextAlign.center,
-                        enabled: !busy,
-                        autofocus: true,
-                        placeholder: l10n.yourName,
-                        placeholderStyle: theme.mutedText.copyWith(
-                          color: theme.textPrimary.withValues(alpha: .55),
-                        ),
-                        style: theme.body.copyWith(
-                          color: theme.textPrimary,
-                          fontSize: 16,
-                        ),
-                        padding: const EdgeInsets.only(bottom: 8, top: 4),
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.transparent,
-                          border: Border(
-                            bottom: BorderSide(
-                              color: theme.textPrimary.withValues(alpha: .7),
-                            ),
-                          ),
-                        ),
-                        onSubmitted: (_) => onContinue(),
+                    onSubmitted: (_) => onContinue(),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: _AuthPill(
+                      label: l10n.continueLabel,
+                      onPressed: busy ? null : onContinue,
+                    ),
+                  ),
+                  CupertinoButton(
+                    padding: const EdgeInsets.only(top: 6),
+                    minimumSize: Size.zero,
+                    onPressed: SoundService.wrapTap(busy ? null : onCancelName),
+                    child: Text(
+                      l10n.back,
+                      style: theme.caption.copyWith(
+                        color: theme.textPrimary.withValues(alpha: .62),
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
+                    ),
+                  ),
+                ] else ...[
+                  Semantics(
+                    button: true,
+                    label: l10n.play,
+                    child: CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      onPressed: SoundService.wrapTap(
+                        busy ? null : onQuickPlay,
+                      ),
+                      child: Icon(
+                        CupertinoIcons.play_fill,
+                        size: 40,
+                        color: theme.textPrimary.withValues(alpha: .92),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      Expanded(
                         child: _AuthPill(
-                          label: l10n.continueLabel,
-                          onPressed: busy ? null : onContinue,
+                          label: l10n.guest,
+                          icon: CupertinoIcons.person,
+                          onPressed: busy ? null : onGuest,
                         ),
                       ),
-                      CupertinoButton(
-                        padding: const EdgeInsets.only(top: 6),
-                        minimumSize: Size.zero,
-                        onPressed: SoundService.wrapTap(
-                          busy ? null : onCancelName,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _AuthPill(
+                          label: l10n.google,
+                          leading: const GoogleGMark(size: 15),
+                          onPressed: busy ? null : onGoogle,
                         ),
-                        child: Text(
-                          l10n.back,
-                          style: theme.caption.copyWith(
-                            color: theme.textPrimary.withValues(alpha: .7),
-                            decoration: TextDecoration.underline,
-                            decorationColor: theme.textPrimary.withValues(
-                              alpha: .3,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ] else ...[
-                      Semantics(
-                        button: true,
-                        label: l10n.play,
-                        child: CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          onPressed: SoundService.wrapTap(
-                            busy ? null : onQuickPlay,
-                          ),
-                          child: Container(
-                            width: 68,
-                            height: 68,
-                            decoration: BoxDecoration(
-                              color: theme.textPrimary.withValues(alpha: .16),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: theme.textPrimary.withValues(alpha: .22),
-                                width: 1.2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: CupertinoColors.black.withValues(
-                                    alpha: .28,
-                                  ),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: Icon(
-                              CupertinoIcons.play_fill,
-                              size: 30,
-                              color: theme.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _AuthPill(
-                              label: l10n.guest,
-                              icon: CupertinoIcons.person,
-                              onPressed: busy ? null : onGuest,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _AuthPill(
-                              label: l10n.google,
-                              leading: const GoogleGMark(size: 15),
-                              onPressed: busy ? null : onGoogle,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -239,7 +189,8 @@ class _AuthPill extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: cream.withValues(alpha: .78)),
+            color: cream.withValues(alpha: .08),
+            border: Border.all(color: cream.withValues(alpha: .18)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

@@ -60,7 +60,7 @@ class ThemeOptionCard extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: _PreviewMiniCard(
-                                  imagePath: previewTheme.cardBack,
+                                  color: previewTheme.pickerFace,
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -170,27 +170,20 @@ class _ThemePreviewHeader extends StatelessWidget {
 }
 
 class _PreviewMiniCard extends StatelessWidget {
-  const _PreviewMiniCard({required this.imagePath});
+  const _PreviewMiniCard({required this.color});
 
-  final String imagePath;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: 0.7,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.asset(
-          imagePath,
-          fit: BoxFit.cover,
-          cacheWidth: (80 * MediaQuery.devicePixelRatioOf(context)).round(),
-          errorBuilder: (_, _, _) => Container(
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            alignment: Alignment.center,
-            child: const Icon(CupertinoIcons.square_stack_3d_down_right),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: CupertinoColors.white.withValues(alpha: .14),
           ),
         ),
       ),

@@ -9,15 +9,6 @@ class SageTheme extends AppTheme {
   @override
   double get radius => 14;
 
-  @override
-  String get appLogo => 'assets/images/logo_icon_sage.png';
-
-  @override
-  String get cardBack => 'assets/images/card_back_sage.png';
-
-  @override
-  String get loginCardBack => 'assets/images/login_back_sage.png';
-
   // Base — charcoal with a quiet green cast
   @override
   Color get background => const Color(0xFF1A2220);

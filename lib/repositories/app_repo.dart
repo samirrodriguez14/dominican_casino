@@ -70,6 +70,8 @@ class AppRepo extends ChangeNotifier {
   Theme _appTheme = Theme.sage;
   Theme get appTheme => _appTheme;
   AppTheme get selectedTheme => themeFromEnum(_appTheme);
+  CardBack _cardBack = CardBack.sage;
+  CardBack get cardBack => _cardBack;
   List<GameInfo> gamesInfo = [];
   AppStatus appStatus = AppStatus.notReady;
   Player? player;
@@ -92,6 +94,7 @@ class AppRepo extends ChangeNotifier {
   HomeCoinClaim? get pendingHomeCoinClaim => _pendingHomeCoinClaim;
 
   static const _themeKey = 'appTheme';
+  static const _cardBackKey = 'cardBack';
 
   bool get isGoogleLinked {
     final user = FirebaseAuth.instance.currentUser;
@@ -119,10 +122,29 @@ class AppRepo extends ChangeNotifier {
 
   set appTheme(Theme value) {
     if (_appTheme == value) return;
+    final previousDefault = defaultCardBackFor(_appTheme);
     _appTheme = value;
     AppStyle.theme = selectedTheme;
+    if (_cardBack == previousDefault) {
+      final next = defaultCardBackFor(value);
+      if (cardBackStyle(next).owned) {
+        _cardBack = next;
+        AppStyle.cardBack = next;
+        _persistCardBack();
+      }
+    }
     notifyListeners();
     _persistTheme();
+  }
+
+  set cardBack(CardBack value) {
+    if (_cardBack == value) return;
+    final option = cardBackStyle(value);
+    if (!option.owned) return;
+    _cardBack = value;
+    AppStyle.cardBack = value;
+    notifyListeners();
+    _persistCardBack();
   }
 
   Future<void> setLocale(Locale locale) async {
@@ -745,19 +767,41 @@ class AppRepo extends ChangeNotifier {
   Future<void> _loadTheme() async {
     final sp = await SharedPreferences.getInstance();
     final name = sp.getString(_themeKey);
-    if (name == null) return;
-    for (final value in Theme.values) {
-      if (value.name == name) {
-        _appTheme = value;
-        AppStyle.theme = selectedTheme;
-        return;
+    if (name != null) {
+      for (final value in Theme.values) {
+        if (value.name == name) {
+          _appTheme = value;
+          AppStyle.theme = selectedTheme;
+          break;
+        }
       }
     }
+
+    final backName = sp.getString(_cardBackKey);
+    var loadedBack = false;
+    if (backName != null) {
+      for (final value in CardBack.values) {
+        if (value.name == backName && cardBackStyle(value).owned) {
+          _cardBack = value;
+          loadedBack = true;
+          break;
+        }
+      }
+    }
+    if (!loadedBack) {
+      _cardBack = defaultCardBackFor(_appTheme);
+    }
+    AppStyle.cardBack = _cardBack;
   }
 
   Future<void> _persistTheme() async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_themeKey, _appTheme.name);
+  }
+
+  Future<void> _persistCardBack() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_cardBackKey, _cardBack.name);
   }
 
   Future<void> _loadLocale() async {

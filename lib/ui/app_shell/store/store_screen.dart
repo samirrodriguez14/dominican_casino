@@ -65,7 +65,7 @@ class StoreScreenState extends State<StoreScreen> {
         const SizedBox(height: 28),
         Text(l10n.themes, style: theme.title.copyWith(fontSize: 22)),
         const SizedBox(height: 12),
-        const _ThemeStrip(),
+        const _CardBackStrip(),
       ],
     );
   }
@@ -157,12 +157,12 @@ class _BundleGrid extends StatelessWidget {
   }
 }
 
-class _ThemeStrip extends StatelessWidget {
-  const _ThemeStrip();
+class _CardBackStrip extends StatelessWidget {
+  const _CardBackStrip();
 
   @override
   Widget build(BuildContext context) {
-    final themes = Theme.values.toList();
+    final repo = context.watch<AppRepo>();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -173,19 +173,20 @@ class _ThemeStrip extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            itemCount: themes.length,
+            itemCount: cardBackCatalog.length,
             separatorBuilder: (_, _) =>
                 const SizedBox(width: StoreScreen._gridGap),
             itemBuilder: (context, index) {
-              final themeType = themes[index];
-              final locked = !ownedThemes.contains(themeType);
+              final option = cardBackCatalog[index];
               return SizedBox(
                 width: cardHeight * StoreScreen._cardAspect,
                 height: cardHeight,
                 child: StoreThemeCard(
-                  previewTheme: themeFromEnum(themeType),
-                  locked: locked,
-                  priceLabel: locked ? themePriceLabel(themeType) : null,
+                  color: option.color,
+                  locked: !option.owned,
+                  selected: option.owned && repo.cardBack == option.id,
+                  priceLabel: option.owned ? null : option.priceLabel,
+                  onTap: option.owned ? () => repo.cardBack = option.id : null,
                 ),
               );
             },

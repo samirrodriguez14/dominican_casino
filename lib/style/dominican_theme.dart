@@ -6,12 +6,6 @@ class DominicanTheme extends AppTheme {
   @override
   double get radius => 16;
 
-  @override
-  String get appLogo => 'assets/images/logo_icon_transparent.png';
-
-  @override
-  String get cardBack => 'assets/images/card_back.png';
-
   // ---- Base colors ----
   @override
   Color get background => const Color(0xFF0E4A86); // Dominican blue

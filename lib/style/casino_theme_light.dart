@@ -6,12 +6,6 @@ class LightCasinoTheme extends AppTheme {
   @override
   double get radius => 14;
 
-  @override
-  String get appLogo => 'assets/images/logo_icon_transparent.png';
-
-  @override
-  String get cardBack => 'assets/images/card_back.png';
-
   // ---- Base colors ----
   @override
   Color get background => const Color(0xFFEAF4EE); // soft mint-white

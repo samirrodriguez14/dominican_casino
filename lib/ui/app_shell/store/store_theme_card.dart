@@ -2,37 +2,44 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Theme for sale, shown as the card back itself.
+/// Card back for sale, shown as a plain palette fill.
 class StoreThemeCard extends StatelessWidget {
   const StoreThemeCard({
     super.key,
-    required this.previewTheme,
+    required this.color,
     this.locked = false,
+    this.selected = false,
     this.priceLabel,
     this.onTap,
   });
 
-  final AppTheme previewTheme;
+  final Color color;
   final bool locked;
+  final bool selected;
   final String? priceLabel;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
+    final isLight = color.computeLuminance() > 0.42;
+    final ink = isLight ? const Color(0xFF1C1612) : theme.textPrimary;
 
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: SoundService.wrapTap(onTap),
+      onPressed: locked ? null : SoundService.wrapTap(onTap),
       child: AspectRatio(
         aspectRatio: 2.5 / 3.5,
         child: DecoratedBox(
           decoration: BoxDecoration(
+            color: color,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: CupertinoColors.black.withValues(alpha: .18),
-              width: 1,
+              color: selected
+                  ? theme.turnHighlight.withValues(alpha: .85)
+                  : ink.withValues(alpha: .14),
+              width: selected ? 1.8 : 1,
             ),
             boxShadow: [
               BoxShadow(
@@ -42,47 +49,32 @@ class StoreThemeCard extends StatelessWidget {
               ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  previewTheme.cardBack,
-                  fit: BoxFit.cover,
-                  cacheWidth: (200 * MediaQuery.devicePixelRatioOf(context))
-                      .round(),
-                ),
-                if (locked)
-                  ColoredBox(
-                    color: CupertinoColors.black.withValues(alpha: .42),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            CupertinoIcons.lock_fill,
-                            color: theme.textPrimary,
-                            size: 28,
-                          ),
-                          if (priceLabel != null) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              priceLabel!,
-                              style: theme.title.copyWith(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                height: 1,
-                              ),
-                            ),
-                          ],
-                        ],
+          child: locked
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        CupertinoIcons.lock_fill,
+                        color: ink.withValues(alpha: .82),
+                        size: 22,
                       ),
-                    ),
+                      if (priceLabel != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          priceLabel!,
+                          style: theme.title.copyWith(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                            color: ink.withValues(alpha: .88),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-              ],
-            ),
-          ),
+                )
+              : null,
         ),
       ),
     );

@@ -1,5 +1,4 @@
 import 'package:dominican_casino/models/wallet_config.dart';
-import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -90,10 +89,3 @@ const coinBundles = <StoreBundle>[
     comingSoon: true,
   ),
 ];
-
-String themePriceLabel(Theme themeType) {
-  return switch (themeType) {
-    Theme.casino || Theme.midnight => '\$2.99',
-    Theme.feltWaltnut || Theme.sage => '\$1.99',
-  };
-}

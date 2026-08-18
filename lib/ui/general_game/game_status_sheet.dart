@@ -1589,28 +1589,15 @@ class _StatusHomeButton extends StatelessWidget {
         onPressed();
       }),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        width: 56,
+        height: 56,
         decoration: BoxDecoration(
           color: gold,
-          borderRadius: BorderRadius.circular(999),
+          shape: BoxShape.circle,
           border: Border.all(color: gold, width: 1.4),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(CupertinoIcons.house_fill, size: 20, color: dark),
-            const SizedBox(width: 8),
-            Text(
-              'Home',
-              style: TextStyle(
-                color: dark,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
+        alignment: Alignment.center,
+        child: Icon(CupertinoIcons.house_fill, size: 28, color: dark),
       ),
     );
   }

@@ -75,6 +75,15 @@ class GeneralGameViewModel extends ChangeNotifier {
   Timer? _botReactTimer;
   DateTime? _lastBotReactAt;
 
+  /// Casino Speed only: per-turn countdown + timeout auto-play.
+  static const _speedTurnDuration = Duration(seconds: 10);
+  Timer? _speedTurnTimer;
+  DateTime? _speedTurnDeadline;
+  int _speedTurnRemainingSeconds = _speedTurnDuration.inSeconds;
+  int? _speedTurnRoundId;
+  String? _speedTurnForPid;
+  bool _speedTurnAutoplayInFlight = false;
+
   /// Round id whose gather-wash already played — skip a second overlay on repo echo.
   int? _shuffleOverlayRoundId;
 
@@ -196,12 +205,120 @@ class GeneralGameViewModel extends ChangeNotifier {
       motion.setShuffling(false);
       isAnimating = false;
       _syncScheduled = false;
+      _syncSpeedTurnClock();
       notifyListeners();
       if (_pendingRepoSync) {
         _pendingRepoSync = false;
         _onGameRepoChanged();
       }
     }
+  }
+
+  void _cancelSpeedTurnClock() {
+    _speedTurnTimer?.cancel();
+    _speedTurnTimer = null;
+    _speedTurnDeadline = null;
+    _speedTurnRoundId = null;
+    _speedTurnForPid = null;
+    _speedTurnAutoplayInFlight = false;
+    _speedTurnRemainingSeconds = 0;
+  }
+
+  void _syncSpeedTurnClock() {
+    if (_disposed) return;
+    if (!_speedTurnShouldBeRunning) {
+      _cancelSpeedTurnClock();
+      notifyListeners();
+      return;
+    }
+
+    // Starting a new turn: re-establish deadline + timer.
+    final pid = me;
+    final roundId = gameState.round.id;
+
+    final sameTurn =
+        _speedTurnTimer != null &&
+        _speedTurnDeadline != null &&
+        _speedTurnRoundId == roundId &&
+        _speedTurnForPid == pid;
+
+    if (!sameTurn) {
+      _speedTurnRoundId = roundId;
+      _speedTurnForPid = pid;
+      _speedTurnDeadline = DateTime.now().add(_speedTurnDuration);
+      _speedTurnRemainingSeconds = _speedTurnDuration.inSeconds;
+      _speedTurnTimer?.cancel();
+      _speedTurnTimer = Timer.periodic(
+        const Duration(milliseconds: 250),
+        (_) => _onSpeedTurnTick(),
+      );
+      notifyListeners();
+      return;
+    }
+
+    // Same turn, but timer got canceled for any reason — restore it.
+    if (_speedTurnTimer == null && _speedTurnDeadline != null) {
+      _speedTurnTimer = Timer.periodic(
+        const Duration(milliseconds: 250),
+        (_) => _onSpeedTurnTick(),
+      );
+    }
+  }
+
+  void _onSpeedTurnTick() {
+    if (_disposed) return;
+    if (!_speedTurnShouldBeRunning) {
+      _cancelSpeedTurnClock();
+      notifyListeners();
+      return;
+    }
+
+    final deadline = _speedTurnDeadline;
+    if (deadline == null) return;
+
+    final msLeft = deadline.difference(DateTime.now()).inMilliseconds;
+    final secondsLeft = msLeft <= 0 ? 0 : (msLeft + 999) ~/ 1000;
+
+    if (secondsLeft != _speedTurnRemainingSeconds) {
+      _speedTurnRemainingSeconds = secondsLeft;
+      notifyListeners();
+    }
+
+    if (secondsLeft <= 0 && canPlayTurn && !_speedTurnAutoplayInFlight) {
+      _speedTurnAutoplayInFlight = true;
+      _speedTurnTimer?.cancel();
+      _speedTurnTimer = null;
+      _speedTurnDeadline = null;
+      _maybeAutoPlayRandomCardForSpeedTimeout().whenComplete(() {
+        if (!_disposed) _speedTurnAutoplayInFlight = false;
+      });
+    }
+  }
+
+  Future<void> _maybeAutoPlayRandomCardForSpeedTimeout() async {
+    if (tutorialMode) return;
+    if (!_speedTurnShouldBeRunning) return;
+    if (!canPlayTurn) return;
+    if (gameState.gameStatus == GameStatus.gameOver) return;
+
+    final hand = gameState.hands[me] ?? const <PlayingCardModel>[];
+    if (hand.isEmpty) return;
+
+    // Clear transient selection/drag state so rules validate cleanly.
+    cancelSelection();
+    cancelDropPending();
+    endBoardDrag();
+    clearDragHandoff();
+
+    final chosen = hand[_reactionRandom.nextInt(hand.length)];
+    selectedCard = chosen;
+    selectedCards = const [];
+    selectedStacks = const [];
+    notifyListeners();
+
+    await performPlayAction(
+      PlayCardAction(usedCard: chosen, performedById: me),
+    );
   }
 
   /// 1) Capture origins from current keys
@@ -551,6 +668,22 @@ class GeneralGameViewModel extends ChangeNotifier {
   /// A player is actually taking a turn — not dealing, shuffling, or waiting.
   bool get isLiveTurn =>
       !isAnimating &&
+      inGameAction == InGameAction.noAction &&
+      gameState.round.roundStatus == RoundStatus.playing;
+
+  /// Casino Speed only: seconds left for the local player's current turn.
+  /// Returns `0` when the timer isn't active.
+  int get speedTurnRemainingSeconds =>
+      gameState.gameMode == GameMode.casinoSpeed &&
+              gameState.currentTurnPlayerId == me &&
+              gameState.round.roundStatus == RoundStatus.playing
+          ? _speedTurnRemainingSeconds
+          : 0;
+
+  bool get _speedTurnShouldBeRunning =>
+      gameState.gameMode == GameMode.casinoSpeed &&
+      !tutorialMode &&
+      isMyTurn &&
       inGameAction == InGameAction.noAction &&
       gameState.round.roundStatus == RoundStatus.playing;
 
@@ -1146,6 +1279,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     } finally {
       if (!_disposed) {
         isAnimating = false;
+        _syncSpeedTurnClock();
         notifyListeners();
         _drainPendingRepoSync();
       }
@@ -1365,6 +1499,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     } finally {
       motion.setShuffling(false);
       isAnimating = false;
+      _syncSpeedTurnClock();
       notifyListeners();
       _drainPendingRepoSync();
     }
@@ -1751,6 +1886,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     _outgoingHideTimer?.cancel();
     _incomingHideTimer?.cancel();
     _botReactTimer?.cancel();
+    _speedTurnTimer?.cancel();
     gameRepo.removeListener(_onGameRepoChanged);
     motion.removeListener(notifyListeners);
     motion.dispose();

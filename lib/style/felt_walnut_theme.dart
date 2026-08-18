@@ -8,12 +8,6 @@ class FeltWalnutTheme extends AppTheme {
   @override
   double get radius => 14;
 
-  @override
-  String get appLogo => 'assets/images/logo_icon_wooden_transparent.png';
-
-  @override
-  String get cardBack => 'assets/images/card_wood_back.png';
-
   // Base — charcoal with a quiet walnut cast
   @override
   Color get background => const Color(0xFF1E1914);

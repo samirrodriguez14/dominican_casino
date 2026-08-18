@@ -173,6 +173,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
         : vm.possiblePlayActions;
     final canPlay = vm.canPlayTurn;
     final liveTurn = vm.isLiveTurn;
+    final showSpeedClock = vm.speedTurnRemainingSeconds > 0;
 
     return SizedBox(
       height: 42,
@@ -181,7 +182,18 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
           : !canPlay && pending == null
           ? Center(child: _TurnIndicator(isMyTurn: canPlay))
           : actions.isEmpty && pending == null
-          ? Center(child: _TurnIndicator(isMyTurn: canPlay))
+          ? Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _TurnIndicator(isMyTurn: canPlay),
+                  if (showSpeedClock) ...[
+                    const SizedBox(width: 10),
+                    _SpeedTurnClock(remainingSeconds: vm.speedTurnRemainingSeconds),
+                  ],
+                ],
+              ),
+            )
           : LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
@@ -198,6 +210,13 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                               label: 'Cancel',
                               icon: CupertinoIcons.xmark_circle_fill,
                               onTap: vm.cancelDropPending,
+                            ),
+                          ),
+                        if (showSpeedClock)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: _SpeedTurnClock(
+                              remainingSeconds: vm.speedTurnRemainingSeconds,
                             ),
                           ),
                         for (var index = 0; index < actions.length; index++)
@@ -333,6 +352,51 @@ class _TurnIndicator extends StatelessWidget {
                 ? AppLocalizations.of(context).yourTurn
                 : AppLocalizations.of(context).opponentTurn,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpeedTurnClock extends StatelessWidget {
+  const _SpeedTurnClock({required this.remainingSeconds});
+
+  final int remainingSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final urgent = remainingSeconds <= 3;
+    final fill = urgent
+        ? CupertinoColors.systemRed.withValues(alpha: .18)
+        : theme.turnHighlight.withValues(alpha: .18);
+    final border = urgent
+        ? CupertinoColors.systemRed.withValues(alpha: .45)
+        : theme.turnHighlight.withValues(alpha: .35);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            CupertinoIcons.timer,
+            size: 16,
+            color: urgent ? CupertinoColors.systemRed : theme.turnHighlight,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${remainingSeconds}s',
+            style: theme.caption.copyWith(
+              fontWeight: FontWeight.w800,
+              color: urgent ? CupertinoColors.systemRed : theme.turnHighlight,
+            ),
           ),
         ],
       ),

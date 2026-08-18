@@ -9,16 +9,15 @@ import 'package:flutter/cupertino.dart';
 
 class AppStyle {
   static AppTheme theme = SageTheme();
+  static CardBack cardBack = CardBack.sage;
+
+  static Color get cardBackColor => cardBackStyle(cardBack).color;
 }
 
 abstract class AppTheme {
   double get radius;
 
-  String get cardBack;
-  String get appLogo;
-
-  /// Borderless fill for the home login card. Defaults to [cardBack].
-  String get loginCardBack => cardBack;
+  String get appLogo => 'assets/images/logo_icon_sage.png';
   // ---- Base colors ----
   Color get background;
   Color get surface;
@@ -95,7 +94,70 @@ enum Theme {
 /// Themes the player already owns (selectable in Profile).
 const ownedThemes = <Theme>[Theme.sage, Theme.feltWaltnut];
 
-enum Cardtheme { blue, dark, wood }
+enum CardBack { sage, walnut, ink, ivory, brass }
+
+class CardBackStyle {
+  const CardBackStyle({
+    required this.id,
+    required this.color,
+    required this.owned,
+    this.priceLabel,
+  });
+
+  final CardBack id;
+  final Color color;
+  final bool owned;
+  final String? priceLabel;
+}
+
+const cardBackCatalog = <CardBackStyle>[
+  CardBackStyle(
+    id: CardBack.sage,
+    color: Color(0xFF3A634F),
+    owned: true,
+  ),
+  CardBackStyle(
+    id: CardBack.walnut,
+    color: Color(0xFF53463A),
+    owned: true,
+  ),
+  CardBackStyle(
+    id: CardBack.ink,
+    color: Color(0xFF1A2220),
+    owned: false,
+    priceLabel: '\$0.99',
+  ),
+  CardBackStyle(
+    id: CardBack.ivory,
+    color: Color(0xFFE8E2D6),
+    owned: false,
+    priceLabel: '\$0.99',
+  ),
+  CardBackStyle(
+    id: CardBack.brass,
+    color: Color(0xFFC4B07A),
+    owned: false,
+    priceLabel: '\$0.99',
+  ),
+];
+
+CardBackStyle cardBackStyle(CardBack id) {
+  return cardBackCatalog.firstWhere((item) => item.id == id);
+}
+
+CardBack defaultCardBackFor(Theme theme) {
+  return theme == Theme.feltWaltnut ? CardBack.walnut : CardBack.sage;
+}
+
+String cardBackLabel(CardBack id) {
+  return switch (id) {
+    CardBack.sage => 'Sage',
+    CardBack.walnut => 'Walnut',
+    CardBack.ink => 'Ink',
+    CardBack.ivory => 'Ivory',
+    CardBack.brass => 'Brass',
+  };
+}
 
 String themeLabel(Theme themeType) {
   switch (themeType) {
