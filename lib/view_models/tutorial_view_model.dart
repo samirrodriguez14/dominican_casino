@@ -30,6 +30,19 @@ class TutorialViewModel extends ChangeNotifier {
 
   bool get isLastStep => _current >= steps.length - 1;
 
+  bool pulsesTarget({String? cardId, String? stackId, GlobalKey? key}) {
+    if (!_active) return false;
+    if (step.awaitRoundStatus) return false;
+
+    if (cardId != null) {
+      if (step.expectedCardId == cardId) return true;
+      if (step.expectedCardIds?.contains(cardId) == true) return true;
+    }
+    if (stackId != null && step.expectedStackId == stackId) return true;
+    if (key != null && step.highlightKeys.contains(key)) return true;
+    return false;
+  }
+
   void start() {
     if (steps.isEmpty) return;
 
@@ -68,11 +81,40 @@ class TutorialViewModel extends ChangeNotifier {
       return false;
     }
 
+    if (step.dropAction == action) return true;
+
     if (step.allowedActions.isEmpty) {
       return true;
     }
 
     return step.allowedActions.contains(action);
+  }
+
+  bool allowsDrag({String? cardId, String? stackId}) {
+    if (!_active) return true;
+    if (step.blockGameInteraction || !step.allowInteraction) return false;
+
+    if (step.dragIds.isNotEmpty) {
+      if (cardId != null && step.dragIds.contains(cardId)) return true;
+      if (stackId != null && step.dragIds.contains(stackId)) return true;
+      return false;
+    }
+
+    if (step.expectedCardId != null && cardId == step.expectedCardId) {
+      return true;
+    }
+    if (step.expectedCardIds != null &&
+        cardId != null &&
+        step.expectedCardIds!.contains(cardId)) {
+      return true;
+    }
+    if (step.expectedStackId != null && stackId == step.expectedStackId) {
+      return true;
+    }
+
+    return canPerform(TutorialAction.selectHandCard) ||
+        canPerform(TutorialAction.selectTableCard) ||
+        canPerform(TutorialAction.selectStack);
   }
 
   bool tryProgress(
@@ -82,6 +124,19 @@ class TutorialViewModel extends ChangeNotifier {
     List<String> selectedCardIds = const [],
   }) {
     if (!_active) return true;
+
+    if (step.dropAction != null &&
+        action == step.dropAction &&
+        canPerform(action)) {
+      final jump = step.dropToStep;
+      if (jump != null && jump >= 0 && jump < steps.length) {
+        _current = jump;
+        notifyListeners();
+        return true;
+      }
+      nextStep();
+      return true;
+    }
 
     if (!canPerform(action)) return false;
 

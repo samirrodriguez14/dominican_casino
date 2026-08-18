@@ -178,7 +178,7 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
     _dragGlobal = global;
     _dragStartGlobal = global;
     _tableBlend = 0;
-    gameVm.beginBoardDrag(widget.source);
+    if (!gameVm.beginBoardDrag(widget.source)) return;
     AppHaptics.selectionClick();
 
     _teardownSprite();

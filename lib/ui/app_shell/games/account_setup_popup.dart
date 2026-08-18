@@ -2,6 +2,7 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
@@ -9,24 +10,9 @@ import 'package:provider/provider.dart';
 
 /// After the pre-login tutorial: pick a name, stay guest, or connect Google.
 Future<void> showAccountSetupPopup(BuildContext context) {
-  return showGeneralDialog<void>(
+  return showAppCenterPopup<void>(
     context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Dismiss',
-    barrierColor: CupertinoColors.black.withValues(alpha: .55),
-    transitionDuration: const Duration(milliseconds: 200),
-    pageBuilder: (dialogContext, animation, secondaryAnimation) {
-      return const Center(child: _AccountSetupCard());
-    },
-    transitionBuilder: (context, animation, secondary, child) {
-      return FadeTransition(
-        opacity: animation,
-        child: ScaleTransition(
-          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-          child: child,
-        ),
-      );
-    },
+    builder: (dialogContext) => const _AccountSetupCard(),
   );
 }
 

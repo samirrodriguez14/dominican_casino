@@ -1,138 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1A2220">
+  <meta name="description" content="Dominican card games with friends. Casino and Tres y Dos — chips are for the match, not for cash.">
   <title>Dominican Casino</title>
-
-  <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #071C14;
-      color: #F3ECE2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-
-    .card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background: #1F1511;
-      border-radius: 12px;
-      padding: 40px 30px;
-      text-align: center;
-      width: 250;
-      border: 1px solid #5A4032;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-    }
-
-    h1 {
-      margin: 0 0 10px;
-      font-size: 22px;
-      font-weight: 700;
-    }
-
-    p {
-      color: #C2B6A8;
-      margin-bottom: 25px;
-      font-size: 14px;
-    }
-
-    .btn {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      border-radius: 10px;
-      margin-top: 12px;
-      text-decoration: none;
-      font-weight: 600;
-      border: 1px solid #5A4032;
-    }
-
-    .open {
-      background: #977A2F;
-      color: white;
-    }
-
-    .disabled {
-      background: #2A1D17;
-
-    }
-
-    .store {
-      background: #E3BE63;
-      color: #2A1D17;
-    }
-
-    .logo {
-      width: 120px;
-      margin-bottom: 16px;
-      opacity: .9;
-    }
-
-    .game {
-      font-weight: 700;
-      color: #E3BE63;
-    }
-  </style>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="/assets/images/logo_icon_sage.png">
 </head>
 
 <body>
+  <main class="stage">
+    <article class="invite">
+      <img class="logo" src="/assets/images/logo_icon_sage.png" alt="Dominican Casino">
+      <p class="eyebrow">Dominican Casino</p>
 
-  <div class="card">
+      <div id="joinPanel" class="hidden">
+        <p class="lede">You're invited to play</p>
+        <div class="mode">
+          <span class="suit" id="gameSuit">♠</span>
+          <span class="name" id="gameType">Casino</span>
+        </div>
+        <p class="muted">Table <span class="table-id" id="gameId">—</span></p>
+        <div class="actions">
+          <a id="openBtn" class="btn primary">Open in app</a>
+          <a class="btn secondary" href="https://apps.apple.com/app/id6760201593">Download</a>
+        </div>
+      </div>
 
-    <img class="logo" src="/assets/images/logo_icon_sage.png" alt="logo" />
+      <div id="homePanel" class="hidden">
+        <h1>Play at the table</h1>
+        <p class="lede">Casino and Tres y Dos with friends. Chips and scores stay in the match.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://apps.apple.com/app/id6760201593">Download the app</a>
+        </div>
+      </div>
 
-    <h1>Dominican Casino</h1>
+      <div id="invalidPanel" class="hidden">
+        <h1>Invite not found</h1>
+        <p class="lede">This table link is missing or incomplete. Open the app to start or join a game.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://apps.apple.com/app/id6760201593">Download the app</a>
+        </div>
+      </div>
 
-    <p>
-      Joining <span class="game" id="gameType"> game <span class="game" id="gameId">...</span>
-    </p>
-
-    <a id="openBtn" class="btn open">Open App</a>
-
-    <a class="btn store" href="https://apps.apple.com/app/id6760201593">
-      Download App
-    </a>
-
-  </div>
+      <p class="legal">No real-money gambling. <a href="/privacy">Privacy</a></p>
+    </article>
+  </main>
 
   <script>
+    const modes = {
+      casino: { name: 'Casino', suit: '♠', red: false },
+      casinospeed: { name: 'Casino Speed', suit: '♠', red: false },
+      tresydos: { name: 'Tres y Dos', suit: '♦', red: true },
+      robaito: { name: 'Robaito', suit: '♣', red: false },
+    };
 
-    function getGameId() {
-      const parts = window.location.pathname.split("/");
-      if (parts.length >= 3 && parts[1] == 'join') return parts[2];
-      return null;
+    function pathParts() {
+      return window.location.pathname.split('/').filter(Boolean);
     }
-    function getGameType() {
-      const parts = window.location.pathname.split("/");
-      if (parts.length >= 4 && parts[1] == 'join') return parts[3];
-      return null;
+
+    function gameFromPath() {
+      const parts = pathParts();
+      if (parts[0] !== 'join' || parts.length < 3) return null;
+      const id = parts[1];
+      const type = parts[2];
+      if (!id || !type) return null;
+      return { id, type };
     }
-    const gameId = getGameId();
-    const gameType = getGameType();
 
-    if (gameId) {
-      document.getElementById("gameId").innerText = gameId;
-      document.getElementById("gameType").innerText = gameType;
+    function modeInfo(type) {
+      const key = String(type || '').replace(/[_-]/g, '').toLowerCase();
+      return modes[key] || { name: type, suit: '♠', red: false };
+    }
 
-      const openUrl =
-        "https://dominican-casino.web.app/join/" + gameId + "/" + gameType;
+    const join = gameFromPath();
+    const joinPanel = document.getElementById('joinPanel');
+    const homePanel = document.getElementById('homePanel');
+    const invalidPanel = document.getElementById('invalidPanel');
 
-      document.getElementById("openBtn").href = openUrl;
+    if (join) {
+      const info = modeInfo(join.type);
+      const suit = document.getElementById('gameSuit');
+      document.getElementById('gameId').textContent = join.id;
+      document.getElementById('gameType').textContent = info.name;
+      suit.textContent = info.suit;
+      suit.classList.toggle('red', info.red);
+      document.getElementById('openBtn').href =
+        'https://dominican-casino.web.app/join/' + join.id + '/' + join.type;
+      joinPanel.classList.remove('hidden');
+    } else if (pathParts()[0] === 'join') {
+      invalidPanel.classList.remove('hidden');
     } else {
-      document.getElementById("openBtn").className = 'btn disabled';
-      document.getElementById("openBtn").innerText = 'Invalid Id';
-
+      homePanel.classList.remove('hidden');
     }
-
   </script>
-
 </body>
 
 </html>

@@ -7,7 +7,17 @@ class WalletConfig {
 
   /// Coins each player stakes to sit at a table (friend or vs Puli).
   static const int entryCost = 100;
+  static const int noBetStake = 0;
   static const List<int> entryStakes = [50, 100, 300];
+
+  /// Casino can be played with no bet so coins can still be earned in-game.
+  static const List<int> casinoEntryStakes = [noBetStake, 50, 100, 300];
+
+  static List<int> stakesFor({required bool allowNoBet}) =>
+      allowNoBet ? casinoEntryStakes : entryStakes;
+
+  static bool isAllowedStake(int entry, {required bool allowNoBet}) =>
+      stakesFor(allowNoBet: allowNoBet).contains(entry);
 
   /// 2-player tables: winner takes the full pot ([entryCost] × seats).
   static const int winPayoutMultiplier = 2;

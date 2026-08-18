@@ -106,6 +106,9 @@ class GeneralGameViewModel extends ChangeNotifier {
   /// Tutorial only: true when the current scripted step wants the bot to move.
   bool Function()? tutorialAllowsOpponentPlay;
 
+  /// Tutorial only: whether this card/stack may be dragged on the current step.
+  bool Function({String? cardId, String? stackId})? tutorialAllowsDrag;
+
   GeneralGameViewModel({
     required this.gameRepo,
     required this.gameEngine,
@@ -893,11 +896,20 @@ class GeneralGameViewModel extends ChangeNotifier {
       gameState.gameMode == GameMode.casino ||
       gameState.gameMode == GameMode.casinoSpeed;
 
-  void beginBoardDrag(BoardDragSource source) {
-    if (isAnimating || dropPending != null) return;
+  bool beginBoardDrag(BoardDragSource source) {
+    if (isAnimating || dropPending != null) return false;
+    if (tutorialMode &&
+        !(tutorialAllowsDrag?.call(
+              cardId: source.card?.id,
+              stackId: source.stack?.id,
+            ) ??
+            true)) {
+      return false;
+    }
     draggingSource = source;
     dropHover = null;
     notifyListeners();
+    return true;
   }
 
   /// @deprecated Use [beginBoardDrag].
@@ -2170,6 +2182,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   final GlobalKey deckKey = GlobalKey();
   final GlobalKey tableKey = GlobalKey();
+  final GlobalKey tableContentKey = GlobalKey();
   final GlobalKey myDeckKey = GlobalKey();
   final GlobalKey oppDeckKey = GlobalKey();
   final GlobalKey myHandKey = GlobalKey();

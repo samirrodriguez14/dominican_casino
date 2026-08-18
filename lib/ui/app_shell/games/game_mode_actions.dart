@@ -186,10 +186,12 @@ String _modeTitle(GamesViewModel vm, GameMode mode) {
 
 class _StakePicker extends StatelessWidget {
   const _StakePicker({
+    required this.stakes,
     required this.selected,
     required this.onChanged,
   });
 
+  final List<int> stakes;
   final int selected;
   final ValueChanged<int> onChanged;
 
@@ -198,13 +200,13 @@ class _StakePicker extends StatelessWidget {
     final theme = AppStyle.theme;
     return Row(
       children: [
-        for (var i = 0; i < WalletConfig.entryStakes.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
+        for (var i = 0; i < stakes.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
           Expanded(
             child: _StakeChip(
-              amount: WalletConfig.entryStakes[i],
-              selected: selected == WalletConfig.entryStakes[i],
-              onTap: () => onChanged(WalletConfig.entryStakes[i]),
+              amount: stakes[i],
+              selected: selected == stakes[i],
+              onTap: () => onChanged(stakes[i]),
               theme: theme,
             ),
           ),
@@ -229,41 +231,49 @@ class _StakeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      minimumSize: Size.zero,
-      pressedOpacity: 0.72,
-      onPressed: SoundService.wrapTap(onTap),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? theme.surfaceRaised : theme.background,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected
-                ? theme.turnHighlight.withValues(alpha: .7)
-                : theme.border.withValues(alpha: .55),
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        pressedOpacity: 0.72,
+        onPressed: SoundService.wrapTap(onTap),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: selected ? theme.surfaceRaised : theme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? theme.turnHighlight.withValues(alpha: .7)
+                  : theme.border.withValues(alpha: .55),
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              coinIcon,
-              size: 14,
-              color: selected ? theme.turnHighlight : theme.muted,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  coinIcon,
+                  size: 13,
+                  color: selected ? theme.turnHighlight : theme.muted,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  '$amount',
+                  style: theme.title.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? theme.textPrimary : theme.muted,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            Text(
-              '$amount',
-              style: theme.title.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: selected ? theme.textPrimary : theme.muted,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -418,6 +428,11 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
                   ),
                   const SizedBox(height: 8),
                   _StakePicker(
+                    stakes: WalletConfig.stakesFor(
+                      allowNoBet:
+                          mode == GameMode.casino ||
+                          mode == GameMode.casinoSpeed,
+                    ),
                     selected: _stake,
                     onChanged: (value) => setState(() => _stake = value),
                   ),

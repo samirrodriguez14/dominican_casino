@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
@@ -15,6 +16,7 @@ class HomeInstructionCard extends StatelessWidget {
     required this.totalPages,
     this.firstPageFace,
     this.onPlay,
+    this.onTutorial,
   });
 
   final InstructionSection section;
@@ -22,6 +24,7 @@ class HomeInstructionCard extends StatelessWidget {
   final int totalPages;
   final Color? firstPageFace;
   final VoidCallback? onPlay;
+  final VoidCallback? onTutorial;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +55,7 @@ class HomeInstructionCard extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(
                 16,
                 18,
-                16,
+                onTutorial != null ? 44 : 16,
                 onPlay != null ? 18 : 14,
               ),
               child: Column(
@@ -137,31 +140,26 @@ class HomeInstructionCard extends StatelessWidget {
                 ],
               ),
             ),
+            if (onTutorial != null)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: _CardCircleButton(
+                  icon: CupertinoIcons.lightbulb_fill,
+                  label: AppLocalizations.of(context).startTutorial,
+                  onPressed: onTutorial!,
+                  size: 32,
+                  iconSize: 15,
+                ),
+              ),
             if (onPlay != null)
               Positioned(
                 right: 14,
                 bottom: 14,
-                child: CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  onPressed: SoundService.wrapTap(onPlay),
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: theme.textPrimary.withValues(alpha: .14),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: theme.textPrimary.withValues(alpha: .18),
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      CupertinoIcons.play_fill,
-                      size: 22,
-                      color: theme.textPrimary,
-                    ),
-                  ),
+                child: _CardCircleButton(
+                  icon: CupertinoIcons.play_fill,
+                  label: AppLocalizations.of(context).play,
+                  onPressed: onPlay!,
                 ),
               ),
           ],
@@ -174,6 +172,49 @@ class HomeInstructionCard extends StatelessWidget {
     if (page == 1 && firstPageFace != null) return firstPageFace;
     final i = (page - 1) % 3;
     return [theme.pickerFace, theme.pickerFaceAlt, theme.pickerFaceEdge][i];
+  }
+}
+
+class _CardCircleButton extends StatelessWidget {
+  const _CardCircleButton({
+    required this.icon,
+    required this.onPressed,
+    this.label,
+    this.size = 52,
+    this.iconSize = 22,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String? label;
+  final double size;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Semantics(
+      button: true,
+      label: label,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        onPressed: SoundService.wrapTap(onPressed),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: theme.textPrimary.withValues(alpha: .14),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: theme.textPrimary.withValues(alpha: .18),
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, size: iconSize, color: theme.textPrimary),
+        ),
+      ),
+    );
   }
 }
 

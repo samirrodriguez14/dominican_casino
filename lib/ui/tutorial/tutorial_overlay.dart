@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:dominican_casino/models/tutorial_step.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
@@ -14,6 +16,7 @@ class TutorialOverlay extends StatefulWidget {
   final int totalSteps;
   final bool canGoNext;
   final bool isLastScreen;
+  final GlobalKey? tableAnchorKey;
 
   const TutorialOverlay({
     super.key,
@@ -26,6 +29,7 @@ class TutorialOverlay extends StatefulWidget {
     this.isLastScreen = false,
     this.onPlay,
     this.onExit,
+    this.tableAnchorKey,
   });
 
   @override
@@ -36,10 +40,10 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  final GlobalKey _overlayKey = GlobalKey();
 
   static const double _tooltipWidth = 320;
   static const double _tooltipMinHeight = 160;
-  static const double _highlightPadding = 4;
 
   @override
   void initState() {
@@ -55,6 +59,9 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     );
 
     _animationController.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -64,6 +71,9 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     if (oldWidget.step.step != widget.step.step) {
       _animationController.reset();
       _animationController.forward();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
     }
   }
 
@@ -78,11 +88,9 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Stack(
+        key: _overlayKey,
         children: [
-          if (widget.step.targetKey != null)
-            IgnorePointer(child: _buildHighlight(context)),
-
-          if (widget.step.targetKey != null)
+          if (widget.step.highlightKeys.isNotEmpty)
             _buildTooltipForTarget(context)
           else
             _buildFloatingTooltip(context),
@@ -91,87 +99,103 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     );
   }
 
-  Widget _buildHighlight(BuildContext context) {
-    final renderObject = widget.step.targetKey?.currentContext
-        ?.findRenderObject();
-
-    if (renderObject == null || renderObject is! RenderBox) {
-      return _buildFloatingTooltip(context);
+  Rect? _rectForKey(GlobalKey? key) {
+    if (key == null) return null;
+    final overlay = _overlayKey.currentContext?.findRenderObject();
+    if (overlay is! RenderBox || !overlay.hasSize) return null;
+    final target = key.currentContext?.findRenderObject();
+    if (target is! RenderBox || !target.hasSize || target.size.isEmpty) {
+      return null;
     }
-
-    final targetSize = renderObject.size;
-    final targetOffset = renderObject.localToGlobal(Offset.zero);
-
-    return Stack(
-      children: [
-        Positioned(
-          left: targetOffset.dx - _highlightPadding,
-          top: targetOffset.dy - _highlightPadding,
-          width: targetSize.width + (_highlightPadding * 2),
-          height: targetSize.height + (_highlightPadding * 2),
-          child: IgnorePointer(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppStyle.theme.turnHighlight.withValues(alpha: .03),
-                border: Border.all(
-                  color: AppStyle.theme.turnHighlight,
-                  width: 2.5,
-                ),
-                borderRadius: BorderRadius.circular(AppStyle.theme.radius),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppStyle.theme.turnHighlight.withValues(alpha: .28),
-                    blurRadius: 24,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+    final rect = MatrixUtils.transformRect(
+      target.getTransformTo(overlay),
+      Offset.zero & target.size,
     );
+    if (!rect.isFinite || rect.isEmpty) return null;
+    return rect;
+  }
+
+  /// Axis-aligned bounds of highlight targets, in overlay-local space.
+  /// Uses [RenderObject.getTransformTo] so fanned / rotated cards line up.
+  Rect? _targetRect() {
+    final overlay = _overlayKey.currentContext?.findRenderObject();
+    if (overlay is! RenderBox || !overlay.hasSize) return null;
+
+    final maxW = overlay.size.width * 0.9;
+    final maxH = overlay.size.height * 0.45;
+
+    Rect? union;
+    for (final key in widget.step.highlightKeys) {
+      final rect = _rectForKey(key);
+      if (rect == null) continue;
+      // Flex parents (table column, full-width hand strip) are not the target.
+      if (rect.width > maxW && rect.height > maxH) continue;
+      union = union == null ? rect : union.expandToInclude(rect);
+    }
+    return union;
   }
 
   Widget _buildTooltipForTarget(BuildContext context) {
-    final renderObject = widget.step.targetKey?.currentContext
-        ?.findRenderObject();
-
-    if (renderObject == null || renderObject is! RenderBox) {
-      return _buildFloatingTooltip(context);
+    if (widget.step.promptAboveTable) {
+      return _buildTooltipAboveTable(context);
     }
 
-    final targetSize = renderObject.size;
-    final targetOffset = renderObject.localToGlobal(Offset.zero);
+    final rect = _targetRect();
+    if (rect == null) return _buildFloatingTooltip(context);
 
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final overlay = _overlayKey.currentContext?.findRenderObject();
+    final overlaySize = overlay is RenderBox && overlay.hasSize
+        ? overlay.size
+        : MediaQuery.of(context).size;
 
     Offset tooltipOffset;
 
-    // Above if lower half of screen
-    if (targetOffset.dy > screenHeight * 0.5) {
+    if (rect.center.dy > overlaySize.height * 0.5) {
       tooltipOffset = Offset(
-        targetOffset.dx + targetSize.width / 2 - _tooltipWidth / 2,
-        targetOffset.dy - _tooltipMinHeight - 45,
+        rect.center.dx - _tooltipWidth / 2,
+        rect.top - _tooltipMinHeight - 20,
       );
     } else {
-      // Below otherwise
       tooltipOffset = Offset(
-        targetOffset.dx + targetSize.width / 2 - _tooltipWidth / 2,
-        targetOffset.dy + targetSize.height + 30,
+        rect.center.dx - _tooltipWidth / 2,
+        rect.bottom + 16,
       );
     }
 
-    // Clamp inside screen
     tooltipOffset = Offset(
-      tooltipOffset.dx.clamp(12.0, screenWidth - _tooltipWidth - 12),
-      tooltipOffset.dy.clamp(12.0, screenHeight - _tooltipMinHeight - 12),
+      tooltipOffset.dx.clamp(12.0, overlaySize.width - _tooltipWidth - 12),
+      tooltipOffset.dy.clamp(12.0, overlaySize.height - _tooltipMinHeight - 12),
     );
 
     return Positioned(
       left: tooltipOffset.dx,
       top: tooltipOffset.dy,
+      child: Material(color: Colors.transparent, child: _buildTooltipContent()),
+    );
+  }
+
+  Widget _buildTooltipAboveTable(BuildContext context) {
+    final overlay = _overlayKey.currentContext?.findRenderObject();
+    final overlaySize = overlay is RenderBox && overlay.hasSize
+        ? overlay.size
+        : MediaQuery.of(context).size;
+
+    final table = _rectForKey(widget.tableAnchorKey);
+    const estimatedH = 210.0;
+    final safeTop = MediaQuery.paddingOf(context).top + 8;
+    var top = safeTop;
+    if (table != null) {
+      final preferred = table.top - estimatedH - 10;
+      if (preferred > safeTop) top = preferred;
+    }
+    final maxLeft = math.max(12.0, overlaySize.width - _tooltipWidth - 12);
+    final left = ((overlaySize.width - _tooltipWidth) / 2)
+        .clamp(12.0, maxLeft)
+        .toDouble();
+
+    return Positioned(
+      left: left,
+      top: top,
       child: Material(color: Colors.transparent, child: _buildTooltipContent()),
     );
   }

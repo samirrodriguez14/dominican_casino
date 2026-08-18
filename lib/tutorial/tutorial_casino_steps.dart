@@ -3,16 +3,27 @@ import 'package:dominican_casino/models/tutorial_step.dart';
 import 'package:flutter/cupertino.dart';
 
 List<TutorialStep> getCasinoTutorialSteps({
-  required GlobalKey deckKey,
-  required GlobalKey tableKey,
-  required GlobalKey handKey,
+  required GlobalKey tableContentKey,
   required GlobalKey myDeckKey,
   required GlobalKey oppDeckKey,
-  required GlobalKey playButtonKey,
   required GlobalKey addButtonKey,
   required GlobalKey takeStackButtonKey,
   required GlobalKey scoreKey,
+  required GlobalKey Function(String cardId) handCardKey,
+  required GlobalKey Function(String cardId) tableCardKey,
+  required GlobalKey? Function() firstStackKey,
 }) {
+  List<GlobalKey> tableCardsOrArea() {
+    final keys = <GlobalKey>[];
+    for (final id in const ['table_3', 'table_9', 'table_J', 'opp_2', 'opp_4']) {
+      final key = tableCardKey(id);
+      if (key.currentContext != null) keys.add(key);
+    }
+    final stack = firstStackKey();
+    if (stack != null) keys.add(stack);
+    return keys.isEmpty ? [tableContentKey] : keys;
+  }
+
   return [
     // 0
     TutorialStep(
@@ -32,10 +43,14 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 1,
       section: 1,
       title: "Select your card",
-      description: "Tap the 5♦ card in your hand.",
-      targetKey: handKey,
+      description:
+          "Tap the 5♦ in your hand, or drag it onto the 3♥ to build a stack.",
+      targetKey: handCardKey("tutorial_5"),
       expectedAction: TutorialAction.selectHandCard,
       expectedCardId: "tutorial_5",
+      dragIds: const ["tutorial_5"],
+      dropAction: TutorialAction.addStack,
+      dropToStep: 4,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
@@ -47,13 +62,19 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 2,
       section: 1,
       title: "Choose a table card",
-      description: "Tap the 3♥ on the table. We'll use this to create a stack.",
-      targetKey: tableKey,
+      description:
+          "Tap the 3♥, or drop your 5♦ on it. We'll use this to create a stack.",
+      targetKey: tableCardKey("table_3"),
+      resolveTargets: () => [tableCardKey("table_3")],
       expectedAction: TutorialAction.selectTableCard,
       expectedCardId: "table_3",
+      dragIds: const ["tutorial_5", "table_3"],
+      dropAction: TutorialAction.addStack,
+      dropToStep: 4,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
+      promptAboveTable: true,
       allowedActions: [TutorialAction.selectTableCard],
     ),
 
@@ -62,12 +83,17 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 3,
       section: 1,
       title: "Create a stack",
-      description: "Press Add to combine your selected cards into a stack.",
+      description:
+          "Press Add, or drop the 5♦ on the 3♥, to combine them into a stack.",
       targetKey: addButtonKey,
       expectedAction: TutorialAction.addStack,
+      dragIds: const ["tutorial_5", "table_3"],
+      dropAction: TutorialAction.addStack,
+      dropToStep: 4,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
+      promptAboveTable: true,
       allowedActions: [TutorialAction.addStack],
     ),
 
@@ -78,10 +104,12 @@ List<TutorialStep> getCasinoTutorialSteps({
       title: "Opponent's turn",
       description:
           "Your opponent captured the 9♠. Your stack of 8 is still on the table — you'll take it next.",
-      targetKey: tableKey,
+      targetKey: tableContentKey,
+      resolveTargets: tableCardsOrArea,
       allowInteraction: false,
       blockGameInteraction: true,
       playOpponent: true,
+      promptAboveTable: true,
       allowedActions: [],
     ),
 
@@ -90,10 +118,14 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 5,
       section: 2,
       title: "Select your 8",
-      description: "Now tap the 8♠ in your hand.",
-      targetKey: handKey,
+      description:
+          "Tap the 8♠ in your hand, or drag it onto the stack of 8 to take it.",
+      targetKey: handCardKey("tutorial_8"),
       expectedAction: TutorialAction.selectHandCard,
       expectedCardId: "tutorial_8",
+      dragIds: const ["tutorial_8"],
+      dropAction: TutorialAction.takeStack,
+      dropToStep: 8,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
@@ -106,12 +138,20 @@ List<TutorialStep> getCasinoTutorialSteps({
       section: 2,
       title: "Select the stack",
       description:
-          "Tap the stack that totals 8. Since you created it, you can take it.",
-      targetKey: tableKey,
+          "Tap the stack that totals 8, or drop your 8♠ on it. Since you created it, you can take it.",
+      targetKey: tableContentKey,
+      resolveTargets: () {
+        final stack = firstStackKey();
+        return [stack ?? tableContentKey];
+      },
       expectedAction: TutorialAction.selectStack,
+      dragIds: const ["tutorial_8"],
+      dropAction: TutorialAction.takeStack,
+      dropToStep: 8,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
+      promptAboveTable: true,
       allowedActions: [TutorialAction.selectStack],
     ),
 
@@ -120,12 +160,17 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 7,
       section: 2,
       title: "Take the stack",
-      description: "Press Take Stack to collect the cards.",
+      description:
+          "Press Take Stack, or drop your 8♠ on the stack, to collect the cards.",
       targetKey: takeStackButtonKey,
       expectedAction: TutorialAction.takeStack,
+      dragIds: const ["tutorial_8"],
+      dropAction: TutorialAction.takeStack,
+      dropToStep: 8,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
+      promptAboveTable: true,
       allowedActions: [TutorialAction.takeStack],
     ),
 
@@ -161,88 +206,136 @@ List<TutorialStep> getCasinoTutorialSteps({
       section: 4,
       title: "Opponent's turn",
       description:
-          "Your opponent played a 2♥ next to the J♣. You can combine those with your King.",
-      targetKey: tableKey,
+          "Your opponent played a 2♥ next to the J♣. Those two cards add up to 13 — the same as your King.",
+      targetKey: tableContentKey,
+      resolveTargets: tableCardsOrArea,
       allowInteraction: false,
       blockGameInteraction: true,
       playOpponent: true,
+      promptAboveTable: true,
       allowedActions: [],
     ),
 
-    // 11
+    // 11 — combine J and 2 on the table (no Add & Take)
     TutorialStep(
       step: 11,
       section: 4,
-      title: "Select your King",
-      description: "Tap the K♣ in your hand. A King is worth 13.",
-      targetKey: handKey,
-      expectedAction: TutorialAction.selectHandCard,
-      expectedCardId: "tutorial_13",
+      title: "Combine J and 2",
+      description:
+          "Tap the J♣ and the 2♥, or drag one onto the other. Together they total 13.",
+      targetKey: tableContentKey,
+      resolveTargets: () => [
+        tableCardKey("table_J"),
+        tableCardKey("opp_2"),
+      ],
+      expectedAction: TutorialAction.selectTableCard,
+      expectedCardIds: ["table_J", "opp_2"],
+      dragIds: const ["table_J", "opp_2"],
+      dropAction: TutorialAction.addStack,
+      dropToStep: 13,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
-      allowedActions: [TutorialAction.selectHandCard],
+      promptAboveTable: true,
+      allowedActions: [TutorialAction.selectTableCard],
     ),
 
     // 12
     TutorialStep(
       step: 12,
       section: 4,
-      title: "Select J and 2",
+      title: "Add them",
       description:
-          "Tap the J♣ and the 2♥ on the table. Together they also total 13.",
-      targetKey: tableKey,
-      expectedAction: TutorialAction.selectTableCard,
-      expectedCardIds: ["table_J", "opp_2"],
+          "Press Add to build a stack of 13. You can also drag one card onto the other.",
+      targetKey: addButtonKey,
+      expectedAction: TutorialAction.addStack,
+      dragIds: const ["table_J", "opp_2"],
+      dropAction: TutorialAction.addStack,
+      dropToStep: 13,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
-      allowedActions: [TutorialAction.selectTableCard],
+      promptAboveTable: true,
+      allowedActions: [TutorialAction.addStack],
     ),
 
     // 13
     TutorialStep(
       step: 13,
       section: 4,
-      title: "Add & Take",
+      title: "Select your King",
       description:
-          "Press Add & Take. Your King is 13, and J+2 also total 13, so you capture both cards in one move.",
-      targetKey: playButtonKey,
-      expectedAction: TutorialAction.sweepTable,
+          "Tap the K♣ in your hand. A King is worth 13, so it can take that stack. You can also drag it onto the stack.",
+      targetKey: handCardKey("tutorial_13"),
+      expectedAction: TutorialAction.selectHandCard,
+      expectedCardId: "tutorial_13",
+      dragIds: const ["tutorial_13"],
+      dropAction: TutorialAction.takeStack,
+      dropToStep: 16,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
-      allowedActions: [TutorialAction.sweepTable],
+      allowedActions: [TutorialAction.selectHandCard],
     ),
 
     // 14
     TutorialStep(
       step: 14,
       section: 4,
-      title: "Add & Take",
+      title: "Select the stack",
       description:
-          "Add & Take lets you combine table cards into your hand card's value and capture them right away. You added the Jack and 2 (11+2) to match your King (13), then took them.",
-      allowInteraction: false,
-      blockGameInteraction: true,
-      allowedActions: [],
+          "Tap the stack of 13, or drop your King on it to take it.",
+      targetKey: tableContentKey,
+      resolveTargets: () {
+        final stack = firstStackKey();
+        return [stack ?? tableContentKey];
+      },
+      expectedAction: TutorialAction.selectStack,
+      dragIds: const ["tutorial_13"],
+      dropAction: TutorialAction.takeStack,
+      dropToStep: 16,
+      allowInteraction: true,
+      blockGameInteraction: false,
+      showNextButton: false,
+      promptAboveTable: true,
+      allowedActions: [TutorialAction.selectStack],
     ),
 
     // 15
     TutorialStep(
       step: 15,
       section: 4,
+      title: "Take with the King",
+      description:
+          "Press Take Stack to capture with your King, or drop the King on the stack.",
+      targetKey: takeStackButtonKey,
+      expectedAction: TutorialAction.takeStack,
+      dragIds: const ["tutorial_13"],
+      dropAction: TutorialAction.takeStack,
+      dropToStep: 16,
+      allowInteraction: true,
+      blockGameInteraction: false,
+      showNextButton: false,
+      promptAboveTable: true,
+      allowedActions: [TutorialAction.takeStack],
+    ),
+
+    // 16
+    TutorialStep(
+      step: 16,
+      section: 4,
       title: "Sweep (virao)",
       description:
-          "That capture cleared the table. Clearing every card is a sweep, or virao. The extra card on your collection is the virao — it scores a bonus at the end of the round.",
+          "Jack plus 2 made 13, matching your King, so you took the stack. That cleared the table — a sweep, or virao. The extra card on your collection is the bonus.",
       targetKey: myDeckKey,
       allowInteraction: false,
       blockGameInteraction: true,
       allowedActions: [],
     ),
 
-    // 16 — opponent plays leftover 4; extras collect to last capturer
+    // 17 — opponent plays leftover 4; extras collect to last capturer
     TutorialStep(
-      step: 16,
+      step: 17,
       section: 5,
       title: "Last cards",
       description:
@@ -254,9 +347,9 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 17 — overlay hidden; Round Complete popup
+    // 18 — overlay hidden; Round Complete popup
     TutorialStep(
-      step: 17,
+      step: 18,
       section: 5,
       title: "End of round",
       description: "",
@@ -268,9 +361,9 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 18
+    // 19
     TutorialStep(
-      step: 18,
+      step: 19,
       section: 5,
       title: "Game status",
       description:
@@ -281,13 +374,13 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 19
+    // 20
     TutorialStep(
-      step: 19,
+      step: 20,
       section: 5,
       title: "You're ready!",
       description:
-          "You know the basics: build stacks, capture cards, sweep the table, and score. Play a real game against Puli, or head home.",
+          "You know the basics: build stacks, capture cards, sweep the table, and score. Tap or drag cards to play. Play a real game against Puli, or head home.",
       autoAdvance: false,
       allowInteraction: false,
       blockGameInteraction: true,

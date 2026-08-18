@@ -4,6 +4,7 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/widgets/card_coin_hint.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:dominican_casino/view_models/tutorial_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -53,6 +54,15 @@ class PlayingCard extends StatelessWidget {
 
     final sel = selectedBorderColor ?? theme.turnHighlight;
     final metrics = _CardMetrics(width, rank);
+    var tutorialHint = false;
+    try {
+      tutorialHint = context.select<TutorialViewModel, bool>(
+        (t) => t.pulsesTarget(cardId: playingCardModel.id),
+      );
+    } on ProviderNotFoundException {
+      tutorialHint = false;
+    }
+    final accent = isSelected || tutorialHint;
 
     return GestureDetector(
       onTap: onTap,
@@ -65,8 +75,12 @@ class PlayingCard extends StatelessWidget {
           color: theme.cardBackground,
           borderRadius: BorderRadius.circular(metrics.radius),
           border: Border.all(
-            color: isSelected ? sel : theme.cardBorder,
-            width: 1,
+            color: isSelected
+                ? sel
+                : tutorialHint
+                ? theme.turnHighlight.withValues(alpha: .72)
+                : theme.cardBorder,
+            width: accent ? 1.5 : 1,
           ),
           boxShadow: [
             if (isSelected)
@@ -75,6 +89,12 @@ class PlayingCard extends StatelessWidget {
                 blurRadius: width * 0.28,
                 spreadRadius: 1,
                 offset: Offset(0, width * 0.12),
+              ),
+            if (tutorialHint && !isSelected)
+              BoxShadow(
+                color: theme.turnHighlight.withValues(alpha: 0.32),
+                blurRadius: width * 0.22,
+                spreadRadius: 0.6,
               ),
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.14),

@@ -5,6 +5,7 @@ import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
 import 'package:dominican_casino/ui/general_game/play_action_bar.dart';
+import 'package:dominican_casino/ui/tutorial/tutorial_hint_pulse.dart';
 import 'package:dominican_casino/ui/widgets/winning_hand_wave.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
@@ -20,7 +21,6 @@ class SimplePlayerArea extends StatefulWidget {
 }
 
 class _SimplePlayerAreaState extends State<SimplePlayerArea> {
-  final GlobalKey _fanKey = GlobalKey();
   double _fanGap = 48;
   static const double _cardWidth = 110.0;
   static const double _fanHeight = 168.0;
@@ -35,7 +35,6 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
         PlayActionBar(vm: vm),
         const SizedBox(height: 2),
         SizedBox(
-          key: vm.myHandKey,
           height: _fanHeight,
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -68,7 +67,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                     height: _fanHeight,
                     child: Center(
                       child: SizedBox(
-                        key: _fanKey,
+                        key: vm.myHandKey,
                         width: totalWidth,
                         height: _fanHeight,
                         child: Stack(
@@ -152,15 +151,19 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
               active: celebrating,
               index: index,
               amplitude: 4,
-              child: FlightAwareCard(
-                key: vm.keyForCard(card.id, CardSlot.myHand),
-                motion: vm.motion,
+              child: TutorialPulse(
                 cardId: card.id,
-                width: _cardWidth,
-                child: PlayingCard(
-                  playingCardModel: card,
+                targetKey: vm.keyForCard(card.id, CardSlot.myHand),
+                child: FlightAwareCard(
+                  key: vm.keyForCard(card.id, CardSlot.myHand),
+                  motion: vm.motion,
+                  cardId: card.id,
                   width: _cardWidth,
-                  isSelected: selected || celebrating,
+                  child: PlayingCard(
+                    playingCardModel: card,
+                    width: _cardWidth,
+                    isSelected: selected || celebrating,
+                  ),
                 ),
               ),
             ),
@@ -171,7 +174,8 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
   }
 
   int _indexForGlobalCenter(Offset globalCenter, int count) {
-    final box = _fanKey.currentContext?.findRenderObject() as RenderBox?;
+    final vm = context.read<GeneralGameViewModel>();
+    final box = vm.myHandKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize || count <= 0) return 0;
     final local = box.globalToLocal(globalCenter);
     if (_fanGap <= 0) return 0;

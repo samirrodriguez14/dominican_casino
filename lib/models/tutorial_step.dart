@@ -30,6 +30,20 @@ class TutorialStep {
   /// Display chapter for the overlay pills (several screens can share one).
   final int section;
 
+  /// Completing this move by drag-and-drop jumps to [dropToStep].
+  final TutorialAction? dropAction;
+  final int? dropToStep;
+
+  /// Card ids that may be dragged on this step (hand or table).
+  final List<String> dragIds;
+
+  /// Live lookup for highlight targets (e.g. a stack created mid-tutorial).
+  final List<GlobalKey> Function()? resolveTargets;
+
+  /// When true, the overlay prompt sits just above the table instead of
+  /// next to the highlighted widget (so table cards stay visible).
+  final bool promptAboveTable;
+
   final TutorialStepCallback? onShow;
 
   const TutorialStep({
@@ -48,8 +62,20 @@ class TutorialStep {
     this.playOpponent = false,
     this.awaitRoundStatus = false,
     this.section = 0,
+    this.dropAction,
+    this.dropToStep,
+    this.dragIds = const [],
+    this.resolveTargets,
+    this.promptAboveTable = false,
     this.onShow,
     required this.blockGameInteraction,
     required this.allowedActions,
   });
+
+  List<GlobalKey> get highlightKeys {
+    final resolved = resolveTargets?.call();
+    if (resolved != null && resolved.isNotEmpty) return resolved;
+    if (targetKey != null) return [targetKey!];
+    return const [];
+  }
 }

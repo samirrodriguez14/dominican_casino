@@ -2,30 +2,17 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Login face: welcome on top, auth at the bottom. Name appears after a choice.
+/// Login face: welcome, logo, and a pulsing quick-play cue.
 class HomeLoginCard extends StatelessWidget {
   const HomeLoginCard({
     super.key,
-    required this.nameController,
-    required this.askingName,
-    required this.onGuest,
-    required this.onGoogle,
     required this.onQuickPlay,
-    required this.onContinue,
-    required this.onCancelName,
     this.busy = false,
   });
 
-  final TextEditingController nameController;
-  final bool askingName;
-  final VoidCallback onGuest;
-  final VoidCallback onGoogle;
   final VoidCallback onQuickPlay;
-  final VoidCallback onContinue;
-  final VoidCallback onCancelName;
   final bool busy;
 
   @override
@@ -33,137 +20,99 @@ class HomeLoginCard extends StatelessWidget {
     final theme = AppStyle.theme;
     final l10n = AppLocalizations.of(context);
 
-    return AspectRatio(
-      aspectRatio: homeCardAspect,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: theme.pickerFace,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: theme.textPrimary.withValues(alpha: .14),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.black.withValues(alpha: .30),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
+    return HomeCardFace(
+      color: theme.pickerFace,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+        child: Column(
+          children: [
+            HomeCardEyebrow(l10n.welcome),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 6,
+                ),
+                child: Image.asset(
+                  theme.appLogoMark,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                ),
+              ),
             ),
+            _QuickPlayCue(busy: busy, onPressed: onQuickPlay),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-            child: Column(
-              children: [
-                Text(
-                  l10n.welcome,
-                  style: theme.caption.copyWith(
-                    color: theme.textPrimary.withValues(alpha: .72),
-                    letterSpacing: 3.2,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+      ),
+    );
+  }
+}
+
+class _QuickPlayCue extends StatefulWidget {
+  const _QuickPlayCue({required this.busy, required this.onPressed});
+
+  final bool busy;
+  final VoidCallback onPressed;
+
+  @override
+  State<_QuickPlayCue> createState() => _QuickPlayCueState();
+}
+
+class _QuickPlayCueState extends State<_QuickPlayCue>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    final cream = theme.textPrimary;
+
+    return Semantics(
+      button: true,
+      label: l10n.clickToPlayQuickMatch,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        onPressed: SoundService.wrapTap(widget.busy ? null : widget.onPressed),
+        child: AnimatedBuilder(
+          animation: _pulse,
+          builder: (context, child) {
+            final opacity = 0.38 + 0.62 * _pulse.value;
+            return Opacity(opacity: opacity, child: child);
+          },
+          child: Column(
+            children: [
+              Icon(CupertinoIcons.play_fill, size: 34, color: cream),
+              const SizedBox(height: 6),
+              Text(
+                l10n.clickToPlayQuickMatch,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: theme.caption.copyWith(
+                  color: cream.withValues(alpha: .92),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.15,
+                  height: 1.25,
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: askingName ? 48 : 28,
-                      vertical: askingName ? 12 : 8,
-                    ),
-                    child: Image.asset(
-                      theme.appLogoMark,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                    ),
-                  ),
-                ),
-                if (askingName) ...[
-                  CupertinoTextField(
-                    controller: nameController,
-                    maxLength: 10,
-                    textAlign: TextAlign.center,
-                    enabled: !busy,
-                    autofocus: true,
-                    placeholder: l10n.yourName,
-                    placeholderStyle: theme.mutedText.copyWith(
-                      color: theme.textPrimary.withValues(alpha: .55),
-                    ),
-                    style: theme.body.copyWith(
-                      color: theme.textPrimary,
-                      fontSize: 16,
-                    ),
-                    padding: const EdgeInsets.only(bottom: 8, top: 4),
-                    decoration: BoxDecoration(
-                      color: CupertinoColors.transparent,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: theme.textPrimary.withValues(alpha: .28),
-                        ),
-                      ),
-                    ),
-                    onSubmitted: (_) => onContinue(),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: _AuthPill(
-                      label: l10n.continueLabel,
-                      onPressed: busy ? null : onContinue,
-                    ),
-                  ),
-                  CupertinoButton(
-                    padding: const EdgeInsets.only(top: 6),
-                    minimumSize: Size.zero,
-                    onPressed: SoundService.wrapTap(busy ? null : onCancelName),
-                    child: Text(
-                      l10n.back,
-                      style: theme.caption.copyWith(
-                        color: theme.textPrimary.withValues(alpha: .62),
-                      ),
-                    ),
-                  ),
-                ] else ...[
-                  Semantics(
-                    button: true,
-                    label: l10n.play,
-                    child: CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      onPressed: SoundService.wrapTap(
-                        busy ? null : onQuickPlay,
-                      ),
-                      child: Icon(
-                        CupertinoIcons.play_fill,
-                        size: 40,
-                        color: theme.textPrimary.withValues(alpha: .92),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _AuthPill(
-                          label: l10n.guest,
-                          icon: CupertinoIcons.person,
-                          onPressed: busy ? null : onGuest,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _AuthPill(
-                          label: l10n.google,
-                          leading: const GoogleGMark(size: 15),
-                          onPressed: busy ? null : onGoogle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -171,8 +120,9 @@ class HomeLoginCard extends StatelessWidget {
   }
 }
 
-class _AuthPill extends StatelessWidget {
-  const _AuthPill({
+class HomeAuthPill extends StatelessWidget {
+  const HomeAuthPill({
+    super.key,
     required this.label,
     required this.onPressed,
     this.icon,
@@ -201,8 +151,8 @@ class _AuthPill extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            color: cream.withValues(alpha: .08),
-            border: Border.all(color: cream.withValues(alpha: .18)),
+            color: cream.withValues(alpha: .12),
+            border: Border.all(color: cream.withValues(alpha: .22)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

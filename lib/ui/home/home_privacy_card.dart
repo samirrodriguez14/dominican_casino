@@ -1,9 +1,10 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/home/privacy_policy_copy.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Carousel-style face for the home Privacy pane.
+/// Slate face for the home Privacy pane.
 class HomePrivacyCard extends StatelessWidget {
   const HomePrivacyCard({super.key});
 
@@ -11,49 +12,46 @@ class HomePrivacyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final l10n = AppLocalizations.of(context);
-    final face = theme.pickerFace;
 
-    return AspectRatio(
-      aspectRatio: 2.5 / 3.5,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: face,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: theme.textPrimary.withValues(alpha: .14),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.black.withValues(alpha: .30),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
+    return HomeCardFace(
+      color: theme.pickerFaceAlt,
+      child: Stack(
+        children: [
+          Positioned(
+            top: 14,
+            left: 14,
+            child: Icon(
+              CupertinoIcons.lock_fill,
+              size: 18,
+              color: theme.textPrimary.withValues(alpha: .78),
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.privacyPolicy,
-                style: theme.title.copyWith(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  height: 1.05,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Expanded(
-                child: SingleChildScrollView(
-                  physics: BouncingScrollPhysics(),
-                  child: PrivacyPolicyCopy(compact: true),
-                ),
-              ),
-            ],
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: HomeCardEyebrow(l10n.privacy.toUpperCase())),
+                const SizedBox(height: 10),
+                Text(
+                  l10n.privacyPolicy,
+                  style: theme.title.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    height: 1.05,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Expanded(
+                  child: SingleChildScrollView(
+                    physics: BouncingScrollPhysics(),
+                    child: PrivacyPolicyCopy(compact: true),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

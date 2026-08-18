@@ -47,6 +47,8 @@ class GeneralGameScreen extends StatefulWidget {
   State<GeneralGameScreen> createState() => GeneralGameScreenState();
 }
 
+enum _SkipTutorialChoice { stay, home, play }
+
 class GeneralGameScreenState extends State<GeneralGameScreen>
     with TickerProviderStateMixin {
   GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
@@ -90,20 +92,29 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
       tutorialVm = TutorialViewModel(
         getCasinoTutorialSteps(
-          deckKey: initvm.deckKey,
-          tableKey: initvm.tableKey,
-          handKey: initvm.myHandKey,
+          tableContentKey: initvm.tableContentKey,
           myDeckKey: initvm.myDeckKey,
           oppDeckKey: initvm.oppDeckKey,
-          playButtonKey: initvm.playButtonKey,
           addButtonKey: initvm.addButtonKey,
           takeStackButtonKey: initvm.takeStackButtonKey,
           scoreKey: initvm.scoreKey,
+          handCardKey: (id) => initvm.keyForCard(id, CardSlot.myHand),
+          tableCardKey: (id) {
+            final table = initvm.keyForCard(id, CardSlot.table);
+            if (table.currentContext != null) return table;
+            return initvm.keyForCard(id, CardSlot.inStack);
+          },
+          firstStackKey: () {
+            final stacks = initvm.gameState.playingAreaStacks;
+            if (stacks.isEmpty) return null;
+            return initvm.keyForStack(stacks.first.id);
+          },
         ),
       );
       initvm.actionGuard = tutorialVm.tryProgress;
       initvm.tutorialAllowsOpponentPlay = () =>
           tutorialVm.active && tutorialVm.step.playOpponent;
+      initvm.tutorialAllowsDrag = tutorialVm.allowsDrag;
       final ok = await initvm.loadGame();
 
       if (ok && mounted) {
@@ -175,20 +186,102 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     }
   }
 
-  void _onTutorialSkip(BuildContext context) {
-    showAppPopup(
+  Future<void> _onTutorialSkip(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final theme = AppStyle.theme;
+    final choice = await showAppCenterPopup<_SkipTutorialChoice>(
       context: context,
-      title: 'Skip tutorial?',
-      content: Text(
-        'Go to the games lobby and set up your name when you are ready.',
-        textAlign: TextAlign.center,
-        style: AppStyle.theme.body,
-      ),
-      primaryText: 'Skip',
-      onPrimary: _finishTutorialReturnHome,
-      secondaryText: 'Stay',
-      onSecondary: () {},
+      builder: (dialogContext) {
+        return Container(
+          width: 300,
+          padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+          decoration: BoxDecoration(
+            color: theme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: theme.border.withValues(alpha: .7)),
+            boxShadow: [
+              BoxShadow(
+                color: CupertinoColors.black.withValues(alpha: .45),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.skipTutorialTitle,
+                textAlign: TextAlign.center,
+                style: theme.title.copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                l10n.skipTutorialBody,
+                textAlign: TextAlign.center,
+                style: theme.body.copyWith(height: 1.4),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: CupertinoButton(
+                  color: theme.surfaceAlt,
+                  borderRadius: BorderRadius.circular(12),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  onPressed: SoundService.wrapTap(() {
+                    Navigator.pop(dialogContext, _SkipTutorialChoice.play);
+                  }),
+                  child: Text(
+                    l10n.play,
+                    style: TextStyle(
+                      color: theme.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: CupertinoButton(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  onPressed: SoundService.wrapTap(() {
+                    Navigator.pop(dialogContext, _SkipTutorialChoice.home);
+                  }),
+                  child: Text(
+                    l10n.home,
+                    style: TextStyle(
+                      color: theme.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              CupertinoButton(
+                padding: const EdgeInsets.only(top: 4),
+                onPressed: SoundService.wrapTap(
+                  () => Navigator.pop(dialogContext, _SkipTutorialChoice.stay),
+                ),
+                child: Text(l10n.stay, style: TextStyle(color: theme.muted)),
+              ),
+            ],
+          ),
+        );
+      },
     );
+    if (!mounted) return;
+    switch (choice) {
+      case _SkipTutorialChoice.play:
+        await _finishTutorialPlayGame();
+      case _SkipTutorialChoice.home:
+        await _finishTutorialReturnHome();
+      case _SkipTutorialChoice.stay:
+      case null:
+        break;
+    }
   }
 
   Future<void> _finishTutorialReturnHome() async {
@@ -358,7 +451,9 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
     final useSimpleLayout = GameRegistry.isPlayable(vm.gameState.gameMode);
 
-    return SizedBox(
+    return ChangeNotifierProvider<TutorialViewModel>.value(
+      value: tutorialVm,
+      child: SizedBox(
       width: MediaQuery.of(context).size.width.clamp(0, 600),
       child: CupertinoPageScaffold(
         child: DecoratedBox(
@@ -496,6 +591,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                             onPlay: _finishTutorialPlayGame,
                             onExit: _finishTutorialReturnHome,
                             canGoNext: true,
+                            tableAnchorKey: vm.tableContentKey,
                           );
                         },
                       ),
@@ -506,6 +602,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -529,6 +626,9 @@ class _SimpleControlBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
+    final tutorial = context.watch<TutorialViewModel>();
+    final scoreHint =
+        tutorial.active && tutorial.pulsesTarget(key: vm.scoreKey);
     return Center(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -555,9 +655,11 @@ class _SimpleControlBar extends StatelessWidget {
             name: vm.player.name,
             score: vm.gameState.scores[vm.me] ?? 0,
             pendingCoins: vm.revealedPendingFor(vm.me),
-            isTurn: vm.isSeatTurn(vm.me),
-            turnDeadline: vm.turnDeadlineFor(vm.me),
-            turnTotal: vm.turnTotal,
+            isTurn: vm.tutorialMode ? scoreHint : vm.isSeatTurn(vm.me),
+            turnDeadline: vm.tutorialMode
+                ? null
+                : vm.turnDeadlineFor(vm.me),
+            turnTotal: vm.tutorialMode ? null : vm.turnTotal,
             onPressed: () {
               AppHaptics.mediumImpact();
               showGameStatusPopup(context, vm: vm);

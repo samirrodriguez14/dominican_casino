@@ -1,15 +1,14 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
+import 'package:dominican_casino/ui/home/home_about_card.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/ui/home/home_instruction_card.dart';
 import 'package:dominican_casino/ui/home/home_login_card.dart';
 import 'package:dominican_casino/ui/home/home_privacy_card.dart';
+import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:dominican_casino/view_models/home_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -25,45 +24,89 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen> {
   static const _loginPage = 1;
-  static const _privacyPage = 0;
-  static const _instructionsPage = 2;
 
-  final TextEditingController _nameController = TextEditingController();
-  late final PageController _pageController;
-  List<InstructionSection> _sections = const [];
+  final GlobalKey<StackedCardCarouselState> _carouselKey = GlobalKey();
   bool _entering = false;
-  bool _askingName = false;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _loginPage);
     Future.microtask(() {
       if (!mounted) return;
       context.read<HomeViewModel>().loadPlayer();
-      _ensureInstructions();
     });
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _pageController.dispose();
-    super.dispose();
+  Future<String?> _askName({String? initial}) async {
+    final controller = TextEditingController(text: initial ?? '');
+    final l10n = AppLocalizations.of(context);
+    final theme = AppStyle.theme;
+    try {
+      return await showCupertinoDialog<String>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: Text(l10n.enterYourName),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: CupertinoTextField(
+              controller: controller,
+              maxLength: 10,
+              textAlign: TextAlign.center,
+              placeholder: l10n.yourName,
+              autofocus: true,
+              onSubmitted: (_) {
+                final name = controller.text.trim();
+                if (name.isEmpty) return;
+                Navigator.pop(ctx, name);
+              },
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
+              child: Text(l10n.cancel, style: theme.mutedText),
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: SoundService.wrapTap(() {
+                final name = controller.text.trim();
+                if (name.isEmpty) return;
+                Navigator.pop(ctx, name);
+              }),
+              child: Text(l10n.continueLabel, style: theme.title),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
-  void _startNameStep() {
-    final vm = context.read<HomeViewModel>();
-    final name = vm.name;
-    if (name != null && !(vm.player?.needsAccountSetup ?? true)) {
-      _nameController.text = name;
+  Future<void> _onGuest() async {
+    if (_entering) return;
+    final name = await _askName();
+    if (!mounted || name == null || name.isEmpty) return;
+    await _saveNameAndEnter(name);
+  }
+
+  Future<void> _saveNameAndEnter(String name) async {
+    if (_entering) return;
+    setState(() => _entering = true);
+    try {
+      await context.read<HomeViewModel>().updatePlayerName(name);
+      if (!mounted) return;
+      context.go('/landing');
+    } finally {
+      if (mounted) setState(() => _entering = false);
     }
-    setState(() => _askingName = true);
   }
 
   Future<void> _onGoogle() async {
     if (_entering) return;
     setState(() => _entering = true);
+    var needsName = false;
+    String? suggested;
     try {
       final vm = context.read<HomeViewModel>();
       final result = await vm.linkGoogle();
@@ -78,14 +121,17 @@ class HomeScreenState extends State<HomeScreen> {
         context.go('/landing');
         return;
       }
-      final suggested = result.suggestedName?.trim();
-      if (suggested != null && suggested.isNotEmpty) {
-        _nameController.text = suggested;
-      }
-      setState(() => _askingName = true);
+      suggested = result.suggestedName?.trim();
+      needsName = true;
     } finally {
       if (mounted) setState(() => _entering = false);
     }
+    if (!mounted || !needsName) return;
+    final name = await _askName(
+      initial: (suggested != null && suggested.isNotEmpty) ? suggested : null,
+    );
+    if (!mounted || name == null || name.isEmpty) return;
+    await _saveNameAndEnter(name);
   }
 
   Future<void> _showGoogleError(String? code) async {
@@ -104,46 +150,6 @@ class HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
-
-  void _cancelNameStep() {
-    setState(() => _askingName = false);
-  }
-
-  Future<void> _goTo(int page) async {
-    if (page == _instructionsPage) {
-      await _ensureInstructions();
-      if (!mounted) return;
-    }
-    _pageController.animateToPage(
-      page,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  Future<void> _ensureInstructions() async {
-    if (_sections.isNotEmpty) return;
-    try {
-      final data = await loadInstructions(homeInstructionMode);
-      if (!mounted) return;
-      setState(() => _sections = data.sections);
-    } catch (_) {}
-  }
-
-  Future<void> _enter() async {
-    if (_entering) return;
-    final typed = _nameController.text.trim();
-    if (typed.isEmpty) return;
-    setState(() => _entering = true);
-    try {
-      final vm = context.read<HomeViewModel>();
-      await vm.updatePlayerName(typed);
-      if (!mounted) return;
-      context.go('/landing');
-    } finally {
-      if (mounted) setState(() => _entering = false);
-    }
   }
 
   Future<void> _startTutorial() async {
@@ -189,7 +195,7 @@ class HomeScreenState extends State<HomeScreen> {
       return const Center(child: CupertinoActivityIndicator());
     }
 
-    if (vm.player != null && !vm.player!.needsAccountSetup && !_askingName) {
+    if (vm.player != null && !vm.player!.needsAccountSetup) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         context.go('/landing');
@@ -228,250 +234,95 @@ class HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        Text(
-          l10n.appTitle,
-          style: theme.title.copyWith(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 1.2,
-            color: theme.textPrimary.withValues(alpha: .9),
-          ),
-        ),
-        Expanded(
-          child: PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              _PrivacyPane(onBack: () => _goTo(_loginPage)),
-              _LoginPane(
-                nameController: _nameController,
-                busy: _entering,
-                askingName: _askingName,
-                onGuest: _startNameStep,
-                onGoogle: _onGoogle,
-                onQuickPlay: _startTutorial,
-                onContinue: _enter,
-                onCancelName: _cancelNameStep,
-                onPrivacy: () => _goTo(_privacyPage),
-                onInstructions: () => _goTo(_instructionsPage),
-              ),
-              _InstructionsPane(
-                sections: _sections,
-                onBack: () => _goTo(_loginPage),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const bylineReserve = 36.0;
+        const buttonsHeight = 44.0;
+        final stageH = homeCarouselStageHeight(constraints);
+        final gapBelow = ((constraints.maxHeight - stageH) / 2).clamp(
+          0.0,
+          constraints.maxHeight,
+        );
+        final regionH = (gapBelow - bylineReserve).clamp(0.0, gapBelow);
+        final buttonsBottom =
+            bylineReserve + ((regionH - buttonsHeight) / 2).clamp(0.0, regionH);
 
-class _LoginPane extends StatelessWidget {
-  const _LoginPane({
-    required this.nameController,
-    required this.busy,
-    required this.askingName,
-    required this.onGuest,
-    required this.onGoogle,
-    required this.onQuickPlay,
-    required this.onContinue,
-    required this.onCancelName,
-    required this.onPrivacy,
-    required this.onInstructions,
-  });
-
-  final TextEditingController nameController;
-  final bool busy;
-  final bool askingName;
-  final VoidCallback onGuest;
-  final VoidCallback onGoogle;
-  final VoidCallback onQuickPlay;
-  final VoidCallback onContinue;
-  final VoidCallback onCancelName;
-  final VoidCallback onPrivacy;
-  final VoidCallback onInstructions;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    final l10n = AppLocalizations.of(context);
-
-    return Column(
-      children: [
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = homeCardWidth(constraints);
-              return Center(
-                child: SizedBox(
-                  width: width,
-                  child: HomeLoginCard(
-                    nameController: nameController,
-                    askingName: askingName,
-                    busy: busy,
-                    onGuest: onGuest,
-                    onGoogle: onGoogle,
-                    onQuickPlay: onQuickPlay,
-                    onContinue: onContinue,
-                    onCancelName: onCancelName,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _TextLink(label: l10n.privacy, onPressed: onPrivacy),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text('·', style: theme.mutedText.copyWith(fontSize: 18)),
-              ),
-              _TextLink(label: l10n.instructions, onPressed: onInstructions),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PrivacyPane extends StatelessWidget {
-  const _PrivacyPane({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-
-    return Column(
-      children: [
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = homeCardWidth(constraints);
-              return Center(
-                child: SizedBox(width: width, child: const HomePrivacyCard()),
-              );
-            },
-          ),
-        ),
-        _PaneBackButton(label: l10n.back, trailing: true, onPressed: onBack),
-      ],
-    );
-  }
-}
-
-class _InstructionsPane extends StatelessWidget {
-  const _InstructionsPane({required this.sections, required this.onBack});
-
-  final List<InstructionSection> sections;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-
-    return Column(
-      children: [
-        Expanded(
-          child: sections.isEmpty
-              ? const Center(child: CupertinoActivityIndicator())
-              : StackedCardCarousel(
-                  itemCount: sections.length,
-                  widthFactor: homeCardWidthFactor,
-                  maxCardWidth: homeCardMaxWidth,
-                  fitToHeight: true,
-                  itemBuilder: (context, index) {
-                    return HomeInstructionCard(
-                      section: sections[index],
-                      pageNumber: index + 1,
-                      totalPages: sections.length,
-                    );
-                  },
-                ),
-        ),
-        _PaneBackButton(label: l10n.back, trailing: false, onPressed: onBack),
-      ],
-    );
-  }
-}
-
-class _PaneBackButton extends StatelessWidget {
-  const _PaneBackButton({
-    required this.label,
-    required this.trailing,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool trailing;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    final arrow = Icon(
-      trailing ? CupertinoIcons.chevron_right : CupertinoIcons.chevron_left,
-      size: 16,
-      color: theme.muted,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10, top: 4),
-      child: CupertinoButton(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        minimumSize: Size.zero,
-        onPressed: SoundService.wrapTap(onPressed),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        return Stack(
           children: [
-            if (!trailing) ...[arrow, const SizedBox(width: 4)],
-            Text(
-              label,
-              style: theme.mutedText.copyWith(
-                decoration: TextDecoration.underline,
-                decorationColor: theme.muted.withValues(alpha: .45),
+            Positioned.fill(
+              child: StackedCardCarousel(
+                key: _carouselKey,
+                itemCount: 3,
+                initialIndex: _loginPage,
+                peekStyle: CardPeekStyle.fan,
+                animateBackIn: true,
+                fitToHeight: true,
+                widthFactor: homeCarouselWidthFactor,
+                maxCardWidth: homeCarouselMaxWidth,
+                itemBuilder: (context, index) {
+                  switch (index) {
+                    case 0:
+                      return const HomePrivacyCard();
+                    case 1:
+                      return HomeLoginCard(
+                        busy: _entering,
+                        onQuickPlay: _startTutorial,
+                      );
+                    default:
+                      return const HomeAboutCard();
+                  }
+                },
               ),
             ),
-            if (trailing) ...[const SizedBox(width: 4), arrow],
+            Positioned(
+              left: 28,
+              right: 28,
+              bottom: buttonsBottom,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: homeCarouselMaxWidth,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: HomeAuthPill(
+                          label: l10n.guest,
+                          icon: CupertinoIcons.person,
+                          onPressed: _entering ? null : _onGuest,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: HomeAuthPill(
+                          label: l10n.google,
+                          leading: const GoogleGMark(size: 15),
+                          onPressed: _entering ? null : _onGoogle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 12,
+              child: Text(
+                l10n.appByline,
+                textAlign: TextAlign.center,
+                style: theme.caption.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.1,
+                  color: theme.textPrimary.withValues(alpha: .55),
+                ),
+              ),
+            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TextLink extends StatelessWidget {
-  const _TextLink({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    return CupertinoButton(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      minimumSize: Size.zero,
-      onPressed: SoundService.wrapTap(onPressed),
-      child: Text(
-        label,
-        style: theme.caption.copyWith(
-          color: theme.muted,
-          fontSize: 14,
-          decoration: TextDecoration.underline,
-          decorationColor: theme.muted.withValues(alpha: .4),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -1000,7 +1000,12 @@ class AppRepo extends ChangeNotifier {
       }
     }
     final energyCost = WalletConfig.energyCostFor(mode.name);
-    final stake = WalletConfig.entryStakes.contains(entryCost)
+    final allowNoBet =
+        mode == GameMode.casino || mode == GameMode.casinoSpeed;
+    final stake = WalletConfig.isAllowedStake(
+          entryCost,
+          allowNoBet: allowNoBet,
+        )
         ? entryCost
         : WalletConfig.entryCost;
     if (_wallet.energy < energyCost) {

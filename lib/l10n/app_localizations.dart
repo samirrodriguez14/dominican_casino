@@ -37,16 +37,14 @@ class AppLocalizations {
       isEs ? 'Juega contra la casa' : 'Play against the house AI';
   String get playHowManyPlayers =>
       isEs ? '¿Cuántos jugadores?' : 'How many players?';
-  String playersAtTable(int n) =>
-      isEs ? '$n jugadores' : '$n players';
+  String playersAtTable(int n) => isEs ? '$n jugadores' : '$n players';
   String youPlusBots(int bots) => bots == 1
       ? (isEs ? 'Tú + 1 bot' : 'You + 1 bot')
       : (isEs ? 'Tú + $bots bots' : 'You + $bots bots');
   String get playJoinByIdHint =>
       isEs ? 'Entra el código de un amigo' : 'Enter a code from a friend';
-  String joinCostsEnergy(int n) => isEs
-      ? 'Unirse gasta $n de energía'
-      : 'Joining uses $n energy';
+  String joinCostsEnergy(int n) =>
+      isEs ? 'Unirse gasta $n de energía' : 'Joining uses $n energy';
   String get matchStake => isEs ? 'Apuesta' : 'Stake';
   String get notEnoughCoins =>
       isEs ? 'No tienes suficientes monedas' : 'Not enough coins';
@@ -59,10 +57,10 @@ class AppLocalizations {
       ? 'Espera a que se recargue o cómprala con monedas en la tienda.'
       : 'Wait for it to refill, or buy more with coins in the store.';
   String get goToStore => isEs ? 'Ir a la tienda' : 'Go to store';
-  String get confirmPurchase =>
-      isEs ? 'Confirmar compra' : 'Confirm purchase';
+  String get confirmPurchase => isEs ? 'Confirmar compra' : 'Confirm purchase';
   String get buy => isEs ? 'Comprar' : 'Buy';
-  String get coinsThisGame => isEs ? 'Monedas de la partida' : 'Coins this game';
+  String get coinsThisGame =>
+      isEs ? 'Monedas de la partida' : 'Coins this game';
   String get coinBonuses => isEs ? 'Bonos' : 'Bonuses';
   String get coinWinPot => isEs ? 'Premio' : 'Win pot';
   String coinPayoutPlace(int place) {
@@ -80,17 +78,16 @@ class AppLocalizations {
     if (place == 4) return isEs ? '4.º' : '4th';
     return '$place';
   }
+
   String tablePayoutHint(int players) => players < 3
       ? (isEs ? 'El ganador se lleva el pozo' : 'Winner takes the pot')
       : (isEs ? '75% al 1.º, 25% al 2.º' : '75% to 1st, 25% to 2nd');
-  String eachPlayerBets(int n) => isEs
-      ? 'Cada jugador apuesta $n monedas'
-      : 'Each player bets $n coins';
+  String eachPlayerBets(int n) =>
+      isEs ? 'Cada jugador apuesta $n monedas' : 'Each player bets $n coins';
   String potTotal(int n) => isEs ? 'Pozo $n' : 'Pot $n';
   String get coinsCongratsTitle => isEs ? '¡Felicidades!' : 'Congrats!';
-  String coinsCongratsBody(int n) => isEs
-      ? 'Ganaste $n monedas'
-      : 'You made $n coins';
+  String coinsCongratsBody(int n) =>
+      isEs ? 'Ganaste $n monedas' : 'You made $n coins';
   String confirmBuyEnergy(int energy, int coins) => isEs
       ? '¿Gastar $coins monedas para obtener $energy de energía?'
       : 'Spend $coins coins to get $energy energy?';
@@ -123,6 +120,23 @@ class AppLocalizations {
   String get privacy => isEs ? 'Privacidad' : 'Privacy';
   String get instructions => isEs ? 'Instrucciones' : 'Instructions';
   String get welcome => isEs ? 'BIENVENIDO' : 'WELCOME';
+  String get clickToPlayQuickMatch =>
+      isEs ? 'Toca para una partida rápida' : 'Click to play a quick match';
+  String get appByline =>
+      isEs ? 'Casino Dominicano por SR2' : 'Dominican Casino by SR2';
+  String get theApp => isEs ? 'LA APP' : 'THE APP';
+  String get aboutHeadline => isEs
+      ? '¡Juega tus juegos de naipes favoritos!'
+      : 'Play your favorite card games!';
+  String get aboutFeatureGames => isEs
+      ? 'Único Casino Dominicano, Tres y Dos y más'
+      : 'Unique Dominican Casino, Tres y Dos, and more';
+  String get aboutFeatureClassics => isEs
+      ? 'O los más conocidos: Solitario, Go Fish y más'
+      : 'Or your most known Solitaire, Go Fish, and more';
+  String get aboutFeaturePlay => isEs
+      ? 'Juega contra amigos o nuestros bots'
+      : 'Play against friends or our AI bots';
   String get yourName => isEs ? 'Tu nombre' : 'Your name';
   String get editName => isEs ? 'Editar nombre' : 'Edit name';
   String get enterYourName => isEs ? 'Escribe tu nombre' : 'Enter your name';
@@ -136,8 +150,9 @@ class AppLocalizations {
       isEs ? 'No se pudo iniciar la app' : 'Could not start the app';
   String get couldNotStartGame =>
       isEs ? 'No se pudo empezar la partida' : 'Could not start the game';
-  String get couldNotLoadGames =>
-      isEs ? 'No se pudieron cargar las partidas.' : 'Could not load your games.';
+  String get couldNotLoadGames => isEs
+      ? 'No se pudieron cargar las partidas.'
+      : 'Could not load your games.';
   String get tryAgain => isEs ? 'Inténtalo de nuevo.' : 'Please try again.';
   String get retry => isEs ? 'Reintentar' : 'Retry';
   String get welcomeTitle =>
@@ -226,6 +241,7 @@ class AppLocalizations {
     if (isEs) return n == 1 ? 'hace 1 año' : 'hace $n años';
     return n == 1 ? '1 yr ago' : '$n yr ago';
   }
+
   String get language => isEs ? 'Idioma' : 'Language';
   String get sound => isEs ? 'Sonido' : 'Sound';
   String get soundEffects => isEs ? 'Efectos de sonido' : 'Sound effects';
@@ -239,6 +255,13 @@ class AppLocalizations {
       : 'This game does not use real money. Chips are match points only.';
   String get comingSoon => isEs ? 'Próximamente…' : 'Coming soon…';
   String get skipTutorial => isEs ? 'Saltar' : 'Skip';
+  String get skipTutorialTitle =>
+      isEs ? '¿Saltar el tutorial?' : 'Skip tutorial?';
+  String get skipTutorialBody => isEs
+      ? 'Sigue en el tutorial, ve al inicio o empieza una partida contra Puli.'
+      : 'Stay in the tutorial, head home, or start a real game against Puli.';
+  String get stay => isEs ? 'Quedarse' : 'Stay';
+  String get home => isEs ? 'Inicio' : 'Home';
   String get next => isEs ? 'Siguiente' : 'Next';
   String get friend => isEs ? 'Amigo' : 'Friend';
   String get aiBot => isEs ? 'Puli (bot)' : 'Puli (AI bot)';

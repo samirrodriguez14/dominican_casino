@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
+import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
@@ -12,7 +13,9 @@ import 'package:dominican_casino/ui/home/home_instruction_card.dart';
 import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 const _flipDuration = Duration(milliseconds: 420);
 const _liftDuration = Duration(milliseconds: 340);
@@ -64,6 +67,21 @@ Future<void> showGameModeHowTo(
                   });
                 }
               : null,
+          onTutorial: showPlay && mode == GameMode.casino
+              ? () {
+                  Navigator.pop(dialogContext);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    context.go(
+                      GameRoutes.game(
+                        gameId: Uuid().v4().substring(0, 6),
+                        gameMode: GameMode.casino.name,
+                        tutorial: true,
+                      ),
+                    );
+                  });
+                }
+              : null,
         );
       },
       transitionBuilder: (context, animation, secondary, child) => child,
@@ -83,6 +101,7 @@ class GameModeHowToOverlay extends StatefulWidget {
     required this.cardWidth,
     required this.onPlay,
     required this.onClose,
+    this.onTutorial,
     this.anchor,
     this.expandFromAnchor = false,
   });
@@ -92,6 +111,7 @@ class GameModeHowToOverlay extends StatefulWidget {
   final Rect? anchor;
   final bool expandFromAnchor;
   final VoidCallback? onPlay;
+  final VoidCallback? onTutorial;
   final VoidCallback onClose;
 
   @override
@@ -193,6 +213,13 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
     play();
   }
 
+  void _openTutorial() {
+    final tutorial = widget.onTutorial;
+    if (_dismissing || tutorial == null) return;
+    _dismissing = true;
+    tutorial();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
@@ -261,6 +288,9 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
                                 onPlay: widget.onPlay == null
                                     ? null
                                     : _openPlay,
+                                onTutorial: widget.onTutorial == null
+                                    ? null
+                                    : _openTutorial,
                               ),
                             )
                           : GameModeCard(
@@ -307,6 +337,7 @@ class _InstructionFace extends StatelessWidget {
     required this.stageHeight,
     required this.firstPageFace,
     required this.onPlay,
+    this.onTutorial,
   });
 
   final GlobalKey<StackedCardCarouselState> carouselKey;
@@ -316,6 +347,7 @@ class _InstructionFace extends StatelessWidget {
   final double stageHeight;
   final Color firstPageFace;
   final VoidCallback? onPlay;
+  final VoidCallback? onTutorial;
 
   @override
   Widget build(BuildContext context) {
@@ -349,6 +381,7 @@ class _InstructionFace extends StatelessWidget {
             totalPages: sections.length,
             firstPageFace: index == 0 ? firstPageFace : null,
             onPlay: onPlay,
+            onTutorial: onTutorial,
           );
         },
       ),

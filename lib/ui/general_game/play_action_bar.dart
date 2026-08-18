@@ -1,13 +1,16 @@
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/tutorial/tutorial_hint_pulse.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Hand-play choices: action chips, with dismiss sitting above them
-/// when a drop needs a follow-up. The X does not consume row space.
+/// Hand-play choices: action chips, with cancel inline when a drop
+/// needs a follow-up. The row always keeps its height so the board
+/// does not jump when turns or animations start and stop.
 class PlayActionBar extends StatelessWidget {
   const PlayActionBar({super.key, required this.vm});
 
@@ -19,34 +22,36 @@ class PlayActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final pending = vm.dropPending;
     final actions = pending?.actions ?? vm.possiblePlayActions;
-    if (!vm.isLiveTurn && pending == null) {
-      return const SizedBox.shrink();
+    final choosing = pending != null;
+    final showChips = choosing || (vm.canPlayTurn && actions.isNotEmpty);
+    final roundPlaying =
+        vm.gameState.round.roundStatus == RoundStatus.playing;
+    final turnPid = vm.gameState.currentTurnPlayerId ?? '';
+    final bool? hintMine;
+    if (showChips || !roundPlaying) {
+      hintMine = null;
+    } else if (vm.isMyTurn) {
+      hintMine = true;
+    } else if (turnPid.isNotEmpty) {
+      hintMine = false;
+    } else {
+      hintMine = null;
     }
 
-    final choosing = pending != null;
-    final showHint = !choosing && (!vm.canPlayTurn || actions.isEmpty);
-
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        SizedBox(
-          height: height,
-          width: double.infinity,
-          child: showHint
-              ? Center(child: _TurnHint(isMyTurn: vm.canPlayTurn))
-              : _ActionChipRow(
-                  vm: vm,
-                  actions: actions,
-                  choosing: choosing,
-                ),
-        ),
-        if (choosing)
-          Positioned(
-            top: -16,
-            child: _DismissPlayButton(onTap: vm.cancelDropPending),
-          ),
-      ],
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: showChips
+          ? _ActionChipRow(
+              vm: vm,
+              actions: actions,
+              choosing: choosing,
+            )
+          : Center(
+              child: hintMine == null
+                  ? const SizedBox.shrink()
+                  : _TurnHint(isMyTurn: hintMine),
+            ),
     );
   }
 }
@@ -73,25 +78,40 @@ class _ActionChipRow extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                if (choosing) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _DismissPlayButton(onTap: vm.cancelDropPending),
+                  ),
+                ],
                 for (var index = 0; index < actions.length; index++)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: KeyedSubtree(
-                      key: choosing
-                          ? ValueKey('pending_$index')
-                          : actionBarKey(vm, actions, index),
-                      child: _ActionChipButton(
-                        label: actionLabel(actions[index]),
-                        icon: actionIcon(actions[index]),
-                        primary: index == 0,
-                        onTap: () {
-                          if (choosing) {
-                            vm.commitDropPending(actions[index]);
-                          } else {
-                            vm.performPlayAction(actions[index]);
-                          }
-                        },
-                      ),
+                    child: Builder(
+                      builder: (context) {
+                        final chipKey = choosing
+                            ? ValueKey('pending_$index')
+                            : actionBarKey(vm, actions, index);
+                        return KeyedSubtree(
+                          key: chipKey,
+                          child: TutorialPulse(
+                            bounce: false,
+                            targetKey: chipKey is GlobalKey ? chipKey : null,
+                            child: _ActionChipButton(
+                              label: actionLabel(actions[index]),
+                              icon: actionIcon(actions[index]),
+                              primary: index == 0,
+                              onTap: () {
+                                if (choosing) {
+                                  vm.commitDropPending(actions[index]);
+                                } else {
+                                  vm.performPlayAction(actions[index]);
+                                }
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
               ],

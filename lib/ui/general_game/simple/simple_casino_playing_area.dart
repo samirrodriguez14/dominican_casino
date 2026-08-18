@@ -12,6 +12,7 @@ import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
 import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
+import 'package:dominican_casino/ui/tutorial/tutorial_hint_pulse.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
 import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
 import 'package:dominican_casino/ui/widgets/winning_hand_wave.dart';
@@ -95,14 +96,18 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
                   top: iAmDealer ? 0 : 8,
                   left: 8,
                 ),
-                child: CardDeck(
-                  key: vm.deckKey,
-                  title: '',
-                  showLabel: false,
-                  cardWidth: _pileCardWidth,
-                  cards: vm.gameState.deck,
-                  extraPoints: 0,
-                  onTap: () {},
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  clipBehavior: Clip.none,
+                  child: CardDeck(
+                    key: vm.deckKey,
+                    title: '',
+                    showLabel: false,
+                    cardWidth: _pileCardWidth,
+                    cards: vm.gameState.deck,
+                    extraPoints: 0,
+                    onTap: () {},
+                  ),
                 ),
               ),
             ),
@@ -128,7 +133,12 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
                           double.infinity,
                         ),
                       ),
-                      child: Center(child: _buildTableSlots(context, vm)),
+                      child: Center(
+                        child: KeyedSubtree(
+                          key: vm.tableContentKey,
+                          child: _buildTableSlots(context, vm),
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -147,17 +157,22 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
                   clipBehavior: Clip.none,
                   child: Offstage(
                     offstage: shuffling,
-                    child: CardDeck(
-                      key: vm.oppDeckKey,
-                      title: 'Opp',
-                      titleBelow: true,
-                      showLabel: false,
-                      cardWidth: _pileCardWidth,
-                      cards: vm.oppCollectedCards,
-                      extraPoints: vm.oppExtraPoints,
-                      lastTakenCards: vm.oppLastTake,
-                      holdExtraReveal: holdExtras,
-                      onTap: () {},
+                    child: TutorialPulse(
+                      bounce: false,
+                      targetKey: vm.oppDeckKey,
+                      child: CardDeck(
+                        key: vm.oppDeckKey,
+                        title: 'Opp',
+                        titleBelow: true,
+                        showLabel: false,
+                        cardWidth: _pileCardWidth,
+                        cards: vm.oppCollectedCards,
+                        extraPoints: vm.oppExtraPoints,
+                        lastTakenCards: vm.oppLastTake,
+                        lastCapturer: vm.gameState.lastTookCardId == vm.opp,
+                        holdExtraReveal: holdExtras,
+                        onTap: () {},
+                      ),
                     ),
                   ),
                 ),
@@ -171,17 +186,22 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
                   clipBehavior: Clip.none,
                   child: Offstage(
                     offstage: shuffling,
-                    child: CardDeck(
-                      key: vm.myDeckKey,
-                      title: 'Mine',
-                      titleBelow: true,
-                      showLabel: false,
-                      cardWidth: _pileCardWidth,
-                      cards: vm.myCollectedCards,
-                      extraPoints: vm.myExtraPoints,
-                      lastTakenCards: vm.myLastTake,
-                      holdExtraReveal: holdExtras,
-                      onTap: () {},
+                    child: TutorialPulse(
+                      bounce: false,
+                      targetKey: vm.myDeckKey,
+                      child: CardDeck(
+                        key: vm.myDeckKey,
+                        title: 'Mine',
+                        titleBelow: true,
+                        showLabel: false,
+                        cardWidth: _pileCardWidth,
+                        cards: vm.myCollectedCards,
+                        extraPoints: vm.myExtraPoints,
+                        lastTakenCards: vm.myLastTake,
+                        lastCapturer: vm.gameState.lastTookCardId == vm.me,
+                        holdExtraReveal: holdExtras,
+                        onTap: () {},
+                      ),
                     ),
                   ),
                 ),
@@ -259,20 +279,25 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
         ),
       );
     } else {
+      final tableKey = vm.keyForCard(card.id, CardSlot.table);
       face = Opacity(
         opacity: hidden ? 0 : 1,
-        child: FlightAwareCard(
-          key: vm.keyForCard(card.id, CardSlot.table),
-          motion: vm.motion,
+        child: TutorialPulse(
           cardId: card.id,
-          width: tableCardWidth,
-          child: AnimatedScale(
-            duration: const Duration(milliseconds: 150),
-            scale: isSelected || highlighted ? 1.06 : 1.0,
-            child: PlayingCard(
-              playingCardModel: card,
-              isSelected: isSelected || highlighted,
-              width: tableCardWidth,
+          targetKey: tableKey,
+          child: FlightAwareCard(
+            key: tableKey,
+            motion: vm.motion,
+            cardId: card.id,
+            width: tableCardWidth,
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 150),
+              scale: isSelected || highlighted ? 1.06 : 1.0,
+              child: PlayingCard(
+                playingCardModel: card,
+                isSelected: isSelected || highlighted,
+                width: tableCardWidth,
+              ),
             ),
           ),
         ),
@@ -325,9 +350,12 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
                 ? Duration.zero
                 : const Duration(milliseconds: 150),
             scale: isSelected || highlighted ? 1.06 : 1.0,
-            child: KeyedSubtree(
-              key: vm.keyForStack(stack.id),
-              child: PlayingAreaStack(
+            child: TutorialPulse(
+              stackId: stack.id,
+              targetKey: vm.keyForStack(stack.id),
+              child: KeyedSubtree(
+                key: vm.keyForStack(stack.id),
+                child: PlayingAreaStack(
                 stack: stack,
                 isSelected: isSelected || highlighted,
                 cardWidth: tableCardWidth,
@@ -337,6 +365,7 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
                 previewCards: preview?.previewCards,
                 previewLabel: preview?.label,
               ),
+            ),
             ),
           ),
         ),

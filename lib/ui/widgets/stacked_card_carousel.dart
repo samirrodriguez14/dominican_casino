@@ -25,6 +25,7 @@ class StackedCardCarousel extends StatefulWidget {
     this.startBackCollapsed = false,
     this.animateBackIn = false,
     this.peekStyle = CardPeekStyle.stack,
+    this.alignment = Alignment.center,
     this.frontAnchorKey,
   });
 
@@ -47,6 +48,9 @@ class StackedCardCarousel extends StatefulWidget {
   final bool animateBackIn;
 
   final CardPeekStyle peekStyle;
+
+  /// Where the card stage sits in leftover parent space.
+  final Alignment alignment;
 
   /// Placed on the front card when it is on top, for overlay anchors.
   final GlobalKey? frontAnchorKey;
@@ -553,7 +557,8 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
           onHorizontalDragUpdate: _onDragUpdate,
           onHorizontalDragEnd: _onDragEnd,
           behavior: HitTestBehavior.translucent,
-          child: Center(
+          child: Align(
+            alignment: widget.alignment,
             child: SizedBox(
               width: stageWidth,
               height: stageHeight,
