@@ -131,6 +131,7 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                                         ),
                                         motion: vm.motion,
                                         cardId: currentDeckCard.id,
+                                        width: cardWidth,
                                         child: AnimatedScale(
                                           scale: isSelectedDeck ? 1.1 : 1.0,
                                           duration: const Duration(
@@ -186,6 +187,7 @@ class NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                                         ),
                                         motion: vm.motion,
                                         cardId: currentCard.id,
+                                        width: cardWidth,
                                         child: AnimatedScale(
                                           scale: isSelected ? 1.1 : 1.0,
                                           duration: const Duration(

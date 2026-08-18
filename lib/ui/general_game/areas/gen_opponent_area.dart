@@ -86,6 +86,7 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
                                   ),
                                   motion: vm.motion,
                                   cardId: cards[i].id,
+                                  width: cardWidth,
                                   child:
                                       (vm.gameState.round.roundStatus ==
                                           .completed)

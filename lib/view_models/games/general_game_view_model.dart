@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:math';
 
 import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
+import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_rules_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_reaction.dart';
@@ -23,6 +24,7 @@ import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
+import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:flutter/cupertino.dart' hide Action;
 import 'package:uuid/uuid.dart';
 
@@ -463,7 +465,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   Offset? _centerOf(GlobalKey? key) {
     if (key == null) return null;
     final box = key.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return null;
+    if (box == null || !box.hasSize || box.size.isEmpty) return null;
     return box.localToGlobal(box.size.center(Offset.zero));
   }
 
@@ -556,60 +558,421 @@ class GeneralGameViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  PlayingCardModel? draggingHandCard;
+  /// Move a hand card to [toIndex] (final index after the move).
+  void moveHandCardTo(int from, int toIndex) {
+    final hand = gameState.hands[me];
+    if (hand == null || from < 0 || from >= hand.length) return;
+    final target = toIndex.clamp(0, hand.length - 1);
+    if (from == target) return;
+    final card = hand.removeAt(from);
+    hand.insert(target, card);
+    notifyListeners();
+  }
+
+  // ── Board drag / drop (Casino) ───────────────────────────────────────────
+
+  BoardDragSource? draggingSource;
+  DropHover? dropHover;
+  DropPending? dropPending;
   Offset? dragPlayOrigin;
   String? _dragPlayOriginCardId;
 
-  void beginHandDrag(PlayingCardModel card) {
-    if (isAnimating) return;
-    draggingHandCard = card;
+  bool get isBoardDragging => draggingSource != null;
+  bool get hasDropPending => dropPending != null;
+
+  /// Legacy alias used by older UI.
+  PlayingCardModel? get draggingHandCard =>
+      draggingSource?.kind == BoardDragKind.handCard
+      ? draggingSource!.card
+      : null;
+
+  bool get isCasinoFamily =>
+      gameState.gameMode == GameMode.casino ||
+      gameState.gameMode == GameMode.casinoSpeed;
+
+  void beginBoardDrag(BoardDragSource source) {
+    if (isAnimating || dropPending != null) return;
+    draggingSource = source;
+    dropHover = null;
     notifyListeners();
   }
 
-  void endHandDrag() {
-    if (draggingHandCard == null) return;
-    draggingHandCard = null;
+  /// @deprecated Use [beginBoardDrag].
+  void beginHandDrag(PlayingCardModel card) =>
+      beginBoardDrag(BoardDragSource.hand(card));
+
+  void endBoardDrag() {
+    if (draggingSource == null && dropHover == null) return;
+    draggingSource = null;
+    dropHover = null;
     notifyListeners();
   }
 
-  /// True when dropping this hand card on the table should commit [PlayCardAction].
+  void endHandDrag() => endBoardDrag();
+
+  bool _boxContains(GlobalKey? key, Offset global) {
+    if (key == null) return false;
+    final box = key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || box.size.isEmpty) return false;
+    final topLeft = box.localToGlobal(Offset.zero);
+    return (topLeft & box.size).contains(global);
+  }
+
+  /// Resolve which table slot (or empty felt) is under [global].
+  DropTarget? hitTestDropTarget(Offset global, {BoardDragSource? source}) {
+    final src = source ?? draggingSource;
+    final skipId = src?.id;
+
+    for (final card in gameState.playingArea) {
+      if (card.id == skipId) continue;
+      if (_boxContains(keyForCard(card.id, CardSlot.table), global)) {
+        return DropTarget.tableCard(card);
+      }
+    }
+    for (final stack in gameState.playingAreaStacks) {
+      if (stack.id == skipId) continue;
+      if (_boxContains(keyForStack(stack.id), global)) {
+        return DropTarget.tableStack(stack);
+      }
+    }
+    if (_boxContains(tableKey, global)) {
+      return const DropTarget.emptyTable();
+    }
+    return null;
+  }
+
+  CurrentCardSelection selectionForDrop(
+    BoardDragSource source,
+    DropTarget target,
+  ) {
+    PlayingCardModel? hand;
+    final tableCards = <PlayingCardModel>[];
+    final stacks = <PlayingAreaStackModel>[];
+
+    switch (source.kind) {
+      case BoardDragKind.handCard:
+        hand = source.card;
+      case BoardDragKind.tableCard:
+        tableCards.add(source.card!);
+      case BoardDragKind.tableStack:
+        stacks.add(source.stack!);
+    }
+
+    switch (target.kind) {
+      case DropTargetKind.emptyTable:
+        break;
+      case DropTargetKind.tableCard:
+        if (!tableCards.any((c) => c.id == target.card!.id)) {
+          tableCards.add(target.card!);
+        }
+      case DropTargetKind.tableStack:
+        if (!stacks.any((s) => s.id == target.stack!.id)) {
+          stacks.add(target.stack!);
+        }
+    }
+
+    return CurrentCardSelection(
+      pid: me,
+      selectedCard: hand,
+      selectedCards: tableCards,
+      selectedStacks: stacks,
+    );
+  }
+
+  List<PlayAction> actionsForDrop(BoardDragSource source, DropTarget target) {
+    if (!canPlayTurn) return const [];
+    // Tres y Dos: keep Play-only empty-table drop; no table-slot DnD.
+    if (!isCasinoFamily) {
+      if (source.kind != BoardDragKind.handCard ||
+          target.kind != DropTargetKind.emptyTable) {
+        return const [];
+      }
+      final selection = selectionForDrop(source, target);
+      return gameEngine
+          .getAvailableActions(gameState, selection)
+          .whereType<PlayCardAction>()
+          .toList();
+    }
+    // Empty table only accepts Play from hand.
+    if (target.kind == DropTargetKind.emptyTable) {
+      if (source.kind != BoardDragKind.handCard) return const [];
+      final selection = selectionForDrop(source, target);
+      return gameEngine
+          .getAvailableActions(gameState, selection)
+          .whereType<PlayCardAction>()
+          .toList();
+    }
+    final selection = selectionForDrop(source, target);
+    return gameEngine.getAvailableActions(gameState, selection);
+  }
+
+  List<PlayingCardModel> _mergedPreviewCards(CurrentCardSelection selection) {
+    final cards = <PlayingCardModel>[
+      ...selection.selectedCards,
+      for (final s in selection.selectedStacks) ...s.cards,
+    ];
+    if (selection.selectedCard != null) {
+      cards.add(selection.selectedCard!);
+    }
+    return cards;
+  }
+
+  BuildPreview? _buildPreviewFor(
+    CurrentCardSelection selection,
+    List<PlayAction> actions, {
+    bool forceMerge = false,
+  }) {
+    if (actions.isEmpty) return null;
+
+    final isAdd = actions.any(
+      (a) =>
+          a is AddCardsAction ||
+          a is AddCardStackAction ||
+          a is AddTableCardsAction ||
+          a is AddAndPairCardsAction,
+    );
+
+    final previewCards = _mergedPreviewCards(selection);
+    if (previewCards.isEmpty) return null;
+
+    if (isAdd) {
+      final totals = CasinoRulesHandler.possibleBuildTotals(
+        selectedCard: selection.selectedCard,
+        selectedCards: selection.selectedCards,
+        selectedStacks: selection.selectedStacks,
+      ).where((t) => t > 0).toSet();
+      if (totals.isNotEmpty) {
+        final usedId = selection.selectedCard?.id;
+        int? chosen;
+        for (final t in totals.toList()..sort()) {
+          final matchesFinisher = myHandCards.any(
+            (c) =>
+                c.id != usedId &&
+                CasinoRulesHandler.possibleCardValues(c).contains(t),
+          );
+          if (matchesFinisher) chosen = t;
+        }
+        chosen ??= totals.reduce((a, b) => a > b ? a : b);
+
+        final parts = <String>[
+          for (final c in selection.selectedCards) c.rank,
+          for (final s in selection.selectedStacks) '${s.stackValue}',
+          if (selection.selectedCard != null) selection.selectedCard!.rank,
+        ];
+
+        return BuildPreview(
+          label: '${parts.join('+')}→$chosen',
+          total: chosen,
+          previewCards: previewCards,
+        );
+      }
+    }
+
+    // Multi-action pending (or forced): keep cards visually merged without
+    // an a+b→c badge.
+    if (forceMerge || actions.length > 1) {
+      return BuildPreview(
+        label: actions.length > 1
+            ? 'Choose'
+            : actionLabel(actions.first),
+        total: selection.selectedStacks.isNotEmpty
+            ? selection.selectedStacks.first.stackValue
+            : (previewCards.isNotEmpty
+                  ? CasinoRulesHandler.possibleCardValues(
+                      previewCards.last,
+                    ).first
+                  : 0),
+        previewCards: previewCards,
+      );
+    }
+    return null;
+  }
+
+  void updateDropHover(Offset global) {
+    final source = draggingSource;
+    if (source == null) return;
+    final target = hitTestDropTarget(global, source: source);
+    if (target == null) {
+      if (dropHover != null) {
+        dropHover = null;
+        notifyListeners();
+      }
+      return;
+    }
+    final actions = actionsForDrop(source, target);
+    if (actions.isEmpty) {
+      if (dropHover != null) {
+        dropHover = null;
+        notifyListeners();
+      }
+      return;
+    }
+    final selection = selectionForDrop(source, target);
+    final preview = target.kind == DropTargetKind.emptyTable
+        ? null
+        : _buildPreviewFor(selection, actions);
+    dropHover = DropHover(
+      target: target,
+      actions: actions,
+      buildPreview: preview,
+    );
+    notifyListeners();
+  }
+
+  /// Apply drop. Returns whether the drag was consumed (commit or pending).
+  Future<bool> finishBoardDrop(Offset globalCenter) async {
+    final source = draggingSource;
+    if (source == null) return false;
+
+    final target = hitTestDropTarget(globalCenter, source: source);
+    draggingSource = null;
+    dropHover = null;
+
+    if (target == null || !canPlayTurn) {
+      notifyListeners();
+      return false;
+    }
+
+    final actions = actionsForDrop(source, target);
+    if (actions.isEmpty) {
+      notifyListeners();
+      return false;
+    }
+
+    final selection = selectionForDrop(source, target);
+    final preview = target.kind == DropTargetKind.emptyTable
+        ? null
+        : _buildPreviewFor(selection, actions, forceMerge: true);
+
+    if (actions.length == 1) {
+      await _commitDropAction(actions.first, selection, globalCenter);
+      return true;
+    }
+
+    // Multi-action: keep selection + pending UI.
+    selectedCard = selection.selectedCard;
+    selectedCards = List<PlayingCardModel>.from(selection.selectedCards);
+    selectedStacks = List<PlayingAreaStackModel>.from(selection.selectedStacks);
+    dropPending = DropPending(
+      source: source,
+      target: target,
+      actions: actions,
+      buildPreview: preview,
+    );
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> commitDropPending(PlayAction action) async {
+    final pending = dropPending;
+    if (pending == null) return;
+    final selection = selectionForDrop(pending.source, pending.target);
+    dropPending = null;
+    await _commitDropAction(action, selection, null);
+  }
+
+  void cancelDropPending() {
+    if (dropPending == null) return;
+    dropPending = null;
+    selectedCard = null;
+    selectedCards = [];
+    selectedStacks = [];
+    notifyListeners();
+  }
+
+  Future<void> _commitDropAction(
+    PlayAction action,
+    CurrentCardSelection selection,
+    Offset? globalCenter,
+  ) async {
+    selectedCard = selection.selectedCard;
+    selectedCards = List<PlayingCardModel>.from(selection.selectedCards);
+    selectedStacks = List<PlayingAreaStackModel>.from(selection.selectedStacks);
+
+    if (globalCenter != null && action is PlayCardAction) {
+      dragPlayOrigin = globalCenter;
+      _dragPlayOriginCardId = action.usedCard.id;
+    } else if (globalCenter != null && selection.selectedCard != null) {
+      dragPlayOrigin = globalCenter;
+      _dragPlayOriginCardId = selection.selectedCard!.id;
+    }
+
+    try {
+      await performPlayAction(action);
+    } finally {
+      if (selection.selectedCard != null &&
+          _dragPlayOriginCardId == selection.selectedCard!.id) {
+        dragPlayOrigin = null;
+        _dragPlayOriginCardId = null;
+      }
+    }
+  }
+
+  /// True when dropping this hand card on empty table should Play.
   bool canDropPlay(PlayingCardModel card) {
     if (!canPlayTurn) return false;
-    final selection = CurrentCardSelection(
-      pid: me,
-      selectedCard: card,
-      selectedCards: const [],
-      selectedStacks: const [],
-    );
-    final actions = gameEngine.getAvailableActions(gameState, selection);
-    return actions.any((a) => a is PlayCardAction && a.usedCard.id == card.id);
+    return actionsForDrop(
+      BoardDragSource.hand(card),
+      const DropTarget.emptyTable(),
+    ).any((a) => a is PlayCardAction);
   }
 
   Future<void> playCardViaDrop(
     PlayingCardModel card,
     Offset globalCenter,
   ) async {
-    if (!canDropPlay(card)) return;
-    dragPlayOrigin = globalCenter;
-    _dragPlayOriginCardId = card.id;
-    selectedCard = card;
-    selectedCards = [];
-    selectedStacks = [];
-    if (draggingHandCard != null) {
-      draggingHandCard = null;
+    beginBoardDrag(BoardDragSource.hand(card));
+    // Synthesize empty-table drop under finger if over table.
+    final target = hitTestDropTarget(globalCenter) ?? const DropTarget.emptyTable();
+    draggingSource = BoardDragSource.hand(card);
+    if (target.kind != DropTargetKind.emptyTable) {
+      await finishBoardDrop(globalCenter);
+      return;
+    }
+    final actions = actionsForDrop(
+      BoardDragSource.hand(card),
+      const DropTarget.emptyTable(),
+    );
+    draggingSource = null;
+    dropHover = null;
+    if (actions.length == 1) {
+      await _commitDropAction(
+        actions.first,
+        selectionForDrop(
+          BoardDragSource.hand(card),
+          const DropTarget.emptyTable(),
+        ),
+        globalCenter,
+      );
+    } else {
       notifyListeners();
     }
-    try {
-      await performPlayAction(
-        PlayCardAction(usedCard: card, performedById: me),
-      );
-    } finally {
-      // Cleared in _captureOrigins on success; clear leftovers on early exit.
-      if (_dragPlayOriginCardId == card.id) {
-        dragPlayOrigin = null;
-        _dragPlayOriginCardId = null;
-      }
+  }
+
+  /// Whether [id] should be hidden because it is the drag source or merged
+  /// into a hover/pending preview target.
+  bool isDragHidden(String id) {
+    if (draggingSource?.id == id) return true;
+    final pending = dropPending;
+    if (pending != null && pending.source.id == id) return true;
+    return false;
+  }
+
+  /// Provisional cards to paint on a hover/pending target slot.
+  BuildPreview? previewForTarget({String? cardId, String? stackId}) {
+    final hover = dropHover;
+    if (hover?.buildPreview != null) {
+      final t = hover!.target;
+      if (cardId != null && t.card?.id == cardId) return hover.buildPreview;
+      if (stackId != null && t.stack?.id == stackId) return hover.buildPreview;
     }
+    final pending = dropPending;
+    if (pending?.buildPreview != null) {
+      final t = pending!.target;
+      if (cardId != null && t.card?.id == cardId) return pending.buildPreview;
+      if (stackId != null && t.stack?.id == stackId) return pending.buildPreview;
+    }
+    return null;
   }
 
   String? get opp {

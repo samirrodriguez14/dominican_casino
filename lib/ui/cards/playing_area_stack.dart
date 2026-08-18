@@ -32,6 +32,12 @@ class PlayingAreaStack extends StatelessWidget {
   /// Motion controller — hides in-flight cards without a full board rebuild.
   final CardMotionController motion;
 
+  /// Drag-merge preview cards (replaces [stack.cards] visually).
+  final List<PlayingCardModel>? previewCards;
+
+  /// Badge override e.g. `2+3→5`.
+  final String? previewLabel;
+
   const PlayingAreaStack({
     super.key,
     required this.stack,
@@ -41,6 +47,8 @@ class PlayingAreaStack extends StatelessWidget {
     this.overlap = 30,
     this.onTap,
     this.cardKeyFor,
+    this.previewCards,
+    this.previewLabel,
   });
 
   @override
@@ -49,13 +57,30 @@ class PlayingAreaStack extends StatelessWidget {
     final stackColor = stack.paired
         ? AppStyle.theme.cardBorder
         : AppStyle.theme.turnHighlight;
-    final step = cardWidth - overlap;
-    final n = stack.cards.length;
-    final totalWidth = n <= 1 ? cardWidth : cardWidth + (n - 1) * step;
-    final showTakePreview = _casinoFamilyCoinHints(context);
+    final naturalStep = cardWidth - overlap;
+    final baseN = stack.cards.isEmpty ? 1 : stack.cards.length;
+    // During drag preview, keep the pre-drop footprint so the table layout
+    // does not reflow; extra cards compact into the same width.
+    final lockWidth = previewCards != null;
+    final cards = previewCards ?? stack.cards;
+    final n = cards.length;
+    final totalWidth = baseN <= 1
+        ? cardWidth
+        : cardWidth + (baseN - 1) * naturalStep;
+    final step = n <= 1
+        ? 0.0
+        : lockWidth
+        ? (totalWidth - cardWidth) / (n - 1)
+        : naturalStep;
+    final showTakePreview =
+        previewCards == null && _casinoFamilyCoinHints(context);
     final takePreview =
         showTakePreview ? CasinoCoinBonuses.takePreviewForTableCount(n) : 0;
     final previewIndex = n > 0 ? n - 1 : -1;
+    final badgeText = previewLabel == 'Choose'
+        ? '${stack.paired ? "P" : ''} ${stack.stackValue}'.trim()
+        : (previewLabel ??
+              '${stack.paired ? "P" : ''} ${stack.stackValue}'.trim());
 
     return ListenableBuilder(
       listenable: motion,
@@ -71,13 +96,13 @@ class PlayingAreaStack extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
-                border: isSelected
+                border: isSelected || previewLabel != null
                     ? Border.all(
                         color: stackColor.withValues(alpha: 0.55),
                         width: 1.5,
                       )
                     : null,
-                boxShadow: isSelected
+                boxShadow: isSelected || previewLabel != null
                     ? [
                         BoxShadow(
                           color: stackColor.withValues(alpha: 0.22),
@@ -97,20 +122,22 @@ class PlayingAreaStack extends StatelessWidget {
                       child: IgnorePointer(
                         ignoring: true,
                         child: FlightAwareCard(
-                          key: cardKeyFor?.call(stack.cards[i]),
+                          key: previewCards == null
+                              ? cardKeyFor?.call(cards[i])
+                              : null,
                           motion: motion,
-                          cardId: stack.cards[i].id,
+                          cardId: cards[i].id,
+                          width: cardWidth,
                           child: PlayingCard(
-                            playingCardModel: stack.cards[i],
+                            playingCardModel: cards[i],
                             width: cardWidth,
                             isSelected: false,
-                            // Take preview beats special badge on the top card.
                             extraCoinHint: i == previewIndex ? takePreview : 0,
                           ),
                         ),
                       ),
                     ),
-                  if (!landing)
+                  if (!landing || previewLabel != null)
                     Positioned(
                       top: -6,
                       right: -6,
@@ -131,7 +158,7 @@ class PlayingAreaStack extends StatelessWidget {
                           ],
                         ),
                         child: Text(
-                          '${stack.paired ? "P" : ''} ${stack.stackValue}',
+                          badgeText,
                           style: TextStyle(
                             color: AppStyle.theme.textPrimary,
                             fontWeight: FontWeight.w700,
@@ -140,7 +167,7 @@ class PlayingAreaStack extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (isSelected)
+                  if (isSelected && previewLabel == null)
                     Positioned(
                       bottom: -6,
                       right: -6,

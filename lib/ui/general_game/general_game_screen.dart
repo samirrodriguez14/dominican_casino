@@ -10,6 +10,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
 import 'package:dominican_casino/ui/animations/card_flight_animator.dart';
 import 'package:dominican_casino/ui/animations/currency_burst.dart';
+import 'package:dominican_casino/ui/animations/flight_layer.dart';
 import 'package:dominican_casino/ui/animations/shuffle_animator.dart';
 import 'package:dominican_casino/ui/app_shell/games/account_setup_popup.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
@@ -49,6 +50,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   GeneralGameViewModel? _boundVm;
 
   late final TutorialViewModel tutorialVm;
+  final FlightLayerController _flightLayer = FlightLayerController();
 
   /// Prevents stacking duplicate round/game status popups.
   String? _shownStatusKey;
@@ -57,18 +59,20 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   bool _playingDeckCoins = false;
 
   void _bindFlightRunner(GeneralGameViewModel gameVm) {
+    gameVm.motion.flightLayer = _flightLayer;
     gameVm.motion.runner = (flights, {onLanded}) => CardFlightAnimator.flyAll(
-      context: context,
+      layer: _flightLayer,
       vsync: this,
       flights: flights,
       onLanded: onLanded,
     );
-    gameVm.motion.shuffleRunner = (request, {onSquared}) => ShuffleAnimator.play(
-      context: context,
-      vsync: this,
-      request: request,
-      onSquared: onSquared,
-    );
+    gameVm.motion.shuffleRunner = (request, {onSquared}) =>
+        ShuffleAnimator.play(
+          layer: _flightLayer,
+          vsync: this,
+          request: request,
+          onSquared: onSquared,
+        );
   }
 
   @override
@@ -342,113 +346,118 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
               animation: tutorialVm,
               builder: (context, _) {
                 final bottomInset = MediaQuery.paddingOf(context).bottom;
-                return Stack(
-                  children: [
-                  Padding(
-                    padding: EdgeInsetsGeometry.symmetric(vertical: 48),
-                    child: CasinoBoard(child: Container()),
-                  ),
-                  Column(
+                return FlightLayer(
+                  controller: _flightLayer,
+                  child: Stack(
                     children: [
-                      SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                          child: Center(
-                            child: _GameModeChip(
-                              label: GameRegistry.displayTitle(
-                                vm.gameState.gameMode,
+                      Padding(
+                        padding: EdgeInsetsGeometry.symmetric(vertical: 48),
+                        child: CasinoBoard(child: Container()),
+                      ),
+                      Column(
+                        children: [
+                          SafeArea(
+                            bottom: false,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                              child: Center(
+                                child: _GameModeChip(
+                                  label: GameRegistry.displayTitle(
+                                    vm.gameState.gameMode,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 30),
-                          child: _selectPlayingArea(vm.gameState.gameMode),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      GenPlayerArea(),
-                      SizedBox(height: 16 + bottomInset),
-                    ],
-                  ),
-                  AnimatedAlign(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
-                    alignment: vm.showInGameControl
-                        ? Alignment.center
-                        : Alignment.centerRight,
-                    child: Padding(
-                      padding: EdgeInsetsGeometry.only(right: 18),
-                      child: GenGameControl(),
-                    ),
-                  ),
-                  Positioned(
-                    right: 16,
-                    bottom: 16 + bottomInset,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        PopupCircleButton(
-                          emphasized: true,
-                          onPressed: () {
-                            AppHaptics.mediumImpact();
-                            vm.sortHandCards();
-                          },
-                          child: Transform.rotate(
-                            angle: math.pi / 2,
-                            child: Icon(
-                              CupertinoIcons.arrow_up_arrow_down,
-                              size: 22,
-                              color: AppStyle.theme.textPrimary,
+                          const SizedBox(height: 4),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 30,
+                              ),
+                              child: _selectPlayingArea(vm.gameState.gameMode),
                             ),
                           ),
+                          const SizedBox(height: 10),
+                          GenPlayerArea(),
+                          SizedBox(height: 16 + bottomInset),
+                        ],
+                      ),
+                      AnimatedAlign(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        alignment: vm.showInGameControl
+                            ? Alignment.center
+                            : Alignment.centerRight,
+                        child: Padding(
+                          padding: EdgeInsetsGeometry.only(right: 18),
+                          child: GenGameControl(),
                         ),
-                        const SizedBox(height: 10),
-                        const _PlayerReactionButton(),
-                        const SizedBox(height: 10),
-                        _PlayerScoreAvatar(
-                          key: vm.scoreKey,
-                          avatarId: vm.player.avatarId,
-                          score: vm.gameState.scores[vm.me] ?? 0,
-                          pendingCoins: vm.revealedPendingFor(vm.me),
-                          onPressed: () {
-                            AppHaptics.mediumImpact();
-                            showGameStatusPopup(context, vm: vm);
-                          },
+                      ),
+                      Positioned(
+                        right: 16,
+                        bottom: 16 + bottomInset,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            PopupCircleButton(
+                              emphasized: true,
+                              onPressed: () {
+                                AppHaptics.mediumImpact();
+                                vm.sortHandCards();
+                              },
+                              child: Transform.rotate(
+                                angle: math.pi / 2,
+                                child: Icon(
+                                  CupertinoIcons.arrow_up_arrow_down,
+                                  size: 22,
+                                  color: AppStyle.theme.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            const _PlayerReactionButton(),
+                            const SizedBox(height: 10),
+                            _PlayerScoreAvatar(
+                              key: vm.scoreKey,
+                              avatarId: vm.player.avatarId,
+                              score: vm.gameState.scores[vm.me] ?? 0,
+                              pendingCoins: vm.revealedPendingFor(vm.me),
+                              onPressed: () {
+                                AppHaptics.mediumImpact();
+                                showGameStatusPopup(context, vm: vm);
+                              },
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  AnimatedBuilder(
-                    animation: tutorialVm,
-                    builder: (context, _) {
-                      if (!tutorialVm.active ||
-                          vm.isAnimating ||
-                          tutorialVm.step.awaitRoundStatus) {
-                        return const SizedBox.shrink();
-                      }
+                      ),
+                      AnimatedBuilder(
+                        animation: tutorialVm,
+                        builder: (context, _) {
+                          if (!tutorialVm.active ||
+                              vm.isAnimating ||
+                              tutorialVm.step.awaitRoundStatus) {
+                            return const SizedBox.shrink();
+                          }
 
-                      return TutorialOverlay(
-                        step: tutorialVm.currentStepData,
-                        currentStep: tutorialVm.currentSection,
-                        totalSteps: tutorialVm.totalSections,
-                        isLastScreen: tutorialVm.isLastStep,
-                        onNext: _onTutorialNext,
-                        onSkip: () => _onTutorialSkip(context),
-                        onPlay: _finishTutorialPlayGame,
-                        onExit: _finishTutorialReturnHome,
-                        canGoNext: true,
-                      );
-                    },
+                          return TutorialOverlay(
+                            step: tutorialVm.currentStepData,
+                            currentStep: tutorialVm.currentSection,
+                            totalSteps: tutorialVm.totalSections,
+                            isLastScreen: tutorialVm.isLastStep,
+                            onNext: _onTutorialNext,
+                            onSkip: () => _onTutorialSkip(context),
+                            onPlay: _finishTutorialPlayGame,
+                            onExit: _finishTutorialReturnHome,
+                            canGoNext: true,
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              );
-            },
+                );
+              },
             ),
           ),
         ),
@@ -638,4 +647,3 @@ class _GameModeChip extends StatelessWidget {
     );
   }
 }
-

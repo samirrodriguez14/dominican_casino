@@ -1,10 +1,13 @@
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/ui/animations/flight_layer.dart';
 import 'package:flutter/cupertino.dart';
 
 class CardFlightRequest {
   final CardMoveEvent event;
+
+  /// Screen-global center; converted to layer-local by [CardFlightAnimator].
   final Offset? fromGlobalCenter;
   final GlobalKey? toKey;
   final GlobalKey? fromKey;
@@ -71,6 +74,10 @@ class CardMotionController extends ChangeNotifier {
   final Set<String> _inFlight = {};
   CardFlightRunner? runner;
   ShuffleRunner? shuffleRunner;
+
+  /// Board-local flight host — set by [GeneralGameScreen].
+  FlightLayerController? flightLayer;
+
   bool _shuffling = false;
 
   bool get isShuffling => _shuffling;

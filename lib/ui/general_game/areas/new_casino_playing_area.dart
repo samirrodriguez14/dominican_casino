@@ -10,7 +10,9 @@ import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/popups/players_deck_content.dart';
 import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_opponent_area.dart';
+import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
 import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.dart';
+import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -79,7 +81,7 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
                             builder: (context, constraints) {
                               const vPad = 18.0;
                               return SingleChildScrollView(
-                                physics: vm.draggingHandCard != null
+                                physics: vm.isBoardDragging
                                     ? const NeverScrollableScrollPhysics()
                                     : null,
                                 padding: const EdgeInsets.symmetric(
@@ -202,15 +204,12 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
           switch (slot) {
             TableCardSlot(:final card) => SlidingSlot(
               key: ValueKey(slot.orderKey),
-              width: slot.widthFor(cardWidth: tableCardWidth),
+              width: _slotWidthForCard(vm, card),
               child: _looseCard(vm, card),
             ),
             TableStackSlot(:final stack) => SlidingSlot(
               key: ValueKey(slot.orderKey),
-              width: slot.widthFor(
-                cardWidth: tableCardWidth,
-                overlap: _stackOverlap,
-              ),
+              width: _slotWidthForStack(vm, stack),
               child: _stackSlot(vm, stack),
             ),
           },
@@ -218,56 +217,123 @@ class NewCasinoPlayingAreaState extends State<NewCasinoPlayingArea> {
     );
   }
 
+  double _slotWidthForCard(GeneralGameViewModel vm, PlayingCardModel card) {
+    // Preview must not expand the slot — layout stays put until commit.
+    return tableCardWidth;
+  }
+
+  double _slotWidthForStack(
+    GeneralGameViewModel vm,
+    PlayingAreaStackModel stack,
+  ) {
+    final n = stack.cards.length;
+    if (n <= 1) return tableCardWidth;
+    return tableCardWidth + (n - 1) * (tableCardWidth - _stackOverlap);
+  }
+
   Widget _looseCard(GeneralGameViewModel vm, PlayingCardModel card) {
     final isSelected = vm.selectedCards.contains(card);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => vm.selectCardToStack(card),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        transform: isSelected
-            ? Matrix4.translationValues(0, -12, 0)
-            : Matrix4.identity(),
+    final preview = vm.previewForTarget(cardId: card.id);
+    final hidden = vm.isDragHidden(card.id);
+    final highlighted =
+        vm.dropHover?.target.card?.id == card.id ||
+        vm.dropPending?.target.card?.id == card.id;
+
+    final Widget face;
+    if (preview != null) {
+      // Keep the table GlobalKey on a sized box so hit-tests stay stable while
+      // the provisional merge paints as a stack. [stack.cards] stays the
+      // original single card so width is locked during preview.
+      face = KeyedSubtree(
+        key: vm.keyForCard(card.id, CardSlot.table),
+        child: PlayingAreaStack(
+          stack: PlayingAreaStackModel(
+            id: 'preview_${card.id}',
+            cards: [card],
+            stackValue: preview.total,
+            paired: false,
+          ),
+          motion: vm.motion,
+          cardWidth: tableCardWidth,
+          overlap: _stackOverlap,
+          isSelected: true,
+          previewCards: preview.previewCards,
+          previewLabel: preview.label,
+        ),
+      );
+    } else {
+      face = Opacity(
+        opacity: hidden ? 0 : 1,
         child: FlightAwareCard(
           key: vm.keyForCard(card.id, CardSlot.table),
           motion: vm.motion,
           cardId: card.id,
+          width: tableCardWidth,
           child: AnimatedScale(
             duration: const Duration(milliseconds: 150),
-            scale: isSelected ? 1.06 : 1.0,
+            scale: isSelected || highlighted ? 1.06 : 1.0,
             child: PlayingCard(
               playingCardModel: card,
-              isSelected: isSelected,
+              isSelected: isSelected || highlighted,
               width: tableCardWidth,
             ),
           ),
         ),
+      );
+    }
+
+    return BoardDragHandle(
+      source: BoardDragSource.tableCard(card),
+      enabled: vm.canPlayTurn && !vm.hasDropPending,
+      feedbackWidth: tableCardWidth,
+      tableFeedbackWidth: tableCardWidth,
+      onTap: () => vm.selectCardToStack(card),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        transform: isSelected || highlighted
+            ? Matrix4.translationValues(0, -12, 0)
+            : Matrix4.identity(),
+        child: face,
       ),
     );
   }
 
   Widget _stackSlot(GeneralGameViewModel vm, PlayingAreaStackModel stack) {
     final isSelected = vm.selectedStacks.contains(stack);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    final preview = vm.previewForTarget(stackId: stack.id);
+    final hidden = vm.isDragHidden(stack.id);
+    final highlighted =
+        vm.dropHover?.target.stack?.id == stack.id ||
+        vm.dropPending?.target.stack?.id == stack.id;
+
+    return BoardDragHandle(
+      source: BoardDragSource.tableStack(stack),
+      enabled: vm.canPlayTurn && !vm.hasDropPending,
+      feedbackWidth: tableCardWidth,
+      tableFeedbackWidth: tableCardWidth,
       onTap: () => vm.selectStack(stack),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        transform: isSelected
+        transform: isSelected || highlighted
             ? Matrix4.translationValues(0, -12, 0)
             : Matrix4.identity(),
-        child: AnimatedScale(
-          duration: const Duration(milliseconds: 150),
-          scale: isSelected ? 1.06 : 1.0,
-          child: KeyedSubtree(
-            key: vm.keyForStack(stack.id),
-            child: PlayingAreaStack(
-              stack: stack,
-              isSelected: isSelected,
-              cardWidth: tableCardWidth,
-              overlap: _stackOverlap,
-              motion: vm.motion,
-              cardKeyFor: (c) => vm.keyForCard(c.id, CardSlot.inStack),
+        child: Opacity(
+          opacity: hidden ? 0 : 1,
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 150),
+            scale: isSelected || highlighted ? 1.06 : 1.0,
+            child: KeyedSubtree(
+              key: vm.keyForStack(stack.id),
+              child: PlayingAreaStack(
+                stack: stack,
+                isSelected: isSelected || highlighted,
+                cardWidth: tableCardWidth,
+                overlap: _stackOverlap,
+                motion: vm.motion,
+                cardKeyFor: (c) => vm.keyForCard(c.id, CardSlot.inStack),
+                previewCards: preview?.previewCards,
+                previewLabel: preview?.label,
+              ),
             ),
           ),
         ),

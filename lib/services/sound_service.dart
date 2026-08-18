@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,9 +10,6 @@ class SoundService extends ChangeNotifier {
 
   /// Max overlapping card ticks so a big deal/capture does not become a wash.
   static const cardTickMax = 6;
-
-  /// audioplayers can hang on iOS AVPlayerItem status; fail fast and reset.
-  static const _sfxTimeout = Duration(seconds: 2);
 
   static const _sfxKey = 'sfx_enabled';
   static const _musicKey = 'music_enabled';
@@ -31,8 +26,6 @@ class SoundService extends ChangeNotifier {
     (_) => AudioPlayer(),
   );
   int _layer = 0;
-  final Map<AudioPlayer, String?> _sourceByPlayer = {};
-  final Set<AudioPlayer> _sfxBusy = {};
 
   bool sfxEnabled = true;
   bool musicEnabled = true;
@@ -74,6 +67,11 @@ class SoundService extends ChangeNotifier {
         (sp.getDouble(_musicVolumeKey) ?? _defaultMusicVolume).clamp(0, 1);
     await _music.setReleaseMode(ReleaseMode.loop);
     await _music.setVolume(musicVolume);
+    // Low-latency mode on SFX players — set once, not per tick.
+    await _oneshot.setPlayerMode(PlayerMode.lowLatency);
+    for (final p in _layers) {
+      await p.setPlayerMode(PlayerMode.lowLatency);
+    }
     notifyListeners();
     if (musicEnabled) await startMusic();
   }
@@ -134,13 +132,7 @@ class SoundService extends ChangeNotifier {
         return;
       }
       await _music.setVolume(musicVolume);
-      if (_sourceByPlayer[_music] == _musicAsset) {
-        await _music.seek(Duration.zero);
-        await _music.resume();
-      } else {
-        await _music.play(AssetSource(_musicAsset));
-        _sourceByPlayer[_music] = _musicAsset;
-      }
+      await _music.play(AssetSource(_musicAsset));
       _musicPlaying = true;
     } catch (e) {
       debugPrint('SoundService music: $e');
@@ -171,7 +163,8 @@ class SoundService extends ChangeNotifier {
     final path = _assets[sound];
     if (path == null) return;
     try {
-      await _playSfx(_oneshot, path, sfxVolume);
+      await _oneshot.setVolume(sfxVolume);
+      await _oneshot.play(AssetSource(path));
     } catch (e) {
       debugPrint('SoundService: $e');
     }
@@ -185,52 +178,11 @@ class SoundService extends ChangeNotifier {
     final player = _layers[_layer % _layers.length];
     _layer++;
     try {
-      await _playSfx(player, path, (volume * sfxVolume).clamp(0, 1));
+      // Direct play — seek/resume was adding multi-hundred-ms latency on iOS.
+      await player.setVolume((volume * sfxVolume).clamp(0, 1));
+      await player.play(AssetSource(path));
     } catch (e) {
       debugPrint('SoundService: $e');
     }
-  }
-
-  /// Prefer seek/resume over stop+play so iOS does not tear down a pending
-  /// AVPlayerItem status continuation mid-flight.
-  Future<void> _playSfx(AudioPlayer player, String path, double volume) async {
-    if (_sfxBusy.contains(player)) return;
-    _sfxBusy.add(player);
-    try {
-      await player.setVolume(volume).timeout(_sfxTimeout);
-      if (_sourceByPlayer[player] == path) {
-        await player.seek(Duration.zero).timeout(_sfxTimeout);
-        await player.resume().timeout(_sfxTimeout);
-        return;
-      }
-      await player
-          .play(AssetSource(path), mode: PlayerMode.lowLatency)
-          .timeout(_sfxTimeout);
-      _sourceByPlayer[player] = path;
-    } on TimeoutException {
-      await _resetPlayer(player);
-      try {
-        await player.setVolume(volume).timeout(_sfxTimeout);
-        await player
-            .play(AssetSource(path), mode: PlayerMode.lowLatency)
-            .timeout(_sfxTimeout);
-        _sourceByPlayer[player] = path;
-      } catch (e) {
-        _sourceByPlayer.remove(player);
-        debugPrint('SoundService: $e');
-      }
-    } catch (e) {
-      _sourceByPlayer.remove(player);
-      rethrow;
-    } finally {
-      _sfxBusy.remove(player);
-    }
-  }
-
-  Future<void> _resetPlayer(AudioPlayer player) async {
-    _sourceByPlayer.remove(player);
-    try {
-      await player.stop().timeout(const Duration(milliseconds: 500));
-    } catch (_) {}
   }
 }
