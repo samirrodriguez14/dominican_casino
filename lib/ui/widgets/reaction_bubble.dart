@@ -3,7 +3,7 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
-enum ReactionBubbleTail { right, top }
+enum ReactionBubbleTail { right, top, bottom }
 
 /// Chat-style emoji bubble. [tail] points at the speaker.
 class ReactionBubble extends StatelessWidget {
@@ -55,6 +55,23 @@ class ReactionBubble extends StatelessWidget {
       );
     }
 
+    if (tail == ReactionBubbleTail.bottom) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          body,
+          CustomPaint(
+            size: const Size(14, 8),
+            painter: _BubbleTailPainter(
+              fill: fill,
+              stroke: stroke,
+              direction: ReactionBubbleTail.bottom,
+            ),
+          ),
+        ],
+      );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -91,6 +108,12 @@ class _BubbleTailPainter extends CustomPainter {
         ..moveTo(0, size.height)
         ..lineTo(size.width / 2, 0)
         ..lineTo(size.width, size.height)
+        ..close();
+    } else if (direction == ReactionBubbleTail.bottom) {
+      path
+        ..moveTo(0, 0)
+        ..lineTo(size.width / 2, size.height)
+        ..lineTo(size.width, 0)
         ..close();
     } else {
       path
@@ -136,9 +159,11 @@ class ReactionBubblePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scaleAlignment = tail == ReactionBubbleTail.top
-        ? Alignment.topCenter
-        : Alignment.centerRight;
+    final scaleAlignment = switch (tail) {
+      ReactionBubbleTail.top => Alignment.topCenter,
+      ReactionBubbleTail.bottom => Alignment.bottomCenter,
+      ReactionBubbleTail.right => Alignment.centerRight,
+    };
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
       switchInCurve: Curves.easeOutBack,
@@ -169,38 +194,73 @@ class GameReactionPicker extends StatelessWidget {
 
   final ValueChanged<String> onSelected;
 
+  static const _cell = 40.0;
+
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.surface.withValues(alpha: .96),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: theme.border.withValues(alpha: .5)),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.black.withValues(alpha: .28),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final emoji in GameReaction.options)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: CupertinoButton(
-                padding: const EdgeInsets.all(6),
-                minimumSize: const Size(40, 40),
-                onPressed: SoundService.wrapTap(() => onSelected(emoji)),
-                child: Text(emoji, style: const TextStyle(fontSize: 28)),
+    final fill = theme.surface.withValues(alpha: .96);
+    final stroke = theme.border.withValues(alpha: .5);
+    final emojis = GameReaction.options;
+    const cols = GameReaction.columns;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: stroke),
+            boxShadow: [
+              BoxShadow(
+                color: CupertinoColors.black.withValues(alpha: .28),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var r = 0; r < emojis.length; r += cols)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final emoji in emojis.skip(r).take(cols))
+                      SizedBox(
+                        width: _cell,
+                        height: _cell,
+                        child: CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(_cell, _cell),
+                          onPressed: SoundService.wrapTap(
+                            () => onSelected(emoji),
+                          ),
+                          child: Text(
+                            emoji,
+                            style: const TextStyle(fontSize: 24, height: 1.1),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(right: 19),
+          child: CustomPaint(
+            size: const Size(14, 8),
+            painter: _BubbleTailPainter(
+              fill: fill,
+              stroke: stroke,
+              direction: ReactionBubbleTail.bottom,
             ),
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 }

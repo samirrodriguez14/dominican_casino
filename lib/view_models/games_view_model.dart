@@ -65,7 +65,7 @@ class GamesViewModel extends ChangeNotifier {
     return mine.isNotEmpty ? mine : previousGames;
   }
 
-  /// Current games where it is this player's turn (for FAB badge).
+  /// Current games where it is this player's turn (for the peek-card badge).
   int get yourTurnCount {
     final uid = userId;
     if (uid == null) return 0;
@@ -95,14 +95,12 @@ class GamesViewModel extends ChangeNotifier {
         .listenGames(pid)
         .listen(
           (list) {
-            currentGames = list
-                .where((g) => g.gameStatus != GameStatus.gameOver)
-                .toList()
-              ..sort(_byUpdatedAtDesc);
-            previousGames = list
-                .where((g) => g.gameStatus == GameStatus.gameOver)
-                .toList()
-              ..sort(_byUpdatedAtDesc);
+            currentGames =
+                list.where((g) => g.gameStatus != GameStatus.gameOver).toList()
+                  ..sort(_byUpdatedAtDesc);
+            previousGames =
+                list.where((g) => g.gameStatus == GameStatus.gameOver).toList()
+                  ..sort(_byUpdatedAtDesc);
             loading = false;
             error = null;
             notifyListeners();

@@ -26,6 +26,7 @@ Must stay in sync with `GameState.toJson` / `fromMap` (`lib/models/game_state.da
 | `playingAreaStacks` | Casino builds |
 | `hands` | All players’ hands (**public**) |
 | `playersDeck` | Captured piles |
+| `lastTakes` | Last capture per pid (`{ pid: PlayingCard[] }`) |
 | `scores` | Match points by pid |
 | `extraPoints` / `extraPointsHolderId` | Casino virao |
 | `lastTookCardId` | Last capture |

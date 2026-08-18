@@ -10,7 +10,7 @@ import 'package:dominican_casino/ui/widgets/currency_delta_label.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-/// Compact coins + energy chips for the top-right of shell screens.
+/// Compact coins + energy chips for the top of shell screens.
 class CurrencyBar extends StatefulWidget {
   const CurrencyBar({super.key, this.compact = true});
 

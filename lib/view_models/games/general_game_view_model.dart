@@ -119,6 +119,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     }
     _syncScheduled = true;
     isAnimating = true;
+    notifyListeners();
 
     try {
       do {
@@ -250,8 +251,8 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (orderedEvents.isEmpty) return;
 
     final settleMs = orderedEvents.any((e) => e.to.type == ZoneType.playerDeck)
-        ? 320
-        : 220;
+        ? 280
+        : 80;
     await Future<void>.delayed(Duration(milliseconds: settleMs));
   }
 
@@ -293,6 +294,10 @@ class GeneralGameViewModel extends ChangeNotifier {
           e.key: List<PlayingCardModel>.from(e.value),
       },
       playersDeck: playersDeck,
+      lastTakes: {
+        for (final e in next.lastTakes.entries)
+          e.key: List<PlayingCardModel>.from(e.value),
+      },
       lastTookCardId: next.lastTookCardId,
       cardMoveEvents: List<CardMoveEvent>.from(next.cardMoveEvents),
       settlementEvents: List<CardMoveEvent>.from(next.settlementEvents),
@@ -318,18 +323,26 @@ class GeneralGameViewModel extends ChangeNotifier {
     List<CardMoveEvent> events,
     Map<String, Offset> origins,
   ) async {
+    final handoff = dragHandoff;
+    dragHandoff = null;
+
     if (events.isNotEmpty) {
       motion.markInFlight(events.map((e) => e.card.id));
     }
 
+    _preserveMyHandOrder(commit);
     gameState = commit;
     notifyListeners();
 
-    if (events.isEmpty) return;
+    if (events.isEmpty) {
+      motion.onFlightsAttached?.call();
+      return;
+    }
 
     final flights = events.map((e) {
       final startUp = _startFaceUpFor(e);
       final endUp = _endFaceUpFor(e);
+      final handedOff = handoff != null && handoff.cardIds.contains(e.card.id);
       return CardFlightRequest(
         event: e,
         fromGlobalCenter: origins[e.card.id],
@@ -338,9 +351,9 @@ class GeneralGameViewModel extends ChangeNotifier {
         startFaceUp: startUp,
         endFaceUp: endUp,
         flip: startUp != endUp,
-        startWidth: _widthForZone(e.from),
+        startWidth: handedOff ? handoff.width : _widthForZone(e.from),
         endWidth: _widthForZone(e.to, cardId: e.card.id),
-        hapticOnLaunch: true,
+        hapticOnLaunch: !handedOff,
       );
     }).toList();
 
@@ -351,31 +364,30 @@ class GeneralGameViewModel extends ChangeNotifier {
   double _widthForZone(Zone zone, {String? cardId}) {
     switch (zone.type) {
       case ZoneType.playerHand:
-        // Must match GenPlayerArea (100) / GenOpponentArea (50).
-        return zone.holderId == me ? 100.0 : 50.0;
+        if (zone.holderId == me) return isCasinoFamily ? 110.0 : 100.0;
+        return isCasinoFamily ? 54.0 : 50.0;
       case ZoneType.table:
+      case ZoneType.stack:
+        return isCasinoFamily ? 72.0 : 60.0;
       case ZoneType.gameDeck:
       case ZoneType.playerDeck:
-      case ZoneType.stack:
-        return 60.0;
+        return isCasinoFamily ? 52.0 : 60.0;
     }
   }
 
   Map<String, Offset> _captureOrigins(List<CardMoveEvent> events) {
     final map = <String, Offset>{};
-    final dropOrigin = dragPlayOrigin;
-    final dropCardId = _dragPlayOriginCardId;
+    final handoff = dragHandoff;
     // Consume once so later settlement flights use normal GlobalKeys.
-    dragPlayOrigin = null;
-    _dragPlayOriginCardId = null;
+    // Width is still read in [_flyCommit] from this same instance.
 
     for (final e in events) {
       // First origin wins — important when a card is played then settled to a
       // deck in the same batch (keep hand/table start, not a later zone center).
       if (map.containsKey(e.card.id)) continue;
 
-      if (dropOrigin != null && dropCardId == e.card.id) {
-        map[e.card.id] = dropOrigin;
+      if (handoff != null && handoff.cardIds.contains(e.card.id)) {
+        map[e.card.id] = handoff.globalCenter;
         continue;
       }
 
@@ -416,7 +428,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       case ZoneType.gameDeck:
         final top = keyForCard(e.card.id, CardSlot.aux);
         if (top.currentContext != null) return top;
-        return null;
+        return deckKey;
       default:
         return null;
     }
@@ -536,13 +548,77 @@ class GeneralGameViewModel extends ChangeNotifier {
   /// Turn is yours and motion has finished — safe to highlight and act.
   bool get canPlayTurn => isMyTurn && !isAnimating;
 
+  /// A player is actually taking a turn — not dealing, shuffling, or waiting.
+  bool get isLiveTurn =>
+      !isAnimating &&
+      inGameAction == InGameAction.noAction &&
+      gameState.round.roundStatus == RoundStatus.playing;
+
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
   List<PlayingCardModel> get myCollectedCards =>
       gameState.playersDeck[me] ?? [];
+  List<PlayingCardModel> get myLastTake => lastTakeFor(me);
 
+  List<PlayingCardModel> lastTakeFor(String? pid) {
+    if (pid == null || pid.isEmpty) return const [];
+    return gameState.lastTakes[pid] ?? const [];
+  }
+
+  /// Sort high→low, or flip to low→high when already ranked that way.
   void sortHandCards() {
-    gameState.hands[me]?.sort((a, b) => b.valueHigh.compareTo(a.valueHigh));
+    final hand = gameState.hands[me];
+    if (hand == null || hand.length < 2) return;
+
+    final highToLow = _handIsRanked(hand, descending: true);
+    if (highToLow) {
+      hand.sort((a, b) => a.valueHigh.compareTo(b.valueHigh));
+    } else {
+      hand.sort((a, b) => b.valueHigh.compareTo(a.valueHigh));
+    }
     notifyListeners();
+  }
+
+  bool _handIsRanked(List<PlayingCardModel> hand, {required bool descending}) {
+    for (var i = 1; i < hand.length; i++) {
+      final cmp = hand[i].valueHigh.compareTo(hand[i - 1].valueHigh);
+      if (descending ? cmp > 0 : cmp < 0) return false;
+    }
+    return true;
+  }
+
+  /// Re-apply this player's fan order onto [incoming].
+  ///
+  /// Hand order is local-only and is not written during the opponent's turn,
+  /// so a remote state replace would otherwise snap the fan back.
+  void _preserveMyHandOrder(GameState incoming) {
+    final previous = gameState.hands[me];
+    final incomingHand = incoming.hands[me];
+    if (previous == null || incomingHand == null) return;
+    if (previous.isEmpty || incomingHand.isEmpty) return;
+
+    final byId = <String, PlayingCardModel>{
+      for (final c in incomingHand) c.id: c,
+    };
+    final ordered = <PlayingCardModel>[];
+    for (final card in previous) {
+      final next = byId.remove(card.id);
+      if (next != null) ordered.add(next);
+    }
+    // Brand-new hand (deal) — keep the incoming sequence.
+    if (ordered.isEmpty) return;
+    ordered.addAll(byId.values);
+    if (_sameHandIds(incomingHand, ordered)) return;
+    incomingHand
+      ..clear()
+      ..addAll(ordered);
+  }
+
+  bool _sameHandIds(List<PlayingCardModel> a, List<PlayingCardModel> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
   }
 
   /// Local-only fan order (same persistence rules as [sortHandCards]).
@@ -574,8 +650,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   BoardDragSource? draggingSource;
   DropHover? dropHover;
   DropPending? dropPending;
-  Offset? dragPlayOrigin;
-  String? _dragPlayOriginCardId;
+  DragHandoff? dragHandoff;
 
   bool get isBoardDragging => draggingSource != null;
   bool get hasDropPending => dropPending != null;
@@ -600,6 +675,32 @@ class GeneralGameViewModel extends ChangeNotifier {
   /// @deprecated Use [beginBoardDrag].
   void beginHandDrag(PlayingCardModel card) =>
       beginBoardDrag(BoardDragSource.hand(card));
+
+  /// Snapshot of the live drag overlay so the flight can start from the
+  /// same card, at the same size, instead of spawning a new one.
+  void beginDragHandoff(
+    BoardDragSource source,
+    Offset globalCenter,
+    double width,
+  ) {
+    final ids = <String>{};
+    switch (source.kind) {
+      case BoardDragKind.handCard:
+      case BoardDragKind.tableCard:
+        ids.add(source.card!.id);
+      case BoardDragKind.tableStack:
+        ids.addAll(source.stack!.cards.map((c) => c.id));
+    }
+    dragHandoff = DragHandoff(
+      cardIds: ids,
+      globalCenter: globalCenter,
+      width: width,
+    );
+  }
+
+  void clearDragHandoff() {
+    dragHandoff = null;
+  }
 
   void endBoardDrag() {
     if (draggingSource == null && dropHover == null) return;
@@ -826,15 +927,18 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     final target = hitTestDropTarget(globalCenter, source: source);
     draggingSource = null;
-    dropHover = null;
 
     if (target == null || !canPlayTurn) {
+      dropHover = null;
+      dragHandoff = null;
       notifyListeners();
       return false;
     }
 
     final actions = actionsForDrop(source, target);
     if (actions.isEmpty) {
+      dropHover = null;
+      dragHandoff = null;
       notifyListeners();
       return false;
     }
@@ -845,11 +949,15 @@ class GeneralGameViewModel extends ChangeNotifier {
         : _buildPreviewFor(selection, actions, forceMerge: true);
 
     if (actions.length == 1) {
+      // Keep the last painted merge preview until [_flyCommit] rebuilds.
+      dropHover = null;
       await _commitDropAction(actions.first, selection, globalCenter);
       return true;
     }
 
     // Multi-action: keep selection + pending UI.
+    dropHover = null;
+    dragHandoff = null;
     selectedCard = selection.selectedCard;
     selectedCards = List<PlayingCardModel>.from(selection.selectedCards);
     selectedStacks = List<PlayingAreaStackModel>.from(selection.selectedStacks);
@@ -889,23 +997,20 @@ class GeneralGameViewModel extends ChangeNotifier {
     selectedCards = List<PlayingCardModel>.from(selection.selectedCards);
     selectedStacks = List<PlayingAreaStackModel>.from(selection.selectedStacks);
 
-    if (globalCenter != null && action is PlayCardAction) {
-      dragPlayOrigin = globalCenter;
-      _dragPlayOriginCardId = action.usedCard.id;
-    } else if (globalCenter != null && selection.selectedCard != null) {
-      dragPlayOrigin = globalCenter;
-      _dragPlayOriginCardId = selection.selectedCard!.id;
-    }
-
-    try {
-      await performPlayAction(action);
-    } finally {
-      if (selection.selectedCard != null &&
-          _dragPlayOriginCardId == selection.selectedCard!.id) {
-        dragPlayOrigin = null;
-        _dragPlayOriginCardId = null;
+    if (dragHandoff == null && globalCenter != null) {
+      final sourceCard = action is PlayCardAction
+          ? action.usedCard
+          : selection.selectedCard;
+      if (sourceCard != null) {
+        beginDragHandoff(
+          BoardDragSource.hand(sourceCard),
+          globalCenter,
+          _widthForZone(const Zone(type: ZoneType.table)),
+        );
       }
     }
+
+    await performPlayAction(action);
   }
 
   /// True when dropping this hand card on empty table should Play.
@@ -953,6 +1058,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   /// into a hover/pending preview target.
   bool isDragHidden(String id) {
     if (draggingSource?.id == id) return true;
+    if (dragHandoff?.cardIds.contains(id) == true) return true;
     final pending = dropPending;
     if (pending != null && pending.source.id == id) return true;
     return false;
@@ -1008,6 +1114,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   List<PlayingCardModel> get oppHandCard => gameState.hands[opp] ?? [];
   List<PlayingCardModel> get oppCollectedCards =>
       gameState.playersDeck[opp] ?? [];
+  List<PlayingCardModel> get oppLastTake => lastTakeFor(opp);
 
   CurrentCardSelection get cardSelection => CurrentCardSelection(
     pid: me,
@@ -1083,8 +1190,10 @@ class GeneralGameViewModel extends ChangeNotifier {
       for (final e in [...events, ...settlement]) {
         gameRepo.lastPlayedIds.add(e.id);
       }
-      await gameRepo.fs.updateGame(next);
-      await _commitStateWithMotion(next, events, settlementEvents: settlement);
+      await Future.wait([
+        gameRepo.fs.updateGame(next),
+        _commitStateWithMotion(next, events, settlementEvents: settlement),
+      ]);
       _queueDeckCoinFlight(
         meGain: next.pendingCoinsFor(me) - beforeMe,
         oppGain: oppId == null ? 0 : next.pendingCoinsFor(oppId) - beforeOpp,
@@ -1205,11 +1314,15 @@ class GeneralGameViewModel extends ChangeNotifier {
   /// Board dim + control chrome share this — never dim while motion is running.
   /// Tutorial never surfaces shuffle/deal/start; those belong to a real match.
   bool get showInGameControl =>
-      !tutorialMode && !isAnimating && inGameAction != InGameAction.noAction;
+      !tutorialMode &&
+      !isAnimating &&
+      !motion.isShuffling &&
+      inGameAction != InGameAction.noAction;
 
   Future<void> performInGameAction(InGameAction action) async {
     if (isAnimating) return;
     isAnimating = true;
+    notifyListeners();
     try {
       final shuffleVisual =
           action == InGameAction.shuffle || action == InGameAction.start;
@@ -1368,6 +1481,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     // `_syncFromRepo` never sees completed → readyToDeal.
     if (isAnimating) return;
     isAnimating = true;
+    notifyListeners();
     _shuffleOverlayRoundId = gameState.round.id;
     try {
       await _playShuffleMotion(

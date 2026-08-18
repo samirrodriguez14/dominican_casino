@@ -1,5 +1,6 @@
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:uuid/uuid.dart';
 
@@ -67,8 +68,18 @@ class TutorialCasinoFactory {
       playersDeck: {playerId: []},
 
       playersInfo: {
-        playerId: {"id": playerId, "name": "You", "token": ""},
-        botPid: {"id": botPid, "name": "Pulilo the tutor", "token": ""},
+        playerId: {
+          "id": playerId,
+          "name": "You",
+          "token": "",
+          "avatarId": Player.defaultAvatarId,
+        },
+        botPid: {
+          "id": botPid,
+          "name": "Pulilo the tutor",
+          "token": "",
+          "avatarId": GameState.localBotAvatarId,
+        },
       },
       isLocalBot: true,
       botPlayerId: botPid,

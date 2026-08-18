@@ -16,9 +16,9 @@ class CurrencyBurst {
     int count = 8,
     bool jump = false,
   }) async {
-    if (!context.mounted) return;
+    if (!context.mounted || count <= 0) return;
     final overlay = Overlay.of(context, rootOverlay: true);
-    final n = count.clamp(1, 12);
+    final n = count;
     late OverlayEntry entry;
     final done = Completer<void>();
 
@@ -71,8 +71,13 @@ class _BurstLayerState extends State<_BurstLayer>
   late final List<AnimationController> _controllers;
   late final List<Animation<double>> _t;
   late final List<Offset> _control;
-  Duration get _stagger =>
-      Duration(milliseconds: widget.jump ? 55 : 42);
+  Duration get _stagger {
+    final base = widget.jump ? 55 : 42;
+    if (widget.count <= 6) return Duration(milliseconds: base);
+    final ms = (360 / widget.count).round().clamp(16, base);
+    return Duration(milliseconds: ms);
+  }
+
   Duration get _flight =>
       Duration(milliseconds: widget.jump ? 720 : 520);
 

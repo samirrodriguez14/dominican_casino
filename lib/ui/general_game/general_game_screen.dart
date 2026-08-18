@@ -13,15 +13,15 @@ import 'package:dominican_casino/ui/animations/currency_burst.dart';
 import 'package:dominican_casino/ui/animations/flight_layer.dart';
 import 'package:dominican_casino/ui/animations/shuffle_animator.dart';
 import 'package:dominican_casino/ui/app_shell/games/account_setup_popup.dart';
-import 'package:dominican_casino/ui/general_game/areas/new_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
+import 'package:dominican_casino/ui/general_game/simple/simple_casino_playing_area.dart';
+import 'package:dominican_casino/ui/general_game/simple/simple_player_area.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
 import 'package:dominican_casino/ui/widgets/coin_hint_ticker.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
-import 'package:dominican_casino/ui/widgets/coin_gain_badge.dart';
+import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
@@ -60,12 +60,14 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
   void _bindFlightRunner(GeneralGameViewModel gameVm) {
     gameVm.motion.flightLayer = _flightLayer;
-    gameVm.motion.runner = (flights, {onLanded}) => CardFlightAnimator.flyAll(
-      layer: _flightLayer,
-      vsync: this,
-      flights: flights,
-      onLanded: onLanded,
-    );
+    gameVm.motion.runner = (flights, {onLanded, onLaunched}) =>
+        CardFlightAnimator.flyAll(
+          layer: _flightLayer,
+          vsync: this,
+          flights: flights,
+          onLanded: onLanded,
+          onLaunched: onLaunched,
+        );
     gameVm.motion.shuffleRunner = (request, {onSquared}) =>
         ShuffleAnimator.play(
           layer: _flightLayer,
@@ -261,13 +263,15 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
       final tutorialContinue = waitingForTutorialStatus;
 
-      showAppPopup(
-        context: context,
+      showGameStatusPopup(
+        context,
+        vm: vm,
+        showActions: false,
         title: isGameOver ? 'Game Over' : 'Round Complete',
         subtitle: GameRegistry.displayTitle(gs.gameMode),
-        content: GameStatusSheet(vm: vm, showActions: false),
         primaryText: 'Continue',
         barrierDismissible: false,
+        revealLastRound: true,
         onPrimary: () {
           _statusPopupOpen = false;
           if (tutorialContinue) {
@@ -305,7 +309,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       to: to,
       icon: coinIcon,
       color: AppStyle.theme.turnHighlight,
-      count: flight.amount.clamp(1, 12),
+      count: flight.amount,
       jump: true,
     );
   }
@@ -336,6 +340,10 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       );
     }
 
+    final isCasino =
+        vm.gameState.gameMode == GameMode.casino ||
+        vm.gameState.gameMode == GameMode.casinoSpeed;
+
     return SizedBox(
       width: MediaQuery.of(context).size.width.clamp(0, 600),
       child: CupertinoPageScaffold(
@@ -350,10 +358,11 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                   controller: _flightLayer,
                   child: Stack(
                     children: [
-                      Padding(
-                        padding: EdgeInsetsGeometry.symmetric(vertical: 48),
-                        child: CasinoBoard(child: Container()),
-                      ),
+                      if (!isCasino)
+                        Padding(
+                          padding: EdgeInsetsGeometry.symmetric(vertical: 48),
+                          child: CasinoBoard(child: Container()),
+                        ),
                       Column(
                         children: [
                           SafeArea(
@@ -372,14 +381,19 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                           const SizedBox(height: 4),
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 30,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isCasino ? 16 : 30,
                               ),
                               child: _selectPlayingArea(vm.gameState.gameMode),
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          GenPlayerArea(),
+                          const SizedBox(height: 4),
+                          if (isCasino) ...[
+                            const SimplePlayerArea(),
+                            const SizedBox(height: 6),
+                            _SimpleControlBar(),
+                          ] else
+                            const GenPlayerArea(),
                           SizedBox(height: 16 + bottomInset),
                         ],
                       ),
@@ -394,44 +408,45 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                           child: GenGameControl(),
                         ),
                       ),
-                      Positioned(
-                        right: 16,
-                        bottom: 16 + bottomInset,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            PopupCircleButton(
-                              emphasized: true,
-                              onPressed: () {
-                                AppHaptics.mediumImpact();
-                                vm.sortHandCards();
-                              },
-                              child: Transform.rotate(
-                                angle: math.pi / 2,
-                                child: Icon(
-                                  CupertinoIcons.arrow_up_arrow_down,
-                                  size: 22,
-                                  color: AppStyle.theme.textPrimary,
+                      if (!isCasino)
+                        Positioned(
+                          right: 16,
+                          bottom: 16 + bottomInset,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              PopupCircleButton(
+                                emphasized: true,
+                                onPressed: () {
+                                  AppHaptics.mediumImpact();
+                                  vm.sortHandCards();
+                                },
+                                child: Transform.rotate(
+                                  angle: math.pi / 2,
+                                  child: Icon(
+                                    CupertinoIcons.arrow_up_arrow_down,
+                                    size: 22,
+                                    color: AppStyle.theme.textPrimary,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            const _PlayerReactionButton(),
-                            const SizedBox(height: 10),
-                            _PlayerScoreAvatar(
-                              key: vm.scoreKey,
-                              avatarId: vm.player.avatarId,
-                              score: vm.gameState.scores[vm.me] ?? 0,
-                              pendingCoins: vm.revealedPendingFor(vm.me),
-                              onPressed: () {
-                                AppHaptics.mediumImpact();
-                                showGameStatusPopup(context, vm: vm);
-                              },
-                            ),
-                          ],
+                              const SizedBox(height: 10),
+                              const _PlayerReactionButton(),
+                              const SizedBox(height: 10),
+                              PlayerScoreAvatar(
+                                key: vm.scoreKey,
+                                avatarId: vm.player.avatarId,
+                                score: vm.gameState.scores[vm.me] ?? 0,
+                                pendingCoins: vm.revealedPendingFor(vm.me),
+                                onPressed: () {
+                                  AppHaptics.mediumImpact();
+                                  showGameStatusPopup(context, vm: vm);
+                                },
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                       AnimatedBuilder(
                         animation: tutorialVm,
                         builder: (context, _) {
@@ -471,10 +486,54 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         return NewTresydosPlayingArea();
       case GameMode.casino:
       case GameMode.casinoSpeed:
-        return NewCasinoPlayingArea();
+        return const SimpleCasinoPlayingArea();
       case GameMode.robaito:
     }
     return null;
+  }
+}
+
+class _SimpleControlBar extends StatelessWidget {
+  const _SimpleControlBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<GeneralGameViewModel>();
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          PopupCircleButton(
+            emphasized: true,
+            onPressed: () {
+              AppHaptics.mediumImpact();
+              vm.sortHandCards();
+            },
+            child: Transform.rotate(
+              angle: math.pi / 2,
+              child: Icon(
+                CupertinoIcons.arrow_up_arrow_down,
+                size: 22,
+                color: AppStyle.theme.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          PlayerScoreAvatar(
+            key: vm.scoreKey,
+            avatarId: vm.player.avatarId,
+            score: vm.gameState.scores[vm.me] ?? 0,
+            pendingCoins: vm.revealedPendingFor(vm.me),
+            onPressed: () {
+              AppHaptics.mediumImpact();
+              showGameStatusPopup(context, vm: vm);
+            },
+          ),
+          const SizedBox(width: 14),
+          const _PlayerReactionButton(),
+        ],
+      ),
+    );
   }
 }
 
@@ -487,127 +546,79 @@ class _PlayerReactionButton extends StatefulWidget {
 
 class _PlayerReactionButtonState extends State<_PlayerReactionButton> {
   bool _open = false;
+  final OverlayPortalController _overlay = OverlayPortalController();
+  final LayerLink _layerLink = LayerLink();
+
+  void _setOpen(bool open) {
+    if (_open == open) return;
+    setState(() => _open = open);
+    if (open) {
+      _overlay.show();
+    } else {
+      _overlay.hide();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
     final outgoing = vm.outgoingReaction;
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      alignment: Alignment.centerRight,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (!_open) ...[
-            ReactionBubblePopup(
-              emoji: outgoing?.emoji,
-              reactionId: outgoing?.id,
-            ),
-            if (outgoing != null) const SizedBox(width: 8),
-          ],
-          if (_open) ...[
-            GameReactionPicker(
+    return OverlayPortal(
+      controller: _overlay,
+      overlayChildBuilder: (context) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            targetAnchor: Alignment.topRight,
+            followerAnchor: Alignment.bottomRight,
+            offset: const Offset(0, -4),
+            child: GameReactionPicker(
               onSelected: (emoji) {
                 AppHaptics.lightImpact();
-                setState(() => _open = false);
+                _setOpen(false);
                 vm.sendReaction(emoji);
               },
             ),
-            const SizedBox(width: 8),
-          ],
-          PopupCircleButton(
-            icon: CupertinoIcons.smiley,
-            emphasized: true,
-            selected: _open,
-            onPressed: () {
-              AppHaptics.lightImpact();
-              setState(() => _open = !_open);
-            },
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlayerScoreAvatar extends StatelessWidget {
-  const _PlayerScoreAvatar({
-    super.key,
-    required this.avatarId,
-    required this.score,
-    required this.pendingCoins,
-    required this.onPressed,
-  });
-
-  final String? avatarId;
-  final dynamic score;
-  final int pendingCoins;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      minimumSize: Size.zero,
-      onPressed: SoundService.wrapTap(onPressed),
-      child: SizedBox(
-        width: 64,
-        height: 64,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: theme.textPrimary.withValues(alpha: .18),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: CupertinoColors.black.withValues(alpha: .28),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+        );
+      },
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: SizedBox(
+          width: 52,
+          height: 52,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
+            children: [
+              PopupCircleButton(
+                icon: CupertinoIcons.smiley,
+                emphasized: true,
+                selected: _open,
+                onPressed: () {
+                  AppHaptics.lightImpact();
+                  _setOpen(!_open);
+                },
               ),
-              child: PlayerAvatarView(
-                avatarId: avatarId,
-                size: 64,
-                showBorder: false,
-              ),
-            ),
-            Positioned(
-              left: -2,
-              top: -2,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 22),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.surfaceAlt,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: theme.background, width: 2),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '$score',
-                  style: theme.caption.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: theme.textPrimary,
-                    fontSize: 11,
+              if (!_open)
+                Positioned(
+                  left: -32,
+                  right: -32,
+                  bottom: 56,
+                  child: Center(
+                    child: IgnorePointer(
+                      child: ReactionBubblePopup(
+                        emoji: outgoing?.emoji,
+                        reactionId: outgoing?.id,
+                        tail: ReactionBubbleTail.bottom,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            Positioned(
-              right: -4,
-              bottom: -2,
-              child: CoinGainBadge(pending: pendingCoins),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

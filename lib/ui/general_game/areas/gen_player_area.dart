@@ -172,10 +172,13 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
         ? pending.actions
         : vm.possiblePlayActions;
     final canPlay = vm.canPlayTurn;
+    final liveTurn = vm.isLiveTurn;
 
     return SizedBox(
       height: 42,
-      child: !canPlay && pending == null
+      child: !liveTurn && pending == null
+          ? const SizedBox.shrink()
+          : !canPlay && pending == null
           ? Center(child: _TurnIndicator(isMyTurn: canPlay))
           : actions.isEmpty && pending == null
           ? Center(child: _TurnIndicator(isMyTurn: canPlay))

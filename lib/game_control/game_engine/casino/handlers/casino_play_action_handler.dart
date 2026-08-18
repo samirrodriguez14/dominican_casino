@@ -51,9 +51,7 @@ class CasinoPlayActionHandler {
     final pid = a.performedById;
     nextState.hands[pid]?.removeWhere((card) => card == a.usedCard);
     nextState.removeLooseCardFromTable(a.targetCard);
-    nextState.playersDeck.putIfAbsent(pid, () => []);
-    nextState.playersDeck[pid]!.addAll([a.usedCard, a.targetCard]);
-    nextState.lastTookCardId = pid;
+    nextState.addCapturedCards(pid, [a.usedCard, a.targetCard]);
     return nextState;
   }
 
@@ -64,9 +62,7 @@ class CasinoPlayActionHandler {
     final pid = a.performedById;
     nextState.hands[pid]?.removeWhere((card) => card == a.usedCard);
     nextState.removeStackFromTable(a.targetStack);
-    nextState.playersDeck.putIfAbsent(pid, () => []);
-    nextState.playersDeck[pid]!.addAll([a.usedCard, ...a.targetStack.cards]);
-    nextState.lastTookCardId = pid;
+    nextState.addCapturedCards(pid, [a.usedCard, ...a.targetStack.cards]);
     return nextState;
   }
 
@@ -256,9 +252,7 @@ class CasinoPlayActionHandler {
       takenCards.add(card);
     }
 
-    g.playersDeck.putIfAbsent(pid, () => []);
-    g.playersDeck[pid]!.addAll(takenCards);
-    g.lastTookCardId = pid;
+    g.addCapturedCards(pid, takenCards);
     return g;
   }
 
@@ -279,9 +273,7 @@ class CasinoPlayActionHandler {
       takenCards.addAll(stack.cards);
     }
 
-    g.playersDeck.putIfAbsent(pid, () => []);
-    g.playersDeck[pid]!.addAll(takenCards);
-    g.lastTookCardId = pid;
+    g.addCapturedCards(pid, takenCards);
     return g;
   }
 

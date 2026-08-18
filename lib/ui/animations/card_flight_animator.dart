@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show lerpDouble;
 
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/services/haptics.dart';
@@ -15,10 +16,14 @@ class CardFlightAnimator {
     required TickerProvider vsync,
     required List<CardFlightRequest> flights,
     VoidCallback? onLanded,
-    Duration perCard = const Duration(milliseconds: 420),
+    VoidCallback? onLaunched,
+    Duration perCard = const Duration(milliseconds: 400),
     Duration stagger = const Duration(milliseconds: 55),
   }) async {
-    if (flights.isEmpty) return;
+    if (flights.isEmpty) {
+      onLaunched?.call();
+      return;
+    }
 
     final entries = <_FlightEntry>[];
 
@@ -34,8 +39,11 @@ class CardFlightAnimator {
         final controller = AnimationController(vsync: vsync, duration: perCard);
         final entry = _FlightEntry(
           flight: flight,
+          layer: layer,
           begin: begin,
           end: begin,
+          startWidth: flight.startWidth,
+          endWidth: flight.endWidth,
           controller: controller,
         );
         entry.sprite = FlightSprite(
@@ -46,20 +54,20 @@ class CardFlightAnimator {
         entries.add(entry);
       }
 
+      // Drag overlay can detach now — flight sprites already sit at `begin`.
+      onLaunched?.call();
+
       if (entries.isEmpty) {
         onLanded?.call();
         return;
       }
 
-      // Destination slots are laid out (invisible) — resolve end points.
+      // One frame so new slots exist; then move immediately and chase the
+      // live destination so table reflow and the flyer stay in sync.
       await WidgetsBinding.instance.endOfFrame;
-      await WidgetsBinding.instance.endOfFrame;
-
       for (final entry in entries) {
-        final end = layer.centerOf(entry.flight.toKey);
-        if (end != null) entry.end = end;
+        entry.syncDestination();
       }
-      layer.poke();
 
       final futures = <Future<void>>[];
       var cardTicks = 0;
@@ -114,34 +122,38 @@ class CardFlightAnimator {
 class _FlightEntry {
   _FlightEntry({
     required this.flight,
+    required this.layer,
     required this.begin,
     required this.end,
+    required this.startWidth,
+    required this.endWidth,
     required this.controller,
   });
 
   final CardFlightRequest flight;
+  final FlightLayerController layer;
   Offset begin;
   Offset end;
+  double startWidth;
+  double endWidth;
   final AnimationController controller;
   FlightSprite? sprite;
 
-  Widget build(BuildContext context) {
-    final curved = CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOutCubic,
-    );
-    final pos = Tween<Offset>(begin: begin, end: end).animate(curved);
-    final widthAnim = Tween<double>(
-      begin: flight.startWidth,
-      end: flight.endWidth,
-    ).animate(curved);
+  void syncDestination() {
+    final live = layer.centerOf(flight.toKey);
+    if (live != null) end = live;
+    final measured = layer.widthOf(flight.toKey);
+    if (measured != null && measured <= 130) endWidth = measured;
+  }
 
-    final p = pos.value;
-    final width = widthAnim.value;
+  Widget build(BuildContext context) {
+    syncDestination();
+    final t = Curves.easeOutCubic.transform(controller.value);
+    final p = Offset.lerp(begin, end, t) ?? begin;
+    final width = lerpDouble(startWidth, endWidth, t) ?? startWidth;
     final height = width * 1.4;
     Widget card;
     if (flight.flip) {
-      final t = curved.value;
       final angle = t * math.pi;
       card = Transform(
         alignment: Alignment.center,

@@ -43,12 +43,15 @@ class PlayingCard extends StatelessWidget {
     final suitColor = _suitColor(suit);
     final height = width * heightMultiplyer;
     final hintsEnabled = showCoinHint && _casinoCoinHintsEnabled(context);
-    final specialCoins =
-        hintsEnabled ? CasinoCoinBonuses.specialBonus(playingCardModel) : 0;
-    final coinHint =
-        hintsEnabled ? (extraCoinHint > 0 ? extraCoinHint : specialCoins) : 0;
+    final specialCoins = hintsEnabled
+        ? CasinoCoinBonuses.specialBonus(playingCardModel)
+        : 0;
+    final coinHint = hintsEnabled
+        ? (extraCoinHint > 0 ? extraCoinHint : specialCoins)
+        : 0;
 
     final sel = selectedBorderColor ?? AppStyle.theme.turnHighlight;
+    final metrics = _CardMetrics(width, rank);
 
     return GestureDetector(
       onTap: onTap,
@@ -59,98 +62,141 @@ class PlayingCard extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           color: AppStyle.theme.cardBackground,
-          borderRadius: BorderRadius.circular(14),
-
+          borderRadius: BorderRadius.circular(metrics.radius),
           border: Border.all(
             color: isSelected ? sel : AppStyle.theme.cardBorder,
             width: 1,
           ),
-
           boxShadow: [
             if (isSelected)
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 24,
-                spreadRadius: 2,
-                offset: const Offset(0, 12),
+                blurRadius: width * 0.28,
+                spreadRadius: 1,
+                offset: Offset(0, width * 0.12),
               ),
-
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.14),
+              blurRadius: metrics.shadowBlur,
+              offset: Offset(0, metrics.shadowY),
             ),
           ],
         ),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            // Top Left
             Positioned(
-              top: 8,
-              left: 8,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    rank,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: suitColor,
-                    ),
-                  ),
-                  Text(suit, style: TextStyle(fontSize: 16, color: suitColor)),
-                ],
+              top: metrics.pad,
+              left: metrics.pad,
+              child: _CornerIndex(
+                rank: rank,
+                suit: suit,
+                color: suitColor,
+                metrics: metrics,
               ),
             ),
-
-            // Center Suit
             Center(
               child: Text(
                 suit,
-                style: TextStyle(fontSize: width * 0.50, color: suitColor),
-              ),
-            ),
-
-            // Bottom Right (rotated 180°)
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: Transform.rotate(
-                angle: 3.1416,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      rank,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: suitColor,
-                      ),
-                    ),
-                    Text(
-                      suit,
-                      style: TextStyle(fontSize: 16, color: suitColor),
-                    ),
-                  ],
+                style: TextStyle(
+                  fontSize: metrics.centerSize,
+                  height: 1,
+                  color: suitColor,
                 ),
               ),
             ),
-
+            Positioned(
+              bottom: metrics.pad,
+              right: metrics.pad,
+              child: Transform.rotate(
+                angle: 3.1416,
+                child: _CornerIndex(
+                  rank: rank,
+                  suit: suit,
+                  color: suitColor,
+                  metrics: metrics,
+                ),
+              ),
+            ),
             if (coinHint > 0)
               Positioned(
-                bottom: 4,
-                left: 4,
+                bottom: metrics.pad * 0.5,
+                left: metrics.pad * 0.5,
                 child: CardCoinHint(
                   count: coinHint,
-                  size: (width * 0.18).clamp(10, 14),
+                  size: (width * 0.16).clamp(9, 14),
                 ),
               ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CardMetrics {
+  _CardMetrics(this.width, String rank)
+    : radius = (width * 0.125).clamp(6.0, 14.0),
+      pad = (width * 0.075).clamp(4.0, 8.0),
+      rankSize = _rankSize(width, rank),
+      cornerSuitSize = (width * 0.22).clamp(12.0, 16.0),
+      centerSize = width * 0.46,
+      shadowBlur = (width * 0.12).clamp(4.0, 10.0),
+      shadowY = (width * 0.045).clamp(2.0, 4.0);
+
+  final double width;
+  final double radius;
+  final double pad;
+  final double rankSize;
+  final double cornerSuitSize;
+  final double centerSize;
+  final double shadowBlur;
+  final double shadowY;
+
+  static double _rankSize(double width, String rank) {
+    final base = (width * 0.28).clamp(15.0, 20.0);
+    return rank.length > 1 ? base * 0.86 : base;
+  }
+}
+
+class _CornerIndex extends StatelessWidget {
+  const _CornerIndex({
+    required this.rank,
+    required this.suit,
+    required this.color,
+    required this.metrics,
+  });
+
+  final String rank;
+  final String suit;
+  final Color color;
+  final _CardMetrics metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          rank,
+          style: TextStyle(
+            fontSize: metrics.rankSize,
+            fontWeight: FontWeight.w700,
+            height: 1,
+            letterSpacing: rank.length > 1 ? -0.5 : 0,
+            color: color,
+          ),
+        ),
+        Text(
+          suit,
+          style: TextStyle(
+            fontSize: metrics.cornerSuitSize,
+            height: 1.05,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }

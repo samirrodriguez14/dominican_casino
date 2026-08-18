@@ -183,6 +183,7 @@ class _PreviewMiniCard extends StatelessWidget {
         child: Image.asset(
           imagePath,
           fit: BoxFit.cover,
+          cacheWidth: (80 * MediaQuery.devicePixelRatioOf(context)).round(),
           errorBuilder: (_, _, _) => Container(
             decoration: BoxDecoration(
               color: CupertinoColors.systemGrey,

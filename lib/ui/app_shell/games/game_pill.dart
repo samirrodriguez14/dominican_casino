@@ -12,6 +12,7 @@ class GamePill extends StatelessWidget {
     required this.game,
     required this.myPid,
     this.myAvatarId,
+    this.embeddedInCard = false,
     this.onOpen,
     this.onPlay,
     this.onInfo,
@@ -22,6 +23,7 @@ class GamePill extends StatelessWidget {
   final GamePillData game;
   final String myPid;
   final String? myAvatarId;
+  final bool embeddedInCard;
   final VoidCallback? onOpen;
   final VoidCallback? onPlay;
   final VoidCallback? onInfo;
@@ -46,6 +48,7 @@ class GamePill extends StatelessWidget {
           icon: CupertinoIcons.play_fill,
           color: theme.textPrimary,
           background: theme.textPrimary.withValues(alpha: .14),
+          embeddedInCard: embeddedInCard,
           onPressed: onPlay,
         ),
       if (onInfo != null)
@@ -53,20 +56,27 @@ class GamePill extends StatelessWidget {
           icon: CupertinoIcons.info,
           color: theme.textPrimary,
           background: theme.textPrimary.withValues(alpha: .14),
+          embeddedInCard: embeddedInCard,
           onPressed: onInfo,
         ),
       if (waiting && onShare != null)
         _PillIconButton(
           icon: CupertinoIcons.share_up,
           color: theme.textPrimary,
-          background: theme.surfaceAlt.withValues(alpha: .85),
+          background: embeddedInCard
+              ? theme.textPrimary.withValues(alpha: .14)
+              : theme.surfaceAlt.withValues(alpha: .85),
+          embeddedInCard: embeddedInCard,
           onPressed: onShare,
         ),
       if (onDelete != null)
         _PillIconButton(
           icon: CupertinoIcons.trash,
           color: theme.textPrimary,
-          background: theme.danger,
+          background: embeddedInCard
+              ? theme.danger.withValues(alpha: .72)
+              : theme.danger,
+          embeddedInCard: embeddedInCard,
           onPressed: onDelete,
         ),
     ];
@@ -75,24 +85,39 @@ class GamePill extends StatelessWidget {
       onTap: SoundService.wrapTap(onOpen),
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 12, 10),
+        padding: EdgeInsets.fromLTRB(
+          embeddedInCard ? 12 : 14,
+          embeddedInCard ? 10 : 12,
+          embeddedInCard ? 10 : 12,
+          embeddedInCard ? 8 : 10,
+        ),
         decoration: BoxDecoration(
-          color: highlight
-              ? theme.border.withValues(alpha: .55)
-              : theme.surface,
-          borderRadius: BorderRadius.circular(16),
+          color: embeddedInCard
+              ? (highlight
+                    ? theme.turnHighlight.withValues(alpha: .14)
+                    : theme.textPrimary.withValues(alpha: .08))
+              : (highlight
+                    ? theme.border.withValues(alpha: .55)
+                    : theme.surface),
+          borderRadius: BorderRadius.circular(embeddedInCard ? 12 : 16),
           border: Border.all(
-            color: highlight
-                ? theme.turnHighlight.withValues(alpha: .7)
-                : theme.border.withValues(alpha: .55),
+            color: embeddedInCard
+                ? (highlight
+                      ? theme.turnHighlight.withValues(alpha: .55)
+                      : theme.textPrimary.withValues(alpha: .16))
+                : (highlight
+                      ? theme.turnHighlight.withValues(alpha: .7)
+                      : theme.border.withValues(alpha: .55)),
           ),
-          boxShadow: const [
-            BoxShadow(
-              blurRadius: 14,
-              offset: Offset(0, 8),
-              color: Color(0x22000000),
-            ),
-          ],
+          boxShadow: embeddedInCard
+              ? null
+              : const [
+                  BoxShadow(
+                    blurRadius: 14,
+                    offset: Offset(0, 8),
+                    color: Color(0x22000000),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,13 +181,18 @@ class GamePill extends StatelessWidget {
                       _StatusChip(
                         label: l10n.yourTurn,
                         color: theme.turnHighlight,
+                        embeddedInCard: embeddedInCard,
                       )
                     else if (isGameOver)
                       _StatusChip(
                         label: didWin ? l10n.won : l10n.lost,
                         color: didWin ? theme.success : theme.danger,
+                        embeddedInCard: embeddedInCard,
                       ),
-                    _ModeBadge(mode: game.gameMode),
+                    _ModeBadge(
+                      mode: game.gameMode,
+                      embeddedInCard: embeddedInCard,
+                    ),
                   ],
                 ),
               ],
@@ -175,19 +205,26 @@ class GamePill extends StatelessWidget {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.color});
+  const _StatusChip({
+    required this.label,
+    required this.color,
+    this.embeddedInCard = false,
+  });
 
   final String label;
   final Color color;
+  final bool embeddedInCard;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: .16),
+        color: color.withValues(alpha: embeddedInCard ? .18 : .16),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: .7)),
+        border: Border.all(
+          color: color.withValues(alpha: embeddedInCard ? .6 : .7),
+        ),
       ),
       child: Text(
         label,
@@ -202,12 +239,14 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _ModeBadge extends StatelessWidget {
-  const _ModeBadge({required this.mode});
+  const _ModeBadge({required this.mode, this.embeddedInCard = false});
 
   final GameMode mode;
+  final bool embeddedInCard;
 
   @override
   Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
     final label = switch (mode) {
       GameMode.casino => 'Casino',
       GameMode.casinoSpeed => 'Casino Speed',
@@ -217,13 +256,24 @@ class _ModeBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppStyle.theme.surfaceAlt.withValues(alpha: .7),
+        color: embeddedInCard
+            ? theme.textPrimary.withValues(alpha: .10)
+            : theme.surfaceAlt.withValues(alpha: .7),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: AppStyle.theme.border.withValues(alpha: .35),
+          color: embeddedInCard
+              ? theme.textPrimary.withValues(alpha: .18)
+              : theme.border.withValues(alpha: .35),
         ),
       ),
-      child: Text(label, style: AppStyle.theme.caption),
+      child: Text(
+        label,
+        style: theme.caption.copyWith(
+          color: embeddedInCard
+              ? theme.textPrimary.withValues(alpha: .82)
+              : null,
+        ),
+      ),
     );
   }
 }
@@ -268,31 +318,37 @@ class _PillIconButton extends StatelessWidget {
     required this.color,
     required this.background,
     required this.onPressed,
+    this.embeddedInCard = false,
   });
 
   final IconData icon;
   final Color color;
   final Color background;
   final VoidCallback? onPressed;
+  final bool embeddedInCard;
 
   @override
   Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final size = embeddedInCard ? 36.0 : 40.0;
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
       onPressed: SoundService.wrapTap(onPressed),
       child: Container(
-        width: 40,
-        height: 40,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: background,
           shape: BoxShape.circle,
           border: Border.all(
-            color: AppStyle.theme.textPrimary.withValues(alpha: .14),
+            color: theme.textPrimary.withValues(
+              alpha: embeddedInCard ? .18 : .14,
+            ),
           ),
         ),
         alignment: Alignment.center,
-        child: Icon(icon, size: 18, color: color),
+        child: Icon(icon, size: embeddedInCard ? 16 : 18, color: color),
       ),
     );
   }

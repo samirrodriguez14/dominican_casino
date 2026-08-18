@@ -22,9 +22,12 @@ Future<void> showGameModeHowTo(
   GameMode mode, {
   required double cardWidth,
   Rect? anchor,
+  bool showPlay = true,
 }) {
-  final vm = context.read<GamesViewModel>();
-  final playable = vm.gamesInfo.any((g) => g.id == mode.name && g.enabled);
+  final gamesVm = showPlay ? context.read<GamesViewModel>() : null;
+  final playable =
+      gamesVm != null &&
+      gamesVm.gamesInfo.any((g) => g.id == mode.name && g.enabled);
   final closed = Completer<void>();
   unawaited(
     showGeneralDialog<void>(
@@ -53,7 +56,7 @@ Future<void> showGameModeHowTo(
                   Navigator.pop(dialogContext);
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (context.mounted) {
-                      showEnterGameDialog(context, vm, mode);
+                      showEnterGameDialog(context, gamesVm, mode);
                     }
                   });
                 }

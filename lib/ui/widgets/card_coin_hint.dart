@@ -4,6 +4,7 @@ import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Coin stack in the bottom-left of a card / stack.
+/// At most 3 coin icons; bigger takes show the stacked count as a badge.
 /// Bounce is driven by a shared [CoinHintTickerScope] (one ticker for all).
 class CardCoinHint extends StatelessWidget {
   const CardCoinHint({
@@ -19,7 +20,7 @@ class CardCoinHint extends StatelessWidget {
   Widget build(BuildContext context) {
     if (count <= 0) return const SizedBox.shrink();
     final theme = AppStyle.theme;
-    final shown = count.clamp(1, 6);
+    final shown = count.clamp(1, 3);
     final bounce = CoinHintTickerScope.maybeOf(context);
 
     final stack = SizedBox(
@@ -38,7 +39,7 @@ class CardCoinHint extends StatelessWidget {
                 color: theme.turnHighlight,
               ),
             ),
-          if (count > 1)
+          if (count > 3)
             Positioned(
               right: -2,
               bottom: -3,

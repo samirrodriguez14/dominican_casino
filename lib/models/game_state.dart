@@ -66,6 +66,10 @@ class GameState {
   List<PlayingCardModel> deck;
   final Map<String, List<PlayingCardModel>> hands;
   final Map<String, List<PlayingCardModel>> playersDeck;
+
+  /// Cards from each player's most recent capture, keyed by pid.
+  Map<String, List<PlayingCardModel>> lastTakes;
+
   final Map<String, dynamic> scores;
   int extraPoints;
   String extraPointsHolderId;
@@ -78,7 +82,7 @@ class GameState {
   static const String localBotName = 'Pulilo';
 
   /// Avatar used for the on-device AI seat.
-  static const String localBotAvatarId = 'palm';
+  static const String localBotAvatarId = 'star';
 
   /// True when the opponent seat is the on-device AI, not a remote player.
   bool isLocalBot;
@@ -140,6 +144,7 @@ class GameState {
     Map<String, int>? roundSpecialCoins,
     Map<String, int>? roundViraoCoins,
     List<String>? tableOrder,
+    Map<String, List<PlayingCardModel>>? lastTakes,
   }) : settlementEvents = settlementEvents ?? [],
        tableOrder = tableOrder ?? [],
        entryCost = entryCost ?? WalletConfig.entryCost,
@@ -147,7 +152,8 @@ class GameState {
        pendingCoins = pendingCoins ?? {},
        roundTakeCoins = roundTakeCoins ?? {},
        roundSpecialCoins = roundSpecialCoins ?? {},
-       roundViraoCoins = roundViraoCoins ?? {};
+       roundViraoCoins = roundViraoCoins ?? {},
+       lastTakes = lastTakes ?? {};
 
   /// Bot pid from persisted fields, or a legacy "Pulilo" seat for older games.
   String? get localBotPid {
@@ -226,6 +232,7 @@ class GameState {
       tableOrder: [],
       hands: {},
       playersDeck: {},
+      lastTakes: {},
       lastTookCardId: '',
       cardMoveEvents: [],
       settlementEvents: [],
@@ -283,6 +290,15 @@ class GameState {
     tableOrder.remove(TableOrder.stackKey(stack.id));
   }
 
+  /// Move [cards] into [pid]'s captured pile and remember them as the last take.
+  void addCapturedCards(String pid, List<PlayingCardModel> cards) {
+    if (cards.isEmpty) return;
+    playersDeck.putIfAbsent(pid, () => []);
+    playersDeck[pid]!.addAll(cards);
+    lastTookCardId = pid;
+    lastTakes[pid] = List<PlayingCardModel>.from(cards);
+  }
+
   void formStackInPlace({
     required PlayingAreaStackModel stack,
     List<PlayingCardModel> removedCards = const [],
@@ -330,6 +346,9 @@ class GameState {
     'scores': scores,
     'playersInfo': playersInfo,
     'playersDeck': playersDeck.map(
+      (k, v) => MapEntry(k, v.map((c) => c.toMap()).toList()),
+    ),
+    'lastTakes': lastTakes.map(
       (k, v) => MapEntry(k, v.map((c) => c.toMap()).toList()),
     ),
     'extraPoints': extraPoints,
@@ -384,6 +403,7 @@ class GameState {
           .map((e) => PlayingCardModel.fromMap(Map<String, dynamic>.from(e)))
           .toList();
     });
+    final lastTakes = _cardListMap(m['lastTakes']);
     final roundRaw = m['round'];
     final round = Round.fromJson(
       roundRaw is Map
@@ -427,6 +447,7 @@ class GameState {
       scores: Map<String, dynamic>.from(m['scores'] ?? {}),
       hands: hands,
       playersDeck: playersDeck,
+      lastTakes: lastTakes,
       lastTookCardId: (m['lastTookCardId'] as String?) ?? '',
       playersInfo: Map<String, dynamic>.from(m['playersInfo'] ?? {}),
       winnerId: m['winnerId'] as String?,
@@ -456,5 +477,24 @@ class GameState {
     return raw.map(
       (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0),
     );
+  }
+
+  static Map<String, List<PlayingCardModel>> _cardListMap(dynamic raw) {
+    if (raw is! Map) return {};
+    final out = <String, List<PlayingCardModel>>{};
+    raw.forEach((k, v) {
+      if (v is! List) {
+        out[k.toString()] = const [];
+        return;
+      }
+      out[k.toString()] = v
+          .map(
+            (e) => PlayingCardModel.fromMap(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList();
+    });
+    return out;
   }
 }

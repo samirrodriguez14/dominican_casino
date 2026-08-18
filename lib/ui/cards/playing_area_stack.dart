@@ -10,8 +10,8 @@ import 'package:dominican_casino/view_models/games/general_game_view_model.dart'
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Table stack laid out at its final fanned width so flight destinations can
-/// land on each card's offset slot (not a center pile that later spreads).
+/// Table stack. Incoming cards compact into the current width so the table
+/// does not wrap; after they land the fan eases out in place.
 class PlayingAreaStack extends StatelessWidget {
   final PlayingAreaStackModel stack;
 
@@ -59,19 +59,8 @@ class PlayingAreaStack extends StatelessWidget {
         : AppStyle.theme.turnHighlight;
     final naturalStep = cardWidth - overlap;
     final baseN = stack.cards.isEmpty ? 1 : stack.cards.length;
-    // During drag preview, keep the pre-drop footprint so the table layout
-    // does not reflow; extra cards compact into the same width.
-    final lockWidth = previewCards != null;
     final cards = previewCards ?? stack.cards;
     final n = cards.length;
-    final totalWidth = baseN <= 1
-        ? cardWidth
-        : cardWidth + (baseN - 1) * naturalStep;
-    final step = n <= 1
-        ? 0.0
-        : lockWidth
-        ? (totalWidth - cardWidth) / (n - 1)
-        : naturalStep;
     final showTakePreview =
         previewCards == null && _casinoFamilyCoinHints(context);
     final takePreview =
@@ -85,7 +74,20 @@ class PlayingAreaStack extends StatelessWidget {
     return ListenableBuilder(
       listenable: motion,
       builder: (context, _) {
-        final landing = stack.cards.any(motion.isInFlightCard);
+        final inFlightN = cards.where(motion.isInFlightCard).length;
+        final lockWidth = previewCards != null || inFlightN > 0;
+        final settledN = previewCards != null
+            ? baseN
+            : (n - inFlightN).clamp(1, n);
+        final totalWidth = settledN <= 1
+            ? cardWidth
+            : cardWidth + (settledN - 1) * naturalStep;
+        final step = n <= 1
+            ? 0.0
+            : lockWidth
+            ? (totalWidth - cardWidth) / (n - 1)
+            : naturalStep;
+        final landing = inFlightN > 0;
         return GestureDetector(
           onTap: onTap,
           behavior: HitTestBehavior.opaque,
@@ -116,9 +118,14 @@ class PlayingAreaStack extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   for (int i = 0; i < n; i++)
-                    Positioned(
+                    AnimatedPositioned(
+                      key: ValueKey(cards[i].id),
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeOutCubic,
                       left: i * step,
                       top: 0,
+                      width: cardWidth,
+                      height: height,
                       child: IgnorePointer(
                         ignoring: true,
                         child: FlightAwareCard(

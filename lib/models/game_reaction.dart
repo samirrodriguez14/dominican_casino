@@ -1,5 +1,23 @@
 class GameReaction {
-  static const options = ['👍', '😂', '🔥', '👏', '😮'];
+  static const columns = 4;
+  static const options = [
+    '👍',
+    '👎',
+    '❤️',
+    '😂',
+    '😮',
+    '😢',
+    '😡',
+    '🔥',
+    '👏',
+    '🎉',
+    '😎',
+    '🤔',
+    '💀',
+    '💯',
+    '🙌',
+    '💪',
+  ];
 
   final String id;
   final String emoji;

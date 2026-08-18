@@ -1,8 +1,8 @@
-import 'dart:async';
 import 'dart:ui' show lerpDouble;
 
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/ui/animations/flight_layer.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
@@ -19,9 +19,11 @@ class BoardDragHandle extends StatefulWidget {
     required this.child,
     this.enabled = true,
     this.feedbackWidth = 60,
+
     /// Size used while the pointer is over the table (hand cards shrink to this).
     this.tableFeedbackWidth = 60,
     this.onTap,
+
     /// When true (hand fan), reorder while dragging over the fan.
     this.onHandReorder,
   });
@@ -39,31 +41,71 @@ class BoardDragHandle extends StatefulWidget {
 }
 
 class _BoardDragHandleState extends State<BoardDragHandle> {
-  static const _armDelay = Duration(milliseconds: 120);
+  static const _dragSlop = 12.0;
 
-  GeneralGameViewModel get vm => context.read<GeneralGameViewModel>();
+  GeneralGameViewModel? _vm;
+  GeneralGameViewModel get vm => _vm!;
 
-  Timer? _armTimer;
   int? _pointer;
-  Offset? _pressGlobal;
+  Offset? _downGlobal;
   bool _dragging = false;
   Offset _dragGlobal = Offset.zero;
   Offset _dragStartGlobal = Offset.zero;
   FlightLayerController? _flightLayer;
   FlightSprite? _dragSprite;
   final ValueNotifier<int> _dragTick = ValueNotifier<int>(0);
+  bool _dragTickDisposed = false;
   bool _globalRouteAdded = false;
+  VoidCallback? _handoffTake;
+  CardMotionController? _handoffMotion;
+  bool _handoffLive = false;
 
   /// 0 = hand/source size, 1 = table size (and optionally merged into target).
   double _tableBlend = 0;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _vm = context.read<GeneralGameViewModel>();
+  }
+
+  @override
   void dispose() {
-    _armTimer?.cancel();
     _removeGlobalRoute();
-    _teardownSprite();
-    _dragTick.dispose();
+    // Take/play unmounts this handle while [_endDrag] is still awaiting
+    // flights. The overlay sprite lives on [FlightLayer] — leave it until
+    // the handoff callback detaches it.
+    if (!_handoffLive) {
+      _disarmHandoffTake();
+      _teardownSprite();
+      _disposeTick();
+    }
     super.dispose();
+  }
+
+  void _disposeTick() {
+    if (_dragTickDisposed) return;
+    _dragTickDisposed = true;
+    _dragTick.dispose();
+  }
+
+  void _armHandoffTake() {
+    final motion = vm.motion;
+    _handoffMotion = motion;
+    _handoffTake = () {
+      _disarmHandoffTake();
+      _teardownSprite();
+    };
+    motion.onFlightsAttached = _handoffTake;
+  }
+
+  void _disarmHandoffTake() {
+    final motion = _handoffMotion;
+    if (motion != null && identical(motion.onFlightsAttached, _handoffTake)) {
+      motion.onFlightsAttached = null;
+    }
+    _handoffTake = null;
+    _handoffMotion = null;
   }
 
   void _teardownSprite() {
@@ -86,14 +128,11 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
   }
 
   void _onPointerDown(PointerDownEvent e) {
-    if (!widget.enabled || vm.isAnimating || vm.hasDropPending) return;
-    _armTimer?.cancel();
+    if (!widget.enabled || _vm == null || vm.isAnimating || vm.hasDropPending) {
+      return;
+    }
     _pointer = e.pointer;
-    _pressGlobal = e.position;
-    _armTimer = Timer(_armDelay, () {
-      if (!mounted || _pointer == null) return;
-      _beginDrag(_pressGlobal ?? e.position);
-    });
+    _downGlobal = e.position;
     _addGlobalRoute();
   }
 
@@ -101,16 +140,20 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
     if (event.pointer != _pointer) return;
 
     if (event is PointerMoveEvent) {
-      _pressGlobal = event.position;
-      if (_dragging) _onDragMove(event.position);
+      if (_dragging) {
+        _onDragMove(event.position);
+        return;
+      }
+      final start = _downGlobal;
+      if (start != null && (event.position - start).distance > _dragSlop) {
+        _beginDrag(event.position);
+      }
       return;
     }
 
     if (event is PointerUpEvent || event is PointerCancelEvent) {
       final pos = event.position;
       final wasDragging = _dragging;
-      _armTimer?.cancel();
-      _armTimer = null;
       _pointer = null;
       _removeGlobalRoute();
 
@@ -118,20 +161,23 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
         _endDrag(pos);
       } else if (event is PointerUpEvent) {
         widget.onTap?.call();
-        _pressGlobal = null;
+        _downGlobal = null;
       } else {
-        _pressGlobal = null;
+        _downGlobal = null;
       }
     }
   }
 
   void _beginDrag(Offset global) {
-    if (_dragging || vm.isAnimating || vm.hasDropPending) return;
+    final gameVm = _vm;
+    if (_dragging || gameVm == null || gameVm.isAnimating || gameVm.hasDropPending) {
+      return;
+    }
     _dragging = true;
     _dragGlobal = global;
     _dragStartGlobal = global;
     _tableBlend = 0;
-    vm.beginBoardDrag(widget.source);
+    gameVm.beginBoardDrag(widget.source);
     AppHaptics.selectionClick();
 
     _teardownSprite();
@@ -147,33 +193,65 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
   }
 
   void _onDragMove(Offset global) {
+    final gameVm = _vm;
+    if (gameVm == null) return;
     _dragGlobal = global;
-    final overTable = vm.hitTestDropTarget(global) != null;
+    final overTable = gameVm.hitTestDropTarget(global) != null;
     final target = overTable ? 1.0 : 0.0;
     _tableBlend = lerpDouble(_tableBlend, target, 0.35) ?? target;
     if ((_tableBlend - target).abs() < 0.02) _tableBlend = target;
-    _dragTick.value++;
-    vm.updateDropHover(global);
+    if (!_dragTickDisposed) _dragTick.value++;
+    gameVm.updateDropHover(global);
     widget.onHandReorder?.call(global);
   }
 
   Future<void> _endDrag(Offset global) async {
-    _teardownSprite();
+    // Keep the overlay sprite frozen at the drop point until the flight
+    // sprite is attached on top of it — tearing down first is what made
+    // play/take look like a new card popping in.
     _dragging = false;
-    _pressGlobal = null;
-    _tableBlend = 0;
+    _downGlobal = null;
 
-    final accepted = await vm.finishBoardDrop(global);
-    if (!accepted && (global - _dragStartGlobal).distance < 14) {
-      widget.onTap?.call();
+    final gameVm = _vm;
+    if (gameVm == null) return;
+
+    final w =
+        lerpDouble(
+          widget.feedbackWidth,
+          widget.tableFeedbackWidth,
+          _tableBlend,
+        ) ??
+        widget.feedbackWidth;
+    gameVm.beginDragHandoff(widget.source, global, w);
+    _handoffLive = true;
+    _armHandoffTake();
+    try {
+      final accepted = await gameVm.finishBoardDrop(global);
+      if (mounted &&
+          !accepted &&
+          (global - _dragStartGlobal).distance < 14) {
+        widget.onTap?.call();
+      }
+    } finally {
+      _completeHandoff(gameVm);
     }
+  }
+
+  void _completeHandoff(GeneralGameViewModel gameVm) {
+    _handoffLive = false;
+    _disarmHandoffTake();
+    _tableBlend = 0;
+    _teardownSprite();
+    gameVm.clearDragHandoff();
+    if (!mounted) _disposeTick();
   }
 
   Widget _buildSprite(FlightLayerController layer) {
     final local = layer.toLocal(_dragGlobal);
     if (local == null) return const SizedBox.shrink();
 
-    final w = lerpDouble(
+    final w =
+        lerpDouble(
           widget.feedbackWidth,
           widget.tableFeedbackWidth,
           _tableBlend,
@@ -183,7 +261,7 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
 
     // When the target shows a merge preview, hide the ghost so the card
     // reads as the same piece sitting in the stack — not a duplicate.
-    final merging = vm.dropHover?.buildPreview != null;
+    final merging = _vm?.dropHover?.buildPreview != null;
     final opacity = merging ? 0.0 : 1.0;
 
     Widget face;
@@ -194,6 +272,7 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
           playingCardModel: widget.source.card!,
           width: w,
           isSelected: true,
+          showCoinHint: false,
         );
       case BoardDragKind.tableStack:
         final stack = widget.source.stack!;
@@ -213,10 +292,7 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: _onPointerDown,
-      child: widget.child,
-    );
+    return Listener(onPointerDown: _onPointerDown, child: widget.child);
   }
 }
 
@@ -233,7 +309,7 @@ class _StackDragFace extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        PlayingCard(playingCardModel: top, width: width, isSelected: true),
+        PlayingCard(playingCardModel: top, width: width, isSelected: true, showCoinHint: false),
         Positioned(
           top: -4,
           right: -4,

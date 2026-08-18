@@ -6,6 +6,11 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 sealed class TableSlot {
   const TableSlot();
   String get orderKey;
+
+  /// Stable identity for [AnimatedPositioned] so a loose card morphing
+  /// into a stack does not spawn a new slot (which snapped / wrapped).
+  String get layoutAnchor;
+
   double widthFor({required double cardWidth, double overlap = 30});
 }
 
@@ -15,6 +20,8 @@ class TableCardSlot extends TableSlot {
   @override
   String get orderKey => 'c:${card.id}';
   @override
+  String get layoutAnchor => card.id;
+  @override
   double widthFor({required double cardWidth, double overlap = 30}) => cardWidth;
 }
 
@@ -23,6 +30,9 @@ class TableStackSlot extends TableSlot {
   const TableStackSlot(this.stack);
   @override
   String get orderKey => 's:${stack.id}';
+  @override
+  String get layoutAnchor =>
+      stack.cards.isNotEmpty ? stack.cards.last.id : stack.id;
   @override
   double widthFor({required double cardWidth, double overlap = 30}) {
     if (stack.cards.isEmpty) return cardWidth;

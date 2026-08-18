@@ -47,7 +47,12 @@ class StoreThemeCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset(previewTheme.cardBack, fit: BoxFit.cover),
+                Image.asset(
+                  previewTheme.cardBack,
+                  fit: BoxFit.cover,
+                  cacheWidth: (200 * MediaQuery.devicePixelRatioOf(context))
+                      .round(),
+                ),
                 if (locked)
                   ColoredBox(
                     color: CupertinoColors.black.withValues(alpha: .42),

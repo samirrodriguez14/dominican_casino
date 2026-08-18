@@ -41,6 +41,7 @@ typedef CardFlightRunner =
     Future<void> Function(
       List<CardFlightRequest> flights, {
       VoidCallback? onLanded,
+      VoidCallback? onLaunched,
     });
 
 class ShuffleSource {
@@ -78,6 +79,10 @@ class CardMotionController extends ChangeNotifier {
   /// Board-local flight host — set by [GeneralGameScreen].
   FlightLayerController? flightLayer;
 
+  /// Fired once flight sprites are attached, before they start moving.
+  /// Drag overlays use this to hand off without a visual gap.
+  VoidCallback? onFlightsAttached;
+
   bool _shuffling = false;
 
   bool get isShuffling => _shuffling;
@@ -111,12 +116,14 @@ class CardMotionController extends ChangeNotifier {
     if (flights.isEmpty) return;
     final run = runner;
     if (run == null) {
+      onFlightsAttached?.call();
       clearInFlight(flights.map((f) => f.cardId));
       return;
     }
     await run(
       flights,
       onLanded: () => clearInFlight(flights.map((f) => f.cardId)),
+      onLaunched: onFlightsAttached,
     );
   }
 

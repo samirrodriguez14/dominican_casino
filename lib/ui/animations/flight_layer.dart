@@ -33,6 +33,14 @@ class FlightLayerController extends ChangeNotifier {
     return toLocal(global);
   }
 
+  /// Laid-out width of [key], so flights can land at the real card size.
+  double? widthOf(GlobalKey? key) {
+    if (key == null) return null;
+    final box = key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || box.size.isEmpty) return null;
+    return box.size.width;
+  }
+
   void attach(FlightSprite sprite) {
     _sprites.add(sprite);
     notifyListeners();

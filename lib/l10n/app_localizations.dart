@@ -70,6 +70,14 @@ class AppLocalizations {
       isEs ? 'Toca para instrucciones' : 'Tap for instructions';
   String get yourTurn => isEs ? 'Tu turno' : 'Your Turn';
   String get opponentTurn => isEs ? 'Turno del rival' : 'Opponent Turn';
+  String get actionStart => isEs ? 'Empezar' : 'Start';
+  String get actionShare => isEs ? 'Compartir' : 'Share';
+  String get actionDeal => isEs ? 'Repartir' : 'Deal';
+  String get actionDealAgain => isEs ? 'Repartir de nuevo' : 'Deal again';
+  String get actionReady => isEs ? 'Listo' : 'Ready';
+  String get actionWaiting => isEs ? 'Esperando' : 'Waiting';
+  String get actionShuffle => isEs ? 'Barajar' : 'Shuffle';
+  String get actionLeave => isEs ? 'Salir' : 'Leave';
   String get settings => isEs ? 'Ajustes' : 'Settings';
   String get store => isEs ? 'Tienda' : 'Store';
   String get games => isEs ? 'Juegos' : 'Games';

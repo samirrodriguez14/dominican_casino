@@ -19,7 +19,7 @@ class AvatarOption {
 
 /// Simple painted avatars (sun, palm, suits, moon, star).
 class PlayerAvatars {
-  static const defaultId = 'sun';
+  static const defaultId = 'spade';
 
   static final List<AvatarOption> all = [
     AvatarOption(
@@ -73,8 +73,56 @@ class PlayerAvatars {
   ];
 
   static AvatarOption byId(String? id) {
-    return all.firstWhere((a) => a.id == id, orElse: () => all.first);
+    return all.firstWhere(
+      (a) => a.id == id,
+      orElse: () => all.firstWhere((a) => a.id == defaultId),
+    );
   }
+}
+
+/// Scoreboard colors derived from a player's avatar.
+class AvatarScoreTheme {
+  const AvatarScoreTheme({
+    required this.option,
+    required this.background,
+    required this.foreground,
+    required this.ink,
+    required this.muted,
+    required this.panel,
+    required this.border,
+    required this.isLight,
+  });
+
+  factory AvatarScoreTheme.of(String? avatarId) {
+    final option = PlayerAvatars.byId(avatarId);
+    final background = option.background;
+    final foreground = option.foreground;
+    final isLight = background.computeLuminance() > 0.42;
+    final ink = isLight ? const Color(0xFF1C1612) : const Color(0xFFF7F4EC);
+    return AvatarScoreTheme(
+      option: option,
+      background: background,
+      foreground: foreground,
+      ink: ink,
+      muted: ink.withValues(alpha: 0.68),
+      panel: Color.lerp(
+        background,
+        isLight ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
+        0.16,
+      )!,
+      border: Color.lerp(foreground, background, 0.18)!.withValues(alpha: 0.55),
+      isLight: isLight,
+    );
+  }
+
+  final AvatarOption option;
+  final Color background;
+  final Color foreground;
+  final Color ink;
+  final Color muted;
+  final Color panel;
+  final Color border;
+  final bool isLight;
 }
 
 class PlayerAvatarView extends StatelessWidget {

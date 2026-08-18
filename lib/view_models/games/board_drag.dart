@@ -1,3 +1,5 @@
+import 'dart:ui' show Offset;
+
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
@@ -120,6 +122,19 @@ class DropPending {
   final DropTarget target;
   final List<PlayAction> actions;
   final BuildPreview? buildPreview;
+}
+
+/// Frozen drag overlay: same visual object continues into the card flight.
+class DragHandoff {
+  const DragHandoff({
+    required this.cardIds,
+    required this.globalCenter,
+    required this.width,
+  });
+
+  final Set<String> cardIds;
+  final Offset globalCenter;
+  final double width;
 }
 
 String actionLabel(PlayAction action) {

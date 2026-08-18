@@ -1,4 +1,6 @@
 class Player {
+  static const String defaultAvatarId = 'spade';
+
   String id;
   bool completedTutorial;
   String? name;
@@ -8,7 +10,7 @@ class Player {
     required this.id,
     this.name,
     this.token,
-    this.avatarId,
+    this.avatarId = defaultAvatarId,
     this.completedTutorial = false,
   });
   factory Player.fromDto(Map<String, dynamic> playerDto) {
@@ -16,7 +18,7 @@ class Player {
       id: playerDto['id'],
       name: playerDto['name'] ?? '',
       token: playerDto['token'],
-      avatarId: playerDto['avatarId'] as String?,
+      avatarId: playerDto['avatarId'] as String? ?? defaultAvatarId,
       completedTutorial: playerDto['completedTutorial'] ?? false,
     );
   }

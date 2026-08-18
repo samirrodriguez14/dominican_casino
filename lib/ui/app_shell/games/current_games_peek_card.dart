@@ -1,0 +1,420 @@
+import 'dart:math' as math;
+
+import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/sound_service.dart';
+import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/sage_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/current_games_list.dart';
+import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:dominican_casino/view_models/games_view_model.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
+
+/// Peeking playing card in the shell corner. Swipe up to expand; bottom link
+/// flips between current games and history like other playing-card faces.
+class CurrentGamesPeekCard extends StatefulWidget {
+  const CurrentGamesPeekCard({super.key});
+
+  @override
+  State<CurrentGamesPeekCard> createState() => _CurrentGamesPeekCardState();
+}
+
+class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
+    with TickerProviderStateMixin {
+  static const _expandDuration = Duration(milliseconds: 380);
+  static const _flipDuration = Duration(milliseconds: 420);
+  static const _peekVisible = 78.0;
+  static const _peekAngle = -0.22;
+  static const _dragRange = 280.0;
+  static const _cardRadius = 18.0;
+
+  late final AnimationController _expand;
+  late final AnimationController _flip;
+  bool _draggingExpand = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _expand = AnimationController(vsync: this, duration: _expandDuration)
+      ..addStatusListener(_onExpandStatus)
+      ..addListener(_tick);
+    _flip = AnimationController(vsync: this, duration: _flipDuration)
+      ..addListener(_tick);
+  }
+
+  @override
+  void dispose() {
+    _expand.removeStatusListener(_onExpandStatus);
+    _expand.removeListener(_tick);
+    _flip.removeListener(_tick);
+    _expand.dispose();
+    _flip.dispose();
+    super.dispose();
+  }
+
+  void _tick() {
+    if (mounted) setState(() {});
+  }
+
+  void _onExpandStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && _flip.value != 0) {
+      _flip.value = 0;
+    }
+  }
+
+  bool get _open => _expand.value >= 0.5;
+
+  Future<void> _snap({required bool open}) async {
+    if (_expand.isAnimating) return;
+    final target = open ? 1.0 : 0.0;
+    if ((_expand.value - target).abs() < 0.001) return;
+    SoundService.instance.playLayered(GameSound.softCard);
+    AppHaptics.lightImpact();
+    await _expand.animateTo(
+      target,
+      duration: _expandDuration,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _toggleFromPeek() {
+    if (_expand.isAnimating || _flip.isAnimating) return;
+    if (_expand.value < 0.5) {
+      _snap(open: true);
+    }
+  }
+
+  void _close() {
+    if (_expand.isAnimating) return;
+    _snap(open: false);
+  }
+
+  void _onDragStart(DragStartDetails details) {
+    if (_expand.isAnimating || _flip.isAnimating) return;
+    setState(() => _draggingExpand = true);
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (!_draggingExpand || _expand.isAnimating || _flip.isAnimating) return;
+    _expand.value = (_expand.value - details.delta.dy / _dragRange).clamp(
+      0.0,
+      1.0,
+    );
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    if (!_draggingExpand) return;
+    if (_expand.isAnimating || _flip.isAnimating) {
+      setState(() => _draggingExpand = false);
+      return;
+    }
+    final v = details.velocity.pixelsPerSecond.dy;
+    final shouldOpen = v < -650 || (v.abs() < 650 && _expand.value >= 0.4);
+    setState(() => _draggingExpand = false);
+    _snap(open: shouldOpen);
+  }
+
+  static Color _faceFor(AppTheme theme, {required bool history}) {
+    if (theme is SageTheme) {
+      return history ? theme.pickerFaceEdge : theme.pickerFaceAlt;
+    }
+    return history ? const Color(0xFF4A6358) : const Color(0xFF3D4F58);
+  }
+
+  void _openHistory() {
+    if (!_open || _flip.isAnimating || _expand.isAnimating) return;
+    SoundService.instance.playLayered(GameSound.softCard);
+    AppHaptics.selectionClick();
+    _flip.forward();
+  }
+
+  void _openCurrent() {
+    if (!_open || _flip.isAnimating || _expand.isAnimating) return;
+    SoundService.instance.playLayered(GameSound.softCard);
+    AppHaptics.selectionClick();
+    _flip.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = AppStyle.theme;
+    final yourTurnCount = context.watch<GamesViewModel>().yourTurnCount;
+    final currentFace = _faceFor(theme, history: false);
+    final historyFace = _faceFor(theme, history: true);
+    final bottomInset = MediaQuery.paddingOf(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final t = _expand.value;
+        final size = constraints.biggest;
+        final cardW = homeCardWidth(
+          BoxConstraints(
+            maxWidth: math.max(220, size.width - 20),
+            maxHeight: size.height - 28,
+          ),
+        );
+        final cardH = cardW / homeCardAspect;
+        final expandedLeft = (size.width - cardW) / 2;
+        final expandedTop = (size.height - cardH) / 2;
+        final collapsedLeft = size.width - _peekVisible;
+        final collapsedTop = size.height - bottomInset.bottom - _peekVisible;
+        final left = collapsedLeft + (expandedLeft - collapsedLeft) * t;
+        final top = collapsedTop + (expandedTop - collapsedTop) * t;
+        final angle = _peekAngle * (1 - t);
+        final contentOpacity = Interval(
+          0.18,
+          0.62,
+          curve: Curves.easeOut,
+        ).transform(t);
+        final peekOpacity = (1 - t * 1.8).clamp(0.0, 1.0);
+        final showingHistory = _flip.value >= 0.5;
+        final flipT = Curves.easeInOutCubic.transform(
+          _flip.value.clamp(0.0, 1.0),
+        );
+        final flipAngle = flipT * math.pi;
+        final shellFace =
+            Color.lerp(currentFace, historyFace, flipT) ?? currentFace;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: t <= 0.02 && !_draggingExpand,
+                child: GestureDetector(
+                  onTap: _close,
+                  behavior: HitTestBehavior.opaque,
+                  child: ColoredBox(
+                    color: CupertinoColors.black.withValues(alpha: 0.5 * t),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: left,
+              top: top,
+              width: cardW,
+              height: cardH,
+              child: Transform.rotate(
+                angle: angle,
+                alignment: Alignment.topLeft,
+                filterQuality: FilterQuality.medium,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _cardShell(
+                      face: shellFace,
+                      theme: theme,
+                      child: Stack(
+                        children: [
+                          Opacity(
+                            opacity: contentOpacity,
+                            child: IgnorePointer(
+                              ignoring:
+                                  _flip.isAnimating ||
+                                  (contentOpacity < 0.35 && !_draggingExpand),
+                              child: Transform(
+                                alignment: Alignment.center,
+                                filterQuality: FilterQuality.medium,
+                                transform: Matrix4.identity()
+                                  ..setEntry(3, 2, 0.0012)
+                                  ..rotateY(flipAngle),
+                                child: showingHistory
+                                    ? Transform(
+                                        alignment: Alignment.center,
+                                        transform: Matrix4.identity()
+                                          ..rotateY(math.pi),
+                                        child: _faceBody(
+                                          l10n: l10n,
+                                          theme: theme,
+                                          title: l10n.gameHistory,
+                                          history: true,
+                                          flipLabel: l10n.currentGames,
+                                          onFlip: _openCurrent,
+                                        ),
+                                      )
+                                    : _faceBody(
+                                        l10n: l10n,
+                                        theme: theme,
+                                        title: l10n.currentGames,
+                                        history: false,
+                                        flipLabel: l10n.gameHistory,
+                                        onFlip: _openHistory,
+                                      ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 10,
+                            left: 10,
+                            child: Opacity(
+                              opacity: peekOpacity,
+                              child: _PeekBadge(
+                                count: yourTurnCount,
+                                theme: theme,
+                              ),
+                            ),
+                          ),
+                          if (t < 0.55 || _draggingExpand)
+                            Positioned.fill(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.translucent,
+                                onTap: t < 0.45 && !_draggingExpand
+                                    ? _toggleFromPeek
+                                    : null,
+                                onVerticalDragStart: _onDragStart,
+                                onVerticalDragUpdate: _onDragUpdate,
+                                onVerticalDragEnd: _onDragEnd,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _faceBody({
+    required AppLocalizations l10n,
+    required AppTheme theme,
+    required String title,
+    required bool history,
+    required String flipLabel,
+    required VoidCallback onFlip,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragStart: _onDragStart,
+            onVerticalDragUpdate: _onDragUpdate,
+            onVerticalDragEnd: _onDragEnd,
+            child: Text(
+              title,
+              style: theme.title.copyWith(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                height: 1.05,
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: CurrentGamesList(
+            history: history,
+            onBeforeEnter: _close,
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+            embeddedInCard: true,
+          ),
+        ),
+        Center(
+          child: CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            minimumSize: Size.zero,
+            onPressed: SoundService.wrapTap(onFlip),
+            child: Text(
+              flipLabel,
+              style: theme.mutedText.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                decoration: TextDecoration.underline,
+                decorationColor: theme.muted.withValues(alpha: .45),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onVerticalDragStart: _onDragStart,
+          onVerticalDragUpdate: _onDragUpdate,
+          onVerticalDragEnd: _onDragEnd,
+          child: const SizedBox(height: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _cardShell({
+    required Color face,
+    required AppTheme theme,
+    required Widget child,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: face,
+        borderRadius: BorderRadius.circular(_cardRadius),
+        border: Border.all(
+          color: theme.textPrimary.withValues(alpha: .14),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: .30),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_cardRadius),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _PeekBadge extends StatelessWidget {
+  const _PeekBadge({required this.count, required this.theme});
+
+  final int count;
+  final AppTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Semantics(
+      button: true,
+      label: count > 0 ? '${l10n.yourTurn}: $count' : l10n.currentGames,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(CupertinoIcons.play_fill, color: theme.textPrimary, size: 22),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              constraints: const BoxConstraints(minWidth: 22),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.danger,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: theme.background, width: 1.5),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                count > 9 ? '9+' : '$count',
+                style: const TextStyle(
+                  color: CupertinoColors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

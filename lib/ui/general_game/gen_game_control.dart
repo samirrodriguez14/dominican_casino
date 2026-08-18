@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -24,14 +25,19 @@ class _GenGameControlState extends State<GenGameControl> {
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
 
-    // Only surface controls after motion finishes.
-    if (!vm.showInGameControl) {
-      return const SizedBox.shrink();
-    }
+    return ListenableBuilder(
+      listenable: vm.motion,
+      builder: (context, _) {
+        // Hide during shuffle even if the VM hasn't rebuilt yet.
+        if (!vm.showInGameControl) {
+          return const SizedBox.shrink();
+        }
 
-    return Container(
-      decoration: AppStyle.theme.raisedSurfaceBox(),
-      child: _buildInGameActionButton(context, vm, vm.inGameAction),
+        return Container(
+          decoration: AppStyle.theme.raisedSurfaceBox(),
+          child: _buildInGameActionButton(context, vm, vm.inGameAction),
+        );
+      },
     );
   }
 
@@ -40,23 +46,47 @@ class _GenGameControlState extends State<GenGameControl> {
     GeneralGameViewModel vm,
     InGameAction inGameAction,
   ) {
-    double iconSize = 75;
-    return CupertinoButton(
-      onPressed: SoundService.wrapTap(actionAction(inGameAction, vm)),
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(ctx);
+    final enabled =
+        inGameAction != InGameAction.waiting &&
+        inGameAction != InGameAction.noAction;
+    final gold = theme.turnHighlight;
 
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             actionIcon(inGameAction),
-            size: iconSize,
-            color: AppStyle.theme.muted,
+            size: 28,
+            color: enabled ? gold : theme.muted,
           ),
-          Text(inGameAction.name, style: AppStyle.theme.body),
-          if (inGameAction == .share)
-            Text("ID: ${vm.gameState.id}", style: AppStyle.theme.body),
+          const SizedBox(height: 8),
+          Text(
+            actionLabel(inGameAction, l10n),
+            style: theme.body.copyWith(
+              fontWeight: FontWeight.w700,
+              color: enabled ? theme.textPrimary : theme.muted,
+            ),
+          ),
+          if (inGameAction == InGameAction.share)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('ID: ${vm.gameState.id}', style: theme.caption),
+            ),
         ],
       ),
+    );
+
+    if (!enabled) return content;
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: SoundService.wrapTap(actionAction(inGameAction, vm)),
+      child: content,
     );
   }
 
@@ -77,28 +107,48 @@ class _GenGameControlState extends State<GenGameControl> {
     }
   }
 
+  String actionLabel(InGameAction action, AppLocalizations l10n) {
+    switch (action) {
+      case InGameAction.start:
+        return l10n.actionStart;
+      case InGameAction.share:
+        return l10n.actionShare;
+      case InGameAction.deal:
+        return l10n.actionDeal;
+      case InGameAction.dealSame:
+        return l10n.actionDealAgain;
+      case InGameAction.setReady:
+        return l10n.actionReady;
+      case InGameAction.waiting:
+        return l10n.actionWaiting;
+      case InGameAction.shuffle:
+        return l10n.actionShuffle;
+      case InGameAction.exit:
+        return l10n.actionLeave;
+      case InGameAction.noAction:
+        return '';
+    }
+  }
+
   IconData actionIcon(InGameAction action) {
     switch (action) {
       case InGameAction.start:
         return CupertinoIcons.play_fill;
       case InGameAction.share:
         return CupertinoIcons.share;
-
       case InGameAction.deal:
-        return CupertinoIcons.rectangle_on_rectangle_angled;
-
       case InGameAction.dealSame:
-        return CupertinoIcons.rectangle_on_rectangle_angled;
+        return CupertinoIcons.square_stack_fill;
       case InGameAction.setReady:
         return CupertinoIcons.check_mark_circled;
       case InGameAction.noAction:
         return CupertinoIcons.stop;
       case InGameAction.waiting:
-        return CupertinoIcons.lock;
+        return CupertinoIcons.clock;
       case InGameAction.shuffle:
-        return CupertinoIcons.square_on_square;
+        return CupertinoIcons.shuffle;
       case InGameAction.exit:
-        return CupertinoIcons.arrow_left_circle;
+        return CupertinoIcons.square_arrow_left;
     }
   }
 

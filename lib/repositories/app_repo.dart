@@ -1083,7 +1083,7 @@ class AppRepo extends ChangeNotifier {
     return Player(
       id: uid,
       name: name,
-      avatarId: cloud?.avatarId ?? local?.avatarId,
+      avatarId: cloud?.avatarId ?? local?.avatarId ?? Player.defaultAvatarId,
       completedTutorial:
           (cloud?.completedTutorial ?? false) ||
           (local?.completedTutorial ?? false),

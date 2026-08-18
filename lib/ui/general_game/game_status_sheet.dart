@@ -1,14 +1,15 @@
+import 'dart:math' as math;
+
 import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/layouts/app_popup.dart';
-import 'package:dominican_casino/ui/general_game/game_info_sheet.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:dominican_casino/ui/general_game/match_coin_payout.dart';
-import 'package:dominican_casino/ui/widgets/coin_gain_badge.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
@@ -19,20 +20,103 @@ Future<void> showGameStatusPopup(
   GameState? gameState,
   String? playerId,
   bool showActions = true,
+  String? title,
+  String? subtitle,
+  String? primaryText,
+  VoidCallback? onPrimary,
+  bool barrierDismissible = true,
+  bool revealLastRound = false,
 }) {
   final state = gameState ?? vm?.gameState;
-  return showAppPopup<void>(
+  final resolvedTitle =
+      title ?? (state?.gameStatus == GameStatus.gameOver ? 'Game Over' : null);
+
+  return showGeneralDialog<void>(
     context: context,
-    title: state?.gameStatus == GameStatus.gameOver
-        ? 'Game Over'
-        : 'Game Status',
-    subtitle: state != null ? GameRegistry.displayTitle(state.gameMode) : null,
-    content: GameStatusSheet(
-      vm: vm,
-      gameState: gameState,
-      playerId: playerId,
-      showActions: showActions,
-    ),
+    barrierDismissible: barrierDismissible,
+    barrierLabel: 'Dismiss game status',
+    barrierColor: const Color(0xCC070605),
+    transitionDuration: const Duration(milliseconds: 280),
+    pageBuilder: (ctx, animation, secondary) {
+      return SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: SingleChildScrollView(
+                child: DefaultTextStyle(
+                  style: AppStyle.theme.body,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (resolvedTitle != null) ...[
+                        Text(
+                          resolvedTitle,
+                          textAlign: TextAlign.center,
+                          style: AppStyle.theme.title.copyWith(
+                            color: const Color(0xFFF7F4EC),
+                            fontSize: 20,
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            textAlign: TextAlign.center,
+                            style: AppStyle.theme.caption.copyWith(
+                              color: const Color(0xCCF7F4EC),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                      ],
+                      GameStatusSheet(
+                        vm: vm,
+                        gameState: gameState,
+                        playerId: playerId,
+                        showActions: showActions,
+                        revealLastRound: revealLastRound,
+                      ),
+                      if (primaryText != null) ...[
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: CupertinoButton.filled(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            onPressed: SoundService.wrapTap(() {
+                              AppHaptics.mediumImpact();
+                              Navigator.of(ctx).pop();
+                              onPrimary?.call();
+                            }),
+                            child: Text(primaryText),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+    transitionBuilder: (ctx, animation, secondary, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.92, end: 1).animate(curved),
+          child: child,
+        ),
+      );
+    },
   );
 }
 
@@ -44,6 +128,7 @@ class GameStatusSheet extends StatefulWidget {
     this.playerId,
     this.scrollController,
     this.showActions,
+    this.revealLastRound = false,
   }) : assert(vm != null || (gameState != null && playerId != null));
 
   final GeneralGameViewModel? vm;
@@ -51,6 +136,7 @@ class GameStatusSheet extends StatefulWidget {
   final String? playerId;
   final ScrollController? scrollController;
   final bool? showActions;
+  final bool revealLastRound;
 
   @override
   State<GameStatusSheet> createState() => _GameStatusSheetState();
@@ -89,136 +175,142 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
   @override
   Widget build(BuildContext context) {
     final vm = widget.vm;
-    final theme = AppStyle.theme;
     final playerIds = gameState.playersInfo.keys.toList();
     final totalScores = gameState.scores;
     final roundScores = gameState.round.roundScores;
+    final hasRound = roundScores.isNotEmpty;
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 400, maxHeight: 460),
+      constraints: const BoxConstraints(maxWidth: 420, maxHeight: 580),
       child: SingleChildScrollView(
         controller: widget.scrollController,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (gameState.gameStatus == GameStatus.gameOver) ...[
-              _WinSummary(
-                winnerLabel: _winnerLabel(),
-                youWon: gameState.winnerId == playerId,
-                modePhrase: GameRegistry.winConditionPhrase(gameState.gameMode),
-                detailLine: _winDetailLine(),
-                breakdown: _winnerBreakdownChips(),
-              ),
-              const SizedBox(height: 14),
-            ],
-            Row(
-              children: [
-                for (var i = 0; i < playerIds.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  Expanded(
-                    child: _ScoreCard(
-                      score: totalScores[playerIds[i]] ?? 0,
-                      name: _playerLabel(playerIds[i]),
-                      avatarId: _playerAvatarId(playerIds[i]),
-                      pendingCoins: gameState.pendingCoinsFor(playerIds[i]),
-                      isYou: playerIds[i] == playerId,
-                      isDealer: gameState.controllerId == playerIds[i],
+            _ScoreBoardStack(
+              hasRound: hasRound,
+              boards: [
+                if (playerIds.isEmpty)
+                  const _BoardSpec(
+                    id: 'waiting',
+                    name: 'Waiting',
+                    avatarId: null,
+                    score: 0,
+                    pendingCoins: 0,
+                    beforeScore: 0,
+                    roundScore: 0,
+                    isDealer: false,
+                    isCasino: false,
+                    isWinner: false,
+                    scoreMap: {},
+                  )
+                else
+                  for (final pid in playerIds)
+                    _BoardSpec(
+                      id: pid,
+                      name: _playerLabel(pid),
+                      avatarId: _playerAvatarId(pid),
+                      score: totalScores[pid] ?? 0,
+                      pendingCoins: gameState.pendingCoinsFor(pid),
+                      beforeScore: _beforeScore(
+                        totalScores[pid] ?? 0,
+                        roundScores[pid],
+                      ),
+                      roundScore: _scoreN(
+                        Map<String, dynamic>.from(roundScores[pid] ?? {}),
+                        'total',
+                      ),
+                      isDealer: gameState.controllerId == pid,
+                      isCasino: GameRegistry.isCasinoFamily(gameState.gameMode),
+                      isWinner:
+                          gameState.gameStatus == GameStatus.gameOver &&
+                          gameState.winnerId == pid,
+                      scoreMap: Map<String, dynamic>.from(
+                        roundScores[pid] ?? {},
+                      ),
                     ),
-                  ),
-                ],
               ],
+              locked: gameState.gameStatus == GameStatus.gameOver,
+              initialFrontId: _leaderId(playerIds),
+              autoReveal: widget.revealLastRound,
             ),
-            if (roundScores.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Text(
-                'Last round',
-                style: theme.caption.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var i = 0; i < playerIds.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 10),
-                    Expanded(
-                      child: _LastRoundPlayerCard(
-                        name: _playerLabel(playerIds[i]),
-                        avatarId: _playerAvatarId(playerIds[i]),
-                        scoreMap: Map<String, dynamic>.from(
-                          roundScores[playerIds[i]] ?? {},
-                        ),
-                        isYou: playerIds[i] == playerId,
-                        isCasino: GameRegistry.isCasinoFamily(
-                          gameState.gameMode,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ] else ...[
-              const SizedBox(height: 10),
-              Text(
-                'No round scores yet',
-                textAlign: TextAlign.center,
-                style: theme.mutedText,
-              ),
-            ],
-            if (vm != null &&
-                gameState.gameStatus == GameStatus.gameOver)
+            if (vm != null && gameState.gameStatus == GameStatus.gameOver)
               MatchCoinPayout(vm: vm),
-            if (vm != null || showActions) ...[
-              const SizedBox(height: 14),
+            if (showActions && vm != null) ...[
+              const SizedBox(height: 32),
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (vm != null) ...[
-                    Expanded(
-                      child: _CompactActionButton(
-                        label: 'Rules',
-                        icon: CupertinoIcons.info,
-                        onPressed: () {
-                          showAppPopup(
-                            context: context,
-                            title: 'How to play',
-                            content: GameInfoSheet(vm: vm),
-                          );
-                        },
-                      ),
-                    ),
-                    if (showActions) const SizedBox(width: 10),
-                  ],
-                  if (showActions && vm != null) ...[
-                    Expanded(
-                      child: _CompactActionButton(
-                        label: 'Lobby',
-                        icon: CupertinoIcons.house_fill,
-                        onPressed: () async {
-                          Navigator.of(context).pop();
-                          await vm.queueHomeCoinClaim();
-                          if (!context.mounted) return;
-                          context.go('/landing');
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _CompactActionButton(
-                        label: 'Resign',
-                        icon: CupertinoIcons.arrow_right_square_fill,
-                        danger: true,
-                        onPressed: () => _handleResign(context, vm),
-                      ),
-                    ),
-                  ],
+                  _StatusIconButton(
+                    icon: CupertinoIcons.info,
+                    onPressed: () => _openRules(context, vm),
+                  ),
+                  const SizedBox(width: 8),
+                  _StatusHomeButton(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await vm.queueHomeCoinClaim();
+                      if (!context.mounted) return;
+                      context.go('/landing');
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _StatusIconButton(
+                    icon: CupertinoIcons.arrow_right_square_fill,
+                    danger: true,
+                    onPressed: () => _handleResign(context, vm),
+                  ),
                 ],
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  int _beforeScore(dynamic current, dynamic roundRaw) {
+    final total = current is num ? current.toInt() : 0;
+    final roundMap = roundRaw is Map
+        ? Map<String, dynamic>.from(roundRaw)
+        : <String, dynamic>{};
+    final round = _scoreN(roundMap, 'total');
+    return (total - round).clamp(0, 999);
+  }
+
+  String _leaderId(List<String> playerIds) {
+    if (playerIds.isEmpty) return 'waiting';
+    final winner = gameState.winnerId;
+    if (gameState.gameStatus == GameStatus.gameOver &&
+        winner != null &&
+        winner.isNotEmpty &&
+        playerIds.contains(winner)) {
+      return winner;
+    }
+    String best = playerIds.first;
+    var bestRound = _playerRoundTotal(best);
+    var bestTotal = _playerTotal(best);
+    for (final pid in playerIds.skip(1)) {
+      final round = _playerRoundTotal(pid);
+      final total = _playerTotal(pid);
+      if (round > bestRound || (round == bestRound && total > bestTotal)) {
+        best = pid;
+        bestRound = round;
+        bestTotal = total;
+      }
+    }
+    return best;
+  }
+
+  int _playerTotal(String pid) {
+    final raw = gameState.scores[pid];
+    return raw is num ? raw.toInt() : 0;
+  }
+
+  int _playerRoundTotal(String pid) {
+    return _scoreN(
+      Map<String, dynamic>.from(gameState.round.roundScores[pid] ?? {}),
+      'total',
     );
   }
 
@@ -236,113 +328,18 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     return (info['name'] as String?) ?? pid;
   }
 
-  String _winnerLabel() {
-    final wid = gameState.winnerId;
-    if (wid == null || wid.isEmpty) return 'Someone';
-    return _playerLabel(wid);
-  }
-
-  Map<String, dynamic> _winnerRoundMap() {
-    final wid = gameState.winnerId;
-    if (wid == null || wid.isEmpty) return const {};
-    return Map<String, dynamic>.from(gameState.round.roundScores[wid] ?? {});
-  }
-
   int _scoreN(Map<String, dynamic> map, String key) =>
       (map[key] as num?)?.toInt() ?? 0;
 
-  /// Concrete score line under the mode win phrase.
-  String _winDetailLine() {
-    final wid = gameState.winnerId;
-    if (wid == null || wid.isEmpty) return '';
-    final total = (gameState.scores[wid] as num?)?.toInt() ?? 0;
-    final round = _winnerRoundMap();
-    final roundTotal = _scoreN(round, 'total');
-    final how = _winHowPhrase(round);
-
-    switch (gameState.gameMode) {
-      case GameMode.casino:
-        if (how.isNotEmpty) {
-          return 'Finished with $total points by $how.';
-        }
-        return total > 0 ? 'Finished with $total points.' : '';
-      case GameMode.casinoSpeed:
-        if (roundTotal <= 0) return '';
-        final coins = _scoreN(round, 'coins');
-        final scoreBit = how.isNotEmpty
-            ? '$roundTotal points from $how'
-            : '$roundTotal points';
-        if (coins > 0) {
-          return 'Won the round with $scoreBit and +$coins coins.';
-        }
-        return 'Won the round with $scoreBit.';
-      case GameMode.tresydos:
-        return total > 0 ? 'Won $total of 3 rounds.' : 'Won 3 rounds.';
-      case GameMode.robaito:
-        return total > 0 ? 'Finished with $total cards.' : '';
-    }
-  }
-
-  /// Short phrase of the last-round score sources, e.g. "aces, most cards, and viraos".
-  String _winHowPhrase(Map<String, dynamic> round) {
-    final parts = <String>[];
-    if (_scoreN(round, 'A') != 0) parts.add('aces');
-    if (_scoreN(round, '2♠') != 0) parts.add('2♠');
-    if (_scoreN(round, '10♦') != 0) parts.add('10♦');
-    if (_scoreN(round, 'pi') != 0) parts.add('pi');
-    if (_scoreN(round, 'carta') != 0) parts.add('most cards');
-    if (_scoreN(round, 'virao') != 0) parts.add('viraos');
-    if (parts.isEmpty) return '';
-    if (parts.length == 1) return parts.first;
-    if (parts.length == 2) return '${parts[0]} and ${parts[1]}';
-    return '${parts.sublist(0, parts.length - 1).join(', ')}, and ${parts.last}';
-  }
-
-  /// Last-round score pieces that explain how the winner got there.
-  List<({String label, String value, bool coin})> _winnerBreakdownChips() {
-    final round = _winnerRoundMap();
-    if (round.isEmpty) return const [];
-
-    final chips = <({String label, String value, bool coin})>[
-      if (_scoreN(round, 'A') != 0)
-        (label: 'Aces', value: '+${_scoreN(round, 'A')}', coin: false),
-      if (_scoreN(round, '2♠') != 0)
-        (label: '2♠', value: '+${_scoreN(round, '2♠')}', coin: false),
-      if (_scoreN(round, '10♦') != 0)
-        (label: '10♦', value: '+${_scoreN(round, '10♦')}', coin: false),
-      if (_scoreN(round, 'pi') != 0)
-        (label: 'Pi', value: '+${_scoreN(round, 'pi')}', coin: false),
-      if (_scoreN(round, 'carta') != 0)
-        (label: 'Most cards', value: '+${_scoreN(round, 'carta')}', coin: false),
-      if (_scoreN(round, 'virao') != 0)
-        (label: 'Viraos', value: '+${_scoreN(round, 'virao')}', coin: false),
-    ];
-
-    if (GameRegistry.isCasinoFamily(gameState.gameMode)) {
-      if (_scoreN(round, 'coinsTake') > 0) {
-        chips.add((
-          label: 'Big take',
-          value: '+${_scoreN(round, 'coinsTake')}',
-          coin: true,
-        ));
-      }
-      if (_scoreN(round, 'coinsSpecial') > 0) {
-        chips.add((
-          label: 'Special cards',
-          value: '+${_scoreN(round, 'coinsSpecial')}',
-          coin: true,
-        ));
-      }
-      if (_scoreN(round, 'coinsVirao') > 0) {
-        chips.add((
-          label: 'Virao coins',
-          value: '+${_scoreN(round, 'coinsVirao')}',
-          coin: true,
-        ));
-      }
-    }
-
-    return chips;
+  void _openRules(BuildContext context, GeneralGameViewModel vm) {
+    final width = MediaQuery.sizeOf(context).width;
+    final cardWidth = (width * 0.62).clamp(196.0, 260.0);
+    showGameModeHowTo(
+      context,
+      vm.gameState.gameMode,
+      cardWidth: cardWidth,
+      showPlay: false,
+    );
   }
 
   Future<void> _handleResign(
@@ -422,132 +419,623 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
   }
 }
 
-class _WinSummary extends StatelessWidget {
-  const _WinSummary({
-    required this.winnerLabel,
-    required this.youWon,
-    required this.modePhrase,
-    required this.detailLine,
-    required this.breakdown,
+class _BoardSpec {
+  const _BoardSpec({
+    required this.id,
+    required this.name,
+    required this.avatarId,
+    required this.score,
+    required this.pendingCoins,
+    required this.beforeScore,
+    required this.roundScore,
+    required this.isDealer,
+    required this.isCasino,
+    required this.scoreMap,
+    this.isWinner = false,
   });
 
-  final String winnerLabel;
-  final bool youWon;
-  final String modePhrase;
-  final String detailLine;
-  final List<({String label, String value, bool coin})> breakdown;
+  final String id;
+  final String name;
+  final String? avatarId;
+  final dynamic score;
+  final int pendingCoins;
+  final int beforeScore;
+  final int roundScore;
+  final bool isDealer;
+  final bool isCasino;
+  final bool isWinner;
+  final Map<String, dynamic> scoreMap;
+}
+
+class _ScoreBoardStack extends StatefulWidget {
+  const _ScoreBoardStack({
+    required this.boards,
+    required this.locked,
+    required this.initialFrontId,
+    required this.hasRound,
+    this.autoReveal = false,
+  });
+
+  final List<_BoardSpec> boards;
+  final bool locked;
+  final String initialFrontId;
+  final bool hasRound;
+  final bool autoReveal;
+
+  @override
+  State<_ScoreBoardStack> createState() => _ScoreBoardStackState();
+}
+
+class _ScoreBoardStackState extends State<_ScoreBoardStack> {
+  late String _frontId;
+  final Set<String> _countedIds = {};
+  bool _flipToFront = false;
+
+  bool get _revealBusy => widget.autoReveal && !_flipToFront;
+
+  @override
+  void initState() {
+    super.initState();
+    _frontId = widget.initialFrontId;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScoreBoardStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.locked) {
+      _frontId = widget.initialFrontId;
+    } else if (widget.boards.every((b) => b.id != _frontId)) {
+      _frontId = widget.initialFrontId;
+    }
+  }
+
+  void _onBoardCounted(String id) {
+    if (!widget.autoReveal || _flipToFront) return;
+    if (!_countedIds.add(id)) return;
+    if (_countedIds.length < widget.boards.length) return;
+    Future<void>.delayed(const Duration(milliseconds: 1000), () {
+      if (!mounted || _flipToFront) return;
+      setState(() => _flipToFront = true);
+    });
+  }
+
+  void _promote(String id) {
+    if (widget.locked || _revealBusy || id == _frontId) return;
+    AppHaptics.selectionClick();
+    SoundService.instance.playLayered(GameSound.softCard, volume: 0.45);
+    setState(() => _frontId = id);
+  }
+
+  void _cycle(int direction) {
+    if (widget.locked || _revealBusy) return;
+    final ids = widget.boards.map((b) => b.id).toList();
+    if (ids.length < 2) return;
+    final i = ids.indexOf(_frontId);
+    if (i < 0) return;
+    _promote(ids[(i + direction + ids.length) % ids.length]);
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.boards.isEmpty) return const SizedBox.shrink();
+
     final theme = AppStyle.theme;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: theme.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: theme.turnHighlight.withValues(alpha: .4),
+    return Column(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final boards = widget.boards;
+            final count = boards.length;
+            final cardW = count == 1
+                ? (constraints.maxWidth * 0.68).clamp(188.0, 248.0)
+                : (constraints.maxWidth * (count == 2 ? 0.60 : 0.50)).clamp(
+                    148.0,
+                    228.0,
+                  );
+            final cardH = cardW * 3.5 / 2.5;
+            const edgeAngle = 0.15;
+            const frontLift = 18.0;
+            final arcDropMax = count <= 2 ? 14.0 : 20.0;
+            final maxGap = count == 2 ? cardW * 0.64 : cardW * 0.50;
+            final minGap = count == 2 ? cardW * 0.48 : cardW * 0.34;
+            final gap = count == 1
+                ? 0.0
+                : ((constraints.maxWidth - cardW) / (count - 1)).clamp(
+                    minGap,
+                    maxGap,
+                  );
+            final totalWidth = cardW + (count - 1) * gap;
+            final mid = (count - 1) / 2.0;
+            final fanHeight = cardH + frontLift + arcDropMax;
+            final paintOrder = [
+              ...boards.where((b) => b.id != _frontId),
+              ...boards.where((b) => b.id == _frontId),
+            ];
+
+            return GestureDetector(
+              onHorizontalDragEnd: widget.locked || _revealBusy || count < 2
+                  ? null
+                  : (details) {
+                      final v = details.primaryVelocity ?? 0;
+                      if (v.abs() < 220) return;
+                      _cycle(v < 0 ? 1 : -1);
+                    },
+              child: SizedBox(
+                height: fanHeight,
+                width: constraints.maxWidth,
+                child: Center(
+                  child: SizedBox(
+                    width: totalWidth,
+                    height: fanHeight,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (final board in paintOrder)
+                          _fanBoard(
+                            board: board,
+                            index: boards.indexWhere((b) => b.id == board.id),
+                            count: count,
+                            mid: mid,
+                            gap: gap,
+                            cardW: cardW,
+                            edgeAngle: edgeAngle,
+                            frontLift: frontLift,
+                            arcDropMax: arcDropMax,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _hint(),
+          textAlign: TextAlign.center,
+          style: theme.caption.copyWith(
+            color: theme.muted.withValues(alpha: 0.9),
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _hint() {
+    if (!widget.hasRound) return 'No round scores yet';
+    if (_revealBusy) return 'Counting last round';
+    if (widget.locked || widget.boards.length < 2) {
+      return 'Tap a card for last round';
+    }
+    return 'Tap a card to bring it forward';
+  }
+
+  Widget _fanBoard({
+    required _BoardSpec board,
+    required int index,
+    required int count,
+    required double mid,
+    required double gap,
+    required double cardW,
+    required double edgeAngle,
+    required double frontLift,
+    required double arcDropMax,
+  }) {
+    final isFront = board.id == _frontId;
+    final t = count == 1 ? 0.0 : (index - mid) / mid;
+    final angle = t * edgeAngle;
+    final arcDrop = t.abs() * arcDropMax;
+    return AnimatedPositioned(
+      key: ValueKey(board.id),
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      left: index * gap,
+      top: frontLift + arcDrop - (isFront ? frontLift : 0),
+      width: cardW,
+      child: AnimatedRotation(
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+        turns: (isFront ? angle * 0.35 : angle) / (2 * math.pi),
+        alignment: Alignment.bottomCenter,
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+          scale: isFront ? 1 : 0.92,
+          alignment: Alignment.bottomCenter,
+          child: _AvatarFlipBoard(
+            spec: board,
+            isFront: isFront,
+            allowPromote: !widget.locked && !_revealBusy,
+            onPromote: () => _promote(board.id),
+            autoReveal: widget.autoReveal,
+            requestFlip: _flipToFront,
+            onCountingDone: () => _onBoardCounted(board.id),
+          ),
         ),
       ),
-      child: Column(
+    );
+  }
+}
+
+class _AvatarFlipBoard extends StatefulWidget {
+  const _AvatarFlipBoard({
+    required this.spec,
+    required this.isFront,
+    this.allowPromote = false,
+    this.onPromote,
+    this.autoReveal = false,
+    this.requestFlip = false,
+    this.onCountingDone,
+  });
+
+  final _BoardSpec spec;
+  final bool isFront;
+  final bool allowPromote;
+  final VoidCallback? onPromote;
+  final bool autoReveal;
+  final bool requestFlip;
+  final VoidCallback? onCountingDone;
+
+  @override
+  State<_AvatarFlipBoard> createState() => _AvatarFlipBoardState();
+}
+
+class _AvatarFlipBoardState extends State<_AvatarFlipBoard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _flip;
+  bool _revealBusy = false;
+  bool _revealDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _revealBusy = widget.autoReveal;
+    _flip = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+      value: widget.autoReveal ? 1 : 0,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _AvatarFlipBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.requestFlip && !oldWidget.requestFlip) {
+      _flipToFront();
+    }
+  }
+
+  @override
+  void dispose() {
+    _flip.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    if (_revealBusy) return;
+    AppHaptics.lightImpact();
+    SoundService.instance.playLayered(GameSound.softCard, volume: 0.55);
+    if (_flip.status == AnimationStatus.completed || _flip.value > 0.5) {
+      _flip.reverse();
+    } else {
+      _flip.forward();
+    }
+  }
+
+  void _onTap() {
+    if (_revealBusy) return;
+    if (!widget.isFront && widget.allowPromote) {
+      widget.onPromote?.call();
+      return;
+    }
+    _toggle();
+  }
+
+  bool _counted = false;
+
+  void _onCountingDone() {
+    if (_counted) return;
+    _counted = true;
+    widget.onCountingDone?.call();
+  }
+
+  void _flipToFront() {
+    if (!mounted || _revealDone) return;
+    _revealDone = true;
+    AppHaptics.lightImpact();
+    SoundService.instance.playLayered(GameSound.softCard, volume: 0.55);
+    _flip.reverse().whenComplete(() {
+      if (mounted) setState(() => _revealBusy = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final spec = widget.spec;
+    final theme = AvatarScoreTheme.of(spec.avatarId);
+    return GestureDetector(
+      onTap: _onTap,
+      child: AspectRatio(
+        aspectRatio: 2.5 / 3.5,
+        child: AnimatedBuilder(
+          animation: _flip,
+          builder: (context, _) {
+            final angle = _flip.value * math.pi;
+            final showBack = angle > math.pi / 2;
+            return Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.0014)
+                ..rotateY(angle),
+              child: showBack
+                  ? Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.rotationY(math.pi),
+                      child: _ScoreBoardBack(
+                        key: ValueKey('last-${spec.id}'),
+                        theme: theme,
+                        avatarId: spec.avatarId,
+                        isCasino: spec.isCasino,
+                        scoreMap: spec.scoreMap,
+                        raised: widget.isFront,
+                        isWinner: spec.isWinner,
+                        playReveal: widget.autoReveal && !_revealDone,
+                        onRevealDone: _onCountingDone,
+                      ),
+                    )
+                  : _ScoreBoardFront(
+                      theme: theme,
+                      name: spec.name,
+                      avatarId: spec.avatarId,
+                      score: spec.score,
+                      pendingCoins: spec.pendingCoins,
+                      beforeScore: spec.beforeScore,
+                      roundScore: spec.roundScore,
+                      isDealer: spec.isDealer,
+                      raised: widget.isFront,
+                      isWinner: spec.isWinner,
+                    ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ScoreBoardShell extends StatelessWidget {
+  const _ScoreBoardShell({
+    required this.theme,
+    required this.child,
+    this.raised = true,
+    this.isWinner = false,
+  });
+
+  static const _gold = Color(0xFFE4C36A);
+
+  final AvatarScoreTheme theme;
+  final Widget child;
+  final bool raised;
+  final bool isWinner;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.background,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isWinner
+              ? _gold.withValues(alpha: 0.95)
+              : theme.ink.withValues(alpha: raised ? 0.08 : 0.05),
+          width: isWinner ? 1.6 : 0.6,
+        ),
+        boxShadow: [
+          if (isWinner)
+            BoxShadow(
+              color: _gold.withValues(alpha: 0.42),
+              blurRadius: 18,
+              spreadRadius: 1,
+            ),
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: raised ? .24 : .12),
+            blurRadius: raised ? 16 : 8,
+            offset: Offset(0, raised ? 8 : 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(10, isWinner ? 34 : 12, 10, 10),
+              child: child,
+            ),
+            if (isWinner) const _WinnerOverlay(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WinnerOverlay extends StatelessWidget {
+  const _WinnerOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
         children: [
-          Text(
-            youWon ? 'You won' : '$winnerLabel won',
-            textAlign: TextAlign.center,
-            style: theme.title.copyWith(fontSize: 18),
+          const Positioned.fill(
+            child: CustomPaint(painter: _WinnerOrnamentPainter()),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'by $modePhrase.',
-            textAlign: TextAlign.center,
-            style: theme.body.copyWith(
-              color: theme.textPrimary.withValues(alpha: .85),
-              height: 1.35,
-            ),
-          ),
-          if (detailLine.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              detailLine,
-              textAlign: TextAlign.center,
-              style: theme.caption.copyWith(
-                color: theme.textPrimary.withValues(alpha: .78),
-                height: 1.35,
-              ),
-            ),
-          ],
-          if (breakdown.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              alignment: WrapAlignment.center,
-              children: [
-                for (final chip in breakdown)
-                  _MiniDetailChip(
-                    label: chip.label,
-                    value: chip.value,
-                    coin: chip.coin,
-                    onDark: true,
-                  ),
-              ],
-            ),
-          ],
+          const Positioned(top: 0, left: 0, right: 0, child: _WinnerBanner()),
         ],
       ),
     );
   }
 }
 
-class _ScoreCard extends StatelessWidget {
-  const _ScoreCard({
-    required this.score,
-    required this.name,
-    required this.avatarId,
-    required this.pendingCoins,
-    required this.isYou,
-    required this.isDealer,
-  });
-
-  final dynamic score;
-  final String name;
-  final String? avatarId;
-  final int pendingCoins;
-  final bool isYou;
-  final bool isDealer;
+class _WinnerBanner extends StatelessWidget {
+  const _WinnerBanner();
 
   @override
   Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    final accent = isYou ? theme.turnHighlight : theme.textPrimary;
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
-      decoration: BoxDecoration(
-        color: theme.background,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isYou
-              ? theme.turnHighlight.withValues(alpha: .45)
-              : theme.border.withValues(alpha: .5),
+      height: 26,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFFC9A227),
+            Color(0xFFE8D48A),
+            Color(0xFFC9A227),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        'WINNER',
+        style: AppStyle.theme.caption.copyWith(
+          color: Color(0xFF2A1E08),
+          fontWeight: FontWeight.w800,
+          fontSize: 11,
+          letterSpacing: 2.4,
+          height: 1,
         ),
       ),
+    );
+  }
+}
+
+class _WinnerOrnamentPainter extends CustomPainter {
+  const _WinnerOrnamentPainter();
+
+  static const _gold = Color(0xE6E4C36A);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = Paint()
+      ..color = _gold
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.15
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    const inset = 9.0;
+    const arm = 13.0;
+    _corner(canvas, stroke, Offset(inset, inset + 22), 1, 1, arm);
+    _corner(canvas, stroke, Offset(size.width - inset, inset + 22), -1, 1, arm);
+    _corner(canvas, stroke, Offset(inset, size.height - inset), 1, -1, arm);
+    _corner(
+      canvas,
+      stroke,
+      Offset(size.width - inset, size.height - inset),
+      -1,
+      -1,
+      arm,
+    );
+
+    final fill = Paint()..color = _gold;
+    _star(canvas, fill, Offset(size.width * 0.16, size.height * 0.30), 3.4);
+    _star(canvas, fill, Offset(size.width * 0.84, size.height * 0.34), 2.6);
+    _star(canvas, fill, Offset(size.width * 0.14, size.height * 0.74), 2.3);
+    _star(canvas, fill, Offset(size.width * 0.86, size.height * 0.70), 3.1);
+  }
+
+  void _corner(
+    Canvas canvas,
+    Paint paint,
+    Offset origin,
+    double dx,
+    double dy,
+    double arm,
+  ) {
+    final path = Path()
+      ..moveTo(origin.dx + dx * arm, origin.dy)
+      ..lineTo(origin.dx, origin.dy)
+      ..lineTo(origin.dx, origin.dy + dy * arm);
+    canvas.drawPath(path, paint);
+  }
+
+  void _star(Canvas canvas, Paint paint, Offset center, double r) {
+    final path = Path();
+    for (var i = 0; i < 8; i++) {
+      final a = (i * math.pi / 4) - math.pi / 2;
+      final rad = i.isEven ? r : r * 0.38;
+      final p = Offset(
+        center.dx + math.cos(a) * rad,
+        center.dy + math.sin(a) * rad,
+      );
+      if (i == 0) {
+        path.moveTo(p.dx, p.dy);
+      } else {
+        path.lineTo(p.dx, p.dy);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _ScoreBoardFront extends StatelessWidget {
+  const _ScoreBoardFront({
+    required this.theme,
+    required this.name,
+    required this.avatarId,
+    required this.score,
+    required this.pendingCoins,
+    required this.beforeScore,
+    required this.roundScore,
+    required this.isDealer,
+    this.raised = true,
+    this.isWinner = false,
+  });
+
+  final AvatarScoreTheme theme;
+  final String name;
+  final String? avatarId;
+  final dynamic score;
+  final int pendingCoins;
+  final int beforeScore;
+  final int roundScore;
+  final bool isDealer;
+  final bool raised;
+  final bool isWinner;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = theme.ink;
+    return _ScoreBoardShell(
+      theme: theme,
+      raised: raised,
+      isWinner: isWinner,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              PlayerAvatarView(avatarId: avatarId, size: 40, showBorder: false),
-              if (pendingCoins > 0)
-                Positioned(
-                  right: -18,
-                  bottom: -4,
-                  child: CoinGainBadge(pending: pendingCoins, compact: true),
-                ),
-            ],
+          Center(
+            child: PlayerScoreAvatar(
+              avatarId: avatarId,
+              score: score,
+              pendingCoins: pendingCoins,
+              size: 56,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -556,26 +1044,106 @@ class _ScoreCard extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.body.copyWith(fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                  style: AppStyle.theme.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: ink,
+                    fontSize: 13,
+                  ),
                 ),
               ),
               if (isDealer) ...[
                 const SizedBox(width: 6),
                 Text(
                   'Dealer',
-                  style: theme.caption.copyWith(color: theme.muted),
+                  style: AppStyle.theme.caption.copyWith(
+                    color: theme.muted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 8),
+          const Spacer(),
           Text(
             '$score',
-            style: theme.title.copyWith(
-              fontSize: 36,
+            textAlign: TextAlign.center,
+            style: AppStyle.theme.title.copyWith(
+              fontSize: 40,
               fontWeight: FontWeight.w800,
-              color: accent,
+              color: ink,
               height: 1,
+            ),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+            decoration: BoxDecoration(
+              color: theme.panel.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '$beforeScore',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: ink,
+                          fontSize: 16,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '  +  ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: theme.muted,
+                          fontSize: 14,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '$roundScore',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: ink,
+                          fontSize: 16,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '  =  ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: theme.muted,
+                          fontSize: 14,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '$score',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: ink,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'last  +  round  =  now',
+                  textAlign: TextAlign.center,
+                  style: AppStyle.theme.caption.copyWith(
+                    color: theme.muted,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -584,187 +1152,306 @@ class _ScoreCard extends StatelessWidget {
   }
 }
 
-class _LastRoundPlayerCard extends StatelessWidget {
-  const _LastRoundPlayerCard({
-    required this.name,
+class _ScoreBoardBack extends StatefulWidget {
+  const _ScoreBoardBack({
+    super.key,
+    required this.theme,
     required this.avatarId,
-    required this.scoreMap,
-    required this.isYou,
     required this.isCasino,
+    required this.scoreMap,
+    this.raised = true,
+    this.isWinner = false,
+    this.playReveal = false,
+    this.onRevealDone,
   });
 
-  final String name;
+  final AvatarScoreTheme theme;
   final String? avatarId;
-  final Map<String, dynamic> scoreMap;
-  final bool isYou;
   final bool isCasino;
+  final Map<String, dynamic> scoreMap;
+  final bool raised;
+  final bool isWinner;
+  final bool playReveal;
+  final VoidCallback? onRevealDone;
 
-  int _n(String key) => (scoreMap[key] as num?)?.toInt() ?? 0;
+  @override
+  State<_ScoreBoardBack> createState() => _ScoreBoardBackState();
+}
+
+class _ScoreBoardBackState extends State<_ScoreBoardBack> {
+  int _shownPoints = 0;
+  int _shownCoins = 0;
+  int _points = 0;
+  int _coins = 0;
+  bool _started = false;
+
+  int _n(String key) => (widget.scoreMap[key] as num?)?.toInt() ?? 0;
+
+  List<({String label, int amount})> get _pointChips => [
+    if (_n('A') != 0) (label: 'Aces', amount: _n('A')),
+    if (_n('2♠') != 0) (label: '2♠', amount: _n('2♠')),
+    if (_n('10♦') != 0) (label: '10♦', amount: _n('10♦')),
+    if (_n('pi') != 0) (label: 'Pi', amount: _n('pi')),
+    if (_n('carta') != 0) (label: 'Most cards', amount: _n('carta')),
+    if (_n('virao') != 0) (label: 'Viraos', amount: _n('virao')),
+  ];
+
+  List<({String label, int amount})> get _coinChips => [
+    if (_n('coinsTake') > 0) (label: 'Big take', amount: _n('coinsTake')),
+    if (_n('coinsSpecial') > 0)
+      (label: 'Special cards', amount: _n('coinsSpecial')),
+    if (_n('coinsVirao') > 0) (label: 'Viraos', amount: _n('coinsVirao')),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.playReveal) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _runReveal();
+      });
+    } else {
+      _shownPoints = _pointChips.length;
+      _shownCoins = _coinChips.length;
+      _points = _n('total');
+      _coins = _n('coins');
+    }
+  }
+
+  Future<void> _runReveal() async {
+    if (_started) return;
+    _started = true;
+    await Future<void>.delayed(const Duration(milliseconds: 280));
+    for (final chip in _pointChips) {
+      if (!mounted) return;
+      setState(() {
+        _shownPoints++;
+        _points += chip.amount;
+      });
+      AppHaptics.selectionClick();
+      SoundService.instance.playLayered(GameSound.softCard, volume: 0.35);
+      await Future<void>.delayed(const Duration(milliseconds: 420));
+    }
+    for (final chip in _coinChips) {
+      if (!mounted) return;
+      setState(() {
+        _shownCoins++;
+        _coins += chip.amount;
+      });
+      AppHaptics.lightImpact();
+      SoundService.instance.playLayered(GameSound.coin, volume: 0.7);
+      await Future<void>.delayed(const Duration(milliseconds: 420));
+    }
+    if (!mounted) return;
+    widget.onRevealDone?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    // Card face is light — use a dark ink so opponent scores stay readable.
-    final scoreColor = isYou ? theme.turnHighlight : theme.suitBlack;
+    final theme = widget.theme;
+    final ink = theme.ink;
+    final pointChips = _pointChips;
+    final coinChips = _coinChips;
+    final shownPoints = pointChips.take(_shownPoints).toList();
+    final shownCoins = coinChips.take(_shownCoins).toList();
 
-    final pointChips = <({String label, String value})>[
-      if (_n('A') != 0) (label: 'Aces', value: '+${_n('A')}'),
-      if (_n('2♠') != 0) (label: '2♠', value: '+${_n('2♠')}'),
-      if (_n('10♦') != 0) (label: '10♦', value: '+${_n('10♦')}'),
-      if (_n('pi') != 0) (label: 'Pi', value: '+${_n('pi')}'),
-      if (_n('carta') != 0) (label: 'Most cards', value: '+${_n('carta')}'),
-      if (_n('virao') != 0) (label: 'Viraos', value: '+${_n('virao')}'),
-    ];
-
-    final coinChips = <({String label, String value})>[
-      if (_n('coinsTake') > 0)
-        (label: 'Big take', value: '+${_n('coinsTake')}'),
-      if (_n('coinsSpecial') > 0)
-        (label: 'Special cards', value: '+${_n('coinsSpecial')}'),
-      if (_n('coinsVirao') > 0)
-        (label: 'Viraos', value: '+${_n('coinsVirao')}'),
-    ];
-
-    return AspectRatio(
-      aspectRatio: 2.5 / 3.5,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-        decoration: BoxDecoration(
-          color: theme.cardBackground,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isYou
-                ? theme.turnHighlight.withValues(alpha: .55)
-                : theme.border.withValues(alpha: .45),
-            width: isYou ? 1.6 : 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.black.withValues(alpha: .18),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      PlayerAvatarView(
-                        avatarId: avatarId,
-                        size: 28,
-                        showBorder: false,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.body.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                            color: theme.suitBlack,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '+${_n('total')}',
-                        style: theme.title.copyWith(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: scoreColor,
-                          height: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (pointChips.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: [
-                            for (final chip in pointChips)
-                              _MiniDetailChip(
-                                label: chip.label,
-                                value: chip.value,
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ] else
-                    const Spacer(),
-                ],
+    return _ScoreBoardShell(
+      theme: theme,
+      raised: widget.raised,
+      isWinner: widget.isWinner,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              PlayerAvatarView(
+                avatarId: widget.avatarId,
+                size: 26,
+                showBorder: false,
               ),
-            ),
-            if (isCasino) ...[
-              Container(
-                height: 1,
-                color: theme.border.withValues(alpha: .35),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 8),
-                    if (coinChips.isNotEmpty)
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.topRight,
-                          child: SingleChildScrollView(
-                            child: Wrap(
-                              spacing: 4,
-                              runSpacing: 4,
-                              alignment: WrapAlignment.end,
-                              children: [
-                                for (final chip in coinChips)
-                                  _MiniDetailChip(
-                                    label: chip.label,
-                                    value: chip.value,
-                                    coin: true,
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      const Spacer(),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(coinIcon, size: 14, color: theme.turnHighlight),
-                          const SizedBox(width: 4),
-                          Text(
-                            '+${_n('coins')}',
-                            style: theme.title.copyWith(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: theme.turnHighlight,
-                              height: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: 8),
+              _TallyText(
+                value: _points,
+                prefix: '+',
+                style: AppStyle.theme.title.copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: ink,
+                  height: 1,
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Last round',
+            style: AppStyle.theme.caption.copyWith(
+              color: theme.muted,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Expanded(
+            child: pointChips.isEmpty
+                ? Center(
+                    child: Text(
+                      'No points this round',
+                      textAlign: TextAlign.center,
+                      style: AppStyle.theme.caption.copyWith(
+                        color: theme.muted,
+                      ),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        for (final chip in shownPoints)
+                          _PopIn(
+                            key: ValueKey('p-${chip.label}'),
+                            child: _MiniDetailChip(
+                              label: chip.label,
+                              value: '+${chip.amount}',
+                              scoreTheme: theme,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+          ),
+          if (widget.isCasino) ...[
+            Container(height: 1, color: theme.ink.withValues(alpha: 0.18)),
+            const SizedBox(height: 8),
+            if (coinChips.isNotEmpty)
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                alignment: WrapAlignment.end,
+                children: [
+                  for (final chip in shownCoins)
+                    _PopIn(
+                      key: ValueKey('c-${chip.label}'),
+                      child: _MiniDetailChip(
+                        label: chip.label,
+                        value: '+${chip.amount}',
+                        coin: true,
+                        scoreTheme: theme,
+                      ),
+                    ),
+                ],
+              )
+            else
+              const SizedBox(height: 4),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(coinIcon, size: 14, color: theme.foreground),
+                  const SizedBox(width: 4),
+                  _TallyText(
+                    value: _coins,
+                    prefix: '+',
+                    style: AppStyle.theme.title.copyWith(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: ink,
+                      height: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TallyText extends StatefulWidget {
+  const _TallyText({
+    required this.value,
+    required this.style,
+    this.prefix = '',
+  });
+
+  final int value;
+  final TextStyle style;
+  final String prefix;
+
+  @override
+  State<_TallyText> createState() => _TallyTextState();
+}
+
+class _TallyTextState extends State<_TallyText> {
+  late IntTween _tween;
+
+  @override
+  void initState() {
+    super.initState();
+    _tween = IntTween(begin: widget.value, end: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TallyText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _tween = IntTween(begin: oldWidget.value, end: widget.value);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<int>(
+      tween: _tween,
+      duration: const Duration(milliseconds: 280),
+      builder: (context, n, _) =>
+          Text('${widget.prefix}$n', style: widget.style),
+    );
+  }
+}
+
+class _PopIn extends StatefulWidget {
+  const _PopIn({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<_PopIn> createState() => _PopInState();
+}
+
+class _PopInState extends State<_PopIn> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    )..forward();
+    _t = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _t,
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.82, end: 1).animate(_t),
+        child: widget.child,
       ),
     );
   }
@@ -775,34 +1462,53 @@ class _MiniDetailChip extends StatelessWidget {
     required this.label,
     required this.value,
     this.coin = false,
-    this.onDark = false,
+    this.scoreTheme,
   });
 
   final String label;
   final String value;
   final bool coin;
-  final bool onDark;
+  final AvatarScoreTheme? scoreTheme;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
-    // Point chips sit on a dark fill → light ink. Coin chips keep highlight ink.
-    final labelColor = coin
-        ? theme.turnHighlight.withValues(alpha: .9)
-        : theme.cardBackground.withValues(alpha: .88);
-    final valueColor = coin ? theme.turnHighlight : theme.cardBackground;
+    final themed = scoreTheme;
+    final Color labelColor;
+    final Color valueColor;
+    final Color fill;
+    final Color border;
+
+    if (themed != null) {
+      fill = coin
+          ? themed.foreground.withValues(alpha: 0.16)
+          : themed.ink.withValues(alpha: 0.12);
+      border = coin
+          ? themed.foreground.withValues(alpha: 0.4)
+          : themed.ink.withValues(alpha: 0.22);
+      labelColor = coin
+          ? themed.foreground
+          : themed.ink.withValues(alpha: 0.88);
+      valueColor = coin ? themed.foreground : themed.ink;
+    } else {
+      labelColor = coin
+          ? theme.turnHighlight.withValues(alpha: .9)
+          : theme.cardBackground.withValues(alpha: .88);
+      valueColor = coin ? theme.turnHighlight : theme.cardBackground;
+      fill = coin
+          ? theme.turnHighlight.withValues(alpha: .14)
+          : theme.suitBlack.withValues(alpha: .82);
+      border = coin
+          ? theme.turnHighlight.withValues(alpha: .4)
+          : theme.suitBlack.withValues(alpha: .9);
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: coin
-            ? theme.turnHighlight.withValues(alpha: onDark ? .18 : .14)
-            : theme.suitBlack.withValues(alpha: .82),
+        color: fill,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: coin
-              ? theme.turnHighlight.withValues(alpha: .4)
-              : theme.suitBlack.withValues(alpha: .9),
-        ),
+        border: Border.all(color: border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -830,27 +1536,21 @@ class _MiniDetailChip extends StatelessWidget {
   }
 }
 
-class _CompactActionButton extends StatelessWidget {
-  const _CompactActionButton({
-    required this.label,
+class _StatusIconButton extends StatelessWidget {
+  const _StatusIconButton({
     required this.icon,
     required this.onPressed,
     this.danger = false,
   });
 
-  final String label;
   final IconData icon;
   final VoidCallback onPressed;
   final bool danger;
 
   @override
   Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    final fg = danger ? theme.danger : theme.textPrimary;
-    final bg = danger
-        ? theme.danger.withValues(alpha: .12)
-        : theme.surfaceAlt.withValues(alpha: .55);
-
+    final gold = AppStyle.theme.turnHighlight;
+    final accent = danger ? AppStyle.theme.danger : gold;
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
@@ -859,27 +1559,54 @@ class _CompactActionButton extends StatelessWidget {
         onPressed();
       }),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: danger
-                ? theme.danger.withValues(alpha: .35)
-                : theme.border.withValues(alpha: .4),
-          ),
+          shape: BoxShape.circle,
+          border: Border.all(color: accent, width: 1.4),
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 18, color: accent),
+      ),
+    );
+  }
+}
+
+class _StatusHomeButton extends StatelessWidget {
+  const _StatusHomeButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final gold = AppStyle.theme.turnHighlight;
+    final dark = AppStyle.theme.background;
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: SoundService.wrapTap(() {
+        AppHaptics.lightImpact();
+        onPressed();
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: gold,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: gold, width: 1.4),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: fg),
-            const SizedBox(width: 6),
+            Icon(CupertinoIcons.house_fill, size: 20, color: dark),
+            const SizedBox(width: 8),
             Text(
-              label,
-              style: theme.body.copyWith(
+              'Home',
+              style: TextStyle(
+                color: dark,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: fg,
-                fontSize: 14,
+                letterSpacing: 0.2,
               ),
             ),
           ],

@@ -268,8 +268,7 @@ class CasinoGameStateHandler {
       leftovers.addAll(stack.cards);
     }
 
-    gameState.playersDeck.putIfAbsent(receiver, () => []);
-    gameState.playersDeck[receiver]!.addAll(leftovers);
+    gameState.addCapturedCards(receiver, leftovers);
 
     gameState.playingArea.clear();
     gameState.playingAreaStacks.clear();

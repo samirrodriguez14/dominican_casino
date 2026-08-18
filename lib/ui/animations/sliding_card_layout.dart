@@ -20,7 +20,7 @@ class SlidingCardLayout extends StatelessWidget {
     required this.itemHeight,
     this.spacing = 10,
     this.runSpacing = 10,
-    this.duration = const Duration(milliseconds: 280),
+    this.duration = const Duration(milliseconds: 400),
     this.curve = Curves.easeOutCubic,
   });
 

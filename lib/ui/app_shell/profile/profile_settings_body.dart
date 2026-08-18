@@ -204,175 +204,197 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     return _cardShell(
       face: face,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               l10n.settings,
               style: theme.title.copyWith(
-                fontSize: 26,
+                fontSize: 24,
                 fontWeight: FontWeight.w700,
                 height: 1.05,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SectionLabel(l10n.themes),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      for (var i = 0; i < ownedThemes.length; i++) ...[
-                        if (i > 0) const SizedBox(width: 8),
-                        Expanded(
-                          child: ThemeOptionChip(
-                            themeType: ownedThemes[i],
-                            previewTheme: themeFromEnum(ownedThemes[i]),
-                            selected: vm.appTheme == ownedThemes[i],
-                            onTap: () => vm.selectTheme(ownedThemes[i]),
-                          ),
+              child: CustomScrollView(
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionLabel(l10n.themes),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            for (var i = 0; i < ownedThemes.length; i++) ...[
+                              if (i > 0) const SizedBox(width: 8),
+                              Expanded(
+                                child: ThemeOptionChip(
+                                  themeType: ownedThemes[i],
+                                  previewTheme: themeFromEnum(ownedThemes[i]),
+                                  selected: vm.appTheme == ownedThemes[i],
+                                  onTap: () => vm.selectTheme(ownedThemes[i]),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const _SectionDivider(),
+                        _SectionLabel(l10n.language),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _LanguageButton(
+                                label: 'English',
+                                selected: appRepo.locale.languageCode == 'en',
+                                onPressed: () =>
+                                    appRepo.setLocale(const Locale('en')),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _LanguageButton(
+                                label: 'Español',
+                                selected: appRepo.locale.languageCode == 'es',
+                                onPressed: () =>
+                                    appRepo.setLocale(const Locale('es')),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const _SectionDivider(),
+                        _SectionLabel(l10n.sound),
+                        _SettingsToggleRow(
+                          label: l10n.soundEffects,
+                          value: sounds.sfxEnabled,
+                          onChanged: sounds.setSfxEnabled,
+                          volume: sounds.sfxVolume,
+                          onVolumeChanged: sounds.setSfxVolume,
+                        ),
+                        _SettingsToggleRow(
+                          label: l10n.backgroundMusic,
+                          value: sounds.musicEnabled,
+                          onChanged: sounds.setMusicEnabled,
+                          volume: sounds.musicVolume,
+                          onVolumeChanged: sounds.setMusicVolume,
+                        ),
+                        _SettingsToggleRow(
+                          label: l10n.hapticFeedback,
+                          value: sounds.hapticEnabled,
+                          onChanged: (enabled) async {
+                            await sounds.setHapticEnabled(enabled);
+                            if (enabled) AppHaptics.mediumImpact();
+                          },
+                        ),
+                        const _SectionDivider(),
+                        _SectionLabel(l10n.notifications),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                appRepo.notificationsEnabled
+                                    ? l10n.notificationsOn
+                                    : l10n.notificationsOff,
+                                style: theme.mutedText.copyWith(
+                                  color: appRepo.notificationsEnabled
+                                      ? theme.success
+                                      : theme.textPrimary.withValues(
+                                          alpha: .7,
+                                        ),
+                                ),
+                              ),
+                            ),
+                            if (!appRepo.notificationsEnabled)
+                              CupertinoButton(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                minimumSize: Size.zero,
+                                color: theme.textPrimary.withValues(alpha: .14),
+                                onPressed: SoundService.wrapTap(
+                                  () => _requestNotifications(
+                                    context,
+                                    appRepo,
+                                    l10n,
+                                  ),
+                                ),
+                                child: Text(
+                                  l10n.enableNotifications,
+                                  style: TextStyle(
+                                    color: theme.textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const _SectionDivider(),
+                        _SectionLabel(l10n.account),
+                        const SizedBox(height: 2),
+                        _GoogleAccountRow(
+                          linked: appRepo.isGoogleLinked,
+                          email: appRepo.googleEmail,
+                          onConnect: () =>
+                              _connectGoogle(context, appRepo, l10n),
+                          onLogOut: () => _confirmLogOut(context, appRepo, l10n),
                         ),
                       ],
-                    ],
+                    ),
                   ),
-                  const _SectionDivider(),
-                  _SectionLabel(l10n.language),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _LanguageButton(
-                          label: 'English',
-                          selected: appRepo.locale.languageCode == 'en',
-                          onPressed: () =>
-                              appRepo.setLocale(const Locale('en')),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _LanguageButton(
-                          label: 'Español',
-                          selected: appRepo.locale.languageCode == 'es',
-                          onPressed: () =>
-                              appRepo.setLocale(const Locale('es')),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const _SectionDivider(),
-                  _SectionLabel(l10n.sound),
-                  const SizedBox(height: 2),
-                  _SettingsToggleRow(
-                    label: l10n.soundEffects,
-                    value: sounds.sfxEnabled,
-                    onChanged: sounds.setSfxEnabled,
-                    volume: sounds.sfxVolume,
-                    onVolumeChanged: sounds.setSfxVolume,
-                  ),
-                  _SettingsToggleRow(
-                    label: l10n.backgroundMusic,
-                    value: sounds.musicEnabled,
-                    onChanged: sounds.setMusicEnabled,
-                    volume: sounds.musicVolume,
-                    onVolumeChanged: sounds.setMusicVolume,
-                  ),
-                  _SettingsToggleRow(
-                    label: l10n.hapticFeedback,
-                    value: sounds.hapticEnabled,
-                    onChanged: (enabled) async {
-                      await sounds.setHapticEnabled(enabled);
-                      if (enabled) AppHaptics.mediumImpact();
-                    },
-                  ),
-                  const _SectionDivider(),
-                  _SectionLabel(l10n.notifications),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          appRepo.notificationsEnabled
-                              ? l10n.notificationsOn
-                              : l10n.notificationsOff,
-                          style: theme.mutedText.copyWith(
-                            color: appRepo.notificationsEnabled
-                                ? theme.success
-                                : theme.textPrimary.withValues(alpha: .7),
-                          ),
-                        ),
-                      ),
-                      if (!appRepo.notificationsEnabled)
-                        CupertinoButton(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          minimumSize: Size.zero,
-                          color: theme.textPrimary.withValues(alpha: .14),
-                          onPressed: SoundService.wrapTap(
-                            () => _requestNotifications(context, appRepo, l10n),
-                          ),
-                          child: Text(
-                            l10n.enableNotifications,
-                            style: TextStyle(
-                              color: theme.textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Center(
+                          child: CupertinoButton(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 2,
+                            ),
+                            minimumSize: Size.zero,
+                            onPressed: SoundService.wrapTap(
+                              () => _confirmDelete(context, appRepo, l10n),
+                            ),
+                            child: Text(
+                              l10n.deleteAccount,
+                              style: const TextStyle(
+                                color: CupertinoColors.destructiveRed,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                  const _SectionDivider(),
-                  _SectionLabel(l10n.account),
-                  const SizedBox(height: 4),
-                  _GoogleAccountRow(
-                    linked: appRepo.isGoogleLinked,
-                    email: appRepo.googleEmail,
-                    onConnect: () => _connectGoogle(context, appRepo, l10n),
-                    onLogOut: () => _confirmLogOut(context, appRepo, l10n),
-                  ),
-                  const Spacer(),
-                  Center(
-                    child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      minimumSize: Size.zero,
-                      onPressed: SoundService.wrapTap(
-                        () => _confirmDelete(context, appRepo, l10n),
-                      ),
-                      child: Text(
-                        l10n.deleteAccount,
-                        style: const TextStyle(
-                          color: CupertinoColors.destructiveRed,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                        Center(
+                          child: CupertinoButton(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 2,
+                            ),
+                            minimumSize: Size.zero,
+                            onPressed: _openPrivacy,
+                            child: Text(
+                              l10n.privacyPolicy,
+                              style: theme.mutedText.copyWith(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                                decorationColor: theme.muted.withValues(
+                                  alpha: .45,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      minimumSize: Size.zero,
-                      onPressed: _openPrivacy,
-                      child: Text(
-                        l10n.privacyPolicy,
-                        style: theme.mutedText.copyWith(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          decoration: TextDecoration.underline,
-                          decorationColor: theme.muted.withValues(alpha: .45),
-                        ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
@@ -532,7 +554,7 @@ class _SectionDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 1,
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       color: AppStyle.theme.textPrimary.withValues(alpha: .12),
     );
   }

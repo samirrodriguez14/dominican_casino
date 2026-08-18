@@ -198,6 +198,7 @@ class GameActionHandler {
     gameState.extraPoints = 0;
     gameState.extraPointsHolderId = '';
     gameState.lastTookCardId = '';
+    gameState.lastTakes.clear();
     gameState.cardMoveEvents = [];
     gameState.settlementEvents = [];
     gameState.clearRoundCoinAccrual();
