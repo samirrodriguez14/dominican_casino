@@ -1,14 +1,19 @@
-import 'dart:math' as math;
-
-import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/models/round.dart';
+import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/card_deck.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
+import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/general_game/simple/simple_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.dart';
+import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
+import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
+import 'package:dominican_casino/ui/widgets/take_hint_bounce.dart';
+import 'package:dominican_casino/ui/widgets/winning_hand_wave.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -22,13 +27,22 @@ class NewTresydosPlayingArea extends StatefulWidget {
   State<NewTresydosPlayingArea> createState() => _NewTresydosPlayingAreaState();
 }
 
+enum _TableSeat { left, top, right }
+
 class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
   static const double _cardWidth = 72;
 
-  /// Empty seats stay visible only while still waiting for players to join.
-  String? _oppAt(GeneralGameViewModel vm, int index) {
-    if (index < vm.oppIds.length) return vm.oppIds[index];
-    if (vm.gameState.gameStatus == GameStatus.waitingForPlayers) return '';
+  /// Open chairs stay until Start. Filled friends sit where they will after kickoff.
+  String? _seatFor(GeneralGameViewModel vm, _TableSeat seat) {
+    final opps = vm.oppIds;
+    final n = opps.length;
+    final filled = switch (seat) {
+      _TableSeat.left => n >= 2 ? opps[0] : null,
+      _TableSeat.top => n == 0 ? null : (n == 1 ? opps[0] : opps[1]),
+      _TableSeat.right => n >= 3 ? opps[2] : null,
+    };
+    if (filled != null) return filled;
+    if (vm.showOpenSeats) return '';
     return null;
   }
 
@@ -41,15 +55,20 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
         listenable: vm.motion,
         builder: (context, _) {
           final shuffling = vm.motion.isShuffling;
-          final topOpp = _oppAt(vm, 0);
-          final rightOpp = _oppAt(vm, 1);
-          final leftOpp = _oppAt(vm, 2);
+          final topOpp = _seatFor(vm, _TableSeat.top);
+          final leftOpp = _seatFor(vm, _TableSeat.left);
+          final rightOpp = _seatFor(vm, _TableSeat.right);
+          const sideInset = 78.0;
           return Stack(
             clipBehavior: Clip.none,
             children: [
               Positioned.fill(
                 child: Padding(
-                  padding: const EdgeInsets.only(top: SimpleOpponentRow.height),
+                  padding: EdgeInsets.only(
+                    top: SimpleOpponentRow.height,
+                    left: leftOpp != null ? sideInset : 0,
+                    right: rightOpp != null ? sideInset : 0,
+                  ),
                   child: _buildTableRow(vm, shuffling),
                 ),
               ),
@@ -62,23 +81,25 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                 ),
               if (rightOpp != null)
                 Positioned(
-                  right: -120,
-                  child: SizedBox(
-                    width: 280,
-                    child: Transform.rotate(
-                      angle: math.pi / 2,
-                      child: SimpleOpponentRow(oppId: rightOpp),
+                  right: 8,
+                  top: SimpleOpponentRow.height,
+                  bottom: 0,
+                  child: Center(
+                    child: _CompactSideSeat(
+                      oppId: rightOpp,
+                      overlayAlign: Alignment.centerRight,
                     ),
                   ),
                 ),
               if (leftOpp != null)
                 Positioned(
-                  left: -120,
-                  child: SizedBox(
-                    width: 280,
-                    child: Transform.rotate(
-                      angle: -math.pi / 2,
-                      child: SimpleOpponentRow(oppId: leftOpp),
+                  left: 8,
+                  top: SimpleOpponentRow.height,
+                  bottom: 0,
+                  child: Center(
+                    child: _CompactSideSeat(
+                      oppId: leftOpp,
+                      overlayAlign: Alignment.centerLeft,
                     ),
                   ),
                 ),
@@ -133,22 +154,26 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
           ),
         ),
         if (deckCard != null)
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            transform: selected
-                ? Matrix4.translationValues(0, -12, 0)
-                : Matrix4.translationValues(0, 4, 0),
-            child: Opacity(
-              opacity: hidden ? 0 : 1,
-              child: FlightAwareCard(
-                key: vm.keyForCard(deckCard.id, CardSlot.aux),
-                motion: vm.motion,
-                cardId: deckCard.id,
-                width: _cardWidth,
-                child: AnimatedScale(
-                  scale: selected ? 1.1 : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: PlayingCardBack(width: _cardWidth),
+          TakeHintBounce(
+            active: vm.needsTakeHint,
+            slot: 0,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              transform: selected
+                  ? Matrix4.translationValues(0, -12, 0)
+                  : Matrix4.translationValues(0, 4, 0),
+              child: Opacity(
+                opacity: hidden ? 0 : 1,
+                child: FlightAwareCard(
+                  key: vm.keyForCard(deckCard.id, CardSlot.aux),
+                  motion: vm.motion,
+                  cardId: deckCard.id,
+                  width: _cardWidth,
+                  child: AnimatedScale(
+                    scale: selected ? 1.1 : 1.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: PlayingCardBack(width: _cardWidth),
+                  ),
                 ),
               ),
             ),
@@ -197,27 +222,31 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
           ),
         ),
         if (currentCard != null)
-          AnimatedContainer(
-            duration: vm.motion.hasFlights
-                ? Duration.zero
-                : const Duration(milliseconds: 150),
-            transform: selected || highlighted
-                ? Matrix4.translationValues(0, -12, 0)
-                : Matrix4.translationValues(0, 4, 0),
-            child: Opacity(
-              opacity: hidden ? 0 : 1,
-              child: FlightAwareCard(
-                key: vm.keyForCard(currentCard.id, CardSlot.table),
-                motion: vm.motion,
-                cardId: currentCard.id,
-                width: _cardWidth,
-                child: AnimatedScale(
-                  scale: selected || highlighted ? 1.06 : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: PlayingCard(
-                    playingCardModel: currentCard,
-                    isSelected: selected || highlighted,
-                    width: _cardWidth,
+          TakeHintBounce(
+            active: vm.needsTakeHint,
+            slot: 1,
+            child: AnimatedContainer(
+              duration: vm.motion.hasFlights
+                  ? Duration.zero
+                  : const Duration(milliseconds: 150),
+              transform: selected || highlighted
+                  ? Matrix4.translationValues(0, -12, 0)
+                  : Matrix4.translationValues(0, 4, 0),
+              child: Opacity(
+                opacity: hidden ? 0 : 1,
+                child: FlightAwareCard(
+                  key: vm.keyForCard(currentCard.id, CardSlot.table),
+                  motion: vm.motion,
+                  cardId: currentCard.id,
+                  width: _cardWidth,
+                  child: AnimatedScale(
+                    scale: selected || highlighted ? 1.06 : 1.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: PlayingCard(
+                      playingCardModel: currentCard,
+                      isSelected: selected || highlighted,
+                      width: _cardWidth,
+                    ),
                   ),
                 ),
               ),
@@ -232,8 +261,156 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
       enabled: vm.canPlayTurn && !vm.hasDropPending,
       feedbackWidth: _cardWidth,
       tableFeedbackWidth: _cardWidth,
-      onTap: () => vm.selectCardToTake(currentCard),
+      onTap: () {
+        final card = vm.selectedCard;
+        if (card != null && vm.canDropPlay(card)) {
+          vm.playSelectedToTable();
+          return;
+        }
+        vm.selectCardToTake(currentCard);
+      },
       child: pile,
+    );
+  }
+}
+
+/// Side opponent: score avatar with a tight overlapped hand underneath.
+class _CompactSideSeat extends StatelessWidget {
+  const _CompactSideSeat({
+    required this.oppId,
+    required this.overlayAlign,
+  });
+
+  static const double cardWidth = 30;
+  static const double overlap = 8;
+  static const double avatarSize = 48;
+  static const double winCardWidth = 50;
+  static const double winOverlap = 18;
+
+  final String oppId;
+  final Alignment overlayAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<GeneralGameViewModel>();
+    if (oppId.isEmpty && !vm.showOpenSeats) {
+      return const SizedBox.shrink();
+    }
+
+    final waiting = oppId.isEmpty;
+    final highlightTurn = !waiting && vm.isSeatTurn(oppId);
+    final cards = waiting ? const <PlayingCardModel>[] : (vm.gameState.hands[oppId] ?? []);
+    final info = waiting
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
+    final celebrating = !waiting && vm.isCelebratingHand(oppId);
+    const layoutW = _CompactSideSeat.cardWidth;
+    const layoutOverlap = _CompactSideSeat.overlap;
+    final visW = celebrating ? _CompactSideSeat.winCardWidth : layoutW;
+    final visOverlap = celebrating ? _CompactSideSeat.winOverlap : layoutOverlap;
+    final avatarId = info['avatarId'] as String?;
+    final name = waiting
+        ? AppLocalizations.of(context).openSeat
+        : ((info['name'] as String?) ?? 'Rival');
+    final score = waiting ? 0 : (vm.gameState.scores[oppId] ?? 0);
+    final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
+        ? vm.incomingReaction
+        : null;
+    const layoutH = layoutW * 1.4;
+    final visH = visW * 1.4;
+    final layoutHandW = cards.isEmpty
+        ? layoutW
+        : layoutW + ((cards.length - 1) * layoutOverlap);
+    final visHandW = cards.isEmpty
+        ? visW
+        : visW + ((cards.length - 1) * visOverlap);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            PlayerScoreAvatar(
+              avatarId: avatarId,
+              name: name,
+              score: score,
+              pendingCoins: waiting ? 0 : vm.revealedPendingFor(oppId),
+              size: avatarSize,
+              isTurn: highlightTurn,
+              isOpen: waiting,
+              turnDeadline: waiting ? null : vm.turnDeadlineFor(oppId),
+              turnTotal: vm.turnTotal,
+              onPressed: waiting
+                  ? null
+                  : () {
+                      AppHaptics.mediumImpact();
+                      showGameStatusPopup(context, vm: vm);
+                    },
+            ),
+            Positioned(
+              top: -36,
+              child: IgnorePointer(
+                child: ReactionBubblePopup(
+                  emoji: incoming?.emoji,
+                  reactionId: incoming?.id,
+                  tail: ReactionBubbleTail.bottom,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (!waiting) ...[
+          const SizedBox(height: 8),
+          Offstage(
+            offstage: vm.motion.isShuffling,
+            child: SizedBox(
+              width: layoutHandW,
+              height: layoutH,
+              child: OverflowBox(
+                alignment: overlayAlign,
+                minWidth: visHandW,
+                maxWidth: visHandW,
+                minHeight: visH,
+                maxHeight: visH,
+                child: SizedBox(
+                  width: visHandW,
+                  height: visH,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      for (int i = 0; i < cards.length; i++)
+                        Positioned(
+                          left: i * visOverlap,
+                          child: WinningHandWave(
+                            active: celebrating,
+                            index: i,
+                            amplitude: 3,
+                            child: FlightAwareCard(
+                              key: vm.keyForCard(cards[i].id, CardSlot.oppHand),
+                              motion: vm.motion,
+                              cardId: cards[i].id,
+                              width: visW,
+                              child: vm.gameState.round.roundStatus ==
+                                      RoundStatus.completed
+                                  ? PlayingCard(
+                                      playingCardModel: cards[i],
+                                      isSelected: celebrating,
+                                      width: visW,
+                                    )
+                                  : PlayingCardBack(width: visW),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:dominican_casino/game_control/game_registry.dart';
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
@@ -34,6 +36,7 @@ import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Material;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -108,6 +111,12 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         if (join == JoinGameResult.notEnoughCoins) {
           if (!mounted) return;
           await showInsufficientFundsDialog(context, energy: false);
+          if (mounted) context.go('/landing');
+          return;
+        }
+        if (join == JoinGameResult.notEnoughEnergy) {
+          if (!mounted) return;
+          await showInsufficientFundsDialog(context, energy: true);
           if (mounted) context.go('/landing');
           return;
         }
@@ -258,6 +267,13 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
           : 'round_${gs.round.id}_completed';
 
       if (_statusPopupOpen || _shownStatusKey == key) return;
+
+      // Tres y Dos: hold the winning 3+2 until the 5s beat ends or Skip.
+      if (gs.gameMode == GameMode.tresydos &&
+          vm.winCelebrationSecondsLeft > 0) {
+        return;
+      }
+
       _shownStatusKey = key;
       _statusPopupOpen = true;
 
@@ -372,6 +388,10 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                                   label: GameRegistry.displayTitle(
                                     vm.gameState.gameMode,
                                   ),
+                                  stake: vm.tutorialMode
+                                      ? null
+                                      : vm.gameState.entryCost,
+                                  seats: vm.gameState.seatedPlayerCount,
                                 ),
                               ),
                             ),
@@ -442,8 +462,12 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                               PlayerScoreAvatar(
                                 key: vm.scoreKey,
                                 avatarId: vm.player.avatarId,
+                                name: vm.player.name,
                                 score: vm.gameState.scores[vm.me] ?? 0,
                                 pendingCoins: vm.revealedPendingFor(vm.me),
+                                isTurn: vm.isSeatTurn(vm.me),
+                                turnDeadline: vm.turnDeadlineFor(vm.me),
+                                turnTotal: vm.turnTotal,
                                 onPressed: () {
                                   AppHaptics.mediumImpact();
                                   showGameStatusPopup(context, vm: vm);
@@ -528,8 +552,12 @@ class _SimpleControlBar extends StatelessWidget {
           PlayerScoreAvatar(
             key: vm.scoreKey,
             avatarId: vm.player.avatarId,
+            name: vm.player.name,
             score: vm.gameState.scores[vm.me] ?? 0,
             pendingCoins: vm.revealedPendingFor(vm.me),
+            isTurn: vm.isSeatTurn(vm.me),
+            turnDeadline: vm.turnDeadlineFor(vm.me),
+            turnTotal: vm.turnTotal,
             onPressed: () {
               AppHaptics.mediumImpact();
               showGameStatusPopup(context, vm: vm);
@@ -632,14 +660,23 @@ class _PlayerReactionButtonState extends State<_PlayerReactionButton> {
 }
 
 class _GameModeChip extends StatelessWidget {
-  const _GameModeChip({required this.label});
+  const _GameModeChip({
+    required this.label,
+    this.stake,
+    this.seats = 2,
+  });
 
   final String label;
+  final int? stake;
+  final int seats;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
-    return Container(
+    final showStake = stake != null && stake! > 0;
+    final tableSeats = seats.clamp(2, 4);
+    final jackpot = showStake ? WalletConfig.potTotal(stake!, tableSeats) : 0;
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
         color: theme.surface.withValues(alpha: .94),
@@ -653,14 +690,202 @@ class _GameModeChip extends StatelessWidget {
           ),
         ],
       ),
-      child: Text(
-        label,
-        style: theme.caption.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-          color: theme.textPrimary.withValues(alpha: .9),
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: theme.caption.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+              color: theme.textPrimary.withValues(alpha: .9),
+            ),
+          ),
+          if (showStake) ...[
+            Container(
+              width: 1,
+              height: 12,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              color: theme.border.withValues(alpha: .7),
+            ),
+            Icon(
+              coinIcon,
+              size: 12,
+              color: theme.turnHighlight,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '$jackpot',
+              style: theme.caption.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+                color: theme.turnHighlight,
+              ),
+            ),
+          ],
+        ],
       ),
+    );
+
+    if (!showStake) return chip;
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      pressedOpacity: 0.72,
+      onPressed: SoundService.wrapTap(() {
+        AppHaptics.lightImpact();
+        _showPotInfo(context, title: label, stake: stake!, seats: seats);
+      }),
+      child: chip,
+    );
+  }
+}
+
+void _showPotInfo(
+  BuildContext context, {
+  required String title,
+  required int stake,
+  required int seats,
+}) {
+  final theme = AppStyle.theme;
+  final l10n = AppLocalizations.of(context);
+  final tableSeats = seats.clamp(2, 4);
+  final pot = WalletConfig.potTotal(stake, tableSeats);
+
+  showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Dismiss',
+    barrierColor: CupertinoColors.black.withValues(alpha: .55),
+    transitionDuration: const Duration(milliseconds: 180),
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return Center(
+        child: Material(
+          color: CupertinoColors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 300),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 28),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+              decoration: BoxDecoration(
+                color: theme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: theme.border.withValues(alpha: .7)),
+                boxShadow: [
+                  BoxShadow(
+                    color: CupertinoColors.black.withValues(alpha: .45),
+                    blurRadius: 28,
+                    offset: const Offset(0, 14),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: theme.title.copyWith(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.eachPlayerBets(stake),
+                    textAlign: TextAlign.center,
+                    style: theme.mutedText.copyWith(fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(coinIcon, size: 14, color: theme.turnHighlight),
+                      const SizedBox(width: 4),
+                      Text(
+                        l10n.potTotal(pot),
+                        style: theme.title.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: theme.turnHighlight,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  for (var place = 1; place <= tableSeats; place++) ...[
+                    if (place > 1) const SizedBox(height: 6),
+                    _PotPlaceRow(
+                      label: l10n.coinPayoutPlace(place),
+                      amount: WalletConfig.potShareForRank(
+                        stake,
+                        tableSeats,
+                        place,
+                      ),
+                    ),
+                  ],
+                  CupertinoButton(
+                    padding: const EdgeInsets.only(top: 6),
+                    onPressed: SoundService.wrapTap(
+                      () => Navigator.pop(dialogContext),
+                    ),
+                    child: Text(l10n.done, style: TextStyle(color: theme.muted)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondary, child) {
+      return FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class _PotPlaceRow extends StatelessWidget {
+  const _PotPlaceRow({required this.label, required this.amount});
+
+  final String label;
+  final int amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final paid = amount > 0;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: theme.body.copyWith(
+              color: paid ? theme.textPrimary : theme.muted,
+            ),
+          ),
+        ),
+        Icon(
+          coinIcon,
+          size: 13,
+          color: paid ? theme.turnHighlight : theme.muted,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '$amount',
+          style: theme.title.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: paid ? theme.turnHighlight : theme.muted,
+          ),
+        ),
+      ],
     );
   }
 }

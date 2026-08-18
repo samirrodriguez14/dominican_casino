@@ -3,6 +3,7 @@ import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/services/sound_service.dart';
+import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -36,12 +37,12 @@ class GamePill extends StatelessWidget {
     final theme = AppStyle.theme;
     final myTurn = game.isMyTurn(myPid);
     final isGameOver = game.gameStatus == GameStatus.gameOver;
-    final didWin = game.winnerId == myPid;
     final waiting = game.gameStatus == GameStatus.waitingForPlayers;
     final highlight = myTurn && !isGameOver;
     final timeLabel = game.updatedAt == null
         ? null
         : l10n.timeAgo(game.updatedAt!);
+    final ranks = isGameOver ? game.finishRanks() : const <String, int>{};
     final actions = <Widget>[
       if (onPlay != null)
         _PillIconButton(
@@ -137,6 +138,10 @@ class GamePill extends StatelessWidget {
                             fallbackAvatarId: seat.id == myPid
                                 ? myAvatarId
                                 : null,
+                            place: ranks[seat.id],
+                            coinsMade: isGameOver
+                                ? game.coinsMade(seat.id)
+                                : 0,
                           ),
                         ),
                       ),
@@ -182,11 +187,10 @@ class GamePill extends StatelessWidget {
                         label: l10n.yourTurn,
                         color: theme.turnHighlight,
                         embeddedInCard: embeddedInCard,
-                      )
-                    else if (isGameOver)
-                      _StatusChip(
-                        label: didWin ? l10n.won : l10n.lost,
-                        color: didWin ? theme.success : theme.danger,
+                      ),
+                    if (game.jackpot > 0)
+                      _JackpotChip(
+                        amount: game.jackpot,
                         embeddedInCard: embeddedInCard,
                       ),
                     _ModeBadge(
@@ -238,6 +242,47 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+class _JackpotChip extends StatelessWidget {
+  const _JackpotChip({
+    required this.amount,
+    this.embeddedInCard = false,
+  });
+
+  final int amount;
+  final bool embeddedInCard;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final gold = theme.turnHighlight;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: gold.withValues(alpha: embeddedInCard ? .18 : .16),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: gold.withValues(alpha: embeddedInCard ? .55 : .65),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(coinIcon, size: 11, color: gold),
+          const SizedBox(width: 4),
+          Text(
+            '$amount',
+            style: theme.caption.copyWith(
+              color: gold,
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ModeBadge extends StatelessWidget {
   const _ModeBadge({required this.mode, this.embeddedInCard = false});
 
@@ -279,15 +324,29 @@ class _ModeBadge extends StatelessWidget {
 }
 
 class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.seat, this.fallbackAvatarId});
+  const _PlayerRow({
+    required this.seat,
+    this.fallbackAvatarId,
+    this.place,
+    this.coinsMade = 0,
+  });
 
   final GamePillSeat seat;
   final String? fallbackAvatarId;
+  final int? place;
+  final int coinsMade;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
     final open = seat.isOpen;
+    final gold = theme.turnHighlight;
+    final placeColor = place == 1
+        ? gold
+        : place == 2
+            ? gold.withValues(alpha: .78)
+            : theme.muted;
 
     return Row(
       children: [
@@ -307,6 +366,28 @@ class _PlayerRow extends StatelessWidget {
             style: open ? theme.mutedText : theme.title.copyWith(fontSize: 15),
           ),
         ),
+        if (!open && place != null) ...[
+          const SizedBox(width: 8),
+          Text(
+            l10n.placeShort(place!),
+            style: theme.caption.copyWith(
+              color: placeColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+          if (coinsMade > 0) ...[
+            const SizedBox(width: 6),
+            Text(
+              '+$coinsMade',
+              style: theme.caption.copyWith(
+                color: gold,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ],
       ],
     );
   }

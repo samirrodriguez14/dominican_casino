@@ -5,6 +5,7 @@ import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/models/wallet.dart';
@@ -508,17 +509,25 @@ class AppRepo extends ChangeNotifier {
     return true;
   }
 
-  bool get canAffordFriendGame => _wallet.coins >= WalletConfig.entryCost;
-
-  bool canAffordPulilo([GameMode? mode]) {
-    final cost = WalletConfig.puliloEnergyCostFor(mode?.name ?? '');
+  bool canAffordEnergy([GameMode? mode]) {
+    final cost = WalletConfig.energyCostFor(mode?.name ?? '');
     return _wallet.energy >= cost;
+  }
+
+  bool canAffordStake(int entry) => _wallet.coins >= entry;
+
+  bool get canAffordFriendGame => canAffordStake(WalletConfig.entryCost);
+
+  bool canAffordPuliloEnergy([GameMode? mode]) => canAffordEnergy(mode);
+
+  /// Tables cost energy plus the chosen coin stake.
+  bool canAffordPulilo([GameMode? mode, int entry = WalletConfig.entryCost]) {
+    return canAffordEnergy(mode) && canAffordStake(entry);
   }
 
   Future<bool> refundEntryIfNeeded(GameState game) async {
     final uid = _currentUid;
     if (uid == null) return false;
-    if (game.isLocalBot) return false;
     if (game.started) return false;
     if (game.gameStatus != GameStatus.waitingForPlayers &&
         game.gameStatus != GameStatus.readyToStart) {
@@ -963,7 +972,13 @@ class AppRepo extends ChangeNotifier {
     _locale = const Locale('en');
   }
 
-  Future<String> createNewGame(GameMode mode, String pid, bool local) async {
+  Future<String> createNewGame(
+    GameMode mode,
+    String pid,
+    bool local, {
+    int playerCount = 2,
+    int entryCost = WalletConfig.entryCost,
+  }) async {
     final existingAuth = FirebaseAuth.instance.currentUser;
     if (local && existingAuth == null) {
       pid = player?.id ?? '';
@@ -984,18 +999,21 @@ class AppRepo extends ChangeNotifier {
         }
       }
     }
-    final energyCost = WalletConfig.puliloEnergyCostFor(mode.name);
-    if (local) {
-      if (_wallet.energy < energyCost) {
-        throw const InsufficientFundsException(energy: true);
-      }
-    } else if (_wallet.coins < WalletConfig.entryCost) {
+    final energyCost = WalletConfig.energyCostFor(mode.name);
+    final stake = WalletConfig.entryStakes.contains(entryCost)
+        ? entryCost
+        : WalletConfig.entryCost;
+    if (_wallet.energy < energyCost) {
+      throw const InsufficientFundsException(energy: true);
+    }
+    if (_wallet.coins < stake) {
       throw const InsufficientFundsException(energy: false);
     }
 
     String gid = _uuid.v4().substring(0, 8);
     GameState gameState = GameState.create(gid, pid, mode);
-    gameState.entryCost = WalletConfig.entryCost;
+    gameState.entryCost = stake;
+    gameState.entryPaidBy = [pid];
     final host = player;
     if (host != null) {
       gameState.playersInfo[pid] = host.toGameSeat();
@@ -1003,30 +1021,52 @@ class AppRepo extends ChangeNotifier {
       gameState.playersInfo[pid] = {'id': pid};
     }
     if (local) {
-      final botPid = _uuid.v4().substring(0, 8);
+      final botCount =
+          (mode == GameMode.tresydos ? playerCount.clamp(2, 4) : 2) - 1;
+      final profiles = LocalBotRoster.pick(
+        botCount,
+        avoidAvatarId: host?.avatarId,
+      );
+      final botPids = <String>[];
       gameState.isLocalBot = true;
-      gameState.botPlayerId = botPid;
-      gameState.playersInfo[botPid] = {
-        'id': botPid,
-        'name': GameState.localBotName,
-        'avatarId': GameState.localBotAvatarId,
-      };
-    } else {
-      gameState.entryPaidBy = [pid];
+      for (final profile in profiles) {
+        final botPid = _uuid.v4().substring(0, 8);
+        botPids.add(botPid);
+        gameState.playersInfo[botPid] = {
+          'id': botPid,
+          'name': profile.name,
+          'avatarId': profile.avatarId,
+        };
+      }
+      gameState.botPlayerIds = botPids;
+      gameState.botPlayerId = botPids.isEmpty ? null : botPids.first;
+      if (botPids.isNotEmpty) {
+        gameState.gameStatus = GameStatus.readyToStart;
+      }
     }
     debugPrint(
       'createNewGame uid=$pid controller=${gameState.controllerId} '
       'auth=${FirebaseAuth.instance.currentUser?.uid} local=$local',
     );
     gid = await fs.newCreateGame(gameState);
-    final spent = local
-        ? await trySpendEnergy(energyCost)
-        : await trySpendCoins(WalletConfig.entryCost);
-    if (!spent) {
+    var spentEnergy = false;
+    var spentCoins = false;
+    try {
+      spentEnergy = await trySpendEnergy(energyCost);
+      if (!spentEnergy) {
+        throw const InsufficientFundsException(energy: true);
+      }
+      spentCoins = await trySpendCoins(stake);
+      if (!spentCoins) {
+        throw const InsufficientFundsException(energy: false);
+      }
+    } catch (e) {
+      if (spentEnergy) await grantEnergy(energyCost);
+      if (spentCoins) await grantCoins(stake);
       try {
         await fs.deleteGame(gid);
       } catch (_) {}
-      throw InsufficientFundsException(energy: local);
+      rethrow;
     }
     return gid;
   }

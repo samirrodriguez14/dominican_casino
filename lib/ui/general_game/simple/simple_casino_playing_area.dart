@@ -1,9 +1,8 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/models/table_slot.dart';
-import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/animations/sliding_card_layout.dart';
 import 'package:dominican_casino/ui/cards/card_deck.dart';
@@ -15,6 +14,7 @@ import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.da
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
 import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
+import 'package:dominican_casino/ui/widgets/winning_hand_wave.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/services/haptics.dart';
@@ -360,7 +360,7 @@ class _SimpleOpponentRowHost extends StatelessWidget {
 class SimpleOpponentRow extends StatelessWidget {
   const SimpleOpponentRow({super.key, required this.oppId});
 
-  static const double height = 88;
+  static const double height = 104;
   static const double cardWidth = 54;
 
   final String oppId;
@@ -368,20 +368,22 @@ class SimpleOpponentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
-    if (oppId.isEmpty &&
-        vm.gameState.gameStatus != GameStatus.waitingForPlayers) {
+    if (oppId.isEmpty && !vm.showOpenSeats) {
       return const SizedBox.shrink();
     }
+
+    const cardWidth = SimpleOpponentRow.cardWidth;
+    const rowHeight = SimpleOpponentRow.height;
 
     final highlightTurn =
         vm.gameState.round.roundStatus == RoundStatus.playing &&
         vm.gameState.currentTurnPlayerId == oppId &&
         !vm.isAnimating;
+    final celebrating = vm.isCelebratingHand(oppId);
     final cards = vm.gameState.hands[oppId] ?? [];
-    final theme = AppStyle.theme;
 
     return SizedBox(
-      height: height,
+      height: rowHeight,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,
@@ -389,21 +391,23 @@ class SimpleOpponentRow extends StatelessWidget {
           Center(
             child: SizedBox(
               key: vm.oppHandKey,
-              height: height,
+              height: rowHeight,
               width: double.infinity,
-              child: LayoutBuilder(
+              child: Offstage(
+                offstage: vm.motion.isShuffling,
+                child: LayoutBuilder(
                 builder: (context, constraints) {
                   if (cards.isEmpty) return const SizedBox.shrink();
                   final count = cards.length;
                   final gap = count == 1
                       ? 0.0
                       : ((constraints.maxWidth - cardWidth) / (count - 1))
-                            .clamp(16.0, 34.0);
+                            .clamp(16.0, celebrating ? 42.0 : 34.0);
                   final totalWidth = cardWidth + ((count - 1) * gap);
                   return Center(
                     child: SizedBox(
                       width: totalWidth,
-                      height: height,
+                      height: rowHeight,
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
@@ -413,11 +417,19 @@ class SimpleOpponentRow extends StatelessWidget {
                               duration: const Duration(milliseconds: 280),
                               curve: Curves.easeOutCubic,
                               left: i * gap,
-                              top: (height - cardWidth * 1.4) / 2,
+                              top: (rowHeight - cardWidth * 1.4) / 2,
                               child: AnimatedScale(
                                 duration: const Duration(milliseconds: 180),
-                                scale: highlightTurn ? 1.02 : 1,
-                                child: FlightAwareCard(
+                                scale: celebrating
+                                    ? 1.08
+                                    : highlightTurn
+                                    ? 1.02
+                                    : 1,
+                                child: WinningHandWave(
+                                  active: celebrating,
+                                  index: i,
+                                  amplitude: 3.5,
+                                  child: FlightAwareCard(
                                   key: vm.keyForCard(
                                     cards[i].id,
                                     CardSlot.oppHand,
@@ -430,10 +442,11 @@ class SimpleOpponentRow extends StatelessWidget {
                                           RoundStatus.completed
                                       ? PlayingCard(
                                           playingCardModel: cards[i],
-                                          isSelected: false,
+                                          isSelected: celebrating,
                                           width: cardWidth,
                                         )
                                       : PlayingCardBack(width: cardWidth),
+                                ),
                                 ),
                               ),
                             ),
@@ -442,6 +455,7 @@ class SimpleOpponentRow extends StatelessWidget {
                     ),
                   );
                 },
+              ),
               ),
             ),
           ),
@@ -452,15 +466,6 @@ class SimpleOpponentRow extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (highlightTurn)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Icon(
-                        CupertinoIcons.clock,
-                        size: 14,
-                        color: theme.turnHighlight,
-                      ),
-                    ),
                   _OpponentScoreChip(oppId: oppId),
                 ],
               ),
@@ -485,6 +490,9 @@ class _OpponentScoreChip extends StatelessWidget {
         ? <String, dynamic>{}
         : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
     final avatarId = info['avatarId'] as String?;
+    final name = waiting
+        ? AppLocalizations.of(context).openSeat
+        : ((info['name'] as String?) ?? 'Rival');
     final score = waiting ? 0 : (vm.gameState.scores[oppId] ?? 0);
     final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
         ? vm.incomingReaction
@@ -496,8 +504,13 @@ class _OpponentScoreChip extends StatelessWidget {
         PlayerScoreAvatar(
           key: waiting ? null : vm.oppScoreKey,
           avatarId: avatarId,
+          name: name,
           score: score,
           pendingCoins: waiting ? 0 : vm.revealedPendingFor(oppId),
+          isTurn: !waiting && vm.isSeatTurn(oppId),
+          isOpen: waiting,
+          turnDeadline: waiting ? null : vm.turnDeadlineFor(oppId),
+          turnTotal: vm.turnTotal,
           onPressed: waiting
               ? null
               : () {

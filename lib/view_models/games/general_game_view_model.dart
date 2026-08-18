@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_rules_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
+import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tres_dos_game_state_handler.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_reaction.dart';
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
@@ -12,6 +13,7 @@ import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
 import 'package:dominican_casino/local_player/local_player.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
@@ -40,7 +42,7 @@ typedef ActionGuard =
 /// exist in different UI slots across a rebuild without colliding.
 enum CardSlot { myHand, oppHand, table, aux, inStack }
 
-enum JoinGameResult { ok, notEnoughCoins, failed }
+enum JoinGameResult { ok, notEnoughCoins, notEnoughEnergy, failed }
 
 class DeckCoinFlight {
   const DeckCoinFlight({required this.mine, required this.amount});
@@ -75,17 +77,21 @@ class GeneralGameViewModel extends ChangeNotifier {
   Timer? _botReactTimer;
   DateTime? _lastBotReactAt;
 
-  /// Casino Speed only: per-turn countdown + timeout auto-play.
-  static const _speedTurnDuration = Duration(seconds: 10);
-  Timer? _speedTurnTimer;
-  DateTime? _speedTurnDeadline;
-  int _speedTurnRemainingSeconds = _speedTurnDuration.inSeconds;
-  int? _speedTurnRoundId;
-  String? _speedTurnForPid;
-  bool _speedTurnAutoplayInFlight = false;
+  /// Shared action clock: ticks locally, deadline lives on [GameState].
+  Timer? _turnTimer;
+  bool _turnAutoplayInFlight = false;
+  bool _armingTurnClock = false;
 
   /// Round id whose gather-wash already played — skip a second overlay on repo echo.
   int? _shuffleOverlayRoundId;
+
+  /// Tres y Dos: hold the winning 3+2 before status boards.
+  static const _winCelebrationFor = Duration(seconds: 5);
+  Timer? _winCelebrationTimer;
+  DateTime? _winCelebrationDeadline;
+  String? _winCelebrationKey;
+  bool _winCelebrationSkipped = false;
+  int _winCelebrationSecondsLeft = 0;
 
   /// Coins to fly from a collected pile into an avatar after take motion.
   DeckCoinFlight? pendingDeckCoinFlight;
@@ -185,18 +191,28 @@ class GeneralGameViewModel extends ChangeNotifier {
             : gameState.pendingCoinsFor(oppId) - oldOpp;
         _queueDeckCoinFlight(meGain: meGain, oppGain: oppGain);
 
-        final botId = gameState.localBotPid ?? opp;
-        final botPlayed =
-            botId != null &&
-            newEvents.any(
-              (e) =>
-                  e.performedBy == botId && e.from.type == ZoneType.playerHand,
-            );
-        if (botPlayed) {
+        final botIds = gameState.localBotPids;
+        CardMoveEvent? botEvent;
+        for (final e in newEvents) {
+          if (botIds.contains(e.performedBy)) {
+            botEvent = e;
+            break;
+          }
+        }
+        if (botEvent != null) {
+          final actor = botEvent.performedBy;
           final botTook = newEvents.any(
-            (e) => e.performedBy == botId && e.to.type == ZoneType.playerDeck,
+            (e) => e.performedBy == actor && e.to.type == ZoneType.playerDeck,
           );
-          _maybeBotReact(took: botTook, botPlayed: true);
+          final botPlayed = newEvents.any(
+            (e) =>
+                e.performedBy == actor && e.from.type == ZoneType.playerHand,
+          );
+          _maybeBotReact(
+            took: botTook,
+            botPlayed: botPlayed,
+            fromPid: actor,
+          );
         }
       } while (_pendingRepoSync);
     } catch (e) {
@@ -205,7 +221,8 @@ class GeneralGameViewModel extends ChangeNotifier {
       motion.setShuffling(false);
       isAnimating = false;
       _syncScheduled = false;
-      _syncSpeedTurnClock();
+      _syncTurnClock();
+      _syncWinCelebration();
       notifyListeners();
       if (_pendingRepoSync) {
         _pendingRepoSync = false;
@@ -214,101 +231,84 @@ class GeneralGameViewModel extends ChangeNotifier {
     }
   }
 
-  void _cancelSpeedTurnClock() {
-    _speedTurnTimer?.cancel();
-    _speedTurnTimer = null;
-    _speedTurnDeadline = null;
-    _speedTurnRoundId = null;
-    _speedTurnForPid = null;
-    _speedTurnAutoplayInFlight = false;
-    _speedTurnRemainingSeconds = 0;
+  void _cancelTurnClock() {
+    _turnTimer?.cancel();
+    _turnTimer = null;
+    _turnAutoplayInFlight = false;
   }
 
-  void _syncSpeedTurnClock() {
+  void _syncTurnClock() {
     if (_disposed) return;
-    if (!_speedTurnShouldBeRunning) {
-      _cancelSpeedTurnClock();
-      notifyListeners();
+    if (!_sharedTurnClockLive) {
+      _cancelTurnClock();
       return;
     }
 
-    // Starting a new turn: re-establish deadline + timer.
-    final pid = me;
-    final roundId = gameState.round.id;
-
-    final sameTurn =
-        _speedTurnTimer != null &&
-        _speedTurnDeadline != null &&
-        _speedTurnRoundId == roundId &&
-        _speedTurnForPid == pid;
-
-    if (!sameTurn) {
-      _speedTurnRoundId = roundId;
-      _speedTurnForPid = pid;
-      _speedTurnDeadline = DateTime.now().add(_speedTurnDuration);
-      _speedTurnRemainingSeconds = _speedTurnDuration.inSeconds;
-      _speedTurnTimer?.cancel();
-      _speedTurnTimer = Timer.periodic(
-        const Duration(milliseconds: 250),
-        (_) => _onSpeedTurnTick(),
-      );
-      notifyListeners();
-      return;
+    if (!isAnimating) {
+      _maybePersistTurnClock();
     }
 
-    // Same turn, but timer got canceled for any reason — restore it.
-    if (_speedTurnTimer == null && _speedTurnDeadline != null) {
-      _speedTurnTimer = Timer.periodic(
-        const Duration(milliseconds: 250),
-        (_) => _onSpeedTurnTick(),
-      );
+    _turnTimer ??= Timer.periodic(
+      const Duration(milliseconds: 250),
+      (_) => _onTurnTick(),
+    );
+  }
+
+  Future<void> _maybePersistTurnClock() async {
+    if (tutorialMode || _disposed || _armingTurnClock || isAnimating) return;
+    if (!gameState.ensureTurnClock()) return;
+    notifyListeners();
+    _armingTurnClock = true;
+    try {
+      await gameRepo.fs.updateGame(gameState);
+    } catch (e) {
+      developer.log('persist turn clock Error $e');
+    } finally {
+      _armingTurnClock = false;
     }
   }
 
-  void _onSpeedTurnTick() {
+  void _onTurnTick() {
     if (_disposed) return;
-    if (!_speedTurnShouldBeRunning) {
-      _cancelSpeedTurnClock();
+    if (!_sharedTurnClockLive) {
+      _cancelTurnClock();
       notifyListeners();
       return;
     }
 
-    final deadline = _speedTurnDeadline;
-    if (deadline == null) return;
-
-    final msLeft = deadline.difference(DateTime.now()).inMilliseconds;
-    final secondsLeft = msLeft <= 0 ? 0 : (msLeft + 999) ~/ 1000;
-
-    if (secondsLeft != _speedTurnRemainingSeconds) {
-      _speedTurnRemainingSeconds = secondsLeft;
-      notifyListeners();
+    final deadline = gameState.turnDeadline;
+    if (deadline == null) {
+      _maybePersistTurnClock();
+      return;
     }
 
-    if (secondsLeft <= 0 && canPlayTurn && !_speedTurnAutoplayInFlight) {
-      _speedTurnAutoplayInFlight = true;
-      _speedTurnTimer?.cancel();
-      _speedTurnTimer = null;
-      _speedTurnDeadline = null;
-      _maybeAutoPlayRandomCardForSpeedTimeout().whenComplete(() {
-        if (!_disposed) _speedTurnAutoplayInFlight = false;
+    if (!deadline.isAfter(DateTime.now()) &&
+        canPlayTurn &&
+        !_turnAutoplayInFlight) {
+      _turnAutoplayInFlight = true;
+      _maybeAutoPlayOnTurnTimeout().whenComplete(() {
+        if (!_disposed) _turnAutoplayInFlight = false;
       });
     }
   }
 
-  Future<void> _maybeAutoPlayRandomCardForSpeedTimeout() async {
+  Future<void> _maybeAutoPlayOnTurnTimeout() async {
     if (tutorialMode) return;
-    if (!_speedTurnShouldBeRunning) return;
     if (!canPlayTurn) return;
     if (gameState.gameStatus == GameStatus.gameOver) return;
 
-    final hand = gameState.hands[me] ?? const <PlayingCardModel>[];
-    if (hand.isEmpty) return;
-
-    // Clear transient selection/drag state so rules validate cleanly.
     cancelSelection();
     cancelDropPending();
     endBoardDrag();
     clearDragHandoff();
+
+    if (gameState.gameMode == GameMode.tresydos) {
+      await _timeoutTresDosAction();
+      return;
+    }
+
+    final hand = gameState.hands[me] ?? const <PlayingCardModel>[];
+    if (hand.isEmpty) return;
 
     final chosen = hand[_reactionRandom.nextInt(hand.length)];
     selectedCard = chosen;
@@ -316,6 +316,42 @@ class GeneralGameViewModel extends ChangeNotifier {
     selectedStacks = const [];
     notifyListeners();
 
+    await performPlayAction(
+      PlayCardAction(usedCard: chosen, performedById: me),
+    );
+  }
+
+  Future<void> _timeoutTresDosAction() async {
+    final hand = gameState.hands[me] ?? const <PlayingCardModel>[];
+    if (hand.isEmpty) return;
+
+    if (hand.length != 6) {
+      final tableCard = gameState.playingArea.isNotEmpty
+          ? gameState.playingArea.last
+          : null;
+      final deckCard = gameState.deck.isNotEmpty ? gameState.deck.last : null;
+      final take = deckCard ?? tableCard;
+      if (take == null) return;
+      selectedCard = null;
+      selectedCards = [take];
+      selectedStacks = const [];
+      notifyListeners();
+      await performPlayAction(
+        TakeCardAction(
+          usedCard: take,
+          targetCard: take,
+          performedById: me,
+          fromZone: deckCard != null ? ZoneType.gameDeck : ZoneType.table,
+        ),
+      );
+      return;
+    }
+
+    final chosen = hand[_reactionRandom.nextInt(hand.length)];
+    selectedCard = chosen;
+    selectedCards = const [];
+    selectedStacks = const [];
+    notifyListeners();
     await performPlayAction(
       PlayCardAction(usedCard: chosen, performedById: me),
     );
@@ -423,6 +459,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       playersInfo: Map<String, dynamic>.from(next.playersInfo),
       isLocalBot: next.isLocalBot,
       botPlayerId: next.botPlayerId,
+      botPlayerIds: List<String>.from(next.botPlayerIds),
       entryCost: next.entryCost,
       entryPaidBy: List<String>.from(next.entryPaidBy),
       payoutApplied: next.payoutApplied,
@@ -432,6 +469,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       roundSpecialCoins: Map<String, int>.from(next.roundSpecialCoins),
       roundViraoCoins: Map<String, int>.from(next.roundViraoCoins),
       tableOrder: leftovers.map((c) => TableOrder.cardKey(c.id)).toList(),
+      turnDeadline: next.turnDeadline,
     );
   }
 
@@ -482,7 +520,12 @@ class GeneralGameViewModel extends ChangeNotifier {
     switch (zone.type) {
       case ZoneType.playerHand:
         if (zone.holderId == me) return 110.0;
-        return 54.0;
+        final ids = oppIds;
+        final topOpp = ids.length <= 1
+            ? (ids.isEmpty ? null : ids.first)
+            : (ids.length > 1 ? ids[1] : null);
+        if (topOpp == null || zone.holderId == topOpp) return 54.0;
+        return 30.0;
       case ZoneType.table:
       case ZoneType.stack:
         return 72.0;
@@ -599,11 +642,43 @@ class GeneralGameViewModel extends ChangeNotifier {
     return box.localToGlobal(box.size.center(Offset.zero));
   }
 
+  Offset? _centroidOf(Iterable<Offset> points) {
+    var x = 0.0;
+    var y = 0.0;
+    var n = 0;
+    for (final p in points) {
+      x += p.dx;
+      y += p.dy;
+      n++;
+    }
+    if (n == 0) return null;
+    return Offset(x / n, y / n);
+  }
+
+  Offset? _handShuffleOrigin(String pid) {
+    final hand = gameState.hands[pid] ?? [];
+    final slot = pid == me ? CardSlot.myHand : CardSlot.oppHand;
+    final points = <Offset>[];
+    for (final card in hand) {
+      final center = _centerOf(keyForCard(card.id, slot));
+      if (center != null) points.add(center);
+    }
+    final fromCards = _centroidOf(points);
+    if (fromCards != null) return fromCards;
+    if (pid == me) return _centerOf(myHandKey);
+    if (oppIds.isNotEmpty && pid == oppIds[oppIds.length == 1 ? 0 : 1]) {
+      return _centerOf(oppHandKey);
+    }
+    return null;
+  }
+
   /// Gather visible piles to the table, wash, square on the shoe — then commit.
   Future<void> _playShuffleMotion({
     Future<void> Function()? onHidden,
     Future<void> Function()? onSquared,
   }) async {
+    await WidgetsBinding.instance.endOfFrame;
+
     final sources = <ShuffleSource>[];
 
     void addSource(GlobalKey key, int count) {
@@ -620,6 +695,14 @@ class GeneralGameViewModel extends ChangeNotifier {
         gameState.playingArea.length +
         gameState.playingAreaStacks.fold<int>(0, (n, s) => n + s.cards.length);
     addSource(tableKey, tableCount);
+
+    for (final pid in gameState.playersInfo.keys) {
+      final hand = gameState.hands[pid] ?? [];
+      if (hand.isEmpty) continue;
+      final origin = _handShuffleOrigin(pid);
+      if (origin == null) continue;
+      sources.add(ShuffleSource(origin: origin, count: hand.length));
+    }
 
     final center = _centerOf(tableKey);
     final deckTarget = _centerOf(deckKey) ?? center;
@@ -672,21 +755,32 @@ class GeneralGameViewModel extends ChangeNotifier {
       inGameAction == InGameAction.noAction &&
       gameState.round.roundStatus == RoundStatus.playing;
 
-  /// Casino Speed only: seconds left for the local player's current turn.
-  /// Returns `0` when the timer isn't active.
-  int get speedTurnRemainingSeconds =>
-      gameState.gameMode == GameMode.casinoSpeed &&
-              gameState.currentTurnPlayerId == me &&
-              gameState.round.roundStatus == RoundStatus.playing
-          ? _speedTurnRemainingSeconds
-          : 0;
+  bool isSeatTurn(String pid) =>
+      pid.isNotEmpty && isLiveTurn && gameState.currentTurnPlayerId == pid;
 
-  bool get _speedTurnShouldBeRunning =>
-      gameState.gameMode == GameMode.casinoSpeed &&
+  /// Tres y Dos: still need to draw or take before playing a card back.
+  bool get needsTakeHint =>
+      canPlayTurn &&
+      isLiveTurn &&
+      gameState.gameMode == GameMode.tresydos &&
+      myHandCards.length != 6;
+
+  Duration get turnTotal => gameState.turnDuration;
+
+  DateTime? turnDeadlineFor(String pid) {
+    if (tutorialMode || pid.isEmpty) return null;
+    if (!_sharedTurnClockLive) return null;
+    if (gameState.currentTurnPlayerId != pid) return null;
+    return gameState.turnDeadline;
+  }
+
+  bool get _sharedTurnClockLive =>
       !tutorialMode &&
-      isMyTurn &&
+      gameState.gameStatus == GameStatus.inProgress &&
       inGameAction == InGameAction.noAction &&
-      gameState.round.roundStatus == RoundStatus.playing;
+      gameState.round.roundStatus == RoundStatus.playing &&
+      (gameState.currentTurnPlayerId ?? '').isNotEmpty &&
+      !gameState.isLocalBotPid(gameState.currentTurnPlayerId);
 
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
   List<PlayingCardModel> get myCollectedCards =>
@@ -858,17 +952,23 @@ class GeneralGameViewModel extends ChangeNotifier {
   DropTarget? hitTestDropTarget(Offset global, {BoardDragSource? source}) {
     final src = source ?? draggingSource;
     final skipId = src?.id;
+    // Tres y Dos: playing from the hand lands on the pile as the table,
+    // not as a take of the face-up discard.
+    final ignoreTableSlots =
+        !isCasinoFamily && src?.kind == BoardDragKind.handCard;
 
-    for (final card in gameState.playingArea) {
-      if (card.id == skipId) continue;
-      if (_boxContains(keyForCard(card.id, CardSlot.table), global)) {
-        return DropTarget.tableCard(card);
+    if (!ignoreTableSlots) {
+      for (final card in gameState.playingArea) {
+        if (card.id == skipId) continue;
+        if (_boxContains(keyForCard(card.id, CardSlot.table), global)) {
+          return DropTarget.tableCard(card);
+        }
       }
-    }
-    for (final stack in gameState.playingAreaStacks) {
-      if (stack.id == skipId) continue;
-      if (_boxContains(keyForStack(stack.id), global)) {
-        return DropTarget.tableStack(stack);
+      for (final stack in gameState.playingAreaStacks) {
+        if (stack.id == skipId) continue;
+        if (_boxContains(keyForStack(stack.id), global)) {
+          return DropTarget.tableStack(stack);
+        }
       }
     }
     if (_boxContains(tableKey, global)) {
@@ -1197,6 +1297,14 @@ class GeneralGameViewModel extends ChangeNotifier {
     ).any((a) => a is PlayCardAction);
   }
 
+  Future<void> playSelectedToTable() async {
+    final card = selectedCard;
+    if (card == null || !canDropPlay(card)) return;
+    await performPlayAction(
+      PlayCardAction(usedCard: card, performedById: me),
+    );
+  }
+
   Future<void> playCardViaDrop(
     PlayingCardModel card,
     Offset globalCenter,
@@ -1321,7 +1429,8 @@ class GeneralGameViewModel extends ChangeNotifier {
     } finally {
       if (!_disposed) {
         isAnimating = false;
-        _syncSpeedTurnClock();
+        _syncTurnClock();
+        _syncWinCelebration();
         notifyListeners();
         _drainPendingRepoSync();
       }
@@ -1487,13 +1596,119 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   InGameAction get inGameAction => gameEngine.getInGameAction(gameState, me);
 
+  /// Empty friend seats stay on the felt until Start; bots fill every chair.
+  bool get showOpenSeats {
+    if (tutorialMode || gameState.isLocalBot || gameState.started) {
+      return false;
+    }
+    final status = gameState.gameStatus;
+    return status == GameStatus.waitingForPlayers ||
+        status == GameStatus.readyToStart;
+  }
+
   /// Board dim + control chrome share this — never dim while motion is running.
   /// Tutorial never surfaces shuffle/deal/start; those belong to a real match.
-  bool get showInGameControl =>
-      !tutorialMode &&
-      !isAnimating &&
-      !motion.isShuffling &&
-      inGameAction != InGameAction.noAction;
+  /// Hide shuffle/waiting until Continue on the status boards — the winning
+  /// hand should stay fully visible in that beat.
+  bool get showInGameControl {
+    if (tutorialMode || isAnimating || motion.isShuffling) return false;
+    if (gameState.gameStatus == GameStatus.gameOver) return false;
+    if (gameState.gameStatus == GameStatus.inProgress &&
+        gameState.round.roundStatus == RoundStatus.completed &&
+        !gameState.round.nextAcknowledged) {
+      return false;
+    }
+    return inGameAction != InGameAction.noAction;
+  }
+
+  /// Tres y Dos player whose hand is the completed 3+2, while it is still shown.
+  String? get celebratingHandPid {
+    if (gameState.gameMode != GameMode.tresydos) return null;
+    if (motion.isShuffling) return null;
+    final inMatch = gameState.gameStatus == GameStatus.inProgress;
+    final gameOver = gameState.gameStatus == GameStatus.gameOver;
+    final roundDone = gameState.round.roundStatus == RoundStatus.completed;
+    if (!gameOver && !(inMatch && roundDone)) return null;
+    for (final pid in gameState.playersInfo.keys) {
+      if (TresDosGameStateHandler.roundEnded(gameState, pid)) return pid;
+    }
+    final winner = gameState.winnerId;
+    if (winner != null && winner.isNotEmpty) return winner;
+    return null;
+  }
+
+  bool isCelebratingHand(String pid) =>
+      pid.isNotEmpty && celebratingHandPid == pid;
+
+  String? get _liveWinCelebrationKey {
+    if (gameState.gameMode != GameMode.tresydos) return null;
+    if (motion.isShuffling) return null;
+    final inMatch = gameState.gameStatus == GameStatus.inProgress;
+    final gameOver = gameState.gameStatus == GameStatus.gameOver;
+    final roundDone = gameState.round.roundStatus == RoundStatus.completed;
+    if (!gameOver && !(inMatch && roundDone)) return null;
+    if (gameOver) return 'over_${gameState.round.id}_${gameState.winnerId}';
+    return 'round_${gameState.round.id}';
+  }
+
+  void _syncWinCelebration() {
+    final key = _liveWinCelebrationKey;
+    if (key == null) {
+      _stopWinCelebration();
+      return;
+    }
+    if (_winCelebrationKey == key) return;
+    _winCelebrationKey = key;
+    _winCelebrationSkipped = false;
+    _winCelebrationDeadline = DateTime.now().add(_winCelebrationFor);
+    _winCelebrationSecondsLeft = _winCelebrationFor.inSeconds;
+    _winCelebrationTimer?.cancel();
+    _winCelebrationTimer = Timer.periodic(const Duration(milliseconds: 200), (
+      _,
+    ) {
+      if (_disposed) return;
+      final next = winCelebrationSecondsLeft;
+      if (next != _winCelebrationSecondsLeft) {
+        _winCelebrationSecondsLeft = next;
+        notifyListeners();
+      }
+      if (next <= 0) {
+        _winCelebrationTimer?.cancel();
+        _winCelebrationTimer = null;
+      }
+    });
+  }
+
+  void _stopWinCelebration() {
+    _winCelebrationTimer?.cancel();
+    _winCelebrationTimer = null;
+    _winCelebrationDeadline = null;
+    _winCelebrationKey = null;
+    _winCelebrationSkipped = false;
+    _winCelebrationSecondsLeft = 0;
+  }
+
+  int get winCelebrationSecondsLeft {
+    if (_winCelebrationSkipped) return 0;
+    final deadline = _winCelebrationDeadline;
+    if (deadline == null) return 0;
+    final ms = deadline.difference(DateTime.now()).inMilliseconds;
+    if (ms <= 0) return 0;
+    return (ms / 1000).ceil();
+  }
+
+  bool get showWinCelebrationSkip =>
+      celebratingHandPid != null && winCelebrationSecondsLeft > 0;
+
+  void skipWinCelebration() {
+    if (!showWinCelebrationSkip) return;
+    _winCelebrationSkipped = true;
+    _winCelebrationDeadline = DateTime.now();
+    _winCelebrationSecondsLeft = 0;
+    _winCelebrationTimer?.cancel();
+    _winCelebrationTimer = null;
+    notifyListeners();
+  }
 
   Future<void> performInGameAction(InGameAction action) async {
     if (isAnimating) return;
@@ -1541,7 +1756,8 @@ class GeneralGameViewModel extends ChangeNotifier {
     } finally {
       motion.setShuffling(false);
       isAnimating = false;
-      _syncSpeedTurnClock();
+      _syncTurnClock();
+      _syncWinCelebration();
       notifyListeners();
       _drainPendingRepoSync();
     }
@@ -1565,6 +1781,8 @@ class GeneralGameViewModel extends ChangeNotifier {
         gameState.ensureBotMetadata();
       }
       _syncRevealedPending();
+      _syncWinCelebration();
+      _syncTurnClock();
       loading = false;
       notifyListeners();
       return true;
@@ -1575,18 +1793,43 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   Future<JoinGameResult> joinGame() async {
-    var charged = 0;
+    var chargedCoins = 0;
+    var chargedEnergy = 0;
     try {
-      if (!tutorialMode &&
+      final alreadySeated = gameState.playersInfo.containsKey(player.id);
+      if (!alreadySeated) {
+        if (gameState.started ||
+            gameState.gameStatus == GameStatus.inProgress ||
+            gameState.gameStatus == GameStatus.gameOver) {
+          return JoinGameResult.failed;
+        }
+        if (gameState.playersInfo.length >= gameState.maxSeats) {
+          return JoinGameResult.failed;
+        }
+      }
+
+      if (!alreadySeated &&
+          !tutorialMode &&
           !gameState.isLocalBot &&
           !gameState.entryPaidBy.contains(player.id)) {
         final cost = gameState.entryCost;
+        final energyCost = WalletConfig.energyCostFor(gameState.gameMode.name);
+        if (appRepo.wallet.energy < energyCost) {
+          return JoinGameResult.notEnoughEnergy;
+        }
         if (appRepo.wallet.coins < cost) {
           return JoinGameResult.notEnoughCoins;
         }
+        final spentEnergy = await appRepo.trySpendEnergy(energyCost);
+        if (!spentEnergy) return JoinGameResult.notEnoughEnergy;
+        chargedEnergy = energyCost;
         final spent = await appRepo.trySpendCoins(cost);
-        if (!spent) return JoinGameResult.notEnoughCoins;
-        charged = cost;
+        if (!spent) {
+          await appRepo.grantEnergy(chargedEnergy);
+          chargedEnergy = 0;
+          return JoinGameResult.notEnoughCoins;
+        }
+        chargedCoins = cost;
         gameState.entryPaidBy.add(player.id);
       }
 
@@ -1603,9 +1846,12 @@ class GeneralGameViewModel extends ChangeNotifier {
       return JoinGameResult.ok;
     } catch (e) {
       developer.log("GameViewModel.joiningGame Error: $e");
-      if (charged > 0) {
-        await appRepo.grantCoins(charged);
+      if (chargedCoins > 0) {
+        await appRepo.grantCoins(chargedCoins);
         gameState.entryPaidBy.remove(player.id);
+      }
+      if (chargedEnergy > 0) {
+        await appRepo.grantEnergy(chargedEnergy);
       }
     }
     return JoinGameResult.failed;
@@ -1626,7 +1872,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// After round/game status sheet — acknowledge so the dealer (or bot) can proceed.
+  /// After round/game status sheet — show shuffle/waiting; dealer taps Shuffle.
   Future<void> continueAfterRound() async {
     if (gameState.gameStatus == GameStatus.gameOver) {
       notifyListeners();
@@ -1635,54 +1881,10 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (gameState.round.roundStatus != RoundStatus.completed) return;
 
     gameState.round.nextAcknowledged = true;
-
-    if (gameState.controllerId == me) {
-      await performInGameAction(InGameAction.shuffle);
-      return;
+    if (!tutorialMode) {
+      await gameRepo.fs.updateGame(gameState);
     }
-
-    final botDealer =
-        gameState.isLocalBot && gameState.controllerId == gameState.localBotPid;
-
-    if (!botDealer) {
-      // Remote human dealer — ack only; shuffle motion arrives via `_syncFromRepo`.
-      if (!tutorialMode) {
-        await gameRepo.fs.updateGame(gameState);
-      }
-      notifyListeners();
-      return;
-    }
-
-    // Local bot dealer: play the gather-wash now, while collected piles
-    // still exist. The bot mutates this same GameState in place, so
-    // `_syncFromRepo` never sees completed → readyToDeal.
-    if (isAnimating) return;
-    isAnimating = true;
     notifyListeners();
-    _shuffleOverlayRoundId = gameState.round.id;
-    try {
-      await _playShuffleMotion(
-        onHidden: () async {
-          if (!tutorialMode) {
-            await gameRepo.fs.updateGame(gameState);
-          }
-        },
-        onSquared: () async {
-          final latest = gameRepo.gameState;
-          if (latest != null) {
-            await _commitStateWithMotion(latest, const []);
-          }
-          motion.setShuffling(false);
-        },
-      );
-    } catch (e) {
-      developer.log("continueAfterRound shuffle Error $e");
-    } finally {
-      motion.setShuffling(false);
-      isAnimating = false;
-      notifyListeners();
-      _drainPendingRepoSync();
-    }
   }
 
   PlayingCardModel? selectedCard;
@@ -1854,12 +2056,19 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   /// Occasional local-bot emoji after a play/take. Never writes game state.
-  void _maybeBotReact({required bool took, required bool botPlayed}) {
+  void _maybeBotReact({
+    required bool took,
+    required bool botPlayed,
+    String? fromPid,
+  }) {
     if (_disposed) return;
     if (!gameState.isLocalBot && !tutorialMode) return;
     if (gameState.round.roundStatus != RoundStatus.playing) return;
     if (gameState.gameStatus == GameStatus.gameOver) return;
-    final botId = gameState.localBotPid ?? opp;
+    final botId =
+        fromPid ??
+        gameState.localBotPid ??
+        opp;
     if (botId == null || botId.isEmpty) return;
 
     final now = DateTime.now();
@@ -1928,7 +2137,8 @@ class GeneralGameViewModel extends ChangeNotifier {
     _outgoingHideTimer?.cancel();
     _incomingHideTimer?.cancel();
     _botReactTimer?.cancel();
-    _speedTurnTimer?.cancel();
+    _turnTimer?.cancel();
+    _winCelebrationTimer?.cancel();
     gameRepo.removeListener(_onGameRepoChanged);
     motion.removeListener(notifyListeners);
     motion.dispose();

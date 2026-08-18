@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -27,6 +28,7 @@ class GamesViewModel extends ChangeNotifier {
     _sub = null;
     currentGames = const [];
     previousGames = const [];
+    _historyVisible = historyPageSize;
     loading = uid != null;
     error = null;
     notifyListeners();
@@ -34,9 +36,20 @@ class GamesViewModel extends ChangeNotifier {
 
   List<GameInfo> get gamesInfo => _appRepo.gamesInfo;
 
-  Future<String?> newGame(GameMode mode, bool local) async {
+  Future<String?> newGame(
+    GameMode mode,
+    bool local, {
+    int playerCount = 2,
+    int entryCost = WalletConfig.entryCost,
+  }) async {
     try {
-      final gid = await _appRepo.createNewGame(mode, '', local);
+      final gid = await _appRepo.createNewGame(
+        mode,
+        '',
+        local,
+        playerCount: playerCount,
+        entryCost: entryCost,
+      );
       debugPrint('newGame $gid local=$local');
       return gid;
     } on InsufficientFundsException {
@@ -60,6 +73,9 @@ class GamesViewModel extends ChangeNotifier {
   List<GamePillData> currentGames = const [];
   List<GamePillData> previousGames = const [];
 
+  static const historyPageSize = 20;
+  int _historyVisible = historyPageSize;
+
   /// Back-compat alias used by older call sites.
   List<GamePillData> get games => currentGames;
 
@@ -79,6 +95,20 @@ class GamesViewModel extends ChangeNotifier {
     final uid = userId;
     if (uid == null) return const [];
     return previousGames.where((g) => g.containsPlayer(uid)).toList();
+  }
+
+  List<GamePillData> get visiblePreviousGames {
+    final all = myPreviousGames;
+    if (all.length <= _historyVisible) return all;
+    return all.take(_historyVisible).toList();
+  }
+
+  bool get hasMoreHistory => myPreviousGames.length > _historyVisible;
+
+  void loadMoreHistory() {
+    if (!hasMoreHistory) return;
+    _historyVisible += historyPageSize;
+    notifyListeners();
   }
 
   /// Current games where it is this player's turn (for the peek-card badge).
@@ -106,6 +136,7 @@ class GamesViewModel extends ChangeNotifier {
     _sub?.cancel();
     currentGames = const [];
     previousGames = const [];
+    _historyVisible = historyPageSize;
     loading = true;
     error = null;
     notifyListeners();

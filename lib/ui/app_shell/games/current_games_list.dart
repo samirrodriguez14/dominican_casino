@@ -6,6 +6,7 @@ import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -30,7 +31,9 @@ class CurrentGamesList extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<GamesViewModel>();
     final l10n = AppLocalizations.of(context);
-    final list = history ? vm.myPreviousGames : vm.myCurrentGames;
+    final all = history ? vm.myPreviousGames : vm.myCurrentGames;
+    final list = history ? vm.visiblePreviousGames : all;
+    final showLoadMore = history && vm.hasMoreHistory;
 
     if (vm.loading && list.isEmpty) {
       return const Center(child: CupertinoActivityIndicator());
@@ -61,15 +64,20 @@ class CurrentGamesList extends StatelessWidget {
 
     return ListView.separated(
       padding: padding,
-      itemCount: list.length,
+      itemCount: list.length + (showLoadMore ? 1 : 0),
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, i) => _CurrentGamePill(
-        vm: vm,
-        game: list[i],
-        history: history,
-        onBeforeEnter: onBeforeEnter,
-        embeddedInCard: embeddedInCard,
-      ),
+      itemBuilder: (context, i) {
+        if (showLoadMore && i == list.length) {
+          return _LoadMoreRow(onPressed: vm.loadMoreHistory);
+        }
+        return _CurrentGamePill(
+          vm: vm,
+          game: list[i],
+          history: history,
+          onBeforeEnter: onBeforeEnter,
+          embeddedInCard: embeddedInCard,
+        );
+      },
     );
   }
 }
@@ -123,6 +131,43 @@ class _CurrentGamePill extends StatelessWidget {
               await SharePlus.instance.share(ShareParams(text: message));
             }
           : null,
+    );
+  }
+}
+
+class _LoadMoreRow extends StatelessWidget {
+  const _LoadMoreRow({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = AppStyle.theme;
+    return Center(
+      child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        minimumSize: Size.zero,
+        onPressed: SoundService.wrapTap(onPressed),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l10n.loadMore,
+              style: theme.mutedText.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              CupertinoIcons.chevron_down,
+              size: 14,
+              color: theme.muted,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

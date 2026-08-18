@@ -13,6 +13,7 @@ class MatchCoinPayout extends StatelessWidget {
   int get _bonuses => vm.gameState.pendingCoinsFor(vm.me);
   int get _pot => vm.gameState.winPotCoins(vm.me);
   int get _total => _bonuses + _pot;
+  int? get _place => vm.gameState.finishRank(vm.me);
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +22,9 @@ class MatchCoinPayout extends StatelessWidget {
     if (_total <= 0) {
       return const SizedBox.shrink();
     }
+    final potLabel = _place != null && vm.gameState.seatedPlayerCount >= 3
+        ? l10n.coinPayoutPlace(_place!)
+        : l10n.coinWinPot;
 
     return Container(
       margin: const EdgeInsets.only(top: 12),
@@ -47,7 +51,7 @@ class MatchCoinPayout extends StatelessWidget {
           if (_bonuses > 0) _line(l10n.coinBonuses, _bonuses, theme),
           if (_pot > 0) ...[
             if (_bonuses > 0) const SizedBox(height: 6),
-            _line(l10n.coinWinPot, _pot, theme),
+            _line(potLabel, _pot, theme),
           ],
           const SizedBox(height: 10),
           Row(

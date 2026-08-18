@@ -95,7 +95,7 @@ class _ProfileCardState extends State<ProfileCard> {
                                   avatarId: avatarId,
                                   size: avatarSize,
                                   score: score,
-                                  playingCardWidth: avatarSize * 0.46,
+                                  playingCardWidth: avatarSize * 0.32,
                                   onPressed: () => _changeAvatar(context, vm),
                                   onEditPlayingCard: () => _setEditing(true),
                                 ),

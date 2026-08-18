@@ -24,18 +24,30 @@ class AppLocalizations {
   String get playHowPrompt =>
       isEs ? '¿Cómo quieres jugar?' : 'How do you want to play?';
   String get playWithFriend => isEs ? 'Con un amigo' : 'With a friend';
+  String get playWithFriends => isEs ? 'Con amigo(s)' : 'With friend(s)';
   String get playWithFriendHint => isEs
       ? 'Crea una mesa y comparte el ID'
       : 'Create a table and share the ID';
-  String get playVsPuli => isEs ? 'Contra Puli' : 'Vs Puli';
-  String get playVsPuliHint => isEs
-      ? 'Practica contra el bot de la casa'
-      : 'Practice against the house bot';
+  String get playWithFriendsHint => isEs
+      ? 'Crea una mesa de 2 a 4 y comparte el ID'
+      : 'Create a table for 2–4 and share the ID';
+  String get openSeat => isEs ? 'Libre' : 'Open';
+  String get playVsPuli => isEs ? 'Contra bots' : 'Vs AI bot';
+  String get playVsPuliHint =>
+      isEs ? 'Juega contra la casa' : 'Play against the house AI';
+  String get playHowManyPlayers =>
+      isEs ? '¿Cuántos jugadores?' : 'How many players?';
+  String playersAtTable(int n) =>
+      isEs ? '$n jugadores' : '$n players';
+  String youPlusBots(int bots) => bots == 1
+      ? (isEs ? 'Tú + 1 bot' : 'You + 1 bot')
+      : (isEs ? 'Tú + $bots bots' : 'You + $bots bots');
   String get playJoinByIdHint =>
       isEs ? 'Entra el código de un amigo' : 'Enter a code from a friend';
-  String joinCostsCoins(int n) => isEs
-      ? 'Unirse cuesta $n monedas'
-      : 'Joining costs $n coins';
+  String joinCostsEnergy(int n) => isEs
+      ? 'Unirse gasta $n de energía'
+      : 'Joining uses $n energy';
+  String get matchStake => isEs ? 'Apuesta' : 'Stake';
   String get notEnoughCoins =>
       isEs ? 'No tienes suficientes monedas' : 'Not enough coins';
   String get notEnoughEnergy =>
@@ -53,6 +65,28 @@ class AppLocalizations {
   String get coinsThisGame => isEs ? 'Monedas de la partida' : 'Coins this game';
   String get coinBonuses => isEs ? 'Bonos' : 'Bonuses';
   String get coinWinPot => isEs ? 'Premio' : 'Win pot';
+  String coinPayoutPlace(int place) {
+    if (place == 1) return isEs ? '1.er lugar' : '1st place';
+    if (place == 2) return isEs ? '2.º lugar' : '2nd place';
+    if (place == 3) return isEs ? '3.er lugar' : '3rd place';
+    if (place == 4) return isEs ? '4.º lugar' : '4th place';
+    return coinWinPot;
+  }
+
+  String placeShort(int place) {
+    if (place == 1) return isEs ? '1.º' : '1st';
+    if (place == 2) return isEs ? '2.º' : '2nd';
+    if (place == 3) return isEs ? '3.º' : '3rd';
+    if (place == 4) return isEs ? '4.º' : '4th';
+    return '$place';
+  }
+  String tablePayoutHint(int players) => players < 3
+      ? (isEs ? 'El ganador se lleva el pozo' : 'Winner takes the pot')
+      : (isEs ? '75% al 1.º, 25% al 2.º' : '75% to 1st, 25% to 2nd');
+  String eachPlayerBets(int n) => isEs
+      ? 'Cada jugador apuesta $n monedas'
+      : 'Each player bets $n coins';
+  String potTotal(int n) => isEs ? 'Pozo $n' : 'Pot $n';
   String get coinsCongratsTitle => isEs ? '¡Felicidades!' : 'Congrats!';
   String coinsCongratsBody(int n) => isEs
       ? 'Ganaste $n monedas'
@@ -71,12 +105,14 @@ class AppLocalizations {
   String get yourTurn => isEs ? 'Tu turno' : 'Your Turn';
   String get opponentTurn => isEs ? 'Turno del rival' : 'Opponent Turn';
   String get actionStart => isEs ? 'Empezar' : 'Start';
+  String get startGame => isEs ? 'Empezar partida' : 'Start game';
   String get actionShare => isEs ? 'Compartir' : 'Share';
   String get actionDeal => isEs ? 'Repartir' : 'Deal';
   String get actionDealAgain => isEs ? 'Repartir de nuevo' : 'Deal again';
   String get actionReady => isEs ? 'Listo' : 'Ready';
   String get actionWaiting => isEs ? 'Esperando' : 'Waiting';
   String get actionShuffle => isEs ? 'Barajar' : 'Shuffle';
+  String get actionSkip => isEs ? 'Saltar' : 'Skip';
   String get actionLeave => isEs ? 'Salir' : 'Leave';
   String get settings => isEs ? 'Ajustes' : 'Settings';
   String get store => isEs ? 'Tienda' : 'Store';
@@ -151,6 +187,7 @@ class AppLocalizations {
   String get currentGames => isEs ? 'Actuales' : 'Current';
   String get previousGames => isEs ? 'Anteriores' : 'Previous';
   String get gameHistory => isEs ? 'Historial' : 'History';
+  String get loadMore => isEs ? 'Cargar más' : 'Load more';
   String get noCurrentGames =>
       isEs ? 'No hay partidas actuales' : 'No current games';
   String get noPreviousGames =>

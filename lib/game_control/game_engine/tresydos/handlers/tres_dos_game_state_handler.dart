@@ -26,7 +26,7 @@ class TresDosGameStateHandler {
     gameState.cardMoveEvents = [];
     gameState.settlementEvents = [];
 
-    gameState.currentTurnPlayerId = '';
+    gameState.setTurn('');
     gameState.controllerId = pid;
 
     gameState.round.roundStatus = RoundStatus.readyToDeal;

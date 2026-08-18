@@ -47,9 +47,8 @@ class TresDosGameEngine extends GameEngine {
     );
 
     if (gameState.hands[action.performedById]?.length == 5) {
-      gameState.currentTurnPlayerId = GameActionHandler.getNextPlayerId(
-        gameState,
-        action.performedById,
+      gameState.setTurn(
+        GameActionHandler.getNextPlayerId(gameState, action.performedById),
       );
     }
     final cardMoveEvents = EventHandler.handlegenerateEvents(gameState, action);
@@ -66,6 +65,7 @@ class TresDosGameEngine extends GameEngine {
     if (TresDosGameStateHandler.shouldDealSameRound(gameState)) {
       TresDosGameStateHandler.handleShuffleRound(gameState);
     }
+    gameState.refreshTurnClock(restart: false);
     return gameState;
   }
 

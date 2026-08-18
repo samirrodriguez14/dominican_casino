@@ -28,6 +28,10 @@ class _GenGameControlState extends State<GenGameControl> {
     return ListenableBuilder(
       listenable: vm.motion,
       builder: (context, _) {
+        // Winning 3+2 beat — Skip without dimming the table.
+        if (vm.showWinCelebrationSkip) {
+          return _buildSkipButton(context, vm);
+        }
         // Hide during shuffle even if the VM hasn't rebuilt yet.
         if (!vm.showInGameControl) {
           return const SizedBox.shrink();
@@ -39,6 +43,48 @@ class _GenGameControlState extends State<GenGameControl> {
           child: _buildInGameActionButton(context, vm, vm.inGameAction),
         );
       },
+    );
+  }
+
+  Widget _buildSkipButton(BuildContext context, GeneralGameViewModel vm) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    final gold = theme.turnHighlight;
+    final seconds = vm.winCelebrationSecondsLeft;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 148),
+      decoration: AppStyle.theme.raisedSurfaceBox(),
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        onPressed: SoundService.wrapTap(vm.skipWinCelebration),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(CupertinoIcons.forward_end_fill, size: 34, color: gold),
+              const SizedBox(height: 10),
+              Text(
+                l10n.actionSkip,
+                style: theme.body.copyWith(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: theme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${seconds}s',
+                style: theme.caption.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: theme.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

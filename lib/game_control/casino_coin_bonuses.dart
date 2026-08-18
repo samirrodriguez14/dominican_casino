@@ -92,10 +92,14 @@ class CasinoCoinBonuses {
 
   /// Once per completed round: virao coins only, then fold all round
   /// coin totals into [game.round.roundScores] for the status sheet.
+  ///
+  /// A continuing match bumps [Round.id] before this runs; a game-ending
+  /// round does not. Use the score map, not that id, to know if we already
+  /// wrote this round's coins.
   static void accrueViraosIfNeeded(GameState game) {
     if (!GameRegistry.isCasinoFamily(game.gameMode)) return;
     if (game.round.roundStatus != RoundStatus.completed) return;
-    if (game.viraosCreditedRoundId == game.round.id) return;
+    if (_roundCoinsAlreadyWritten(game)) return;
     game.viraosCreditedRoundId = game.round.id;
 
     final holder = game.extraPointsHolderId;
@@ -105,6 +109,13 @@ class CasinoCoinBonuses {
     }
     _writeCoinsIntoRoundScores(game);
     game.clearRoundCoinAccrual();
+  }
+
+  static bool _roundCoinsAlreadyWritten(GameState game) {
+    for (final raw in game.round.roundScores.values) {
+      if (raw is Map && raw.containsKey('coins')) return true;
+    }
+    return false;
   }
 
   static void _writeCoinsIntoRoundScores(GameState game) {

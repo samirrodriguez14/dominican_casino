@@ -50,16 +50,18 @@ abstract class GameEngine {
     String pid,
   );
 
-  /// When both seats are filled and the game has not started, callers should
-  /// set [GameStatus.readyToStart] and persist (do not do that inside getters).
+  /// When the minimum seats are filled and the game has not started, callers
+  /// should set [GameStatus.readyToStart] and persist (not inside getters).
+  /// Tres y Dos can still accept more friends until Start.
   bool shouldMarkReadyToStart(GameState gameState) {
-    const maxPlayers = 2;
+    const minPlayers = 2;
     if (gameState.gameStatus == GameStatus.inProgress ||
         gameState.gameStatus == GameStatus.gameOver) {
       return false;
     }
     final joined = gameState.playersInfo.keys.where((k) => k.isNotEmpty);
-    return joined.length >= maxPlayers;
+    return joined.length >= minPlayers &&
+        joined.length <= maxSeatsFor(gameState.gameMode);
   }
 }
 

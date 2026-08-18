@@ -41,7 +41,7 @@ class GameActionHandler {
           cardsInPlayingArea,
         );
         newGameState.round.roundStatus = RoundStatus.playing;
-        newGameState.currentTurnPlayerId = getNextPlayerId(newGameState, pid);
+        newGameState.setTurn(getNextPlayerId(newGameState, pid));
         return newGameState;
 
       case InGameAction.dealSame:
@@ -52,7 +52,7 @@ class GameActionHandler {
           cardsInPlayingAreaRedeal,
         );
         newGameState.round.roundStatus = RoundStatus.playing;
-        newGameState.currentTurnPlayerId = getNextPlayerId(newGameState, pid);
+        newGameState.setTurn(getNextPlayerId(newGameState, pid));
         return newGameState;
 
       default:
@@ -203,7 +203,7 @@ class GameActionHandler {
     gameState.settlementEvents = [];
     gameState.clearRoundCoinAccrual();
 
-    gameState.currentTurnPlayerId = '';
+    gameState.setTurn('');
     gameState.controllerId = pid;
 
     gameState.round.roundStatus = RoundStatus.readyToDeal;

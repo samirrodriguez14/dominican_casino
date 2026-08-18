@@ -31,6 +31,7 @@ class LocalPlayer extends ChangeNotifier {
   static LocalPlayer? _active;
 
   String pid = "elabusador";
+  final List<String> botPids;
   String name = GameState.localBotName;
   GameRepo gameRepo;
   GameMode mode;
@@ -41,23 +42,41 @@ class LocalPlayer extends ChangeNotifier {
 
   /// Recreate the on-device AI after a cold start, or drop it for a human match.
   static void ensureAttached(GameRepo gameRepo, GameState state) {
-    final botId = state.localBotPid;
-    if (botId == null || botId.isEmpty) {
+    final botIds = state.localBotPids;
+    if (botIds.isEmpty) {
       _active?.dispose();
       _active = null;
       return;
     }
     if (_active != null &&
-        _active!.pid == botId &&
-        identical(_active!.gameRepo, gameRepo)) {
+        identical(_active!.gameRepo, gameRepo) &&
+        _sameBots(_active!.botPids, botIds)) {
       return;
     }
     _active?.dispose();
-    _active = LocalPlayer(gameRepo: gameRepo, mode: state.gameMode, pid: botId);
+    _active = LocalPlayer(
+      gameRepo: gameRepo,
+      mode: state.gameMode,
+      botPids: botIds,
+    );
   }
 
-  LocalPlayer({required this.gameRepo, required this.mode, String? pid}) {
-    if (pid != null) this.pid = pid;
+  static bool _sameBots(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    final other = b.toSet();
+    return a.every(other.contains);
+  }
+
+  LocalPlayer({
+    required this.gameRepo,
+    required this.mode,
+    List<String>? botPids,
+    String? pid,
+  }) : botPids = List<String>.from(
+         botPids ?? (pid != null && pid.isNotEmpty ? [pid] : const []),
+       ) {
+    if (this.botPids.isNotEmpty) this.pid = this.botPids.first;
+    if (pid != null && pid.isNotEmpty) this.pid = pid;
     final created = GameRegistry.createEngine(mode);
     if (created == null) {
       throw StateError('No engine for mode $mode');
@@ -65,9 +84,12 @@ class LocalPlayer extends ChangeNotifier {
     engine = created;
     gameRepo.addListener(_onGameRepoChanged);
     developer.log(
-      "LocalPlayer. pid: ${this.pid}, Mode: $mode, Engine: $engine",
+      "LocalPlayer. pids: ${this.botPids}, Mode: $mode, Engine: $engine",
     );
   }
+
+  bool _isOurBot(String? id) =>
+      id != null && id.isNotEmpty && botPids.contains(id);
 
   @override
   void dispose() {
@@ -121,17 +143,18 @@ class LocalPlayer extends ChangeNotifier {
 
     switch (state.round.roundStatus) {
       case RoundStatus.playing:
-        if (state.controllerId == pid &&
+        if (_isOurBot(state.controllerId) &&
             GameRegistry.isCasinoFamily(state.gameMode) &&
             CasinoGameStateHandler.shouldDealSameRound(state)) {
           await Future.delayed(const Duration(milliseconds: 700));
           if (_disposed) return false;
           final current = gameRepo.gameState;
           if (current == null ||
-              current.controllerId != pid ||
+              !_isOurBot(current.controllerId) ||
               !CasinoGameStateHandler.shouldDealSameRound(current)) {
             return false;
           }
+          pid = current.controllerId;
           final next = engine.performInGameAction(
             current,
             InGameAction.dealSame,
@@ -141,7 +164,8 @@ class LocalPlayer extends ChangeNotifier {
           return true;
         }
 
-        if (state.currentTurnPlayerId != pid) return false;
+        if (!_isOurBot(state.currentTurnPlayerId)) return false;
+        pid = state.currentTurnPlayerId!;
 
         final PossibleSelection bestAction;
         switch (state.gameMode) {
@@ -168,11 +192,21 @@ class LocalPlayer extends ChangeNotifier {
         return true;
 
       case RoundStatus.completed:
-        if (state.controllerId != pid) return false;
+        if (!_isOurBot(state.controllerId)) return false;
         if (!state.round.nextAcknowledged) return false;
+        await Future.delayed(const Duration(milliseconds: 900));
+        if (_disposed) return false;
+        final afterWait = gameRepo.gameState;
+        if (afterWait == null ||
+            afterWait.round.roundStatus != RoundStatus.completed ||
+            !afterWait.round.nextAcknowledged ||
+            !_isOurBot(afterWait.controllerId)) {
+          return false;
+        }
+        pid = afterWait.controllerId;
 
         final next = engine.performInGameAction(
-          state,
+          afterWait,
           InGameAction.shuffle,
           pid,
         );
@@ -180,7 +214,7 @@ class LocalPlayer extends ChangeNotifier {
         return true;
 
       case RoundStatus.readyToDeal:
-        if (state.controllerId != pid) return false;
+        if (!_isOurBot(state.controllerId)) return false;
 
         // Pause so the human can see the undealt table after shuffle motion.
         await Future.delayed(const Duration(milliseconds: 2500));
@@ -188,9 +222,10 @@ class LocalPlayer extends ChangeNotifier {
         final current = gameRepo.gameState;
         if (current == null ||
             current.round.roundStatus != RoundStatus.readyToDeal ||
-            current.controllerId != pid) {
+            !_isOurBot(current.controllerId)) {
           return false;
         }
+        pid = current.controllerId;
 
         final next = engine.performInGameAction(
           current,

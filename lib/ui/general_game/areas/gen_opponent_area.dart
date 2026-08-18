@@ -1,5 +1,4 @@
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
@@ -25,8 +24,7 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
   @override
   Widget build(BuildContext context) {
     GeneralGameViewModel vm = context.read<GeneralGameViewModel>();
-    if (widget.oppId.isEmpty &&
-        vm.gameState.gameStatus != GameStatus.waitingForPlayers) {
+    if (widget.oppId.isEmpty && !vm.showOpenSeats) {
       return const SizedBox.shrink();
     }
     bool highlightTurn =

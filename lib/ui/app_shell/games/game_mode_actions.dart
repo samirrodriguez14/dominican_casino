@@ -32,7 +32,9 @@ void showJoinGameDialog(BuildContext context, String mode) {
           child: Column(
             children: [
               Text(
-                l10n.joinCostsCoins(WalletConfig.entryCost),
+                l10n.joinCostsEnergy(
+                  WalletConfig.energyCostFor(mode),
+                ),
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 10),
@@ -80,15 +82,24 @@ void showEnterGameDialog(
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return _EnterGamePopup(
         mode: mode,
-        onFriend: () async {
+        onFriend: (entryCost) async {
           if (!await ensureGoogleForOnlinePlay(context)) return;
           if (!context.mounted) return;
           Navigator.pop(dialogContext);
-          gameEnter(context, vm, mode, false);
+          gameEnter(context, vm, mode, false, entryCost: entryCost);
         },
-        onPuli: () {
+        onPuli: (entryCost) {
           Navigator.pop(dialogContext);
-          gameEnter(context, vm, mode, true);
+          if (mode == GameMode.tresydos) {
+            showAiTableSizeDialog(
+              context,
+              vm,
+              mode,
+              entryCost: entryCost,
+            );
+          } else {
+            gameEnter(context, vm, mode, true, entryCost: entryCost);
+          }
         },
         onJoin: () async {
           if (!await ensureGoogleForOnlinePlay(context)) return;
@@ -173,7 +184,93 @@ String _modeTitle(GamesViewModel vm, GameMode mode) {
   };
 }
 
-class _EnterGamePopup extends StatelessWidget {
+class _StakePicker extends StatelessWidget {
+  const _StakePicker({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Row(
+      children: [
+        for (var i = 0; i < WalletConfig.entryStakes.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: _StakeChip(
+              amount: WalletConfig.entryStakes[i],
+              selected: selected == WalletConfig.entryStakes[i],
+              onTap: () => onChanged(WalletConfig.entryStakes[i]),
+              theme: theme,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _StakeChip extends StatelessWidget {
+  const _StakeChip({
+    required this.amount,
+    required this.selected,
+    required this.onTap,
+    required this.theme,
+  });
+
+  final int amount;
+  final bool selected;
+  final VoidCallback onTap;
+  final AppTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      pressedOpacity: 0.72,
+      onPressed: SoundService.wrapTap(onTap),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? theme.surfaceRaised : theme.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected
+                ? theme.turnHighlight.withValues(alpha: .7)
+                : theme.border.withValues(alpha: .55),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              coinIcon,
+              size: 14,
+              color: selected ? theme.turnHighlight : theme.muted,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '$amount',
+              style: theme.title.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: selected ? theme.textPrimary : theme.muted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EnterGamePopup extends StatefulWidget {
   const _EnterGamePopup({
     required this.mode,
     required this.gameTitle,
@@ -184,14 +281,40 @@ class _EnterGamePopup extends StatelessWidget {
 
   final GameMode mode;
   final String gameTitle;
-  final VoidCallback onFriend;
-  final VoidCallback onPuli;
+  final void Function(int entryCost) onFriend;
+  final void Function(int entryCost) onPuli;
   final VoidCallback onJoin;
+
+  @override
+  State<_EnterGamePopup> createState() => _EnterGamePopupState();
+}
+
+class _EnterGamePopupState extends State<_EnterGamePopup> {
+  int _stake = WalletConfig.entryCost;
+  _PlayPath _path = _PlayPath.friend;
+
+  void _start() {
+    switch (_path) {
+      case _PlayPath.friend:
+        widget.onFriend(_stake);
+      case _PlayPath.puli:
+        widget.onPuli(_stake);
+      case _PlayPath.join:
+        widget.onJoin();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final l10n = AppLocalizations.of(context);
+    final mode = widget.mode;
+    final energy = WalletConfig.energyCostFor(mode.name);
+    final energyCost = _EntryCost(
+      label: '$energy',
+      icon: CupertinoIcons.bolt_fill,
+      energy: true,
+    );
     final suitColor = switch (mode) {
       GameMode.tresydos => theme.suitRed,
       GameMode.casino ||
@@ -238,7 +361,7 @@ class _EnterGamePopup extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  gameTitle,
+                  widget.gameTitle,
                   textAlign: TextAlign.center,
                   style: theme.title.copyWith(
                     fontSize: 24,
@@ -253,32 +376,69 @@ class _EnterGamePopup extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 _ChoiceTile(
-                  icon: CupertinoIcons.person_2_fill,
-                  title: l10n.playWithFriend,
-                  subtitle: l10n.playWithFriendHint,
-                  costLabel: '${WalletConfig.entryCost}',
-                  costIcon: coinIcon,
-                  emphasized: true,
-                  onTap: onFriend,
+                  icon: widget.mode == GameMode.tresydos
+                      ? CupertinoIcons.group_solid
+                      : CupertinoIcons.person_2_fill,
+                  title: widget.mode == GameMode.tresydos
+                      ? l10n.playWithFriends
+                      : l10n.playWithFriend,
+                  subtitle: widget.mode == GameMode.tresydos
+                      ? l10n.playWithFriendsHint
+                      : l10n.playWithFriendHint,
+                  costs: [energyCost],
+                  emphasized: _path == _PlayPath.friend,
+                  onTap: () => setState(() => _path = _PlayPath.friend),
                 ),
                 const SizedBox(height: 10),
                 _ChoiceTile(
                   icon: CupertinoIcons.bolt_fill,
                   title: l10n.playVsPuli,
                   subtitle: l10n.playVsPuliHint,
-                  costLabel:
-                      '${WalletConfig.puliloEnergyCostFor(mode.name)}',
-                  costIcon: CupertinoIcons.bolt_fill,
-                  onTap: onPuli,
+                  costs: [energyCost],
+                  emphasized: _path == _PlayPath.puli,
+                  onTap: () => setState(() => _path = _PlayPath.puli),
                 ),
                 const SizedBox(height: 10),
                 _ChoiceTile(
                   icon: CupertinoIcons.number,
                   title: l10n.joinById,
                   subtitle: l10n.playJoinByIdHint,
-                  costLabel: '${WalletConfig.entryCost}',
-                  costIcon: coinIcon,
-                  onTap: onJoin,
+                  costs: [energyCost],
+                  emphasized: _path == _PlayPath.join,
+                  onTap: () => setState(() => _path = _PlayPath.join),
+                ),
+                if (_path != _PlayPath.join) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n.matchStake,
+                    style: theme.mutedText.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _StakePicker(
+                    selected: _stake,
+                    onChanged: (value) => setState(() => _stake = value),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: CupertinoButton(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    color: theme.turnHighlight,
+                    borderRadius: BorderRadius.circular(14),
+                    onPressed: SoundService.wrapTap(_start),
+                    child: Text(
+                      _path == _PlayPath.join ? l10n.join : l10n.startGame,
+                      style: theme.title.copyWith(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: theme.background,
+                      ),
+                    ),
+                  ),
                 ),
                 CupertinoButton(
                   padding: const EdgeInsets.only(top: 4),
@@ -297,6 +457,132 @@ class _EnterGamePopup extends StatelessWidget {
   }
 }
 
+enum _PlayPath { friend, puli, join }
+
+class _AiTableSizePopup extends StatefulWidget {
+  const _AiTableSizePopup({required this.mode, required this.onStart});
+
+  final GameMode mode;
+  final void Function(int playerCount) onStart;
+
+  @override
+  State<_AiTableSizePopup> createState() => _AiTableSizePopupState();
+}
+
+class _AiTableSizePopupState extends State<_AiTableSizePopup> {
+  int _playerCount = 2;
+
+  static const _options = [2, 3, 4];
+
+  IconData _iconFor(int count) {
+    return switch (count) {
+      2 => CupertinoIcons.person_2_fill,
+      3 => CupertinoIcons.group_solid,
+      _ => CupertinoIcons.person_2,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    return Center(
+      child: Material(
+        color: CupertinoColors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 28),
+            padding: const EdgeInsets.fromLTRB(18, 22, 18, 8),
+            decoration: BoxDecoration(
+              color: theme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: theme.border.withValues(alpha: .7)),
+              boxShadow: [
+                BoxShadow(
+                  color: CupertinoColors.black.withValues(alpha: .45),
+                  blurRadius: 28,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.playVsPuli,
+                  textAlign: TextAlign.center,
+                  style: theme.title.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.playHowManyPlayers,
+                  textAlign: TextAlign.center,
+                  style: theme.mutedText.copyWith(fontSize: 14),
+                ),
+                const SizedBox(height: 18),
+                for (final count in _options) ...[
+                  if (count != _options.first) const SizedBox(height: 10),
+                  _ChoiceTile(
+                    icon: _iconFor(count),
+                    title: l10n.playersAtTable(count),
+                    subtitle: '${l10n.youPlusBots(count - 1)}. ${l10n.tablePayoutHint(count)}',
+                    emphasized: _playerCount == count,
+                    onTap: () => setState(() => _playerCount = count),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: CupertinoButton(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    color: theme.turnHighlight,
+                    borderRadius: BorderRadius.circular(14),
+                    onPressed: SoundService.wrapTap(
+                      () => widget.onStart(_playerCount),
+                    ),
+                    child: Text(
+                      l10n.actionStart,
+                      style: theme.title.copyWith(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: theme.background,
+                      ),
+                    ),
+                  ),
+                ),
+                CupertinoButton(
+                  padding: const EdgeInsets.only(top: 4),
+                  onPressed: SoundService.wrapTap(() => Navigator.pop(context)),
+                  child: Text(
+                    l10n.cancel,
+                    style: TextStyle(color: theme.muted),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EntryCost {
+  const _EntryCost({
+    required this.label,
+    required this.icon,
+    this.energy = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool energy;
+}
+
 class _ChoiceTile extends StatelessWidget {
   const _ChoiceTile({
     required this.icon,
@@ -304,8 +590,7 @@ class _ChoiceTile extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.emphasized = false,
-    this.costLabel,
-    this.costIcon,
+    this.costs = const [],
   });
 
   final IconData icon;
@@ -313,8 +598,7 @@ class _ChoiceTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final bool emphasized;
-  final String? costLabel;
-  final IconData? costIcon;
+  final List<_EntryCost> costs;
 
   @override
   Widget build(BuildContext context) {
@@ -395,23 +679,32 @@ class _ChoiceTile extends StatelessWidget {
                             ],
                           ),
                         ),
-                        if (costLabel != null) ...[
+                        if (costs.isNotEmpty) ...[
                           const SizedBox(width: 8),
-                          Row(
+                          Column(
                             mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Icon(
-                                costIcon ?? coinIcon,
-                                size: 14,
-                                color: costIcon == CupertinoIcons.bolt_fill
-                                    ? theme.warning
-                                    : theme.turnHighlight,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                costLabel!,
-                                style: theme.title.copyWith(fontSize: 14),
-                              ),
+                              for (var i = 0; i < costs.length; i++) ...[
+                                if (i > 0) const SizedBox(height: 4),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      costs[i].icon,
+                                      size: 14,
+                                      color: costs[i].energy
+                                          ? theme.warning
+                                          : theme.turnHighlight,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      costs[i].label,
+                                      style: theme.title.copyWith(fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -428,27 +721,73 @@ class _ChoiceTile extends StatelessWidget {
   }
 }
 
+Future<void> showAiTableSizeDialog(
+  BuildContext context,
+  GamesViewModel vm,
+  GameMode mode, {
+  int entryCost = WalletConfig.entryCost,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Dismiss',
+    barrierColor: CupertinoColors.black.withValues(alpha: .55),
+    transitionDuration: const Duration(milliseconds: 200),
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return _AiTableSizePopup(
+        mode: mode,
+        onStart: (playerCount) {
+          Navigator.pop(dialogContext);
+          gameEnter(
+            context,
+            vm,
+            mode,
+            true,
+            playerCount: playerCount,
+            entryCost: entryCost,
+          );
+        },
+      );
+    },
+    transitionBuilder: (context, animation, secondary, child) {
+      return FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 Future<void> gameEnter(
   BuildContext context,
   GamesViewModel vm,
   GameMode mode,
-  bool local,
-) async {
+  bool local, {
+  int playerCount = 2,
+  int entryCost = WalletConfig.entryCost,
+}) async {
   if (mode == GameMode.robaito) return;
   final repo = context.read<AppRepo>();
   final router = GoRouter.of(context);
   final l10n = AppLocalizations.of(context);
-  if (local) {
-    if (!repo.canAffordPulilo(mode)) {
-      await showInsufficientFundsDialog(context, energy: true);
-      return;
-    }
-  } else if (!repo.canAffordFriendGame) {
+  if (!repo.canAffordEnergy(mode)) {
+    await showInsufficientFundsDialog(context, energy: true);
+    return;
+  }
+  if (!repo.canAffordStake(entryCost)) {
     await showInsufficientFundsDialog(context, energy: false);
     return;
   }
   try {
-    final gid = await vm.newGame(mode, local);
+    final gid = await vm.newGame(
+      mode,
+      local,
+      playerCount: playerCount,
+      entryCost: entryCost,
+    );
     if (gid != null) {
       router.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
     }

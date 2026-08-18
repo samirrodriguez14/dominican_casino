@@ -47,9 +47,8 @@ class CasinoGameEngine extends GameEngine {
     );
 
     if (currentCardSelection.selectedCard != null) {
-      gameState.currentTurnPlayerId = GameActionHandler.getNextPlayerId(
-        gameState,
-        action.performedById,
+      gameState.setTurn(
+        GameActionHandler.getNextPlayerId(gameState, action.performedById),
       );
     }
     gameState = CasinoGameStateHandler.handleExtraPoints(
@@ -71,6 +70,7 @@ class CasinoGameEngine extends GameEngine {
       gameState = CasinoGameStateHandler.handleRoundEnded(gameState);
     }
 
+    gameState.refreshTurnClock(restart: false);
     return gameState;
   }
 

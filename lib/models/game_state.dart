@@ -4,6 +4,7 @@ import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/models/table_slot.dart';
 
+import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 
 import 'playing_card_model.dart';
@@ -16,6 +17,9 @@ GameStatus gameStatusFrom(String? s) {
 }
 
 enum GameMode { tresydos, casino, casinoSpeed, robaito }
+
+/// Friend tables stay open until Start. Tres y Dos sits 2–4; Casino is heads-up.
+int maxSeatsFor(GameMode mode) => mode == GameMode.tresydos ? 4 : 2;
 
 GameMode gameModeFrom(String? s) {
   switch (s) {
@@ -78,15 +82,16 @@ class GameState {
   String? winnerId;
   Round round;
 
-  /// Display name of the on-device AI seat ("Puli").
+  /// Display name of the original on-device AI seat ("Puli").
   static const String localBotName = 'Pulilo';
 
-  /// Avatar used for the on-device AI seat.
+  /// Avatar used for the original on-device AI seat.
   static const String localBotAvatarId = 'star';
 
-  /// True when the opponent seat is the on-device AI, not a remote player.
+  /// True when one or more seats are the on-device AI, not a remote player.
   bool isLocalBot;
   String? botPlayerId;
+  List<String> botPlayerIds;
 
   /// Coins charged to join this table. Join-by-ID reads this.
   int entryCost;
@@ -112,6 +117,10 @@ class GameState {
   /// Virao coins accrued this round.
   Map<String, int> roundViraoCoins;
 
+  /// UTC instant when the current seat's action clock expires.
+  /// Shared on the match so every client can render it.
+  DateTime? turnDeadline;
+
   GameState({
     required this.gameStatus,
     required this.gameMode,
@@ -135,6 +144,7 @@ class GameState {
     required this.playersInfo,
     this.isLocalBot = false,
     this.botPlayerId,
+    List<String>? botPlayerIds,
     int? entryCost,
     List<String>? entryPaidBy,
     this.payoutApplied = false,
@@ -145,6 +155,7 @@ class GameState {
     Map<String, int>? roundViraoCoins,
     List<String>? tableOrder,
     Map<String, List<PlayingCardModel>>? lastTakes,
+    this.turnDeadline,
   }) : settlementEvents = settlementEvents ?? [],
        tableOrder = tableOrder ?? [],
        entryCost = entryCost ?? WalletConfig.entryCost,
@@ -153,24 +164,87 @@ class GameState {
        roundTakeCoins = roundTakeCoins ?? {},
        roundSpecialCoins = roundSpecialCoins ?? {},
        roundViraoCoins = roundViraoCoins ?? {},
-       lastTakes = lastTakes ?? {};
-
-  /// Bot pid from persisted fields, or a legacy "Pulilo" seat for older games.
-  String? get localBotPid {
-    if (botPlayerId != null && botPlayerId!.isNotEmpty) return botPlayerId;
-    for (final entry in playersInfo.entries) {
-      final raw = entry.value;
-      if (raw is Map && raw['name'] == localBotName) return entry.key;
+       lastTakes = lastTakes ?? {},
+       botPlayerIds = List<String>.from(botPlayerIds ?? const []) {
+    if (this.botPlayerIds.isEmpty &&
+        botPlayerId != null &&
+        botPlayerId!.isNotEmpty) {
+      this.botPlayerIds = [botPlayerId!];
     }
-    return null;
+    if (this.botPlayerIds.isNotEmpty) {
+      botPlayerId = this.botPlayerIds.first;
+    }
   }
 
-  /// Fill bot fields so a restored match can recreate the AI actor.
+  /// First bot pid from persisted fields, or a legacy named seat.
+  String? get localBotPid {
+    final all = localBotPids;
+    return all.isEmpty ? null : all.first;
+  }
+
+  List<String> get localBotPids {
+    if (botPlayerIds.isNotEmpty) return List<String>.from(botPlayerIds);
+    if (botPlayerId != null && botPlayerId!.isNotEmpty) return [botPlayerId!];
+    return [
+      for (final entry in playersInfo.entries)
+        if (entry.value is Map && LocalBotRoster.isBotName(entry.value['name']))
+          entry.key,
+    ];
+  }
+
+  bool isLocalBotPid(String? pid) =>
+      pid != null && pid.isNotEmpty && localBotPids.contains(pid);
+
+  Duration get turnDuration => gameMode == GameMode.casinoSpeed
+      ? WalletConfig.speedTurnDuration
+      : WalletConfig.standardTurnDuration;
+
+  bool get _turnClockLive {
+    final pid = currentTurnPlayerId;
+    return gameStatus == GameStatus.inProgress &&
+        round.roundStatus == RoundStatus.playing &&
+        pid != null &&
+        pid.isNotEmpty &&
+        !isLocalBotPid(pid);
+  }
+
+  /// Assign the acting seat and arm a shared action clock when the seat changes.
+  void setTurn(String pid) {
+    final changed = currentTurnPlayerId != pid;
+    currentTurnPlayerId = pid;
+    refreshTurnClock(restart: changed);
+  }
+
+  /// Keep the existing deadline for the same seat; otherwise arm or clear.
+  void refreshTurnClock({bool restart = true}) {
+    if (!_turnClockLive) {
+      turnDeadline = null;
+      return;
+    }
+    if (!restart && turnDeadline != null) return;
+    turnDeadline = DateTime.now().toUtc().add(turnDuration);
+  }
+
+  /// Stamp a deadline for live human turns that predate this field.
+  /// Returns true when the persisted clock changed.
+  bool ensureTurnClock() {
+    if (!_turnClockLive) {
+      if (turnDeadline == null) return false;
+      turnDeadline = null;
+      return true;
+    }
+    if (turnDeadline != null) return false;
+    turnDeadline = DateTime.now().toUtc().add(turnDuration);
+    return true;
+  }
+
+  /// Fill bot fields so a restored match can recreate the AI actor(s).
   void ensureBotMetadata() {
-    final pid = localBotPid;
-    if (pid == null) return;
+    final ids = localBotPids;
+    if (ids.isEmpty) return;
     isLocalBot = true;
-    botPlayerId = pid;
+    botPlayerIds = ids;
+    botPlayerId = ids.first;
   }
 
   int pendingCoinsFor(String pid) => pendingCoins[pid] ?? 0;
@@ -201,11 +275,79 @@ class GameState {
     roundViraoCoins.clear();
   }
 
+  int scoreOf(String pid) {
+    final raw = scores[pid];
+    return raw is num ? raw.toInt() : 0;
+  }
+
+  int get seatedPlayerCount => playersInfo.length;
+
+  int get maxSeats => maxSeatsFor(gameMode);
+
+  /// Highest score first; [winnerId] is always listed first when set.
+  List<String> rankedPlayerIds() {
+    final ids = playersInfo.keys.toList();
+    ids.sort((a, b) {
+      final aWon = winnerId != null && winnerId!.isNotEmpty && a == winnerId;
+      final bWon = winnerId != null && winnerId!.isNotEmpty && b == winnerId;
+      if (aWon != bWon) return aWon ? -1 : 1;
+      final byScore = scoreOf(b).compareTo(scoreOf(a));
+      if (byScore != 0) return byScore;
+      return a.compareTo(b);
+    });
+    return ids;
+  }
+
+  /// Competition ranks (1, 2, 2, 4). [winnerId] is always unique 1st.
+  Map<String, int> finishRanks() {
+    final ids = playersInfo.keys.toList();
+    final ranks = <String, int>{};
+    if (ids.isEmpty) return ranks;
+
+    final winner = winnerId;
+    final hasWinner =
+        winner != null && winner.isNotEmpty && ids.contains(winner);
+    final rest = [
+      for (final id in ids)
+        if (!hasWinner || id != winner) id,
+    ]..sort((a, b) => scoreOf(b).compareTo(scoreOf(a)));
+
+    if (hasWinner) ranks[winner] = 1;
+
+    var place = hasWinner ? 2 : 1;
+    var i = 0;
+    while (i < rest.length) {
+      final score = scoreOf(rest[i]);
+      var j = i + 1;
+      while (j < rest.length && scoreOf(rest[j]) == score) {
+        j++;
+      }
+      for (var k = i; k < j; k++) {
+        ranks[rest[k]] = place;
+      }
+      place += j - i;
+      i = j;
+    }
+    return ranks;
+  }
+
+  /// 1-based finish place, or null if [pid] is not seated.
+  int? finishRank(String pid) => finishRanks()[pid];
+
   int winPotCoins(String pid) {
-    if (isLocalBot) return 0;
     if (gameStatus != GameStatus.gameOver) return 0;
-    if (winnerId == null || winnerId!.isEmpty || winnerId != pid) return 0;
-    return WalletConfig.winPayout(entryCost);
+    if (!entryPaidBy.contains(pid)) return 0;
+    final rank = finishRank(pid);
+    if (rank == null) return 0;
+    final pool = WalletConfig.potShareForRank(
+      entryCost,
+      seatedPlayerCount,
+      rank,
+    );
+    if (pool <= 0) return 0;
+    final tied = finishRanks().values.where((r) => r == rank).length;
+    if (tied <= 1) return pool;
+    return pool ~/ tied;
   }
 
   int coinsToClaim(String pid) => pendingCoinsFor(pid) + winPotCoins(pid);
@@ -358,6 +500,7 @@ class GameState {
     'round': round.toJson(),
     'isLocalBot': isLocalBot,
     'botPlayerId': ?botPlayerId,
+    'botPlayerIds': botPlayerIds,
     'entryCost': entryCost,
     'entryPaidBy': entryPaidBy,
     'payoutApplied': payoutApplied,
@@ -366,6 +509,7 @@ class GameState {
     'roundTakeCoins': roundTakeCoins,
     'roundSpecialCoins': roundSpecialCoins,
     'roundViraoCoins': roundViraoCoins,
+    'turnDeadline': turnDeadline?.toUtc().toIso8601String(),
   };
 
   static GameState fromMap(Map<String, dynamic> m) {
@@ -456,6 +600,11 @@ class GameState {
       round: round,
       isLocalBot: m['isLocalBot'] == true,
       botPlayerId: m['botPlayerId'] as String?,
+      botPlayerIds: (m['botPlayerIds'] as List?)
+              ?.map((e) => e.toString())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          const <String>[],
       entryCost: (m['entryCost'] as num?)?.toInt() ?? WalletConfig.entryCost,
       entryPaidBy: (m['entryPaidBy'] as List?)
               ?.map((e) => e.toString())
@@ -469,7 +618,17 @@ class GameState {
       roundTakeCoins: _intMap(m['roundTakeCoins']),
       roundSpecialCoins: _intMap(m['roundSpecialCoins']),
       roundViraoCoins: _intMap(m['roundViraoCoins']),
+      turnDeadline: _dateTime(m['turnDeadline']),
     );
+  }
+
+  static DateTime? _dateTime(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is DateTime) return raw.toUtc();
+    if (raw is String && raw.isNotEmpty) {
+      return DateTime.tryParse(raw)?.toUtc();
+    }
+    return null;
   }
 
   static Map<String, int> _intMap(dynamic raw) {

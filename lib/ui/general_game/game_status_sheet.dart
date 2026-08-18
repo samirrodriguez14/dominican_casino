@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:dominican_casino/game_control/game_registry.dart';
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -179,6 +180,8 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     final totalScores = gameState.scores;
     final roundScores = gameState.round.roundScores;
     final hasRound = roundScores.isNotEmpty;
+    final l10n = AppLocalizations.of(context);
+    final gameOver = gameState.gameStatus == GameStatus.gameOver;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420, maxHeight: 580),
@@ -201,7 +204,6 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                     roundScore: 0,
                     isDealer: false,
                     isCasino: false,
-                    isWinner: false,
                     scoreMap: {},
                   )
                 else
@@ -222,9 +224,11 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                       ),
                       isDealer: gameState.controllerId == pid,
                       isCasino: GameRegistry.isCasinoFamily(gameState.gameMode),
-                      isWinner:
-                          gameState.gameStatus == GameStatus.gameOver &&
-                          gameState.winnerId == pid,
+                      place: gameOver ? gameState.finishRank(pid) : null,
+                      placeLabel: gameOver &&
+                              gameState.finishRank(pid) != null
+                          ? l10n.coinPayoutPlace(gameState.finishRank(pid)!)
+                          : null,
                       scoreMap: Map<String, dynamic>.from(
                         roundScores[pid] ?? {},
                       ),
@@ -431,7 +435,8 @@ class _BoardSpec {
     required this.isDealer,
     required this.isCasino,
     required this.scoreMap,
-    this.isWinner = false,
+    this.place,
+    this.placeLabel,
   });
 
   final String id;
@@ -443,8 +448,13 @@ class _BoardSpec {
   final int roundScore;
   final bool isDealer;
   final bool isCasino;
-  final bool isWinner;
+  final int? place;
+  final String? placeLabel;
   final Map<String, dynamic> scoreMap;
+
+  bool get isFirst => place == 1;
+  bool get isSecond => place == 2;
+  bool get hasPlace => place != null && place! > 0;
 }
 
 class _ScoreBoardStack extends StatefulWidget {
@@ -526,18 +536,26 @@ class _ScoreBoardStackState extends State<_ScoreBoardStack> {
           builder: (context, constraints) {
             final boards = widget.boards;
             final count = boards.length;
-            final cardW = count == 1
-                ? (constraints.maxWidth * 0.68).clamp(188.0, 248.0)
-                : (constraints.maxWidth * (count == 2 ? 0.60 : 0.50)).clamp(
-                    148.0,
-                    228.0,
-                  );
+            final cardW = switch (count) {
+              1 => (constraints.maxWidth * 0.68).clamp(188.0, 248.0),
+              2 => (constraints.maxWidth * 0.58).clamp(148.0, 216.0),
+              3 => (constraints.maxWidth * 0.40).clamp(118.0, 162.0),
+              _ => (constraints.maxWidth * 0.30).clamp(96.0, 132.0),
+            };
             final cardH = cardW * 3.5 / 2.5;
-            const edgeAngle = 0.15;
-            const frontLift = 18.0;
-            final arcDropMax = count <= 2 ? 14.0 : 20.0;
-            final maxGap = count == 2 ? cardW * 0.64 : cardW * 0.50;
-            final minGap = count == 2 ? cardW * 0.48 : cardW * 0.34;
+            final edgeAngle = count >= 4 ? 0.10 : count == 3 ? 0.12 : 0.15;
+            final frontLift = count >= 3 ? 10.0 : 18.0;
+            final arcDropMax = count >= 4 ? 10.0 : count == 3 ? 14.0 : 14.0;
+            final maxGap = switch (count) {
+              2 => cardW * 0.64,
+              3 => cardW * 0.78,
+              _ => cardW * 0.92,
+            };
+            final minGap = switch (count) {
+              2 => cardW * 0.48,
+              3 => cardW * 0.58,
+              _ => cardW * 0.70,
+            };
             final gap = count == 1
                 ? 0.0
                 : ((constraints.maxWidth - cardW) / (count - 1)).clamp(
@@ -546,7 +564,10 @@ class _ScoreBoardStackState extends State<_ScoreBoardStack> {
                   );
             final totalWidth = cardW + (count - 1) * gap;
             final mid = (count - 1) / 2.0;
-            final fanHeight = cardH + frontLift + arcDropMax;
+            final extraLift = widget.locked && boards.any((b) => b.isFirst)
+                ? cardH * 0.10
+                : 0.0;
+            final fanHeight = cardH + frontLift + arcDropMax + extraLift;
             final paintOrder = [
               ...boards.where((b) => b.id != _frontId),
               ...boards.where((b) => b.id == _frontId),
@@ -628,12 +649,27 @@ class _ScoreBoardStackState extends State<_ScoreBoardStack> {
     final t = count == 1 ? 0.0 : (index - mid) / mid;
     final angle = t * edgeAngle;
     final arcDrop = t.abs() * arcDropMax;
+    final place = board.place;
+    final scale = widget.locked && place != null
+        ? (place == 1
+            ? 1.10
+            : place == 2
+            ? 1.02
+            : 0.90)
+        : (isFront ? 1.0 : 0.92);
+    final lift = widget.locked
+        ? (place == 1
+            ? frontLift + 4
+            : place == 2
+            ? frontLift * 0.45
+            : 0.0)
+        : (isFront ? frontLift : 0);
     return AnimatedPositioned(
       key: ValueKey(board.id),
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
       left: index * gap,
-      top: frontLift + arcDrop - (isFront ? frontLift : 0),
+      top: frontLift + arcDrop - lift,
       width: cardW,
       child: AnimatedRotation(
         duration: const Duration(milliseconds: 360),
@@ -643,7 +679,7 @@ class _ScoreBoardStackState extends State<_ScoreBoardStack> {
         child: AnimatedScale(
           duration: const Duration(milliseconds: 320),
           curve: Curves.easeOutCubic,
-          scale: isFront ? 1 : 0.92,
+          scale: scale,
           alignment: Alignment.bottomCenter,
           child: _AvatarFlipBoard(
             spec: board,
@@ -781,7 +817,8 @@ class _AvatarFlipBoardState extends State<_AvatarFlipBoard>
                         isCasino: spec.isCasino,
                         scoreMap: spec.scoreMap,
                         raised: widget.isFront,
-                        isWinner: spec.isWinner,
+                        place: spec.place,
+                        placeLabel: spec.placeLabel,
                         playReveal: widget.autoReveal && !_revealDone,
                         onRevealDone: _onCountingDone,
                       ),
@@ -795,8 +832,10 @@ class _AvatarFlipBoardState extends State<_AvatarFlipBoard>
                       beforeScore: spec.beforeScore,
                       roundScore: spec.roundScore,
                       isDealer: spec.isDealer,
+                      isCasino: spec.isCasino,
                       raised: widget.isFront,
-                      isWinner: spec.isWinner,
+                      place: spec.place,
+                      placeLabel: spec.placeLabel,
                     ),
             );
           },
@@ -811,32 +850,55 @@ class _ScoreBoardShell extends StatelessWidget {
     required this.theme,
     required this.child,
     this.raised = true,
-    this.isWinner = false,
+    this.place,
+    this.placeLabel,
   });
 
   final AvatarScoreTheme theme;
   final Widget child;
   final bool raised;
-  final bool isWinner;
+  final int? place;
+  final String? placeLabel;
 
   @override
   Widget build(BuildContext context) {
-    final accent = Color.lerp(
+    final gold = Color.lerp(
       theme.ink,
       AppStyle.theme.turnHighlight,
       0.45,
     )!;
+    final first = place == 1;
+    final second = place == 2;
+    final rest = place != null && place! >= 3;
+    final hasBanner = placeLabel != null && placeLabel!.isNotEmpty;
+    final borderColor = first
+        ? gold.withValues(alpha: 0.48)
+        : second
+        ? gold.withValues(alpha: 0.28)
+        : theme.ink.withValues(alpha: raised ? 0.08 : 0.05);
+    final borderWidth = first
+        ? 1.15
+        : second
+        ? 0.9
+        : 0.6;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: theme.background,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isWinner
-              ? accent.withValues(alpha: 0.38)
-              : theme.ink.withValues(alpha: raised ? 0.08 : 0.05),
-          width: isWinner ? 1 : 0.6,
-        ),
+        border: Border.all(color: borderColor, width: borderWidth),
         boxShadow: [
+          if (first)
+            BoxShadow(
+              color: gold.withValues(alpha: 0.20),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            )
+          else if (second)
+            BoxShadow(
+              color: gold.withValues(alpha: 0.10),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
           BoxShadow(
             color: CupertinoColors.black.withValues(alpha: raised ? .24 : .12),
             blurRadius: raised ? 16 : 8,
@@ -849,11 +911,34 @@ class _ScoreBoardShell extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(10, isWinner ? 32 : 12, 10, 10),
-              child: child,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxHeight < 200;
+                final topPad = !hasBanner
+                    ? (compact ? 8.0 : 12.0)
+                    : first
+                    ? (compact ? 26.0 : 32.0)
+                    : (compact ? 22.0 : 26.0);
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    compact ? 8 : 10,
+                    topPad,
+                    compact ? 8 : 10,
+                    compact ? 8 : 10,
+                  ),
+                  child: child,
+                );
+              },
             ),
-            if (isWinner) _WinnerOverlay(accent: accent, ink: theme.ink),
+            if (hasBanner)
+              _PlaceOverlay(
+                accent: gold,
+                ink: theme.ink,
+                label: placeLabel!,
+                first: first,
+                second: second,
+                rest: rest,
+              ),
           ],
         ),
       ),
@@ -861,29 +946,48 @@ class _ScoreBoardShell extends StatelessWidget {
   }
 }
 
-class _WinnerOverlay extends StatelessWidget {
-  const _WinnerOverlay({required this.accent, required this.ink});
+class _PlaceOverlay extends StatelessWidget {
+  const _PlaceOverlay({
+    required this.accent,
+    required this.ink,
+    required this.label,
+    required this.first,
+    required this.second,
+    required this.rest,
+  });
 
   final Color accent;
   final Color ink;
+  final String label;
+  final bool first;
+  final bool second;
+  final bool rest;
 
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: Stack(
         children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _WinnerOrnamentPainter(
-                color: accent.withValues(alpha: 0.42),
+          if (first || second)
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _WinnerOrnamentPainter(
+                  color: accent.withValues(alpha: first ? 0.42 : 0.22),
+                ),
               ),
             ),
-          ),
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: _WinnerBanner(accent: accent, ink: ink),
+            child: _PlaceBanner(
+              accent: accent,
+              ink: ink,
+              label: label,
+              first: first,
+              second: second,
+              rest: rest,
+            ),
           ),
         ],
       ),
@@ -891,25 +995,46 @@ class _WinnerOverlay extends StatelessWidget {
   }
 }
 
-class _WinnerBanner extends StatelessWidget {
-  const _WinnerBanner({required this.accent, required this.ink});
+class _PlaceBanner extends StatelessWidget {
+  const _PlaceBanner({
+    required this.accent,
+    required this.ink,
+    required this.label,
+    required this.first,
+    required this.second,
+    required this.rest,
+  });
 
   final Color accent;
   final Color ink;
+  final String label;
+  final bool first;
+  final bool second;
+  final bool rest;
 
   @override
   Widget build(BuildContext context) {
+    final fill = first
+        ? accent.withValues(alpha: 0.14)
+        : second
+        ? accent.withValues(alpha: 0.08)
+        : AppStyle.theme.muted.withValues(alpha: 0.10);
+    final color = rest
+        ? AppStyle.theme.muted.withValues(alpha: 0.85)
+        : ink.withValues(alpha: first ? 0.82 : 0.72);
     return Container(
-      height: 24,
+      height: first ? 24 : 20,
       alignment: Alignment.center,
-      color: accent.withValues(alpha: 0.12),
+      color: fill,
       child: Text(
-        'Winner',
+        label.toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: AppStyle.theme.caption.copyWith(
-          color: ink.withValues(alpha: 0.78),
+          color: color,
           fontWeight: FontWeight.w700,
-          fontSize: 10,
-          letterSpacing: 1.4,
+          fontSize: first ? 10 : 9,
+          letterSpacing: first ? 1.2 : 0.7,
           height: 1,
         ),
       ),
@@ -1000,8 +1125,10 @@ class _ScoreBoardFront extends StatelessWidget {
     required this.beforeScore,
     required this.roundScore,
     required this.isDealer,
+    required this.isCasino,
     this.raised = true,
-    this.isWinner = false,
+    this.place,
+    this.placeLabel,
   });
 
   final AvatarScoreTheme theme;
@@ -1012,8 +1139,10 @@ class _ScoreBoardFront extends StatelessWidget {
   final int beforeScore;
   final int roundScore;
   final bool isDealer;
+  final bool isCasino;
   final bool raised;
-  final bool isWinner;
+  final int? place;
+  final String? placeLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1021,130 +1150,152 @@ class _ScoreBoardFront extends StatelessWidget {
     return _ScoreBoardShell(
       theme: theme,
       raised: raised,
-      isWinner: isWinner,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: PlayerScoreAvatar(
-              avatarId: avatarId,
-              score: score,
-              pendingCoins: pendingCoins,
-              size: 56,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+      place: place,
+      placeLabel: placeLabel,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final scale = (constraints.maxHeight / 210).clamp(0.62, 1.0);
+          final tiny = constraints.maxHeight < 150;
+          final avatarSize = (56 * scale).clamp(32.0, 56.0);
+          final nameSize = (13 * scale).clamp(10.0, 13.0);
+          final scoreSize = (40 * scale).clamp(24.0, 40.0);
+          final eqSize = (16 * scale).clamp(11.0, 16.0);
+          final eqNowSize = (18 * scale).clamp(12.0, 18.0);
+          final gap = (10 * scale).clamp(4.0, 10.0);
+          final panelPad = (8 * scale).clamp(4.0, 8.0);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Flexible(
-                child: Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: AppStyle.theme.body.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: ink,
-                    fontSize: 13,
-                  ),
+              Center(
+                child: PlayerScoreAvatar(
+                  avatarId: avatarId,
+                  score: score,
+                  pendingCoins: pendingCoins,
+                  size: avatarSize,
                 ),
               ),
-              if (isDealer) ...[
-                const SizedBox(width: 6),
-                Text(
-                  'Dealer',
-                  style: AppStyle.theme.caption.copyWith(
-                    color: theme.muted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
+              SizedBox(height: gap),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: AppStyle.theme.body.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: ink,
+                        fontSize: nameSize,
+                        height: 1.1,
+                      ),
+                    ),
                   ),
+                  if (isDealer) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      'Dealer',
+                      style: AppStyle.theme.caption.copyWith(
+                        color: theme.muted,
+                        fontSize: (10 * scale).clamp(8.0, 10.0),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const Spacer(),
+              Text(
+                '$score',
+                textAlign: TextAlign.center,
+                style: AppStyle.theme.title.copyWith(
+                  fontSize: scoreSize,
+                  fontWeight: FontWeight.w800,
+                  color: ink,
+                  height: 1,
                 ),
-              ],
-            ],
-          ),
-          const Spacer(),
-          Text(
-            '$score',
-            textAlign: TextAlign.center,
-            style: AppStyle.theme.title.copyWith(
-              fontSize: 40,
-              fontWeight: FontWeight.w800,
-              color: ink,
-              height: 1,
-            ),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-            decoration: BoxDecoration(
-              color: theme.panel.withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Text.rich(
-                  TextSpan(
+              ),
+              const Spacer(),
+              if (isCasino)
+                Container(
+                  padding: EdgeInsets.all(panelPad),
+                  decoration: BoxDecoration(
+                    color: theme.panel.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(tiny ? 8 : 12),
+                  ),
+                  child: Column(
                     children: [
-                      TextSpan(
-                        text: '$beforeScore',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: ink,
-                          fontSize: 16,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '$beforeScore',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: ink,
+                                  fontSize: eqSize,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '  +  ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.muted,
+                                  fontSize: eqSize - 2,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '$roundScore',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: ink,
+                                  fontSize: eqSize,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '  =  ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.muted,
+                                  fontSize: eqSize - 2,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '$score',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: ink,
+                                  fontSize: eqNowSize,
+                                ),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
                         ),
                       ),
-                      TextSpan(
-                        text: '  +  ',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: theme.muted,
-                          fontSize: 14,
+                      if (!tiny) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'last  +  round  =  now',
+                          textAlign: TextAlign.center,
+                          style: AppStyle.theme.caption.copyWith(
+                            color: theme.muted,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
+                          ),
                         ),
-                      ),
-                      TextSpan(
-                        text: '$roundScore',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: ink,
-                          fontSize: 16,
-                        ),
-                      ),
-                      TextSpan(
-                        text: '  =  ',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: theme.muted,
-                          fontSize: 14,
-                        ),
-                      ),
-                      TextSpan(
-                        text: '$score',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: ink,
-                          fontSize: 18,
-                        ),
-                      ),
+                      ],
                     ],
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'last  +  round  =  now',
-                  textAlign: TextAlign.center,
-                  style: AppStyle.theme.caption.copyWith(
-                    color: theme.muted,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -1158,7 +1309,8 @@ class _ScoreBoardBack extends StatefulWidget {
     required this.isCasino,
     required this.scoreMap,
     this.raised = true,
-    this.isWinner = false,
+    this.place,
+    this.placeLabel,
     this.playReveal = false,
     this.onRevealDone,
   });
@@ -1168,7 +1320,8 @@ class _ScoreBoardBack extends StatefulWidget {
   final bool isCasino;
   final Map<String, dynamic> scoreMap;
   final bool raised;
-  final bool isWinner;
+  final int? place;
+  final String? placeLabel;
   final bool playReveal;
   final VoidCallback? onRevealDone;
 
@@ -1256,115 +1409,117 @@ class _ScoreBoardBackState extends State<_ScoreBoardBack> {
     return _ScoreBoardShell(
       theme: theme,
       raised: widget.raised,
-      isWinner: widget.isWinner,
+      place: widget.place,
+      placeLabel: widget.placeLabel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              PlayerAvatarView(
-                avatarId: widget.avatarId,
-                size: 26,
-                showBorder: false,
-              ),
-              const SizedBox(width: 8),
-              _TallyText(
-                value: _points,
-                prefix: '+',
-                style: AppStyle.theme.title.copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: ink,
-                  height: 1,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Last round',
-            style: AppStyle.theme.caption.copyWith(
-              color: theme.muted,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-              fontSize: 10,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: pointChips.isEmpty
-                ? Center(
-                    child: Text(
-                      'No points this round',
-                      textAlign: TextAlign.center,
-                      style: AppStyle.theme.caption.copyWith(
-                        color: theme.muted,
-                      ),
-                    ),
-                  )
-                : SingleChildScrollView(
-                    child: Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: [
-                        for (final chip in shownPoints)
-                          _PopIn(
-                            key: ValueKey('p-${chip.label}'),
-                            child: _MiniDetailChip(
-                              label: chip.label,
-                              value: '+${chip.amount}',
-                              scoreTheme: theme,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-          ),
           if (widget.isCasino) ...[
-            Container(height: 1, color: theme.ink.withValues(alpha: 0.18)),
-            const SizedBox(height: 8),
-            if (coinChips.isNotEmpty)
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                alignment: WrapAlignment.end,
-                children: [
-                  for (final chip in shownCoins)
-                    _PopIn(
-                      key: ValueKey('c-${chip.label}'),
-                      child: _MiniDetailChip(
-                        label: chip.label,
-                        value: '+${chip.amount}',
-                        coin: true,
-                        scoreTheme: theme,
-                      ),
-                    ),
-                ],
-              )
-            else
-              const SizedBox(height: 4),
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(coinIcon, size: 14, color: theme.foreground),
-                  const SizedBox(width: 4),
-                  _TallyText(
-                    value: _coins,
-                    prefix: '+',
-                    style: AppStyle.theme.title.copyWith(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: ink,
-                      height: 1,
-                    ),
+            Row(
+              children: [
+                PlayerAvatarView(
+                  avatarId: widget.avatarId,
+                  size: 26,
+                  showBorder: false,
+                ),
+                const SizedBox(width: 8),
+                _TallyText(
+                  value: _points,
+                  prefix: '+',
+                  style: AppStyle.theme.title.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: ink,
+                    height: 1,
                   ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Last round',
+              style: AppStyle.theme.caption.copyWith(
+                color: theme.muted,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                fontSize: 10,
               ),
             ),
-          ],
+            const SizedBox(height: 6),
+            Expanded(
+              child: pointChips.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No points this round',
+                        textAlign: TextAlign.center,
+                        style: AppStyle.theme.caption.copyWith(
+                          color: theme.muted,
+                        ),
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          for (final chip in shownPoints)
+                            _PopIn(
+                              key: ValueKey('p-${chip.label}'),
+                              child: _MiniDetailChip(
+                                label: chip.label,
+                                value: '+${chip.amount}',
+                                scoreTheme: theme,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+            ),
+          ] else
+            const Spacer(),
+          Container(height: 1, color: theme.ink.withValues(alpha: 0.18)),
+          const SizedBox(height: 8),
+          if (coinChips.isNotEmpty)
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              alignment: WrapAlignment.end,
+              children: [
+                for (final chip in shownCoins)
+                  _PopIn(
+                    key: ValueKey('c-${chip.label}'),
+                    child: _MiniDetailChip(
+                      label: chip.label,
+                      value: '+${chip.amount}',
+                      coin: true,
+                      scoreTheme: theme,
+                    ),
+                  ),
+              ],
+            )
+          else
+            const SizedBox(height: 4),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(coinIcon, size: 14, color: theme.foreground),
+                const SizedBox(width: 4),
+                _TallyText(
+                  value: _coins,
+                  prefix: '+',
+                  style: AppStyle.theme.title.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: ink,
+                    height: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
