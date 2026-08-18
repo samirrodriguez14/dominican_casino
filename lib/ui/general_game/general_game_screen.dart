@@ -340,9 +340,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       );
     }
 
-    final isCasino =
-        vm.gameState.gameMode == GameMode.casino ||
-        vm.gameState.gameMode == GameMode.casinoSpeed;
+    final useSimpleLayout = GameRegistry.isPlayable(vm.gameState.gameMode);
 
     return SizedBox(
       width: MediaQuery.of(context).size.width.clamp(0, 600),
@@ -358,7 +356,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                   controller: _flightLayer,
                   child: Stack(
                     children: [
-                      if (!isCasino)
+                      if (!useSimpleLayout)
                         Padding(
                           padding: EdgeInsetsGeometry.symmetric(vertical: 48),
                           child: CasinoBoard(child: Container()),
@@ -382,33 +380,40 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                           Expanded(
                             child: Padding(
                               padding: EdgeInsets.symmetric(
-                                horizontal: isCasino ? 16 : 30,
+                                horizontal: useSimpleLayout ? 16 : 30,
                               ),
                               child: _selectPlayingArea(vm.gameState.gameMode),
                             ),
                           ),
                           const SizedBox(height: 4),
-                          if (isCasino) ...[
-                            const SimplePlayerArea(),
+                          if (useSimpleLayout) ...[
+                            Stack(
+                              alignment: Alignment.center,
+                              clipBehavior: Clip.none,
+                              children: [
+                                const SimplePlayerArea(),
+                                const GenGameControl(),
+                              ],
+                            ),
                             const SizedBox(height: 6),
-                            _SimpleControlBar(),
+                            const _SimpleControlBar(),
                           ] else
                             const GenPlayerArea(),
                           SizedBox(height: 16 + bottomInset),
                         ],
                       ),
-                      AnimatedAlign(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOut,
-                        alignment: vm.showInGameControl
-                            ? Alignment.center
-                            : Alignment.centerRight,
-                        child: Padding(
-                          padding: EdgeInsetsGeometry.only(right: 18),
-                          child: GenGameControl(),
+                      if (!useSimpleLayout) ...[
+                        AnimatedAlign(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOut,
+                          alignment: vm.showInGameControl
+                              ? Alignment.center
+                              : Alignment.centerRight,
+                          child: Padding(
+                            padding: EdgeInsetsGeometry.only(right: 18),
+                            child: GenGameControl(),
+                          ),
                         ),
-                      ),
-                      if (!isCasino)
                         Positioned(
                           right: 16,
                           bottom: 16 + bottomInset,
@@ -447,6 +452,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                             ],
                           ),
                         ),
+                      ],
                       AnimatedBuilder(
                         animation: tutorialVm,
                         builder: (context, _) {

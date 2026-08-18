@@ -54,7 +54,7 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
               Positioned.fill(
                 child: Padding(
                   padding: const EdgeInsets.only(
-                    top: _SimpleOpponentRow.height,
+                    top: SimpleOpponentRow.height,
                   ),
                   child: _buildTableRow(vm, shuffling, holdExtras),
                 ),
@@ -351,14 +351,14 @@ class _SimpleOpponentRowHost extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
-    return _SimpleOpponentRow(
+    return SimpleOpponentRow(
       oppId: vm.oppIds.isNotEmpty ? vm.oppIds.first : '',
     );
   }
 }
 
-class _SimpleOpponentRow extends StatelessWidget {
-  const _SimpleOpponentRow({required this.oppId});
+class SimpleOpponentRow extends StatelessWidget {
+  const SimpleOpponentRow({super.key, required this.oppId});
 
   static const double height = 88;
   static const double cardWidth = 54;

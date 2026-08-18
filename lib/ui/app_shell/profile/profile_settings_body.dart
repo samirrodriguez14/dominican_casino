@@ -73,50 +73,39 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     final theme = AppStyle.theme;
     final face = theme.pickerFace;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = homeCardWidth(constraints);
-
-        return Center(
-          child: SizedBox(
-            width: cardWidth,
-            child: AspectRatio(
-              aspectRatio: homeCardAspect,
-              child: AnimatedBuilder(
-                animation: _flip,
-                builder: (context, _) {
-                  final t = Curves.easeInOutCubic.transform(
-                    _flip.value.clamp(0.0, 1.0),
-                  );
-                  final angle = t * math.pi;
-                  final showBack = t >= 0.5;
-                  return Transform(
+    return AspectRatio(
+      aspectRatio: homeCardAspect,
+      child: AnimatedBuilder(
+        animation: _flip,
+        builder: (context, _) {
+          final t = Curves.easeInOutCubic.transform(
+            _flip.value.clamp(0.0, 1.0),
+          );
+          final angle = t * math.pi;
+          final showBack = t >= 0.5;
+          return Transform(
+            alignment: Alignment.center,
+            filterQuality: FilterQuality.medium,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0012)
+              ..rotateY(angle),
+            child: showBack
+                ? Transform(
                     alignment: Alignment.center,
-                    filterQuality: FilterQuality.medium,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, 0.0012)
-                      ..rotateY(angle),
-                    child: showBack
-                        ? Transform(
-                            alignment: Alignment.center,
-                            transform: Matrix4.identity()..rotateY(math.pi),
-                            child: _privacyFace(theme, face, l10n),
-                          )
-                        : _settingsFace(
-                            theme: theme,
-                            face: face,
-                            l10n: l10n,
-                            vm: vm,
-                            appRepo: appRepo,
-                            sounds: sounds,
-                          ),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
+                    transform: Matrix4.identity()..rotateY(math.pi),
+                    child: _privacyFace(theme, face, l10n),
+                  )
+                : _settingsFace(
+                    theme: theme,
+                    face: face,
+                    l10n: l10n,
+                    vm: vm,
+                    appRepo: appRepo,
+                    sounds: sounds,
+                  ),
+          );
+        },
+      ),
     );
   }
 
@@ -300,9 +289,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                                 style: theme.mutedText.copyWith(
                                   color: appRepo.notificationsEnabled
                                       ? theme.success
-                                      : theme.textPrimary.withValues(
-                                          alpha: .7,
-                                        ),
+                                      : theme.textPrimary.withValues(alpha: .7),
                                 ),
                               ),
                             ),
@@ -340,7 +327,8 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                           email: appRepo.googleEmail,
                           onConnect: () =>
                               _connectGoogle(context, appRepo, l10n),
-                          onLogOut: () => _confirmLogOut(context, appRepo, l10n),
+                          onLogOut: () =>
+                              _confirmLogOut(context, appRepo, l10n),
                         ),
                       ],
                     ),

@@ -4,9 +4,9 @@ import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 
-enum BoardDragKind { handCard, tableCard, tableStack }
+enum BoardDragKind { handCard, tableCard, tableStack, deckCard }
 
-enum DropTargetKind { emptyTable, tableCard, tableStack }
+enum DropTargetKind { emptyTable, tableCard, tableStack, playerHand }
 
 /// What the player is dragging.
 class BoardDragSource {
@@ -25,6 +25,11 @@ class BoardDragSource {
       card = null,
       stack = stack;
 
+  const BoardDragSource.deck(PlayingCardModel card)
+    : kind = BoardDragKind.deckCard,
+      card = card,
+      stack = null;
+
   final BoardDragKind kind;
   final PlayingCardModel? card;
   final PlayingAreaStackModel? stack;
@@ -33,6 +38,7 @@ class BoardDragSource {
     switch (kind) {
       case BoardDragKind.handCard:
       case BoardDragKind.tableCard:
+      case BoardDragKind.deckCard:
         return card!.id;
       case BoardDragKind.tableStack:
         return stack!.id;
@@ -59,6 +65,11 @@ class DropTarget {
       card = null,
       stack = stack;
 
+  const DropTarget.playerHand()
+    : kind = DropTargetKind.playerHand,
+      card = null,
+      stack = null;
+
   final DropTargetKind kind;
   final PlayingCardModel? card;
   final PlayingAreaStackModel? stack;
@@ -66,6 +77,7 @@ class DropTarget {
   String? get id {
     switch (kind) {
       case DropTargetKind.emptyTable:
+      case DropTargetKind.playerHand:
         return null;
       case DropTargetKind.tableCard:
         return card!.id;

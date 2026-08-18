@@ -34,6 +34,7 @@ class _GenGameControlState extends State<GenGameControl> {
         }
 
         return Container(
+          constraints: const BoxConstraints(minWidth: 148),
           decoration: AppStyle.theme.raisedSurfaceBox(),
           child: _buildInGameActionButton(context, vm, vm.inGameAction),
         );
@@ -54,20 +55,21 @@ class _GenGameControlState extends State<GenGameControl> {
     final gold = theme.turnHighlight;
 
     final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             actionIcon(inGameAction),
-            size: 28,
+            size: 34,
             color: enabled ? gold : theme.muted,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             actionLabel(inGameAction, l10n),
             style: theme.body.copyWith(
-              fontWeight: FontWeight.w700,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
               color: enabled ? theme.textPrimary : theme.muted,
             ),
           ),

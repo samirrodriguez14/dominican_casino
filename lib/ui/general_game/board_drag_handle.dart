@@ -5,6 +5,7 @@ import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/ui/animations/flight_layer.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
+import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -274,6 +275,8 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
           isSelected: true,
           showCoinHint: false,
         );
+      case BoardDragKind.deckCard:
+        face = PlayingCardBack(width: w);
       case BoardDragKind.tableStack:
         final stack = widget.source.stack!;
         face = _StackDragFace(stack: stack, width: w);

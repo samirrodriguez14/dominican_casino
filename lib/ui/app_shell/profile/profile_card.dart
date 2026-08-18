@@ -23,97 +23,87 @@ class ProfileCard extends StatelessWidget {
     final avatarId = vm.player?.avatarId;
     final score = AvatarScoreTheme.of(avatarId);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = homeCardWidth(constraints);
-        return Center(
-          child: SizedBox(
-            width: cardWidth,
-            child: AspectRatio(
-              aspectRatio: homeCardAspect,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOut,
-                decoration: BoxDecoration(
-                  color: score.background,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: score.ink.withValues(alpha: 0.08),
-                    width: 0.6,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: CupertinoColors.black.withValues(alpha: .30),
-                      blurRadius: 18,
-                      offset: const Offset(0, 10),
+    return AspectRatio(
+      aspectRatio: homeCardAspect,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          color: score.background,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: score.ink.withValues(alpha: 0.08),
+            width: 0.6,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: CupertinoColors.black.withValues(alpha: .30),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Stack(
+            children: [
+              _CornerPip(
+                avatarId: avatarId,
+                name: name,
+                score: score,
+                inverted: false,
+              ),
+              _CornerPip(
+                avatarId: avatarId,
+                name: name,
+                score: score,
+                inverted: true,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, inner) {
+                          final avatarSize = (inner.maxHeight * 0.52).clamp(
+                            108.0,
+                            156.0,
+                          );
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _AvatarButton(
+                                avatarId: avatarId,
+                                size: avatarSize,
+                                score: score,
+                                onPressed: () => _changeAvatar(context, vm),
+                              ),
+                              const SizedBox(height: 16),
+                              _NameButton(
+                                name: name,
+                                score: score,
+                                onPressed: () => _changeName(context, vm),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 48),
+                      child: ProfileWalletCards(
+                        embeddedInCard: true,
+                        scoreTheme: score,
+                      ),
                     ),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: Stack(
-                    children: [
-                      _CornerPip(
-                        avatarId: avatarId,
-                        name: name,
-                        score: score,
-                        inverted: false,
-                      ),
-                      _CornerPip(
-                        avatarId: avatarId,
-                        name: name,
-                        score: score,
-                        inverted: true,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: LayoutBuilder(
-                                builder: (context, inner) {
-                                  final avatarSize = (inner.maxHeight * 0.52)
-                                      .clamp(108.0, 156.0);
-                                  return Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      _AvatarButton(
-                                        avatarId: avatarId,
-                                        size: avatarSize,
-                                        score: score,
-                                        onPressed: () =>
-                                            _changeAvatar(context, vm),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      _NameButton(
-                                        name: name,
-                                        score: score,
-                                        onPressed: () =>
-                                            _changeName(context, vm),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 48),
-                              child: ProfileWalletCards(
-                                embeddedInCard: true,
-                                scoreTheme: score,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
-            ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

@@ -481,14 +481,15 @@ class GeneralGameViewModel extends ChangeNotifier {
   double _widthForZone(Zone zone, {String? cardId}) {
     switch (zone.type) {
       case ZoneType.playerHand:
-        if (zone.holderId == me) return isCasinoFamily ? 110.0 : 100.0;
-        return isCasinoFamily ? 54.0 : 50.0;
+        if (zone.holderId == me) return 110.0;
+        return 54.0;
       case ZoneType.table:
       case ZoneType.stack:
-        return isCasinoFamily ? 72.0 : 60.0;
+        return 72.0;
       case ZoneType.gameDeck:
+        return isCasinoFamily ? 52.0 : 72.0;
       case ZoneType.playerDeck:
-        return isCasinoFamily ? 52.0 : 60.0;
+        return 52.0;
     }
   }
 
@@ -820,6 +821,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     switch (source.kind) {
       case BoardDragKind.handCard:
       case BoardDragKind.tableCard:
+      case BoardDragKind.deckCard:
         ids.add(source.card!.id);
       case BoardDragKind.tableStack:
         ids.addAll(source.stack!.cards.map((c) => c.id));
@@ -872,6 +874,22 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (_boxContains(tableKey, global)) {
       return const DropTarget.emptyTable();
     }
+    // Tres y Dos: drag a pile card onto/toward the hand to take it.
+    // Skip when the source is already a hand card so fan-reorder still works.
+    if (!isCasinoFamily && src?.kind != BoardDragKind.handCard) {
+      if (_boxContains(myHandKey, global)) {
+        return const DropTarget.playerHand();
+      }
+      final tableBox = tableKey.currentContext?.findRenderObject() as RenderBox?;
+      if (tableBox != null && tableBox.hasSize) {
+        final tableBottom = tableBox.localToGlobal(
+          Offset(0, tableBox.size.height),
+        ).dy;
+        if (global.dy >= tableBottom) {
+          return const DropTarget.playerHand();
+        }
+      }
+    }
     return null;
   }
 
@@ -887,6 +905,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       case BoardDragKind.handCard:
         hand = source.card;
       case BoardDragKind.tableCard:
+      case BoardDragKind.deckCard:
         tableCards.add(source.card!);
       case BoardDragKind.tableStack:
         stacks.add(source.stack!);
@@ -894,6 +913,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     switch (target.kind) {
       case DropTargetKind.emptyTable:
+      case DropTargetKind.playerHand:
         break;
       case DropTargetKind.tableCard:
         if (!tableCards.any((c) => c.id == target.card!.id)) {
@@ -915,17 +935,33 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   List<PlayAction> actionsForDrop(BoardDragSource source, DropTarget target) {
     if (!canPlayTurn) return const [];
-    // Tres y Dos: keep Play-only empty-table drop; no table-slot DnD.
+    // Tres y Dos: play a hand card onto the discard, or drag a pile card
+    // into the hand to take it.
     if (!isCasinoFamily) {
-      if (source.kind != BoardDragKind.handCard ||
-          target.kind != DropTargetKind.emptyTable) {
-        return const [];
+      if (source.kind == BoardDragKind.handCard &&
+          (target.kind == DropTargetKind.emptyTable ||
+              target.kind == DropTargetKind.tableCard)) {
+        final selection = CurrentCardSelection(
+          pid: me,
+          selectedCard: source.card,
+          selectedCards: const [],
+          selectedStacks: const [],
+        );
+        return gameEngine
+            .getAvailableActions(gameState, selection)
+            .whereType<PlayCardAction>()
+            .toList();
       }
-      final selection = selectionForDrop(source, target);
-      return gameEngine
-          .getAvailableActions(gameState, selection)
-          .whereType<PlayCardAction>()
-          .toList();
+      if ((source.kind == BoardDragKind.tableCard ||
+              source.kind == BoardDragKind.deckCard) &&
+          target.kind == DropTargetKind.playerHand) {
+        final selection = selectionForDrop(source, target);
+        return gameEngine
+            .getAvailableActions(gameState, selection)
+            .whereType<TakeCardAction>()
+            .toList();
+      }
+      return const [];
     }
     // Empty table only accepts Play from hand.
     if (target.kind == DropTargetKind.emptyTable) {
@@ -1042,7 +1078,9 @@ class GeneralGameViewModel extends ChangeNotifier {
       return;
     }
     final selection = selectionForDrop(source, target);
-    final preview = target.kind == DropTargetKind.emptyTable
+    final preview =
+        target.kind == DropTargetKind.emptyTable ||
+            target.kind == DropTargetKind.playerHand
         ? null
         : _buildPreviewFor(selection, actions);
     dropHover = DropHover(
@@ -1077,7 +1115,9 @@ class GeneralGameViewModel extends ChangeNotifier {
     }
 
     final selection = selectionForDrop(source, target);
-    final preview = target.kind == DropTargetKind.emptyTable
+    final preview =
+        target.kind == DropTargetKind.emptyTable ||
+            target.kind == DropTargetKind.playerHand
         ? null
         : _buildPreviewFor(selection, actions, forceMerge: true);
 
@@ -1132,6 +1172,8 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     if (dragHandoff == null && globalCenter != null) {
       final sourceCard = action is PlayCardAction
+          ? action.usedCard
+          : action is TakeCardAction
           ? action.usedCard
           : selection.selectedCard;
       if (sourceCard != null) {

@@ -34,7 +34,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
     return Column(
       children: [
         SizedBox(
-          height: 36,
+          height: 42,
           child: _buildPlayControls(context, vm),
         ),
         const SizedBox(height: 2),
@@ -420,7 +420,7 @@ class _ActionChipButton extends StatelessWidget {
       onPressed: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         decoration: BoxDecoration(
           color: primary ? gold : const Color(0x00000000),
           borderRadius: BorderRadius.circular(999),
@@ -429,13 +429,13 @@ class _ActionChipButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: fg),
+            Icon(icon, size: 18, color: fg),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 color: fg,
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.2,
               ),
