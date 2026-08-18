@@ -213,6 +213,9 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
             if (child == null) return const SizedBox();
             AppStyle.theme = appRepo.selectedTheme;
             AppStyle.cardBack = appRepo.cardBack;
+            AppStyle.cardBackMark = appRepo.cardBackMark;
+            AppStyle.cardBackTintId = appRepo.cardBackTintId;
+            AppStyle.cardBackAvatarId = appRepo.player?.avatarId;
             return Material(
               color: AppStyle.theme.background,
               child: Center(

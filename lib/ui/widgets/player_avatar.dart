@@ -24,8 +24,8 @@ class PlayerAvatars {
   static final List<AvatarOption> all = [
     AvatarOption(
       id: 'sun',
-      background: const Color(0xFFE8B84A),
-      foreground: const Color(0xFF5C3A10),
+      background: const Color(0xFF6A5840),
+      foreground: const Color(0xFFEDE4D0),
       paint: _paintSun,
     ),
     AvatarOption(
@@ -36,20 +36,20 @@ class PlayerAvatars {
     ),
     AvatarOption(
       id: 'heart',
-      background: const Color(0xFFC45C55),
-      foreground: const Color(0xFFF7F5F0),
+      background: const Color(0xFF5A3A48),
+      foreground: const Color(0xFFF4ECEC),
       paint: _paintHeart,
     ),
     AvatarOption(
       id: 'spade',
-      background: const Color(0xFF2C3A48),
-      foreground: const Color(0xFFF4F2EC),
+      background: const Color(0xFF3A5558),
+      foreground: const Color(0xFFEEF3F2),
       paint: _paintSpade,
     ),
     AvatarOption(
       id: 'diamond',
-      background: const Color(0xFF6B3A4A),
-      foreground: const Color(0xFFE8C96A),
+      background: const Color(0xFF6B4336),
+      foreground: const Color(0xFFD4A07A),
       paint: _paintDiamond,
     ),
     AvatarOption(
@@ -66,8 +66,8 @@ class PlayerAvatars {
     ),
     AvatarOption(
       id: 'star',
-      background: const Color(0xFFC4B07A),
-      foreground: const Color(0xFF2A2418),
+      background: const Color(0xFF3A634F),
+      foreground: const Color(0xFFC4B07A),
       paint: _paintStar,
     ),
     AvatarOption(
@@ -144,12 +144,14 @@ class PlayerAvatarView extends StatelessWidget {
     required this.size,
     this.selected = false,
     this.showBorder = true,
+    this.silhouette = false,
   });
 
   final String? avatarId;
   final double size;
   final bool selected;
   final bool showBorder;
+  final bool silhouette;
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +177,7 @@ class PlayerAvatarView extends StatelessWidget {
         ),
         child: ClipOval(
           child: CustomPaint(
-            painter: _AvatarPainter(option),
+            painter: _AvatarPainter(option, silhouette: silhouette),
             size: Size.square(size),
           ),
         ),
@@ -185,21 +187,29 @@ class PlayerAvatarView extends StatelessWidget {
 }
 
 class _AvatarPainter extends CustomPainter {
-  const _AvatarPainter(this.option);
+  const _AvatarPainter(this.option, {this.silhouette = false});
 
   final AvatarOption option;
+  final bool silhouette;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.shortestSide / 2;
-    canvas.drawCircle(center, radius, Paint()..color = option.background);
-    option.paint(canvas, center, radius * 0.58, option.foreground);
+    final background = silhouette
+        ? const Color(0xFF2C2C2C)
+        : option.background;
+    final foreground = silhouette
+        ? const Color(0xFF1A1A1A)
+        : option.foreground;
+    canvas.drawCircle(center, radius, Paint()..color = background);
+    option.paint(canvas, center, radius * 0.58, foreground);
   }
 
   @override
   bool shouldRepaint(covariant _AvatarPainter oldDelegate) {
-    return oldDelegate.option.id != option.id;
+    return oldDelegate.option.id != option.id ||
+        oldDelegate.silhouette != silhouette;
   }
 }
 

@@ -1,46 +1,39 @@
+import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/cards/playing_card_back.dart';
+import 'package:dominican_casino/ui/widgets/coin_icon.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Card back for sale, shown as a plain palette fill.
+/// Coin-locked theme pack for sale, painted in that pack's table colors.
 class StoreThemeCard extends StatelessWidget {
   const StoreThemeCard({
     super.key,
-    required this.color,
-    this.locked = false,
-    this.selected = false,
-    this.priceLabel,
+    required this.pack,
     this.onTap,
   });
 
-  final Color color;
-  final bool locked;
-  final bool selected;
-  final String? priceLabel;
+  final ThemePack pack;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    final isLight = color.computeLuminance() > 0.42;
-    final ink = isLight ? const Color(0xFF1C1612) : theme.textPrimary;
+    final packTheme = themeFromEnum(pack.id);
+    final ink = packTheme.textPrimary;
+    final avatars = pack.avatarIds.take(3).toList();
 
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: locked ? null : SoundService.wrapTap(onTap),
+      onPressed: SoundService.wrapTap(onTap),
       child: AspectRatio(
         aspectRatio: 2.5 / 3.5,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: color,
+            color: packTheme.pickerFace,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected
-                  ? theme.turnHighlight.withValues(alpha: .85)
-                  : ink.withValues(alpha: .14),
-              width: selected ? 1.8 : 1,
-            ),
+            border: Border.all(color: ink.withValues(alpha: .14), width: 1),
             boxShadow: [
               BoxShadow(
                 color: CupertinoColors.black.withValues(alpha: .30),
@@ -49,32 +42,71 @@ class StoreThemeCard extends StatelessWidget {
               ),
             ],
           ),
-          child: locked
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+            child: Column(
+              children: [
+                Text(
+                  themeLabel(pack.id),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: packTheme.title.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1.05,
+                    color: ink,
+                  ),
+                ),
+                const Spacer(),
+                if (avatars.isNotEmpty)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        CupertinoIcons.lock_fill,
-                        color: ink.withValues(alpha: .82),
-                        size: 22,
-                      ),
-                      if (priceLabel != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          priceLabel!,
-                          style: theme.title.copyWith(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            height: 1,
-                            color: ink.withValues(alpha: .88),
-                          ),
+                      for (var i = 0; i < avatars.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 4),
+                        PlayerAvatarView(
+                          avatarId: avatars[i],
+                          size: 22,
+                          showBorder: true,
                         ),
                       ],
                     ],
                   ),
-                )
-              : null,
+                const SizedBox(height: 8),
+                PlayingCardBack(
+                  width: 28,
+                  tintId: pack.defaultTintId,
+                  mark: CardBackMark.logo,
+                  avatarId: pack.avatarIds.first,
+                  previewTheme: packTheme,
+                ),
+                const Spacer(),
+                Icon(
+                  CupertinoIcons.lock_fill,
+                  color: ink.withValues(alpha: .82),
+                  size: 16,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(coinIcon, size: 11, color: packTheme.turnHighlight),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${pack.coinCost}',
+                      style: packTheme.title.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                        color: ink.withValues(alpha: .88),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

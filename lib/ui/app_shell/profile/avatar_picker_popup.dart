@@ -8,9 +8,15 @@ import 'package:flutter/material.dart' show Material;
 Future<String?> showAvatarPickerPopup(
   BuildContext context, {
   String? selectedId,
+  List<String>? avatarIds,
 }) {
   final theme = AppStyle.theme;
   final l10n = AppLocalizations.of(context);
+  final options = (avatarIds == null || avatarIds.isEmpty)
+      ? PlayerAvatars.all
+      : [
+          for (final id in avatarIds) PlayerAvatars.byId(id),
+        ];
 
   return showGeneralDialog<String>(
     context: context,
@@ -51,13 +57,13 @@ Future<String?> showAvatarPickerPopup(
                 ),
                 const SizedBox(height: 18),
                 GridView.count(
-                  crossAxisCount: 4,
+                  crossAxisCount: options.length >= 4 ? 4 : options.length.clamp(1, 3),
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   children: [
-                    for (final option in PlayerAvatars.all)
+                    for (final option in options)
                       GestureDetector(
                         onTap: SoundService.wrapTap(
                           () => Navigator.pop(dialogContext, option.id),

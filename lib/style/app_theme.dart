@@ -1,8 +1,6 @@
 import 'package:dominican_casino/style/casino_theme.dart';
-// import 'package:dominican_casino/style/casino_theme_light.dart';
-// import 'package:dominican_casino/style/dominican_theme.dart';
-import 'package:dominican_casino/style/felt_walnut_theme.dart';
-// import 'package:dominican_casino/style/green_table_theme.dart';
+import 'package:dominican_casino/style/dune_theme.dart';
+import 'package:dominican_casino/style/fig_theme.dart';
 import 'package:dominican_casino/style/midnight_theme.dart';
 import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:flutter/cupertino.dart';
@@ -10,6 +8,9 @@ import 'package:flutter/cupertino.dart';
 class AppStyle {
   static AppTheme theme = SageTheme();
   static CardBack cardBack = CardBack.sage;
+  static CardBackMark cardBackMark = CardBackMark.logo;
+  static String cardBackTintId = 'sage';
+  static String? cardBackAvatarId;
 
   static Color get cardBackColor => cardBackStyle(cardBack).color;
 }
@@ -87,66 +88,45 @@ CupertinoThemeData buildCupertinoTheme(AppTheme theme) {
 }
 
 enum Theme {
-  feltWaltnut,
   sage,
   casino,
   midnight,
-  //  casinoLight, greenTable, dominican
+  fig,
+  dune,
 }
 
-/// Themes the player already owns (selectable in Profile).
-const ownedThemes = <Theme>[Theme.sage, Theme.feltWaltnut];
+enum CardBack { sage, walnut, ink, ivory, brass, clay, tide, fig, dune }
 
-enum CardBack { sage, walnut, ink, ivory, brass }
+enum CardBackMark { none, logo, avatar }
+
+extension CardBackMarkCycle on CardBackMark {
+  CardBackMark get next {
+    const values = CardBackMark.values;
+    return values[(index + 1) % values.length];
+  }
+}
 
 class CardBackStyle {
-  const CardBackStyle({
-    required this.id,
-    required this.color,
-    required this.owned,
-    this.priceLabel,
-  });
+  const CardBackStyle({required this.id, required this.color});
 
   final CardBack id;
   final Color color;
-  final bool owned;
-  final String? priceLabel;
 }
 
 const cardBackCatalog = <CardBackStyle>[
-  CardBackStyle(
-    id: CardBack.sage,
-    color: Color(0xFF3A634F),
-    owned: true,
-  ),
-  CardBackStyle(
-    id: CardBack.walnut,
-    color: Color(0xFF53463A),
-    owned: true,
-  ),
-  CardBackStyle(
-    id: CardBack.ink,
-    color: Color(0xFF1A2220),
-    owned: true,
-  ),
-  CardBackStyle(
-    id: CardBack.ivory,
-    color: Color(0xFFE8E2D6),
-    owned: true,
-  ),
-  CardBackStyle(
-    id: CardBack.brass,
-    color: Color(0xFFC4B07A),
-    owned: true,
-  ),
+  CardBackStyle(id: CardBack.sage, color: Color(0xFF3A634F)),
+  CardBackStyle(id: CardBack.walnut, color: Color(0xFF53463A)),
+  CardBackStyle(id: CardBack.ink, color: Color(0xFF1A282C)),
+  CardBackStyle(id: CardBack.ivory, color: Color(0xFFE8E2D6)),
+  CardBackStyle(id: CardBack.brass, color: Color(0xFF7A4E3A)),
+  CardBackStyle(id: CardBack.clay, color: Color(0xFF6B4336)),
+  CardBackStyle(id: CardBack.tide, color: Color(0xFF3A5558)),
+  CardBackStyle(id: CardBack.fig, color: Color(0xFF5A3A48)),
+  CardBackStyle(id: CardBack.dune, color: Color(0xFF6A5A40)),
 ];
 
 CardBackStyle cardBackStyle(CardBack id) {
   return cardBackCatalog.firstWhere((item) => item.id == id);
-}
-
-CardBack defaultCardBackFor(Theme theme) {
-  return theme == Theme.feltWaltnut ? CardBack.walnut : CardBack.sage;
 }
 
 String cardBackLabel(CardBack id) {
@@ -155,44 +135,40 @@ String cardBackLabel(CardBack id) {
     CardBack.walnut => 'Walnut',
     CardBack.ink => 'Ink',
     CardBack.ivory => 'Ivory',
-    CardBack.brass => 'Brass',
+    CardBack.brass => 'Copper',
+    CardBack.clay => 'Clay',
+    CardBack.tide => 'Tide',
+    CardBack.fig => 'Fig',
+    CardBack.dune => 'Dune',
   };
 }
 
 String themeLabel(Theme themeType) {
   switch (themeType) {
-    case Theme.feltWaltnut:
-      return 'Felt Walnut';
     case Theme.sage:
       return 'Sage';
     case Theme.casino:
-      return 'Casino';
+      return 'Clay';
     case Theme.midnight:
-      return 'Midnight';
-    // case Theme.dominican:
-    //   return 'Dominican';
-    // case Theme.casinoLight:
-    //   return 'Casino Light';
-    // case Theme.greenTable:
-    //   return 'Green Light';
+      return 'Tide';
+    case Theme.fig:
+      return 'Fig';
+    case Theme.dune:
+      return 'Dune';
   }
 }
 
 AppTheme themeFromEnum(Theme theme) {
   switch (theme) {
-    case Theme.feltWaltnut:
-      return FeltWalnutTheme();
     case Theme.sage:
       return SageTheme();
     case Theme.casino:
-      return CasinoTheme();
+      return ClayTheme();
     case Theme.midnight:
-      return MidnightNeonTheme();
-    // case Theme.dominican:
-    //   return DominicanTheme();
-    // case Theme.casinoLight:
-    //   return LightCasinoTheme();
-    // case Theme.greenTable:
-    //   return GreenTableTheme();
+      return TideTheme();
+    case Theme.fig:
+      return FigTheme();
+    case Theme.dune:
+      return DuneTheme();
   }
 }

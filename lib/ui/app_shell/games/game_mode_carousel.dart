@@ -11,6 +11,20 @@ const gameModeCarouselModes = <GameMode>[
   GameMode.tresydos,
 ];
 
+class PickerCardPose {
+  const PickerCardPose({
+    required this.mode,
+    required this.rect,
+    required this.angle,
+    this.front = false,
+  });
+
+  final GameMode mode;
+  final Rect rect;
+  final double angle;
+  final bool front;
+}
+
 class GameModeCarousel extends StatefulWidget {
   const GameModeCarousel({
     super.key,
@@ -22,13 +36,14 @@ class GameModeCarousel extends StatefulWidget {
   final int initialIndex;
 
   @override
-  State<GameModeCarousel> createState() => _GameModeCarouselState();
+  GameModeCarouselState createState() => GameModeCarouselState();
 }
 
-class _GameModeCarouselState extends State<GameModeCarousel> {
+class GameModeCarouselState extends State<GameModeCarousel> {
   final GlobalKey<StackedCardCarouselState> _carouselKey = GlobalKey();
   final GlobalKey _frontCardKey = GlobalKey();
   bool _howToOpen = false;
+  bool _collapsingForHowTo = false;
   late int _frontIndex;
 
   @override
@@ -41,9 +56,13 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
   }
 
   Future<void> _openHowTo(GameMode mode) async {
-    if (_howToOpen) return;
+    if (_howToOpen || _collapsingForHowTo) return;
     final carousel = _carouselKey.currentState;
     if (carousel == null) return;
+
+    setState(() => _collapsingForHowTo = true);
+    await carousel.collapseBack(duration: const Duration(milliseconds: 320));
+    if (!mounted) return;
 
     Rect? anchor;
     final box = _frontCardKey.currentContext?.findRenderObject() as RenderBox?;
@@ -63,40 +82,112 @@ class _GameModeCarouselState extends State<GameModeCarousel> {
     );
     if (!mounted) return;
     carousel.snapPeek(revealed: false);
-    setState(() => _howToOpen = false);
+    setState(() {
+      _howToOpen = false;
+      _collapsingForHowTo = false;
+    });
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     await _carouselKey.currentState?.revealBack();
   }
 
+  bool get isBusy => _howToOpen || _collapsingForHowTo;
+
+  int get frontIndex => _frontIndex;
+
+  Future<void> collapsePeeks() {
+    return _carouselKey.currentState?.collapseBack(
+          duration: const Duration(milliseconds: 280),
+        ) ??
+        Future.value();
+  }
+
+  Future<void> revealPeeks() {
+    return _carouselKey.currentState?.revealBack() ?? Future.value();
+  }
+
+  /// Screen-space poses for the three fanned cards (left, front, right).
+  List<PickerCardPose>? stackPoses() {
+    final box = _frontCardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    final frontRect = box.localToGlobal(Offset.zero) & box.size;
+    final w = frontRect.width;
+    final n = gameModeCarouselModes.length;
+    final left = (_frontIndex - 1 + n) % n;
+    final right = (_frontIndex + 1) % n;
+
+    Rect shifted(Offset offset, double scale) {
+      final center = frontRect.center + offset;
+      return Rect.fromCenter(
+        center: center,
+        width: frontRect.width * scale,
+        height: frontRect.height * scale,
+      );
+    }
+
+    return [
+      PickerCardPose(
+        mode: gameModeCarouselModes[left],
+        rect: shifted(
+          Offset(
+            -w * StackedCardCarouselState.fanPeek,
+            StackedCardCarouselState.fanLift,
+          ),
+          StackedCardCarouselState.fanScale,
+        ),
+        angle: -StackedCardCarouselState.fanAngle,
+      ),
+      PickerCardPose(
+        mode: gameModeCarouselModes[_frontIndex],
+        rect: frontRect,
+        angle: 0,
+        front: true,
+      ),
+      PickerCardPose(
+        mode: gameModeCarouselModes[right],
+        rect: shifted(
+          Offset(
+            w * StackedCardCarouselState.fanPeek,
+            StackedCardCarouselState.fanLift,
+          ),
+          StackedCardCarouselState.fanScale,
+        ),
+        angle: StackedCardCarouselState.fanAngle,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Offstage(
-      offstage: _howToOpen,
-      child: StackedCardCarousel(
-        key: _carouselKey,
-        itemCount: gameModeCarouselModes.length,
-        initialIndex: widget.initialIndex,
-        peekStyle: CardPeekStyle.fan,
-        animateBackIn: true,
-        widthFactor: 0.70,
-        maxCardWidth: 280,
-        frontAnchorKey: _frontCardKey,
-        onIndexChanged: (index) {
-          if (_frontIndex != index) {
-            setState(() => _frontIndex = index);
-          }
-          widget.onModeChanged?.call(gameModeCarouselModes[index]);
-        },
-        itemBuilder: (context, index) {
-          final mode = gameModeCarouselModes[index];
-          final isFront = index == _frontIndex;
-          return GameModeCard(
-            mode: mode,
-            showActions: isFront,
-            onHowToPlay: isFront ? () => _openHowTo(mode) : null,
-          );
-        },
+    return IgnorePointer(
+      ignoring: _howToOpen || _collapsingForHowTo,
+      child: Offstage(
+        offstage: _howToOpen,
+        child: StackedCardCarousel(
+          key: _carouselKey,
+          itemCount: gameModeCarouselModes.length,
+          initialIndex: widget.initialIndex,
+          peekStyle: CardPeekStyle.fan,
+          animateBackIn: true,
+          widthFactor: 0.70,
+          maxCardWidth: 280,
+          frontAnchorKey: _frontCardKey,
+          onIndexChanged: (index) {
+            if (_frontIndex != index) {
+              setState(() => _frontIndex = index);
+            }
+            widget.onModeChanged?.call(gameModeCarouselModes[index]);
+          },
+          itemBuilder: (context, index) {
+            final mode = gameModeCarouselModes[index];
+            final isFront = index == _frontIndex;
+            return GameModeCard(
+              mode: mode,
+              showActions: isFront,
+              onHowToPlay: isFront ? () => _openHowTo(mode) : null,
+            );
+          },
+        ),
       ),
     );
   }

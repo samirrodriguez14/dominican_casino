@@ -123,6 +123,18 @@ class AppLocalizations {
       : 'Connect Google if you want to keep this account on other devices.';
   String get chooseTable => isEs ? 'Elige tu mesa' : 'Choose Your Table';
   String get themes => isEs ? 'Temas' : 'Themes';
+  String get done => isEs ? 'Listo' : 'Done';
+  String get useTable => isEs ? 'Usar' : 'Use';
+  String get beatPuli => isEs ? 'Vence a Puli' : 'Beat Puli';
+  String confirmBuyPack(String name, int coins) => isEs
+      ? '¿Gastar $coins monedas para desbloquear $name?'
+      : 'Spend $coins coins to unlock $name?';
+  String get cardFaceClassic => isEs ? 'Clásico' : 'Classic';
+  String get cardFacePlain => isEs ? 'Liso' : 'Plain';
+  String get cardFaceShow => isEs ? 'Marca' : 'Show';
+  String get cardMarkNone => isEs ? 'Nada' : 'None';
+  String get cardMarkLogo => isEs ? 'Logo' : 'Logo';
+  String get cardMarkAvatar => isEs ? 'Avatar' : 'Avatar';
   String get owned => isEs ? 'Tuyo' : 'Owned';
   String get locked => isEs ? 'Bloqueado' : 'Locked';
   String get buyEnergy => isEs ? 'Comprar energía' : 'Buy energy';

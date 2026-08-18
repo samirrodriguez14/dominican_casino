@@ -104,9 +104,10 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
 
   static const _dismissThreshold = 110.0;
   static const _revealDuration = Duration(milliseconds: 400);
-  static const _fanPeek = 0.18;
-  static const _fanScale = 0.90;
-  static const _fanAngle = 0.12;
+  static const fanPeek = 0.18;
+  static const fanScale = 0.90;
+  static const fanAngle = 0.12;
+  static const fanLift = 14.0;
 
   static const _backRest = _CardPose(
     offset: Offset(22, 16),
@@ -173,15 +174,15 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
       _CardPose.lerp(_frontRest, _backRest, _reveal.value);
 
   _CardPose _leftRest(double cardWidth) => _CardPose(
-    offset: Offset(-cardWidth * _fanPeek, 14),
-    scale: _fanScale,
-    angle: -_fanAngle,
+    offset: Offset(-cardWidth * fanPeek, fanLift),
+    scale: fanScale,
+    angle: -fanAngle,
   );
 
   _CardPose _rightRest(double cardWidth) => _CardPose(
-    offset: Offset(cardWidth * _fanPeek, 14),
-    scale: _fanScale,
-    angle: _fanAngle,
+    offset: Offset(cardWidth * fanPeek, fanLift),
+    scale: fanScale,
+    angle: fanAngle,
   );
 
   _CardPose _revealedSide(_CardPose rest) =>
@@ -195,12 +196,14 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
     await _reveal.animateTo(1, curve: Curves.easeOutCubic);
   }
 
-  Future<void> collapseBack({bool playSound = true}) async {
+  Future<void> collapseBack({bool playSound = true, Duration? duration}) async {
     if (_reveal.value <= 0.01) return;
     if (playSound) {
       SoundService.instance.playLayered(GameSound.softCard);
     }
+    _reveal.duration = duration ?? _revealDuration;
     await _reveal.animateTo(0, curve: Curves.easeInCubic);
+    _reveal.duration = _revealDuration;
   }
 
   void snapPeek({required bool revealed}) {
@@ -538,7 +541,7 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
             : _stackChildren(cardWidth);
 
         final wantedWidth = _usesFan
-            ? cardWidth * (1 + _fanPeek * 2) + 24
+            ? cardWidth * (1 + fanPeek * 2) + 24
             : cardWidth + 48;
         final stageWidth = constraints.maxWidth.isFinite
             ? wantedWidth.clamp(0.0, constraints.maxWidth)
@@ -669,7 +672,7 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
       } else {
         leftPose = _sideTowardFront(leftRest);
         final recede = _sideReceding(rightRest, cardWidth, left: false);
-        final cover = (_dragDx / (cardWidth * _fanPeek + 10)).clamp(0.0, 1.0);
+        final cover = (_dragDx / (cardWidth * fanPeek + 10)).clamp(0.0, 1.0);
         rightPose = _withOpacity(recede, 1.0 - Curves.easeIn.transform(cover));
       }
     } else {

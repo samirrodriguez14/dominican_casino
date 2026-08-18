@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player.dart';
+import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/services/firebase_options.dart';
@@ -72,6 +73,12 @@ class AppRepo extends ChangeNotifier {
   AppTheme get selectedTheme => themeFromEnum(_appTheme);
   CardBack _cardBack = CardBack.sage;
   CardBack get cardBack => _cardBack;
+  CardBackMark _cardBackMark = CardBackMark.logo;
+  CardBackMark get cardBackMark => _cardBackMark;
+  String _cardBackTintId = 'sage';
+  String get cardBackTintId => _cardBackTintId;
+  Set<Theme> _ownedPacks = {...defaultOwnedPacks};
+  Set<Theme> get ownedPacks => Set.unmodifiable(_ownedPacks);
   List<GameInfo> gamesInfo = [];
   AppStatus appStatus = AppStatus.notReady;
   Player? player;
@@ -95,6 +102,9 @@ class AppRepo extends ChangeNotifier {
 
   static const _themeKey = 'appTheme';
   static const _cardBackKey = 'cardBack';
+  static const _cardBackMarkKey = 'cardBackMark';
+  static const _cardBackTintKey = 'cardBackTint';
+  static const _ownedPacksKey = 'ownedPacks';
 
   bool get isGoogleLinked {
     final user = FirebaseAuth.instance.currentUser;
@@ -120,14 +130,27 @@ class AppRepo extends ChangeNotifier {
 
   AppRepo({required this.fs});
 
+  bool ownsPack(Theme id) {
+    final pack = themePack(id);
+    if (pack.unlock == ThemeUnlockKind.free) return true;
+    return _ownedPacks.contains(id);
+  }
+
+  bool ownsCardBack(CardBack back) {
+    final pack = themePackForCardBack(back);
+    if (pack == null) return false;
+    return ownsPack(pack.id);
+  }
+
   set appTheme(Theme value) {
     if (_appTheme == value) return;
+    if (!ownsPack(value)) return;
     final previousDefault = defaultCardBackFor(_appTheme);
     _appTheme = value;
     AppStyle.theme = selectedTheme;
     if (_cardBack == previousDefault) {
       final next = defaultCardBackFor(value);
-      if (cardBackStyle(next).owned) {
+      if (ownsCardBack(next)) {
         _cardBack = next;
         AppStyle.cardBack = next;
         _persistCardBack();
@@ -139,12 +162,67 @@ class AppRepo extends ChangeNotifier {
 
   set cardBack(CardBack value) {
     if (_cardBack == value) return;
-    final option = cardBackStyle(value);
-    if (!option.owned) return;
+    if (!ownsCardBack(value)) return;
     _cardBack = value;
     AppStyle.cardBack = value;
     notifyListeners();
     _persistCardBack();
+  }
+
+  set cardBackMark(CardBackMark value) {
+    if (_cardBackMark == value) return;
+    _cardBackMark = value;
+    AppStyle.cardBackMark = value;
+    notifyListeners();
+    _persistCardFace();
+  }
+
+  set cardBackTintId(String value) {
+    final next = coerceTintForTheme(value, _appTheme);
+    if (_cardBackTintId == next) return;
+    _cardBackTintId = next;
+    AppStyle.cardBackTintId = next;
+    notifyListeners();
+    _persistCardFace();
+  }
+
+  Future<void> equipPack(Theme id, {String? avatarId}) async {
+    if (!ownsPack(id)) return;
+    final pack = themePack(id);
+    _appTheme = id;
+    AppStyle.theme = selectedTheme;
+    _cardBack = pack.cardBack;
+    AppStyle.cardBack = pack.cardBack;
+    _cardBackTintId = coerceTintForTheme(_cardBackTintId, id);
+    AppStyle.cardBackTintId = _cardBackTintId;
+    await _persistTheme();
+    await _persistCardBack();
+    await _persistCardFace();
+    final current = avatarId ?? player?.avatarId;
+    final resolved = (current != null && pack.avatarIds.contains(current))
+        ? current
+        : pack.avatarIds.first;
+    if (player?.avatarId != resolved) {
+      await updatePlayerAvatar(resolved);
+      return;
+    }
+    notifyListeners();
+  }
+
+  Future<bool> buyThemePack(Theme id) async {
+    final pack = themePack(id);
+    if (!pack.isCoinLocked) return false;
+    if (ownsPack(id)) {
+      await equipPack(id);
+      return true;
+    }
+    final cost = pack.coinCost ?? 0;
+    if (cost <= 0) return false;
+    if (!await trySpendCoins(cost)) return false;
+    _ownedPacks.add(id);
+    await _persistOwnedPacks();
+    await equipPack(id);
+    return true;
   }
 
   Future<void> setLocale(Locale locale) async {
@@ -767,22 +845,53 @@ class AppRepo extends ChangeNotifier {
 
   Future<void> _loadTheme() async {
     final sp = await SharedPreferences.getInstance();
-    final name = sp.getString(_themeKey);
+    _ownedPacks = {...defaultOwnedPacks};
+    final savedPacks = sp.getStringList(_ownedPacksKey);
+    if (savedPacks != null) {
+      for (final name in savedPacks) {
+        for (final value in Theme.values) {
+          if (value.name == name) {
+            _ownedPacks.add(value);
+            break;
+          }
+        }
+      }
+    }
+    for (final pack in themePackCatalog) {
+      if (pack.unlock == ThemeUnlockKind.free) {
+        _ownedPacks.add(pack.id);
+      }
+    }
+
+    final name = switch (sp.getString(_themeKey)) {
+      'feltWaltnut' => 'sage',
+      final value => value,
+    };
+    var loadedTheme = false;
     if (name != null) {
       for (final value in Theme.values) {
-        if (value.name == name) {
+        if (value.name == name && ownsPack(value)) {
           _appTheme = value;
-          AppStyle.theme = selectedTheme;
+          loadedTheme = true;
           break;
         }
       }
     }
+    if (!loadedTheme) {
+      _appTheme = Theme.sage;
+    }
+    AppStyle.theme = selectedTheme;
 
-    final backName = sp.getString(_cardBackKey);
+    final backName = switch (sp.getString(_cardBackKey)) {
+      'brass' => 'clay',
+      'ink' => 'tide',
+      'walnut' => 'sage',
+      final name => name,
+    };
     var loadedBack = false;
     if (backName != null) {
       for (final value in CardBack.values) {
-        if (value.name == backName && cardBackStyle(value).owned) {
+        if (value.name == backName && ownsCardBack(value)) {
           _cardBack = value;
           loadedBack = true;
           break;
@@ -793,6 +902,31 @@ class AppRepo extends ChangeNotifier {
       _cardBack = defaultCardBackFor(_appTheme);
     }
     AppStyle.cardBack = _cardBack;
+
+    var mark = CardBackMark.logo;
+    final markName = sp.getString(_cardBackMarkKey) ?? sp.getString('cardFaceMark');
+    if (markName != null) {
+      for (final value in CardBackMark.values) {
+        if (value.name == markName) {
+          mark = value;
+          break;
+        }
+      }
+    } else {
+      final legacy = sp.getString('cardFaceStyle');
+      if (legacy == 'show') mark = CardBackMark.logo;
+      if (legacy == 'classic' || legacy == 'plain') mark = CardBackMark.none;
+    }
+    _cardBackMark = mark;
+    AppStyle.cardBackMark = mark;
+
+    final tintName =
+        sp.getString(_cardBackTintKey) ?? sp.getString('cardFaceTint');
+    _cardBackTintId = coerceTintForTheme(
+      tintName ?? themePack(_appTheme).defaultTintId,
+      _appTheme,
+    );
+    AppStyle.cardBackTintId = _cardBackTintId;
   }
 
   Future<void> _persistTheme() async {
@@ -803,6 +937,20 @@ class AppRepo extends ChangeNotifier {
   Future<void> _persistCardBack() async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_cardBackKey, _cardBack.name);
+  }
+
+  Future<void> _persistCardFace() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_cardBackMarkKey, _cardBackMark.name);
+    await sp.setString(_cardBackTintKey, _cardBackTintId);
+  }
+
+  Future<void> _persistOwnedPacks() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setStringList(
+      _ownedPacksKey,
+      _ownedPacks.map((pack) => pack.name).toList(),
+    );
   }
 
   Future<void> _loadLocale() async {

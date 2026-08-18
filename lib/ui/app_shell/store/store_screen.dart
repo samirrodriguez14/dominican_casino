@@ -1,4 +1,5 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/currency_burst.dart';
@@ -8,6 +9,7 @@ import 'package:dominican_casino/ui/app_shell/store/store_catalog.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_theme_card.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
+import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
@@ -62,10 +64,7 @@ class StoreScreenState extends State<StoreScreen> {
         Text(l10n.buyCoins, style: theme.title.copyWith(fontSize: 22)),
         const SizedBox(height: 12),
         _BundleGrid(bundles: coinBundles),
-        const SizedBox(height: 28),
-        Text(l10n.themes, style: theme.title.copyWith(fontSize: 22)),
-        const SizedBox(height: 12),
-        const _CardBackStrip(),
+        const _ThemePackSection(),
       ],
     );
   }
@@ -157,42 +156,77 @@ class _BundleGrid extends StatelessWidget {
   }
 }
 
-class _CardBackStrip extends StatelessWidget {
-  const _CardBackStrip();
+class _ThemePackSection extends StatelessWidget {
+  const _ThemePackSection();
 
   @override
   Widget build(BuildContext context) {
     final repo = context.watch<AppRepo>();
+    final packs = coinPacksForSale(repo.ownedPacks);
+    if (packs.isEmpty) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+    final theme = AppStyle.theme;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardHeight = (constraints.maxWidth / 3) / StoreScreen._cardAspect;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 28),
+        Text(l10n.themes, style: theme.title.copyWith(fontSize: 22)),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const columns = 3;
+            final gap = StoreScreen._gridGap;
+            final cardWidth =
+                (constraints.maxWidth - gap * (columns - 1)) / columns;
+            final cardHeight = cardWidth / StoreScreen._cardAspect;
+            final rows = (packs.length / columns).ceil();
+            final gridHeight = rows * cardHeight + (rows - 1) * gap;
 
-        return SizedBox(
-          height: cardHeight,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: cardBackCatalog.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(width: StoreScreen._gridGap),
-            itemBuilder: (context, index) {
-              final option = cardBackCatalog[index];
-              return SizedBox(
-                width: cardHeight * StoreScreen._cardAspect,
-                height: cardHeight,
-                child: StoreThemeCard(
-                  color: option.color,
-                  locked: !option.owned,
-                  selected: option.owned && repo.cardBack == option.id,
-                  priceLabel: option.owned ? null : option.priceLabel,
-                  onTap: option.owned ? () => repo.cardBack = option.id : null,
+            return SizedBox(
+              height: gridHeight,
+              child: GridView.builder(
+                padding: EdgeInsets.zero,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: packs.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: gap,
+                  crossAxisSpacing: gap,
+                  childAspectRatio: StoreScreen._cardAspect,
                 ),
-              );
-            },
-          ),
-        );
-      },
+                itemBuilder: (context, index) {
+                  final pack = packs[index];
+                  return StoreThemeCard(
+                    pack: pack,
+                    onTap: () => _buyPack(context, pack),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ],
     );
+  }
+
+  Future<void> _buyPack(BuildContext context, ThemePack pack) async {
+    final cost = pack.coinCost ?? 0;
+    if (cost <= 0) return;
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showConfirmStorePurchase(
+      context,
+      body: l10n.confirmBuyPack(themeLabel(pack.id), cost),
+    );
+    if (!confirmed || !context.mounted) return;
+    final repo = context.read<AppRepo>();
+    if (repo.wallet.coins < cost) {
+      await showInsufficientFundsDialog(context, energy: false);
+      return;
+    }
+    final ok = await context.read<AppThemeViewModel>().buyPack(pack.id);
+    if (!ok && context.mounted) {
+      await showInsufficientFundsDialog(context, energy: false);
+    }
   }
 }

@@ -5,11 +5,9 @@ import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/settings/theme_option.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/home/privacy_policy_copy.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
-import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -66,7 +64,6 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<AppThemeViewModel>();
     final appRepo = context.watch<AppRepo>();
     final sounds = context.watch<SoundService>();
     final l10n = AppLocalizations.of(context);
@@ -99,7 +96,6 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                     theme: theme,
                     face: face,
                     l10n: l10n,
-                    vm: vm,
                     appRepo: appRepo,
                     sounds: sounds,
                   ),
@@ -183,7 +179,6 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     required AppTheme theme,
     required Color face,
     required AppLocalizations l10n,
-    required AppThemeViewModel vm,
     required AppRepo appRepo,
     required SoundService sounds,
   }) {
@@ -211,24 +206,6 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _SectionLabel(l10n.themes),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            for (var i = 0; i < ownedThemes.length; i++) ...[
-                              if (i > 0) const SizedBox(width: 8),
-                              Expanded(
-                                child: ThemeOptionChip(
-                                  themeType: ownedThemes[i],
-                                  previewTheme: themeFromEnum(ownedThemes[i]),
-                                  selected: vm.appTheme == ownedThemes[i],
-                                  onTap: () => vm.selectTheme(ownedThemes[i]),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const _SectionDivider(),
                         _SectionLabel(l10n.language),
                         const SizedBox(height: 6),
                         Row(
@@ -358,6 +335,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                             ),
                           ),
                         ),
+                        const SizedBox(height: 16),
                         Center(
                           child: CupertinoButton(
                             padding: const EdgeInsets.symmetric(

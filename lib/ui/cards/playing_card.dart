@@ -38,9 +38,10 @@ class PlayingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
     final rank = playingCardModel.rank;
     final suit = _normalizeSuit(playingCardModel.suit);
-    final suitColor = _suitColor(suit);
+    final suitColor = _suitColor(suit, theme);
     final height = width * heightMultiplyer;
     final hintsEnabled = showCoinHint && _casinoCoinHintsEnabled(context);
     final specialCoins = hintsEnabled
@@ -50,7 +51,7 @@ class PlayingCard extends StatelessWidget {
         ? (extraCoinHint > 0 ? extraCoinHint : specialCoins)
         : 0;
 
-    final sel = selectedBorderColor ?? AppStyle.theme.turnHighlight;
+    final sel = selectedBorderColor ?? theme.turnHighlight;
     final metrics = _CardMetrics(width, rank);
 
     return GestureDetector(
@@ -61,10 +62,10 @@ class PlayingCard extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: AppStyle.theme.cardBackground,
+          color: theme.cardBackground,
           borderRadius: BorderRadius.circular(metrics.radius),
           border: Border.all(
-            color: isSelected ? sel : AppStyle.theme.cardBorder,
+            color: isSelected ? sel : theme.cardBorder,
             width: 1,
           ),
           boxShadow: [
@@ -231,8 +232,6 @@ String _normalizeSuit(String suit) {
   }
 }
 
-Color _suitColor(String suit) {
-  return (suit == '♥' || suit == '♦')
-      ? AppStyle.theme.suitRed
-      : AppStyle.theme.suitBlack;
+Color _suitColor(String suit, AppTheme theme) {
+  return (suit == '♥' || suit == '♦') ? theme.suitRed : theme.suitBlack;
 }

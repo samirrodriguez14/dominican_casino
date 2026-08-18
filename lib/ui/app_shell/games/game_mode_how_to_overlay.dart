@@ -15,13 +15,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
 const _flipDuration = Duration(milliseconds: 420);
+const _liftDuration = Duration(milliseconds: 340);
 const _overlayScale = 1.16;
+const _barrierDuration = Duration(milliseconds: 200);
 
 Future<void> showGameModeHowTo(
   BuildContext context,
   GameMode mode, {
   required double cardWidth,
   Rect? anchor,
+  bool expandFromAnchor = false,
   bool showPlay = true,
 }) {
   final gamesVm = showPlay ? context.read<GamesViewModel>() : null;
@@ -36,7 +39,7 @@ Future<void> showGameModeHowTo(
       barrierDismissible: false,
       barrierLabel: 'Dismiss',
       barrierColor: CupertinoColors.black.withValues(alpha: .55),
-      transitionDuration: _flipDuration,
+      transitionDuration: _barrierDuration,
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         void onStatus(AnimationStatus status) {
           if (status != AnimationStatus.dismissed) return;
@@ -47,9 +50,9 @@ Future<void> showGameModeHowTo(
         animation.addStatusListener(onStatus);
         return GameModeHowToOverlay(
           mode: mode,
-          animation: animation,
           cardWidth: cardWidth,
           anchor: anchor,
+          expandFromAnchor: expandFromAnchor,
           onClose: () => Navigator.pop(dialogContext),
           onPlay: playable
               ? () {
@@ -65,7 +68,7 @@ Future<void> showGameModeHowTo(
       },
       transitionBuilder: (context, animation, secondary, child) => child,
     ).whenComplete(() {
-      Future<void>.delayed(_flipDuration, () {
+      Future<void>.delayed(_flipDuration + _liftDuration, () {
         if (!closed.isCompleted) closed.complete();
       });
     }),
@@ -77,17 +80,17 @@ class GameModeHowToOverlay extends StatefulWidget {
   const GameModeHowToOverlay({
     super.key,
     required this.mode,
-    required this.animation,
     required this.cardWidth,
     required this.onPlay,
     required this.onClose,
     this.anchor,
+    this.expandFromAnchor = false,
   });
 
   final GameMode mode;
-  final Animation<double> animation;
   final double cardWidth;
   final Rect? anchor;
+  final bool expandFromAnchor;
   final VoidCallback? onPlay;
   final VoidCallback onClose;
 
@@ -96,9 +99,11 @@ class GameModeHowToOverlay extends StatefulWidget {
 }
 
 class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   List<InstructionSection> _sections = const [];
   late final AnimationController _hintPulse;
+  late final AnimationController _lift;
+  late final AnimationController _flip;
   final GlobalKey<StackedCardCarouselState> _carouselKey = GlobalKey();
   bool _dismissing = false;
   bool _revealed = false;
@@ -110,21 +115,37 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
       vsync: this,
       duration: const Duration(milliseconds: 2200),
     )..repeat(reverse: true);
-    widget.animation.addStatusListener(_onFlipStatus);
+    _lift = AnimationController(vsync: this, duration: _liftDuration)
+      ..addListener(() {
+        if (mounted) setState(() {});
+      });
+    _flip = AnimationController(vsync: this, duration: _flipDuration)
+      ..addListener(() {
+        if (mounted) setState(() {});
+      })
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) _tryRevealBack();
+      });
     _load();
+    _open();
+  }
+
+  Future<void> _open() async {
+    if (widget.expandFromAnchor && widget.anchor != null) {
+      await _lift.forward();
+    } else {
+      _lift.value = 1;
+    }
+    if (!mounted || _dismissing) return;
+    await _flip.forward();
   }
 
   @override
   void dispose() {
-    widget.animation.removeStatusListener(_onFlipStatus);
     _hintPulse.dispose();
+    _lift.dispose();
+    _flip.dispose();
     super.dispose();
-  }
-
-  void _onFlipStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed) {
-      _tryRevealBack();
-    }
   }
 
   Future<void> _load() async {
@@ -140,7 +161,7 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
 
   Future<void> _tryRevealBack() async {
     if (_dismissing || _revealed) return;
-    if (!widget.animation.isCompleted) return;
+    if (!_flip.isCompleted) return;
     if (_sections.length < 2) return;
     final carousel = _carouselKey.currentState;
     if (carousel == null) return;
@@ -154,6 +175,14 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
     await _carouselKey.currentState?.collapseBack();
     if (!mounted) return;
     SoundService.instance.playLayered(GameSound.button);
+    if (_flip.value > 0) {
+      await _flip.reverse();
+      if (!mounted) return;
+    }
+    if (widget.expandFromAnchor && _lift.value > 0) {
+      await _lift.reverse();
+      if (!mounted) return;
+    }
     widget.onClose();
   }
 
@@ -170,78 +199,75 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
     final l10n = AppLocalizations.of(context);
     final media = MediaQuery.of(context);
     final screenCenter = Offset(media.size.width / 2, media.size.height / 2);
-    final anchorCenter = widget.anchor?.center ?? screenCenter;
-    final positionOffset = anchorCenter - screenCenter;
     final modeFace = GameModeCard.pickerFaceFor(theme, widget.mode);
-    final cardWidth = widget.cardWidth;
-    final stageWidth = cardWidth + 48;
-    final stageHeight = cardWidth * (3.5 / 2.5) + 36;
+    final targetWidth = widget.cardWidth;
+    final targetHeight = targetWidth * (3.5 / 2.5);
+    final endRect = Rect.fromCenter(
+      center: screenCenter,
+      width: targetWidth,
+      height: targetHeight,
+    );
+    final startRect = widget.anchor ?? endRect;
+    final liftT = Curves.easeInOutCubic.transform(_lift.value.clamp(0.0, 1.0));
+    final flipT = Curves.easeInOutCubic.transform(_flip.value.clamp(0.0, 1.0));
+    final rect = widget.expandFromAnchor
+        ? Rect.lerp(startRect, endRect, liftT)!
+        : (widget.anchor ?? endRect);
+    final cardWidth = widget.expandFromAnchor ? rect.width : targetWidth;
+    final stageWidth = targetWidth + 48;
+    final stageHeight = targetHeight + 36;
+    final angle = flipT * math.pi;
+    final showBack = flipT >= 0.5;
+    final backOpacity = ((flipT - 0.5) * 2).clamp(0.0, 1.0);
+    final scale = 1.0 + (_overlayScale - 1.0) * backOpacity;
+    final hintOpacity = backOpacity * (0.35 + 0.55 * _hintPulse.value);
+    final grownBottom = rect.bottom + rect.height * (scale - 1) / 2;
+    final footerTop = grownBottom + 20;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _dismiss,
       child: AnimatedBuilder(
-        animation: Listenable.merge([widget.animation, _hintPulse]),
+        animation: _hintPulse,
         builder: (context, _) {
-          final t = Curves.easeInOutCubic.transform(
-            widget.animation.value.clamp(0.0, 1.0),
-          );
-          final angle = t * math.pi;
-          final showBack = t >= 0.5;
-          final backOpacity = ((t - 0.5) * 2).clamp(0.0, 1.0);
-          // Grow only while the instruction back is visible; front stays carousel size.
-          final scale = 1.0 + (_overlayScale - 1.0) * backOpacity;
-          final hintOpacity = backOpacity * (0.35 + 0.55 * _hintPulse.value);
-          final grownBottom = widget.anchor != null
-              ? widget.anchor!.bottom + widget.anchor!.height * (scale - 1) / 2
-              : anchorCenter.dy + (stageHeight * scale) / 2;
-          final footerTop = grownBottom + 20;
-
           return Stack(
+            clipBehavior: Clip.none,
             children: [
-              Center(
+              Positioned(
+                left: showBack ? rect.center.dx - stageWidth / 2 : rect.left,
+                top: showBack ? rect.center.dy - stageHeight / 2 : rect.top,
+                width: showBack ? stageWidth : rect.width,
+                height: showBack ? stageHeight : rect.height,
                 child: GestureDetector(
                   onTap: () {},
-                  child: Transform.translate(
-                    offset: positionOffset,
-                    child: Transform.scale(
-                      scale: scale,
-                      child: Transform(
-                        alignment: Alignment.center,
-                        transform: Matrix4.identity()
-                          ..setEntry(3, 2, 0.001)
-                          ..rotateY(angle),
-                        child: SizedBox(
-                          width: stageWidth,
-                          height: stageHeight,
-                          child: Center(
-                            child: showBack
-                                ? Transform(
-                                    alignment: Alignment.center,
-                                    transform: Matrix4.identity()
-                                      ..rotateY(math.pi),
-                                    child: _InstructionFace(
-                                      carouselKey: _carouselKey,
-                                      sections: _sections,
-                                      cardWidth: cardWidth,
-                                      stageWidth: stageWidth,
-                                      stageHeight: stageHeight,
-                                      firstPageFace: modeFace,
-                                      onPlay: widget.onPlay == null
-                                          ? null
-                                          : _openPlay,
-                                    ),
-                                  )
-                                : SizedBox(
-                                    width: cardWidth,
-                                    child: GameModeCard(
-                                      mode: widget.mode,
-                                      showActions: false,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.001)
+                        ..rotateY(angle),
+                      child: showBack
+                          ? Transform(
+                              alignment: Alignment.center,
+                              transform: Matrix4.identity()..rotateY(math.pi),
+                              child: _InstructionFace(
+                                carouselKey: _carouselKey,
+                                sections: _sections,
+                                cardWidth: targetWidth,
+                                stageWidth: stageWidth,
+                                stageHeight: stageHeight,
+                                firstPageFace: modeFace,
+                                onPlay: widget.onPlay == null
+                                    ? null
+                                    : _openPlay,
+                              ),
+                            )
+                          : GameModeCard(
+                              mode: widget.mode,
+                              compact: cardWidth < 180,
+                              showActions: false,
+                            ),
                     ),
                   ),
                 ),

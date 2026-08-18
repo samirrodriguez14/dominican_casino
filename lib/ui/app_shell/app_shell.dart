@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -27,6 +29,7 @@ class AppShellState extends State<AppShell> {
   int currentIndex = 1;
   late final PageController _pageController;
   final _storeKey = GlobalKey<StoreScreenState>();
+  final _gamesKey = GlobalKey<GamesScreenState>();
   final _profileKey = GlobalKey<ProfileScreenState>();
   bool _offeredTutorial = false;
   HomeCoinClaim? _activeCelebration;
@@ -94,6 +97,8 @@ class AppShellState extends State<AppShell> {
     if (index == currentIndex) {
       if (index == 0) {
         _storeKey.currentState?.scrollToTop();
+      } else if (index == 1) {
+        _gamesKey.currentState?.toggleGrid();
       } else if (index == 2) {
         _profileKey.currentState?.goToInitial();
       }
@@ -144,9 +149,7 @@ class AppShellState extends State<AppShell> {
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 _KeepAlivePage(child: StoreScreen(key: _storeKey)),
-                const _KeepAlivePage(
-                  child: GamesScreen(key: ValueKey('games-tab')),
-                ),
+                _KeepAlivePage(child: GamesScreen(key: _gamesKey)),
                 _KeepAlivePage(child: ProfileScreen(key: _profileKey)),
               ],
             ),
@@ -314,33 +317,39 @@ class _FloatingTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.surface.withValues(alpha: .94),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: theme.border.withValues(alpha: .65)),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.black.withValues(alpha: .35),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: theme.surface.withValues(alpha: .42),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: theme.border.withValues(alpha: .45)),
+            boxShadow: [
+              BoxShadow(
+                color: CupertinoColors.black.withValues(alpha: .22),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            if (i > 0) const SizedBox(width: 4),
-            _FloatingTabButton(
-              item: items[i],
-              selected: currentIndex == i,
-              onTap: () => onTap(i),
-              theme: theme,
-            ),
-          ],
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0) const SizedBox(width: 4),
+                _FloatingTabButton(
+                  item: items[i],
+                  selected: currentIndex == i,
+                  onTap: () => onTap(i),
+                  theme: theme,
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -373,7 +382,7 @@ class _FloatingTabButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
           color: selected
-              ? theme.surfaceAlt.withValues(alpha: .85)
+              ? theme.surfaceAlt.withValues(alpha: .45)
               : CupertinoColors.transparent,
           borderRadius: BorderRadius.circular(22),
         ),

@@ -12,12 +12,14 @@ class GameModeCard extends StatelessWidget {
   final GameMode mode;
   final VoidCallback? onHowToPlay;
   final bool showActions;
+  final bool compact;
 
   const GameModeCard({
     super.key,
     required this.mode,
     this.onHowToPlay,
     this.showActions = true,
+    this.compact = false,
   });
 
   static Color pickerFaceFor(AppTheme theme, GameMode mode) {
@@ -33,101 +35,130 @@ class GameModeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.read<GamesViewModel>();
     final theme = AppStyle.theme;
-    final game = vm.gamesInfo.firstWhere((g) => g.id == mode.name);
+    final game = vm.gamesInfo.where((g) => g.id == mode.name).firstOrNull;
     final face = pickerFaceFor(theme, mode);
-    final playEnabled = game.enabled;
-    final howToEnabled = mode != GameMode.robaito;
+    final playEnabled = game?.enabled ?? false;
+    final howToEnabled = playEnabled && mode != GameMode.robaito;
     final markColor = _suitColor(theme);
+    final title = game?.title ?? mode.name;
+    final radius = compact ? 14.0 : 18.0;
+    final playSize = compact ? 34.0 : 52.0;
 
     return AspectRatio(
       aspectRatio: 2.5 / 3.5,
-      child: GestureDetector(
-        onTap: howToEnabled && onHowToPlay != null
-            ? SoundService.wrapTap(onHowToPlay)
-            : null,
-        behavior: HitTestBehavior.opaque,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: face,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: theme.textPrimary.withValues(alpha: .14),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: CupertinoColors.black.withValues(alpha: .30),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
+      child: Opacity(
+        opacity: playEnabled ? 1 : 0.82,
+        child: GestureDetector(
+          onTap: howToEnabled && onHowToPlay != null
+              ? SoundService.wrapTap(onHowToPlay)
+              : null,
+          behavior: HitTestBehavior.opaque,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: face,
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(
+                color: theme.textPrimary.withValues(alpha: .14),
+                width: 1.2,
               ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Title + how-to stay optically centered regardless of corners.
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        game.title,
-                        style: theme.title.copyWith(
-                          fontSize: game.title.length > 8 ? 30 : 44,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.15,
-                          height: 1.02,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      _TapForInstructionsHint(enabled: howToEnabled),
-                    ],
-                  ),
+              boxShadow: [
+                BoxShadow(
+                  color: CupertinoColors.black.withValues(alpha: .30),
+                  blurRadius: compact ? 10 : 18,
+                  offset: Offset(0, compact ? 5 : 10),
                 ),
-              ),
-              Positioned(
-                top: 16,
-                left: 16,
-                child: _ModeMark(mode: mode, color: markColor),
-              ),
-              if (showActions)
-                Positioned(
-                  right: 14,
-                  bottom: 14,
-                  child: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    onPressed: playEnabled
-                        ? SoundService.wrapTap(
-                            () => showEnterGameDialog(context, vm, mode),
-                          )
-                        : null,
-                    child: Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: playEnabled
-                            ? theme.textPrimary.withValues(alpha: .14)
-                            : theme.muted.withValues(alpha: .12),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: theme.textPrimary.withValues(alpha: .18),
+              ],
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          style: theme.title.copyWith(
+                            fontSize: compact
+                                ? (title.length > 8 ? 13.0 : 16.0)
+                                : (title.length > 8 ? 30.0 : 44.0),
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.15,
+                            height: 1.05,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: compact ? 2 : 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        CupertinoIcons.play_fill,
-                        size: 22,
-                        color: playEnabled
-                            ? theme.textPrimary
-                            : theme.muted.withValues(alpha: .5),
-                      ),
+                        if (!compact) ...[
+                          const SizedBox(height: 8),
+                          _TapForInstructionsHint(enabled: howToEnabled),
+                        ],
+                      ],
                     ),
                   ),
                 ),
-            ],
+                Positioned(
+                  top: compact ? 8 : 16,
+                  left: compact ? 8 : 16,
+                  child: _ModeMark(
+                    mode: mode,
+                    color: markColor,
+                    size: compact ? 16 : 28,
+                  ),
+                ),
+                if (showActions)
+                  Positioned(
+                    right: compact ? 8 : 14,
+                    bottom: compact ? 8 : 14,
+                    child: playEnabled
+                        ? CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            onPressed: SoundService.wrapTap(
+                              () => showEnterGameDialog(context, vm, mode),
+                            ),
+                            child: Container(
+                              width: playSize,
+                              height: playSize,
+                              decoration: BoxDecoration(
+                                color: theme.textPrimary.withValues(alpha: .14),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: theme.textPrimary.withValues(
+                                    alpha: .18,
+                                  ),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Icon(
+                                CupertinoIcons.play_fill,
+                                size: compact ? 14 : 22,
+                                color: theme.textPrimary,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            width: playSize,
+                            height: playSize,
+                            decoration: BoxDecoration(
+                              color: theme.muted.withValues(alpha: .14),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.textPrimary.withValues(alpha: .14),
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              CupertinoIcons.lock_fill,
+                              size: compact ? 14 : 20,
+                              color: theme.textPrimary.withValues(alpha: .72),
+                            ),
+                          ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -145,10 +176,11 @@ class GameModeCard extends StatelessWidget {
 }
 
 class _ModeMark extends StatelessWidget {
-  const _ModeMark({required this.mode, required this.color});
+  const _ModeMark({required this.mode, required this.color, this.size = 28});
 
   final GameMode mode;
   final Color color;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +194,7 @@ class _ModeMark extends StatelessWidget {
       glyph,
       style: TextStyle(
         color: color,
-        fontSize: 28,
+        fontSize: size,
         fontWeight: FontWeight.w600,
         height: 1,
       ),
