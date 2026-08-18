@@ -4,7 +4,6 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/current_games_list.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
@@ -116,10 +115,7 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
   }
 
   static Color _faceFor(AppTheme theme, {required bool history}) {
-    if (theme is SageTheme) {
-      return history ? theme.pickerFaceEdge : theme.pickerFaceAlt;
-    }
-    return history ? const Color(0xFF4A6358) : const Color(0xFF3D4F58);
+    return history ? theme.pickerFaceEdge : theme.pickerFaceAlt;
   }
 
   void _openHistory() {

@@ -1,6 +1,5 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/ui/home/privacy_policy_copy.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -12,9 +11,7 @@ class HomePrivacyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final l10n = AppLocalizations.of(context);
-    final face = theme is SageTheme
-        ? theme.pickerFace
-        : const Color(0xFF3A634F);
+    final face = theme.pickerFace;
 
     return AspectRatio(
       aspectRatio: 2.5 / 3.5,

@@ -28,6 +28,11 @@ abstract class AppTheme {
   Color get muted;
   Color get border;
 
+  /// Playing-card faces in the shell (games, store, settings).
+  Color get pickerFace => surfaceAlt;
+  Color get pickerFaceAlt => surfaceRaised;
+  Color get pickerFaceEdge => border;
+
   // ---- Game / Card accents (NEW) ----
   Color get turnHighlight; // used for current-turn outline/glow
   Color get opponentHighlight; // optional: opponent turn

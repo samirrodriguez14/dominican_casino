@@ -1,6 +1,5 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_catalog.dart';
 import 'package:flutter/cupertino.dart';
@@ -132,14 +131,9 @@ class StoreBundleCard extends StatelessWidget {
   }
 
   Color _faceColor(AppTheme theme) {
-    if (theme is SageTheme) {
-      return bundle.kind == StoreBundleKind.energy
-          ? theme.pickerFace
-          : theme.pickerFaceAlt;
-    }
     return bundle.kind == StoreBundleKind.energy
-        ? const Color(0xFF3A634F)
-        : const Color(0xFF3D4F58);
+        ? theme.pickerFace
+        : theme.pickerFaceAlt;
   }
 }
 

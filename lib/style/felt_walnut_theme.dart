@@ -3,68 +3,95 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
 
+/// Warm walnut charcoal — same quiet steps as Sage, shifted toward umber.
 class FeltWalnutTheme extends AppTheme {
   @override
-  double get radius => 12;
+  double get radius => 14;
+
   @override
   String get appLogo => 'assets/images/logo_icon_wooden_transparent.png';
 
   @override
-  String get cardBack => "assets/images/card_wood_back.png";
-  // Base
+  String get cardBack => 'assets/images/card_wood_back.png';
+
+  // Base — charcoal with a quiet walnut cast
   @override
-  Color get background => const Color.fromARGB(255, 10, 41, 29);
+  Color get background => const Color(0xFF1E1914);
+
   @override
-  Color get surface => const Color.fromARGB(255, 49, 33, 27);
+  Color get surface => const Color(0xFF2A241E);
+
   @override
-  Color get surfaceRaised => const Color.fromARGB(255, 54, 37, 29);
+  Color get surfaceRaised => const Color(0xFF352C25);
+
   @override
-  Color get surfaceAlt => const Color.fromARGB(255, 93, 65, 49);
+  Color get surfaceAlt => const Color(0xFF4A3D32);
+
   @override
   Color get textPrimary => const Color(0xFFF3ECE2);
-  @override
-  Color get muted => const Color(0xFFC2B6A8);
-  @override
-  Color get border => const Color(0xFF5A4032);
 
-  // Accents
   @override
-  Color get turnHighlight => const Color.fromARGB(255, 151, 122, 47);
-  @override
-  Color get opponentHighlight => const Color(0xFF8CB7D9);
-  @override
-  Color get danger => const Color(0xFFB64136);
-  @override
-  Color get warning => const Color(0xFFE3BE63);
-  @override
-  Color get success => const Color(0xFF7DBA8A);
+  Color get muted => const Color(0xFFB4A89C);
 
-  // Cards
+  @override
+  Color get border => const Color(0xFF5E5248);
+
+  // Accents — restrained brass / olive
+  @override
+  Color get turnHighlight => const Color(0xFFC4A87A);
+
+  @override
+  Color get opponentHighlight => const Color(0xFFA89880);
+
+  @override
+  Color get danger => const Color(0xFFC45C55);
+
+  @override
+  Color get warning => const Color(0xFFD4B96A);
+
+  @override
+  Color get success => const Color(0xFF8A9A78);
+
+  // Playing cards
   @override
   Color get cardBackground => const Color(0xFFF8F3EA);
+
   @override
-  Color get cardBorder => const Color(0xFFCDBFAE);
+  Color get cardBorder => const Color(0xFFD0C6B8);
+
   @override
-  Color get suitRed => const Color(0xFFB64136);
+  Color get suitRed => const Color(0xFFC45C55);
+
   @override
-  Color get suitBlack => const Color(0xFF181512);
+  Color get suitBlack => const Color(0xFF1C1814);
+
+  /// Walnut picker face.
+  @override
+  Color get pickerFace => const Color(0xFF53463A);
+
+  /// Cooler umber for Tres y Dos.
+  @override
+  Color get pickerFaceAlt => const Color(0xFF463F38);
+
+  @override
+  Color get pickerFaceEdge => const Color(0xFF5C4E40);
 
   @override
   BoxDecoration surfaceBox({Color? color}) => BoxDecoration(
     color: color ?? surface,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: border.withValues(alpha: .75)),
+    border: Border.all(color: border.withValues(alpha: .55)),
   );
 
   @override
   BoxDecoration raisedSurfaceBox({Color? color}) => BoxDecoration(
     color: color ?? surfaceRaised,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: border.withValues(alpha: .85)),
+    border: Border.all(color: border.withValues(alpha: .45)),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withValues(alpha: .45),
-        blurRadius: 14,
+        color: Colors.black.withValues(alpha: .28),
+        blurRadius: 16,
         offset: const Offset(0, 8),
       ),
     ],
@@ -73,11 +100,9 @@ class FeltWalnutTheme extends AppTheme {
   @override
   BoxDecoration tableBackground() => const BoxDecoration(
     gradient: RadialGradient(
-      center: Alignment(0, -0.15),
-      radius: 1.3,
-      colors: [
-        Color.fromARGB(255, 32, 111, 81),
-           Color.fromARGB(255, 10, 41, 29)],
+      center: Alignment(0, -0.12),
+      radius: 1.25,
+      colors: [Color(0xFF2E2720), Color(0xFF1E1914)],
     ),
   );
 
@@ -90,38 +115,31 @@ class FeltWalnutTheme extends AppTheme {
     final hc = highlightColor ?? turnHighlight;
 
     return BoxDecoration(
-      color: surface.withValues(alpha: .30),
-
+      color: surface.withValues(alpha: .35),
       borderRadius: BorderRadius.circular(radius),
-
       border: Border.all(
         color: highlight
-            ? hc.withValues(alpha: .25)
-            : border.withValues(alpha: .25),
+            ? hc.withValues(alpha: .35)
+            : border.withValues(alpha: .35),
         width: 1,
       ),
-
       gradient: LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          surfaceRaised.withValues(alpha: .22),
-          surface.withValues(alpha: .12),
+          surfaceRaised.withValues(alpha: .28),
+          surface.withValues(alpha: .14),
         ],
       ),
-
       boxShadow: [
-        // Very soft depth
         BoxShadow(
           color: Colors.black.withValues(alpha: .12),
           blurRadius: 4,
           offset: const Offset(0, 1),
         ),
-
-        // Turn glow but subtle
         if (highlight)
           BoxShadow(
-            color: hc.withValues(alpha: .18),
+            color: hc.withValues(alpha: .16),
             blurRadius: 14,
             spreadRadius: 0.5,
           ),
@@ -132,9 +150,9 @@ class FeltWalnutTheme extends AppTheme {
   @override
   TextStyle get title => TextStyle(
     color: textPrimary,
-    fontWeight: FontWeight.w800,
+    fontWeight: FontWeight.w700,
     fontSize: 16,
-    letterSpacing: .2,
+    letterSpacing: .15,
   );
 
   @override
@@ -148,27 +166,26 @@ class FeltWalnutTheme extends AppTheme {
   TextStyle get caption =>
       TextStyle(color: muted.withValues(alpha: .85), fontSize: 12);
 
-@override
-Widget dottedBox({
-  required Widget child,
-  Color? color,
-  EdgeInsets padding = const EdgeInsets.all(2),
-}) {
-  return DottedBorder(
-    color: border.withValues(alpha: .8),
-    strokeWidth: 1.4,
-    dashPattern: const [4, 4],
-    borderType: BorderType.RRect,
-    radius: Radius.circular(radius),
-    child: Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: color ?? CupertinoColors.transparent,
-        borderRadius: BorderRadius.circular(radius),
+  @override
+  Widget dottedBox({
+    required Widget child,
+    Color? color,
+    EdgeInsets padding = const EdgeInsets.all(2),
+  }) {
+    return DottedBorder(
+      color: border.withValues(alpha: .7),
+      strokeWidth: 1.2,
+      dashPattern: const [4, 4],
+      borderType: BorderType.RRect,
+      radius: Radius.circular(radius),
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: color ?? CupertinoColors.transparent,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+        child: child,
       ),
-      child: child,
-    ),
-  );
-}
-
+    );
+  }
 }

@@ -5,7 +5,6 @@ import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/ui/app_shell/settings/theme_option.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/home/privacy_policy_copy.dart';
@@ -72,9 +71,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     final sounds = context.watch<SoundService>();
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
-    final face = theme is SageTheme
-        ? theme.pickerFace
-        : const Color(0xFF3A634F);
+    final face = theme.pickerFace;
 
     return LayoutBuilder(
       builder: (context, constraints) {

@@ -1,7 +1,6 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
@@ -22,19 +21,11 @@ class GameModeCard extends StatelessWidget {
   });
 
   static Color pickerFaceFor(AppTheme theme, GameMode mode) {
-    if (theme is SageTheme) {
-      return switch (mode) {
-        GameMode.casino => theme.pickerFace,
-        GameMode.casinoSpeed => theme.pickerFaceEdge,
-        GameMode.tresydos => theme.pickerFaceAlt,
-        GameMode.robaito => theme.pickerFaceEdge,
-      };
-    }
     return switch (mode) {
-      GameMode.casino => const Color(0xFF3A634F),
-      GameMode.casinoSpeed => const Color(0xFF4A6358),
-      GameMode.tresydos => const Color(0xFF3D4F58),
-      GameMode.robaito => const Color(0xFF2E3A36),
+      GameMode.casino => theme.pickerFace,
+      GameMode.casinoSpeed => theme.pickerFaceEdge,
+      GameMode.tresydos => theme.pickerFaceAlt,
+      GameMode.robaito => theme.pickerFaceEdge,
     };
   }
 

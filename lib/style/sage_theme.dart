@@ -69,12 +69,15 @@ class SageTheme extends AppTheme {
   @override
   Color get suitBlack => const Color(0xFF1C1E1D);
 
-  /// Felt-green picker face (same as Walnut Casino).
+  /// Felt-green picker face.
+  @override
   Color get pickerFace => const Color(0xFF3A634F);
 
-  /// Same slate-blue as Walnut Tres y Dos.
+  /// Slate picker face for Tres y Dos.
+  @override
   Color get pickerFaceAlt => const Color(0xFF3D4F58);
 
+  @override
   Color get pickerFaceEdge => const Color(0xFF4A6358);
 
   @override

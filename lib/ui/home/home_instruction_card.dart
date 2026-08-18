@@ -3,7 +3,6 @@ import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/sage_theme.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -174,10 +173,7 @@ class HomeInstructionCard extends StatelessWidget {
   Color _faceFor(AppTheme theme, int page, {Color? firstPageFace}) {
     if (page == 1 && firstPageFace != null) return firstPageFace;
     final i = (page - 1) % 3;
-    if (theme is SageTheme) {
-      return [theme.pickerFace, theme.pickerFaceAlt, theme.pickerFaceEdge][i];
-    }
-    return const [Color(0xFF3A634F), Color(0xFF3D4F58), Color(0xFF2E3A36)][i];
+    return [theme.pickerFace, theme.pickerFaceAlt, theme.pickerFaceEdge][i];
   }
 }
 
