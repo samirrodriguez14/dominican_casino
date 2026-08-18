@@ -52,7 +52,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   decoration: BoxDecoration(
                     image: DecorationImage(
                       opacity: 0.35,
-                      image: AssetImage(AppStyle.theme.appLogo),
+                      image: AssetImage(AppStyle.theme.appLogoMark),
                       fit: BoxFit.fitHeight,
                     ),
                   ),

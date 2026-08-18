@@ -814,8 +814,6 @@ class _ScoreBoardShell extends StatelessWidget {
     this.isWinner = false,
   });
 
-  static const _gold = Color(0xFFE4C36A);
-
   final AvatarScoreTheme theme;
   final Widget child;
   final bool raised;
@@ -823,23 +821,22 @@ class _ScoreBoardShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = Color.lerp(
+      theme.ink,
+      AppStyle.theme.turnHighlight,
+      0.45,
+    )!;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: theme.background,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isWinner
-              ? _gold.withValues(alpha: 0.95)
+              ? accent.withValues(alpha: 0.38)
               : theme.ink.withValues(alpha: raised ? 0.08 : 0.05),
-          width: isWinner ? 1.6 : 0.6,
+          width: isWinner ? 1 : 0.6,
         ),
         boxShadow: [
-          if (isWinner)
-            BoxShadow(
-              color: _gold.withValues(alpha: 0.42),
-              blurRadius: 18,
-              spreadRadius: 1,
-            ),
           BoxShadow(
             color: CupertinoColors.black.withValues(alpha: raised ? .24 : .12),
             blurRadius: raised ? 16 : 8,
@@ -853,10 +850,10 @@ class _ScoreBoardShell extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(10, isWinner ? 34 : 12, 10, 10),
+              padding: EdgeInsets.fromLTRB(10, isWinner ? 32 : 12, 10, 10),
               child: child,
             ),
-            if (isWinner) const _WinnerOverlay(),
+            if (isWinner) _WinnerOverlay(accent: accent, ink: theme.ink),
           ],
         ),
       ),
@@ -865,17 +862,29 @@ class _ScoreBoardShell extends StatelessWidget {
 }
 
 class _WinnerOverlay extends StatelessWidget {
-  const _WinnerOverlay();
+  const _WinnerOverlay({required this.accent, required this.ink});
+
+  final Color accent;
+  final Color ink;
 
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: Stack(
         children: [
-          const Positioned.fill(
-            child: CustomPaint(painter: _WinnerOrnamentPainter()),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _WinnerOrnamentPainter(
+                color: accent.withValues(alpha: 0.42),
+              ),
+            ),
           ),
-          const Positioned(top: 0, left: 0, right: 0, child: _WinnerBanner()),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _WinnerBanner(accent: accent, ink: ink),
+          ),
         ],
       ),
     );
@@ -883,36 +892,24 @@ class _WinnerOverlay extends StatelessWidget {
 }
 
 class _WinnerBanner extends StatelessWidget {
-  const _WinnerBanner();
+  const _WinnerBanner({required this.accent, required this.ink});
+
+  final Color accent;
+  final Color ink;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 26,
+      height: 24,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFFC9A227),
-            Color(0xFFE8D48A),
-            Color(0xFFC9A227),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 6,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
+      color: accent.withValues(alpha: 0.12),
       child: Text(
-        'WINNER',
+        'Winner',
         style: AppStyle.theme.caption.copyWith(
-          color: Color(0xFF2A1E08),
-          fontWeight: FontWeight.w800,
-          fontSize: 11,
-          letterSpacing: 2.4,
+          color: ink.withValues(alpha: 0.78),
+          fontWeight: FontWeight.w700,
+          fontSize: 10,
+          letterSpacing: 1.4,
           height: 1,
         ),
       ),
@@ -921,23 +918,40 @@ class _WinnerBanner extends StatelessWidget {
 }
 
 class _WinnerOrnamentPainter extends CustomPainter {
-  const _WinnerOrnamentPainter();
+  const _WinnerOrnamentPainter({required this.color});
 
-  static const _gold = Color(0xE6E4C36A);
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final stroke = Paint()
-      ..color = _gold
+      ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.15
+      ..strokeWidth = 1
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     const inset = 9.0;
-    const arm = 13.0;
-    _corner(canvas, stroke, Offset(inset, inset + 22), 1, 1, arm);
-    _corner(canvas, stroke, Offset(size.width - inset, inset + 22), -1, 1, arm);
-    _corner(canvas, stroke, Offset(inset, size.height - inset), 1, -1, arm);
+    const arm = 12.0;
+    const radius = 4.5;
+    _corner(canvas, stroke, Offset(inset, inset + 22), 1, 1, arm, radius);
+    _corner(
+      canvas,
+      stroke,
+      Offset(size.width - inset, inset + 22),
+      -1,
+      1,
+      arm,
+      radius,
+    );
+    _corner(
+      canvas,
+      stroke,
+      Offset(inset, size.height - inset),
+      1,
+      -1,
+      arm,
+      radius,
+    );
     _corner(
       canvas,
       stroke,
@@ -945,13 +959,8 @@ class _WinnerOrnamentPainter extends CustomPainter {
       -1,
       -1,
       arm,
+      radius,
     );
-
-    final fill = Paint()..color = _gold;
-    _star(canvas, fill, Offset(size.width * 0.16, size.height * 0.30), 3.4);
-    _star(canvas, fill, Offset(size.width * 0.84, size.height * 0.34), 2.6);
-    _star(canvas, fill, Offset(size.width * 0.14, size.height * 0.74), 2.3);
-    _star(canvas, fill, Offset(size.width * 0.86, size.height * 0.70), 3.1);
   }
 
   void _corner(
@@ -961,35 +970,24 @@ class _WinnerOrnamentPainter extends CustomPainter {
     double dx,
     double dy,
     double arm,
+    double radius,
   ) {
     final path = Path()
       ..moveTo(origin.dx + dx * arm, origin.dy)
-      ..lineTo(origin.dx, origin.dy)
+      ..lineTo(origin.dx + dx * radius, origin.dy)
+      ..quadraticBezierTo(
+        origin.dx,
+        origin.dy,
+        origin.dx,
+        origin.dy + dy * radius,
+      )
       ..lineTo(origin.dx, origin.dy + dy * arm);
     canvas.drawPath(path, paint);
   }
 
-  void _star(Canvas canvas, Paint paint, Offset center, double r) {
-    final path = Path();
-    for (var i = 0; i < 8; i++) {
-      final a = (i * math.pi / 4) - math.pi / 2;
-      final rad = i.isEven ? r : r * 0.38;
-      final p = Offset(
-        center.dx + math.cos(a) * rad,
-        center.dy + math.sin(a) * rad,
-      );
-      if (i == 0) {
-        path.moveTo(p.dx, p.dy);
-      } else {
-        path.lineTo(p.dx, p.dy);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _WinnerOrnamentPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class _ScoreBoardFront extends StatelessWidget {

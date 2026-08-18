@@ -18,6 +18,9 @@ abstract class AppTheme {
   double get radius;
 
   String get appLogo => 'assets/images/logo_icon_sage.png';
+
+  /// Two-card mark with a transparent field, for placing on UI cards.
+  String get appLogoMark => 'assets/images/logo_cards_transparent.png';
   // ---- Base colors ----
   Color get background;
   Color get surface;
@@ -124,20 +127,17 @@ const cardBackCatalog = <CardBackStyle>[
   CardBackStyle(
     id: CardBack.ink,
     color: Color(0xFF1A2220),
-    owned: false,
-    priceLabel: '\$0.99',
+    owned: true,
   ),
   CardBackStyle(
     id: CardBack.ivory,
     color: Color(0xFFE8E2D6),
-    owned: false,
-    priceLabel: '\$0.99',
+    owned: true,
   ),
   CardBackStyle(
     id: CardBack.brass,
     color: Color(0xFFC4B07A),
-    owned: false,
-    priceLabel: '\$0.99',
+    owned: true,
   ),
 ];
 

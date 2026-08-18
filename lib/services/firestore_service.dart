@@ -34,6 +34,8 @@ class FirestoreService extends GameService {
   }
 
   Future<void> _loadLocalGames() async {
+    _localOnly.clear();
+    _localUpdatedAt.clear();
     try {
       final sp = await SharedPreferences.getInstance();
       final raw = sp.getString(_localGamesKey);
@@ -60,6 +62,94 @@ class FirestoreService extends GameService {
     } catch (e) {
       debugPrint('load local games: $e');
     }
+  }
+
+  /// Drop on-device vs-Puli cache. Used on logout / delete local data so a
+  /// new guest cannot inherit the previous session's history.
+  Future<void> clearDeviceGames() async {
+    _localOnly.clear();
+    _localUpdatedAt.clear();
+    for (final c in _localGameControllers.values) {
+      if (!c.isClosed) {
+        c.add(null);
+        await c.close();
+      }
+    }
+    _localGameControllers.clear();
+    _localLoadFuture = null;
+    try {
+      final sp = await SharedPreferences.getInstance();
+      await sp.remove(_localGamesKey);
+    } catch (e) {
+      debugPrint('clear local games: $e');
+    }
+    if (!_localListChanged.isClosed) _localListChanged.add(null);
+  }
+
+  /// Same person, new Firebase uid — rewrite local match seats in place.
+  Future<void> rebindLocalPlayer({
+    required String fromPid,
+    required String toPid,
+  }) async {
+    if (fromPid.isEmpty || toPid.isEmpty || fromPid == toPid) return;
+    await _ensureLocalLoaded();
+    var changed = false;
+    for (final game in _localOnly.values) {
+      if (_rebindGamePlayer(game, fromPid, toPid)) changed = true;
+    }
+    if (!changed) return;
+    await _persistLocalGames();
+    if (!_localListChanged.isClosed) _localListChanged.add(null);
+  }
+
+  bool _rebindGamePlayer(GameState game, String from, String to) {
+    var changed = false;
+    if (game.controllerId == from) {
+      game.controllerId = to;
+      changed = true;
+    }
+    if (game.currentTurnPlayerId == from) {
+      game.currentTurnPlayerId = to;
+      changed = true;
+    }
+    if (game.winnerId == from) {
+      game.winnerId = to;
+      changed = true;
+    }
+    if (game.extraPointsHolderId == from) {
+      game.extraPointsHolderId = to;
+      changed = true;
+    }
+    if (game.entryPaidBy.contains(from)) {
+      game.entryPaidBy = [
+        for (final id in game.entryPaidBy) id == from ? to : id,
+      ];
+      changed = true;
+    }
+    changed = _rebindMapKey(game.playersInfo, from, to) || changed;
+    for (final raw in game.playersInfo.values) {
+      if (raw is Map && raw['id'] == from) {
+        raw['id'] = to;
+        changed = true;
+      }
+    }
+    changed = _rebindMapKey(game.hands, from, to) || changed;
+    changed = _rebindMapKey(game.playersDeck, from, to) || changed;
+    changed = _rebindMapKey(game.lastTakes, from, to) || changed;
+    changed = _rebindMapKey(game.scores, from, to) || changed;
+    changed = _rebindMapKey(game.pendingCoins, from, to) || changed;
+    changed = _rebindMapKey(game.roundTakeCoins, from, to) || changed;
+    changed = _rebindMapKey(game.roundSpecialCoins, from, to) || changed;
+    changed = _rebindMapKey(game.roundViraoCoins, from, to) || changed;
+    changed = _rebindMapKey(game.round.roundScores, from, to) || changed;
+    return changed;
+  }
+
+  bool _rebindMapKey<V>(Map<String, V> map, String from, String to) {
+    if (!map.containsKey(from)) return false;
+    final value = map.remove(from);
+    if (value != null) map[to] = value;
+    return true;
   }
 
   Future<void> _persistLocalGames() async {
@@ -105,17 +195,24 @@ class FirestoreService extends GameService {
   }
 
   List<GamePillData> _localPillsFor(String pid) {
-    Iterable<GameState> games = _localOnly.values.where(
-      (g) => g.controllerId == pid || g.playersInfo.containsKey(pid),
-    );
-    if (games.isEmpty) {
-      games = _localOnly.values.where((g) => g.isLocalBot);
+    return _localOnly.values
+        .where((g) => _localGameBelongsTo(g, pid))
+        .map((g) {
+          final json = Map<String, dynamic>.from(g.toJson());
+          json['updatedAt'] = _localUpdatedAt[g.id]?.toIso8601String();
+          return GamePillData.fromDoc(g.id, json);
+        })
+        .toList();
+  }
+
+  bool _localGameBelongsTo(GameState game, String pid) {
+    if (game.controllerId == pid || game.playersInfo.containsKey(pid)) {
+      return true;
     }
-    return games.map((g) {
-      final json = Map<String, dynamic>.from(g.toJson());
-      json['updatedAt'] = _localUpdatedAt[g.id]?.toIso8601String();
-      return GamePillData.fromDoc(g.id, json);
-    }).toList();
+    for (final raw in game.playersInfo.values) {
+      if (raw is Map && raw['id'] == pid) return true;
+    }
+    return false;
   }
 
   /// Store FCM token on the user profile — never on game documents.

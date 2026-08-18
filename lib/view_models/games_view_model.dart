@@ -11,8 +11,26 @@ import 'package:flutter/cupertino.dart';
 
 class GamesViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
+  String? _listenPid;
 
-  GamesViewModel({required AppRepo appRepo}) : _appRepo = appRepo;
+  GamesViewModel({required AppRepo appRepo}) : _appRepo = appRepo {
+    _appRepo.addListener(_onRepo);
+  }
+
+  void _onRepo() {
+    final uid = _appRepo.player?.id;
+    if (uid == _listenPid) return;
+    final switchingUser = _listenPid != null;
+    _listenPid = uid;
+    if (!switchingUser) return;
+    _sub?.cancel();
+    _sub = null;
+    currentGames = const [];
+    previousGames = const [];
+    loading = uid != null;
+    error = null;
+    notifyListeners();
+  }
 
   List<GameInfo> get gamesInfo => _appRepo.gamesInfo;
 
@@ -53,16 +71,14 @@ class GamesViewModel extends ChangeNotifier {
 
   List<GamePillData> get myCurrentGames {
     final uid = userId;
-    if (uid == null) return currentGames;
-    final mine = currentGames.where((g) => g.containsPlayer(uid)).toList();
-    return mine.isNotEmpty ? mine : currentGames;
+    if (uid == null) return const [];
+    return currentGames.where((g) => g.containsPlayer(uid)).toList();
   }
 
   List<GamePillData> get myPreviousGames {
     final uid = userId;
-    if (uid == null) return previousGames;
-    final mine = previousGames.where((g) => g.containsPlayer(uid)).toList();
-    return mine.isNotEmpty ? mine : previousGames;
+    if (uid == null) return const [];
+    return previousGames.where((g) => g.containsPlayer(uid)).toList();
   }
 
   /// Current games where it is this player's turn (for the peek-card badge).
@@ -86,7 +102,10 @@ class GamesViewModel extends ChangeNotifier {
   }
 
   void startListening(String pid, {bool retried = false}) {
+    _listenPid = pid;
     _sub?.cancel();
+    currentGames = const [];
+    previousGames = const [];
     loading = true;
     error = null;
     notifyListeners();
@@ -163,6 +182,7 @@ class GamesViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _appRepo.removeListener(_onRepo);
     _sub?.cancel();
     super.dispose();
   }

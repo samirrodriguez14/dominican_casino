@@ -557,6 +557,7 @@ class AppRepo extends ChangeNotifier {
       await _loadWallet();
       notifyListeners();
     } else if (current.id != uid) {
+      await fs.rebindLocalPlayer(fromPid: current.id, toPid: uid);
       player = current.copyWith(id: uid);
       await _persistPlayer();
       await _loadWallet();
@@ -1060,6 +1061,11 @@ class AppRepo extends ChangeNotifier {
       await sp.remove(_walletPrefsKey(uid));
       await sp.remove(_homeCoinClaimPrefsKey(uid));
     }
+    try {
+      await fs.clearDeviceGames();
+    } catch (e) {
+      developer.log('AppRepo.clearDeviceGames: $e');
+    }
     player = null;
     _wallet = Wallet.starter();
     _walletUid = null;
@@ -1156,11 +1162,13 @@ class AppRepo extends ChangeNotifier {
         developer.log('AppRepo.loadUserProfile: $e');
       }
 
-      final local = cached != null && cached.id == uid
-          ? cached
-          : (remote == null && cached != null && !cached.needsAccountSetup
-                ? cached.copyWith(id: uid)
-                : null);
+      Player? local;
+      if (cached != null && cached.id == uid) {
+        local = cached;
+      } else if (cached != null && cached.id != uid) {
+        await fs.rebindLocalPlayer(fromPid: cached.id, toPid: uid);
+        local = cached.copyWith(id: uid);
+      }
 
       player = _mergePlayer(uid, local: local, remote: remote);
       await _persistPlayer();

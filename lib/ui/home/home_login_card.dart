@@ -66,7 +66,19 @@ class HomeLoginCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: askingName ? 48 : 28,
+                      vertical: askingName ? 12 : 8,
+                    ),
+                    child: Image.asset(
+                      theme.appLogoMark,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                    ),
+                  ),
+                ),
                 if (askingName) ...[
                   CupertinoTextField(
                     controller: nameController,
