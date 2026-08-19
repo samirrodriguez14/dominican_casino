@@ -53,6 +53,41 @@ void main() {
       expect(requirement.matches(group), isFalse);
     });
 
+    test('Run matches mixed suits when ranks are consecutive', () {
+      final requirement = RummyRequirement.run(5);
+      final group = [
+        card(id: '2s', rank: '2', suit: '♠'),
+        card(id: '3h', rank: '3', suit: '♥'),
+        card(id: '4d', rank: '4', suit: '♦'),
+        card(id: '5c', rank: '5', suit: '♣'),
+        card(id: '6h', rank: '6', suit: '♥'),
+      ];
+
+      expect(requirement.matches(group), isTrue);
+    });
+
+    test('Colored run rejects mixed red/black suits', () {
+      final requirement = RummyRequirement.runOf(3, RummyColor.red);
+      final group = [
+        card(id: '2h', rank: '2', suit: '♥'),
+        card(id: '3d', rank: '3', suit: '♦'),
+        card(id: '4s', rank: '4', suit: '♠'),
+      ];
+
+      expect(requirement.matches(group), isFalse);
+    });
+
+    test('Colored run accepts consecutive same-color suits', () {
+      final requirement = RummyRequirement.runOf(3, RummyColor.red);
+      final group = [
+        card(id: '2h', rank: '2', suit: '♥'),
+        card(id: '3d', rank: '3', suit: '♦'),
+        card(id: '4h', rank: '4', suit: '♥'),
+      ];
+
+      expect(requirement.matches(group), isTrue);
+    });
+
     test('Color matches all red suits', () {
       final requirement = RummyRequirement.colorOf(3, RummyColor.red);
       final group = [

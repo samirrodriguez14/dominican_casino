@@ -2,6 +2,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
+import 'package:dominican_casino/ui/general_game/hand_fan_layout.dart';
 import 'package:dominican_casino/ui/general_game/play_action_bar.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
@@ -45,23 +46,19 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                 const selectedLift = 12.0;
                 if (cards.isEmpty) return const SizedBox.shrink();
                 final count = cards.length;
-                const idealGap = 12.0;
-                final idealTotalWidth =
-                    (count * _cardWidth) + ((count - 1) * idealGap);
-
-                double gap;
-                if (idealTotalWidth <= 1200) {
-                  gap = count == 1
-                      ? 0
-                      : (constraints.maxWidth - (count * _cardWidth)) /
-                            (count - 1);
-                } else {
-                  gap = (constraints.maxWidth - _cardWidth) / (count - 1);
-                }
-                gap = gap.clamp(50.0, 80);
+                final layout = HandFanLayout.fit(
+                  count: count,
+                  maxWidth: constraints.maxWidth,
+                  preferredCardWidth: _cardWidth,
+                  minGap: 12.0,
+                  maxGap: 80.0,
+                  minCardWidth: 56.0,
+                );
+                final gap = layout.gap;
+                final cardWidth = layout.cardWidth;
                 _fanGap = gap;
 
-                final totalWidth = _cardWidth + ((count - 1) * gap);
+                final totalWidth = layout.totalWidth(count);
                 final draggingId = vm.draggingSource?.id;
 
                 return SizedBox(
@@ -91,7 +88,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                               child: BoardDragHandle(
                                 source: BoardDragSource.hand(cards[i]),
                                 enabled: !vm.isAnimating && !vm.hasDropPending,
-                                feedbackWidth: _cardWidth,
+                                feedbackWidth: cardWidth,
                                 tableFeedbackWidth: 60,
                                 onTap: () => vm.selectCard(cards[i]),
                                 onHandReorder: (global) {
@@ -130,10 +127,10 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                                       ),
                                       motion: vm.motion,
                                       cardId: cards[i].id,
-                                      width: _cardWidth,
+                                      width: cardWidth,
                                       child: PlayingCard(
                                         playingCardModel: cards[i],
-                                        width: _cardWidth,
+                                        width: cardWidth,
                                         isSelected:
                                             vm.cardSelection.selectedCard ==
                                                 cards[i] &&

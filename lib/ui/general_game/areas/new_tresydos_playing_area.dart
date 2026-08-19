@@ -8,6 +8,7 @@ import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
+import 'package:dominican_casino/ui/general_game/hand_fan_layout.dart';
 import 'package:dominican_casino/ui/general_game/simple/simple_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
@@ -292,6 +293,7 @@ class _CompactSideSeat extends StatelessWidget {
   static const double avatarSize = 48;
   static const double winCardWidth = 50;
   static const double winOverlap = 18;
+  static const double maxHandWidth = 120;
 
   final String oppId;
   final Alignment overlayAlign;
@@ -310,10 +312,8 @@ class _CompactSideSeat extends StatelessWidget {
         ? <String, dynamic>{}
         : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
     final celebrating = !waiting && vm.isCelebratingHand(oppId);
-    const layoutW = _CompactSideSeat.cardWidth;
-    const layoutOverlap = _CompactSideSeat.overlap;
-    final visW = celebrating ? _CompactSideSeat.winCardWidth : layoutW;
-    final visOverlap = celebrating ? _CompactSideSeat.winOverlap : layoutOverlap;
+    final preferredCardWidth =
+        celebrating ? _CompactSideSeat.winCardWidth : _CompactSideSeat.cardWidth;
     final avatarId = info['avatarId'] as String?;
     final name = waiting
         ? AppLocalizations.of(context).openSeat
@@ -322,14 +322,7 @@ class _CompactSideSeat extends StatelessWidget {
     final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
         ? vm.incomingReaction
         : null;
-    const layoutH = layoutW * 1.4;
-    final visH = visW * 1.4;
-    final layoutHandW = cards.isEmpty
-        ? layoutW
-        : layoutW + ((cards.length - 1) * layoutOverlap);
-    final visHandW = cards.isEmpty
-        ? visW
-        : visW + ((cards.length - 1) * visOverlap);
+    const layoutH = _CompactSideSeat.cardWidth * 1.4;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -373,46 +366,68 @@ class _CompactSideSeat extends StatelessWidget {
           Offstage(
             offstage: vm.motion.isShuffling,
             child: SizedBox(
-              width: layoutHandW,
+              width: _CompactSideSeat.maxHandWidth,
               height: layoutH,
-              child: OverflowBox(
-                alignment: overlayAlign,
-                minWidth: visHandW,
-                maxWidth: visHandW,
-                minHeight: visH,
-                maxHeight: visH,
-                child: SizedBox(
-                  width: visHandW,
-                  height: visH,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      for (int i = 0; i < cards.length; i++)
-                        Positioned(
-                          left: i * visOverlap,
-                          child: WinningHandWave(
-                            active: celebrating,
-                            index: i,
-                            amplitude: 3,
-                            child: FlightAwareCard(
-                              key: vm.keyForCard(cards[i].id, CardSlot.oppHand),
-                              motion: vm.motion,
-                              cardId: cards[i].id,
-                              width: visW,
-                              child: vm.gameState.round.roundStatus ==
-                                      RoundStatus.completed
-                                  ? PlayingCard(
-                                      playingCardModel: cards[i],
-                                      isSelected: celebrating,
-                                      width: visW,
-                                    )
-                                  : PlayingCardBack(width: visW),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  if (cards.isEmpty) return const SizedBox.shrink();
+                  final layout = HandFanLayout.fit(
+                    count: cards.length,
+                    maxWidth: constraints.maxWidth,
+                    preferredCardWidth: preferredCardWidth,
+                    minGap: celebrating ? 10.0 : 4.0,
+                    maxGap: celebrating
+                        ? _CompactSideSeat.winOverlap
+                        : _CompactSideSeat.overlap,
+                    minCardWidth: 24.0,
+                  );
+                  final fanCardWidth = layout.cardWidth;
+                  final gap = layout.gap;
+                  final handW = layout.totalWidth(cards.length);
+                  final handH = layout.cardHeight;
+                  return OverflowBox(
+                    alignment: overlayAlign,
+                    minWidth: handW,
+                    maxWidth: handW,
+                    minHeight: handH,
+                    maxHeight: handH,
+                    child: SizedBox(
+                      width: handW,
+                      height: handH,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          for (int i = 0; i < cards.length; i++)
+                            Positioned(
+                              left: i * gap,
+                              child: WinningHandWave(
+                                active: celebrating,
+                                index: i,
+                                amplitude: 3,
+                                child: FlightAwareCard(
+                                  key: vm.keyForCard(
+                                    cards[i].id,
+                                    CardSlot.oppHand,
+                                  ),
+                                  motion: vm.motion,
+                                  cardId: cards[i].id,
+                                  width: fanCardWidth,
+                                  child: vm.gameState.round.roundStatus ==
+                                          RoundStatus.completed
+                                      ? PlayingCard(
+                                          playingCardModel: cards[i],
+                                          isSelected: celebrating,
+                                          width: fanCardWidth,
+                                        )
+                                      : PlayingCardBack(width: fanCardWidth),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),

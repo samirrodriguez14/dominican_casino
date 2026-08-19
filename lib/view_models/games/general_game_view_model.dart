@@ -29,6 +29,7 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
+import 'package:dominican_casino/view_models/games/rummy_box_layout.dart';
 import 'package:flutter/cupertino.dart' hide Action;
 import 'package:uuid/uuid.dart';
 
@@ -42,7 +43,7 @@ typedef ActionGuard =
 
 /// Visual home of a card widget — scopes GlobalKeys so the same card id can
 /// exist in different UI slots across a rebuild without colliding.
-enum CardSlot { myHand, oppHand, table, aux, inStack }
+enum CardSlot { myHand, oppHand, table, aux, inStack, rummyBox }
 
 enum JoinGameResult { ok, notEnoughCoins, notEnoughEnergy, failed }
 
@@ -547,7 +548,14 @@ class GeneralGameViewModel extends ChangeNotifier {
   double _widthForZone(Zone zone, {String? cardId}) {
     switch (zone.type) {
       case ZoneType.playerHand:
-        if (zone.holderId == me) return 110.0;
+        if (zone.holderId == me) {
+          if (gameState.gameMode == GameMode.rummy &&
+              cardId != null &&
+              isRummyBoxed(cardId)) {
+            return rummyBoxLayoutForCard(cardId).cardWidth;
+          }
+          return rummyHandCardWidth;
+        }
         final ids = oppIds;
         final topOpp = ids.length <= 1
             ? (ids.isEmpty ? null : ids.first)
@@ -607,7 +615,9 @@ class GeneralGameViewModel extends ChangeNotifier {
     switch (e.from.type) {
       case ZoneType.playerHand:
         return e.from.holderId == me
-            ? keyForCard(e.card.id, CardSlot.myHand)
+            ? (isRummyBoxed(e.card.id)
+                ? keyForCard(e.card.id, CardSlot.rummyBox)
+                : keyForCard(e.card.id, CardSlot.myHand))
             : keyForCard(e.card.id, CardSlot.oppHand);
       case ZoneType.table:
         // Loose table card, or already inside a stack.
@@ -637,6 +647,9 @@ class GeneralGameViewModel extends ChangeNotifier {
     // Still in a hand (deal / draw).
     for (final pid in gameState.hands.keys) {
       if ((gameState.hands[pid] ?? []).any((c) => c.id == e.card.id)) {
+        if (pid == me && isRummyBoxed(e.card.id)) {
+          return keyForCard(e.card.id, CardSlot.rummyBox);
+        }
         return keyForCard(
           e.card.id,
           pid == me ? CardSlot.myHand : CardSlot.oppHand,
@@ -903,6 +916,9 @@ class GeneralGameViewModel extends ChangeNotifier {
       !gameState.isLocalBotPid(gameState.currentTurnPlayerId);
 
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
+  /// Cards shown in the bottom hand fan (excludes Rummy box overlays).
+  List<PlayingCardModel> get myHandFanCards => myUnboxedHandCards;
+
   /// Rummy: cards that are currently *not* assigned to dotted boxes.
   ///
   /// We keep [myHandCards] as the full hand (engine hand-size rules depend
@@ -920,6 +936,77 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     return myHandCards.where((c) => !boxed.contains(c.id)).toList();
   }
+
+  /// Laid-out width for cards sitting in a Rummy requirement box.
+  static const double rummyBoxMaxCardWidth = RummyBoxLayout.maxCardWidth;
+  static const double rummyHandCardWidth = 110.0;
+  static const double rummyTableCardWidth = 72.0;
+
+  /// @deprecated Use [rummyBoxMaxCardWidth] or [rummyBoxLayoutForCount].
+  static const double rummyBoxCardWidth = rummyBoxMaxCardWidth;
+
+  int rummyBoxCount({required int boxIndex, String? addingCardId}) {
+    final rummy = gameState.rummyState;
+    if (rummy == null) return addingCardId == null ? 0 : 1;
+    final list = boxIndex == 0 ? rummy.boxAByPid[me] : rummy.boxBByPid[me];
+    var count = list?.length ?? 0;
+    if (addingCardId != null && !(list?.contains(addingCardId) ?? false)) {
+      count += 1;
+    }
+    return count;
+  }
+
+  int rummyBoxCountForCard(String cardId) {
+    final rummy = gameState.rummyState;
+    if (rummy == null) return 1;
+    final pid = me;
+    final a = rummy.boxAByPid[pid];
+    if (a?.contains(cardId) ?? false) return a!.length;
+    final b = rummy.boxBByPid[pid];
+    if (b?.contains(cardId) ?? false) return b!.length;
+    return 1;
+  }
+
+  RummyBoxLayout rummyBoxLayoutForCount(int count) =>
+      RummyBoxLayout.forCount(count);
+
+  RummyBoxLayout rummyBoxLayoutForCard(String cardId) =>
+      RummyBoxLayout.forCount(rummyBoxCountForCard(cardId));
+
+  bool isRummyBoxed(String cardId) {
+    if (gameState.gameMode != GameMode.rummy) return false;
+    final rummy = gameState.rummyState;
+    if (rummy == null) return false;
+    final pid = me;
+    return (rummy.boxAByPid[pid]?.contains(cardId) ?? false) ||
+        (rummy.boxBByPid[pid]?.contains(cardId) ?? false);
+  }
+
+  /// Drag ghost width while hovering a drop target in Rummy.
+  double rummyDragTargetWidth(
+    DropTarget? target, {
+    double handCardWidth = rummyHandCardWidth,
+    String? cardId,
+  }) {
+    if (target == null) return handCardWidth;
+    switch (target.kind) {
+      case DropTargetKind.rummyBoxA:
+        return rummyBoxLayoutForCount(
+          rummyBoxCount(boxIndex: 0, addingCardId: cardId).clamp(1, 7),
+        ).cardWidth;
+      case DropTargetKind.rummyBoxB:
+        return rummyBoxLayoutForCount(
+          rummyBoxCount(boxIndex: 1, addingCardId: cardId).clamp(1, 7),
+        ).cardWidth;
+      case DropTargetKind.playerHand:
+        return handCardWidth;
+      case DropTargetKind.emptyTable:
+      case DropTargetKind.tableCard:
+      case DropTargetKind.tableStack:
+        return rummyTableCardWidth;
+    }
+  }
+
   List<PlayingCardModel> get myCollectedCards =>
       gameState.playersDeck[me] ?? [];
   List<PlayingCardModel> get myLastTake => lastTakeFor(me);
@@ -1010,6 +1097,21 @@ class GeneralGameViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Reorder a card within a Rummy requirement box overlay.
+  void moveRummyBoxCardTo(int boxIndex, int from, int toIndex) {
+    final rummy = gameState.rummyState;
+    if (rummy == null) return;
+    final pid = me;
+    final map = boxIndex == 0 ? rummy.boxAByPid : rummy.boxBByPid;
+    final list = map[pid];
+    if (list == null || from < 0 || from >= list.length) return;
+    final target = toIndex.clamp(0, list.length - 1);
+    if (from == target) return;
+    final id = list.removeAt(from);
+    list.insert(target, id);
+    notifyListeners();
+  }
+
   // ── Board drag / drop (Casino) ───────────────────────────────────────────
 
   BoardDragSource? draggingSource;
@@ -1074,7 +1176,43 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   void clearDragHandoff() {
+    if (dragHandoff == null) return;
     dragHandoff = null;
+    notifyListeners();
+  }
+
+  Future<void> _flyRummyOrganizerMove({
+    required PlayingCardModel card,
+    required double startWidth,
+    required double endWidth,
+    Offset? fromGlobalCenter,
+    required CardSlot toSlot,
+  }) async {
+    motion.markInFlight([card.id]);
+    notifyListeners();
+
+    final zone = Zone(type: ZoneType.playerHand, holderId: me);
+    final flight = CardFlightRequest(
+      event: CardMoveEvent(
+        id: 'rummy-org-${card.id}-${DateTime.now().microsecondsSinceEpoch}',
+        from: zone,
+        to: zone,
+        card: card,
+        performedBy: me,
+      ),
+      fromGlobalCenter: fromGlobalCenter,
+      toKey: keyForCard(card.id, toSlot),
+      startWidth: startWidth,
+      endWidth: endWidth,
+      hapticOnLaunch: false,
+    );
+
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      await motion.run([flight]);
+    } finally {
+      motion.clearInFlight([card.id]);
+    }
   }
 
   void endBoardDrag() {
@@ -1131,20 +1269,26 @@ class GeneralGameViewModel extends ChangeNotifier {
     }
     // Tres y Dos: drag a pile card onto/toward the hand to take it.
     // Skip when the source is already a hand card so fan-reorder still works.
+    // Rummy: only boxed cards unbox when dropped on the hand area.
+    // Unboxed cards must not register playerHand here — that would block fan reorder.
     if (gameState.gameMode == GameMode.rummy &&
         !isCasinoFamily &&
         src?.kind == BoardDragKind.handCard &&
-        skipId != null) {
-      final rummy = gameState.rummyState;
-      final boxedA = rummy?.boxAByPid[me]?.contains(skipId) ?? false;
-      final boxedB = rummy?.boxBByPid[me]?.contains(skipId) ?? false;
-      final boxed = boxedA || boxedB;
-      if (boxed && _boxContains(myHandKey, global)) {
-        // Rummy: dropping a boxed card onto the hand unboxes it.
+        skipId != null &&
+        isRummyBoxed(skipId)) {
+      if (_boxContains(myHandKey, global)) {
         return const DropTarget.playerHand();
       }
-    }
-    if (!isCasinoFamily && src?.kind != BoardDragKind.handCard) {
+      final tableBox = tableKey.currentContext?.findRenderObject() as RenderBox?;
+      if (tableBox != null && tableBox.hasSize) {
+        final tableBottom = tableBox.localToGlobal(
+          Offset(0, tableBox.size.height),
+        ).dy;
+        if (global.dy >= tableBottom) {
+          return const DropTarget.playerHand();
+        }
+      }
+    } else if (!isCasinoFamily && src?.kind != BoardDragKind.handCard) {
       if (_boxContains(myHandKey, global)) {
         return const DropTarget.playerHand();
       }
@@ -1391,9 +1535,8 @@ class GeneralGameViewModel extends ChangeNotifier {
 
       if (target.kind == DropTargetKind.rummyBoxA ||
           target.kind == DropTargetKind.rummyBoxB) {
-        final targetMap = target.kind == DropTargetKind.rummyBoxA
-            ? rummy.boxAByPid
-            : rummy.boxBByPid;
+        final boxIndex = target.kind == DropTargetKind.rummyBoxA ? 0 : 1;
+        final targetMap = boxIndex == 0 ? rummy.boxAByPid : rummy.boxBByPid;
         final alreadyInTarget = targetMap[pid]?.contains(cardId) ?? false;
 
         // If the card is already in this box, do NOT remove+append it.
@@ -1407,21 +1550,47 @@ class GeneralGameViewModel extends ChangeNotifier {
           if (!targetMap[pid]!.contains(cardId)) {
             targetMap[pid]!.add(cardId);
           }
+
+          final handoff = dragHandoff;
+          dropHover = null;
+          clearDragHandoff();
+          final endLayout = rummyBoxLayoutForCount(
+            rummyBoxCount(boxIndex: boxIndex),
+          );
+          notifyListeners();
+          await _flyRummyOrganizerMove(
+            card: source.card!,
+            startWidth: handoff?.width ?? rummyHandCardWidth,
+            endWidth: endLayout.cardWidth,
+            fromGlobalCenter: handoff?.globalCenter ?? globalCenter,
+            toSlot: CardSlot.rummyBox,
+          );
+          return true;
         }
 
         dropHover = null;
-        dragHandoff = null;
+        clearDragHandoff();
         notifyListeners();
         return true;
       }
 
       // Unbox only when the card is already boxed.
       if (target.kind == DropTargetKind.playerHand && isBoxed) {
+        final boxedStartWidth = rummyBoxLayoutForCard(cardId).cardWidth;
         rummy.boxAByPid[pid]?.removeWhere((id) => id == cardId);
         rummy.boxBByPid[pid]?.removeWhere((id) => id == cardId);
+
+        final handoff = dragHandoff;
         dropHover = null;
-        dragHandoff = null;
+        clearDragHandoff();
         notifyListeners();
+        await _flyRummyOrganizerMove(
+          card: source.card!,
+          startWidth: handoff?.width ?? boxedStartWidth,
+          endWidth: rummyHandCardWidth,
+          fromGlobalCenter: handoff?.globalCenter ?? globalCenter,
+          toSlot: CardSlot.myHand,
+        );
         return true;
       }
     }
@@ -1852,19 +2021,29 @@ class GeneralGameViewModel extends ChangeNotifier {
     return inGameAction != InGameAction.noAction;
   }
 
-  /// Tres y Dos player whose hand is the completed 3+2, while it is still shown.
+  /// Player whose winning layout is highlighted (3+2 in Tres y Dos, contract in Rummy).
   String? get celebratingHandPid {
-    if (gameState.gameMode != GameMode.tresydos) return null;
     if (motion.isShuffling) return null;
     final inMatch = gameState.gameStatus == GameStatus.inProgress;
     final gameOver = gameState.gameStatus == GameStatus.gameOver;
     final roundDone = gameState.round.roundStatus == RoundStatus.completed;
     if (!gameOver && !(inMatch && roundDone)) return null;
-    for (final pid in gameState.playersInfo.keys) {
-      if (TresDosGameStateHandler.roundEnded(gameState, pid)) return pid;
+
+    if (gameState.gameMode == GameMode.tresydos) {
+      for (final pid in gameState.playersInfo.keys) {
+        if (TresDosGameStateHandler.roundEnded(gameState, pid)) return pid;
+      }
+      final winner = gameState.winnerId;
+      if (winner != null && winner.isNotEmpty) return winner;
+      return null;
     }
-    final winner = gameState.winnerId;
-    if (winner != null && winner.isNotEmpty) return winner;
+
+    if (gameState.gameMode == GameMode.rummy) {
+      final winner = gameState.winnerId;
+      if (winner != null && winner.isNotEmpty) return winner;
+      return null;
+    }
+
     return null;
   }
 
@@ -1872,11 +2051,10 @@ class GeneralGameViewModel extends ChangeNotifier {
       pid.isNotEmpty && celebratingHandPid == pid;
 
   /// Player id whose avatar should receive the win celebration confetti.
-  /// - Tres y Dos: uses [celebratingHandPid] (the completed 3+2 owner).
-  /// - Casino family: uses [gameState.winnerId].
   String? get winCelebrationPid {
-    if (gameState.gameMode == GameMode.tresydos) {
-      return celebratingHandPid;
+    if (gameState.gameMode == GameMode.tresydos ||
+        gameState.gameMode == GameMode.rummy) {
+      return celebratingHandPid ?? gameState.winnerId;
     }
     return gameState.winnerId;
   }
@@ -1887,7 +2065,9 @@ class GeneralGameViewModel extends ChangeNotifier {
     final gameOver = gameState.gameStatus == GameStatus.gameOver;
     final roundDone = gameState.round.roundStatus == RoundStatus.completed;
     if (!gameOver && !(inMatch && roundDone)) return null;
-    if (gameState.gameMode != GameMode.tresydos && !isCasinoFamily) {
+    if (gameState.gameMode != GameMode.tresydos &&
+        gameState.gameMode != GameMode.rummy &&
+        !isCasinoFamily) {
       return null;
     }
     if (gameOver) return 'over_${gameState.round.id}_${gameState.winnerId}';
@@ -1895,7 +2075,8 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   Duration get _winCelebrationDuration =>
-      gameState.gameMode == GameMode.tresydos
+      gameState.gameMode == GameMode.tresydos ||
+          gameState.gameMode == GameMode.rummy
       ? _winCelebrationFor
       : const Duration(seconds: 3);
 
@@ -1916,7 +2097,8 @@ class GeneralGameViewModel extends ChangeNotifier {
     final duration = _winCelebrationDuration;
     _winCelebrationDeadline = DateTime.now().add(duration);
     _winCelebrationSecondsLeft = duration.inSeconds;
-    if (key.startsWith('round_')) {
+    if (key.startsWith('round_') ||
+        (gameState.gameMode == GameMode.rummy && key.startsWith('over_'))) {
       SoundService.instance.play(GameSound.win);
     }
     _winCelebrationTimer?.cancel();

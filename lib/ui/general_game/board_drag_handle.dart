@@ -1,5 +1,6 @@
 import 'dart:ui' show lerpDouble;
 
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
@@ -193,11 +194,30 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
     }
   }
 
+  double _resolvedTargetWidth(GeneralGameViewModel gameVm) {
+    final target = gameVm.hitTestDropTarget(
+      _dragGlobal,
+      source: widget.source,
+    );
+    if (gameVm.gameState.gameMode == GameMode.rummy) {
+      final handW = widget.feedbackWidth < GeneralGameViewModel.rummyHandCardWidth - 16
+          ? GeneralGameViewModel.rummyHandCardWidth
+          : widget.feedbackWidth;
+      return gameVm.rummyDragTargetWidth(
+        target,
+        handCardWidth: handW,
+        cardId: widget.source.card?.id,
+      );
+    }
+    return widget.tableFeedbackWidth;
+  }
+
   void _onDragMove(Offset global) {
     final gameVm = _vm;
     if (gameVm == null) return;
     _dragGlobal = global;
-    final overTable = gameVm.hitTestDropTarget(global) != null;
+    final overTable =
+        gameVm.hitTestDropTarget(global, source: widget.source) != null;
     final target = overTable ? 1.0 : 0.0;
     _tableBlend = lerpDouble(_tableBlend, target, 0.35) ?? target;
     if ((_tableBlend - target).abs() < 0.02) _tableBlend = target;
@@ -219,7 +239,7 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
     final w =
         lerpDouble(
           widget.feedbackWidth,
-          widget.tableFeedbackWidth,
+          _resolvedTargetWidth(gameVm),
           _tableBlend,
         ) ??
         widget.feedbackWidth;
@@ -251,12 +271,12 @@ class _BoardDragHandleState extends State<BoardDragHandle> {
     final local = layer.toLocal(_dragGlobal);
     if (local == null) return const SizedBox.shrink();
 
+    final gameVm = _vm;
+    final endW = gameVm == null
+        ? widget.tableFeedbackWidth
+        : _resolvedTargetWidth(gameVm);
     final w =
-        lerpDouble(
-          widget.feedbackWidth,
-          widget.tableFeedbackWidth,
-          _tableBlend,
-        ) ??
+        lerpDouble(widget.feedbackWidth, endW, _tableBlend) ??
         widget.feedbackWidth;
     final h = w * 1.4;
 

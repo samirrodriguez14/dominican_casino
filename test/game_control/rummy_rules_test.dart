@@ -227,7 +227,7 @@ void main() {
         GameStateFixtures.card(id: '3s', rank: '3', suit: '♠'),
         GameStateFixtures.card(id: '4s', rank: '4', suit: '♠'),
         GameStateFixtures.card(id: '5s', rank: '5', suit: '♠'),
-        GameStateFixtures.card(id: '6h', rank: '6', suit: '♥'), // wrong suit => not a run
+        GameStateFixtures.card(id: '6s', rank: '8', suit: '♠'), // gap => not a run
       ];
       final set2 = [
         GameStateFixtures.card(id: '9h', rank: '9', suit: '♥'),
@@ -250,7 +250,7 @@ void main() {
         scores: {pid1: 0, pid2: 0},
         rummyState: RummyState(
           contract: contract,
-          // Still "box" them as if they're run+set, but the run has the wrong suit.
+          // Still "box" them as if they're run+set, but the run skips a rank.
           boxAByPid: {pid1: run5.map((c) => c.id).toList(), pid2: const []},
           boxBByPid: {pid1: set2.map((c) => c.id).toList(), pid2: const []},
         ),

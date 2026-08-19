@@ -1,3 +1,4 @@
+import 'package:dominican_casino/game_control/game_engine/rummy/rummy_matcher.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -6,11 +7,14 @@ import 'package:dominican_casino/ui/cards/card_deck.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
+import 'package:dominican_casino/ui/general_game/hand_fan_layout.dart';
 import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.dart';
 import 'package:dominican_casino/ui/widgets/take_hint_bounce.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
+import 'package:dominican_casino/ui/widgets/winning_hand_wave.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:dominican_casino/view_models/games/rummy_box_layout.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
@@ -171,114 +175,103 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
     final cards = boxedIds.map((id) => byId[id]).whereType<PlayingCardModel>().toList();
 
     final label = requirement?.label ?? (boxIndex == 0 ? 'Box A' : 'Box B');
-    final key = boxIndex == 0 ? vm.rummyBoxAKey : vm.rummyBoxBKey;
+    final boxKey = boxIndex == 0 ? vm.rummyBoxAKey : vm.rummyBoxBKey;
+    final satisfied = requirement != null &&
+        RummyMatcher.matchesRequirement(requirement: requirement, cards: cards);
 
     const boxWidth = 180.0;
-    const boxHeight = 135.0;
-    const paddingTop = 8.0;
+    const boxHeight = 148.0;
 
     final count = cards.length;
-    final cardW = _tableCardWidth;
-    final gap = count <= 1 ? 0.0 : ((boxWidth - cardW) / (count - 1)).clamp(8.0, 28.0);
-    final totalW = cardW + (count <= 1 ? 0 : (count - 1) * gap);
-    // Box cards should be visually smaller to avoid clipping at the bottom.
-    const boxCardHeightMultiplier = 1.25;
-    final cardH = cardW * boxCardHeightMultiplier;
+    final layout = RummyBoxLayout.forCount(count);
+    final cardW = layout.cardWidth;
+    final gap = layout.gap;
+    final totalW = layout.totalWidthFor(count);
+    final cardH = layout.cardHeight;
 
     final interactive = vm.canPlayTurn && !vm.hasDropPending;
     final rummyEnabled = interactive && vm.gameState.gameStatus == GameStatus.inProgress;
+    final celebrating = vm.isCelebratingHand(vm.me);
+    final draggingId = vm.draggingSource?.id;
 
     return SizedBox(
       width: boxWidth,
       height: boxHeight,
       child: Container(
-        key: key,
+        key: boxKey,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: AppStyle.theme.dottedBox(
           color: AppStyle.theme.suitBlack,
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          padding: const EdgeInsets.all(8),
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              Text(
-                label,
-                style: AppStyle.theme.caption.copyWith(fontWeight: FontWeight.w800),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: paddingTop),
-              SizedBox(
-                height: boxHeight - paddingTop - 25,
+              Positioned.fill(
                 child: Center(
-                  child: SizedBox(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutCubic,
                     width: totalW,
                     height: cardH,
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
                         for (int i = 0; i < count; i++)
-                          Positioned(
-                            left: i * gap,
-                            top: 0,
-                            child: BoardDragHandle(
-                              source: BoardDragSource.hand(cards[i]),
-                              enabled: rummyEnabled && !vm.isAnimating,
-                              feedbackWidth: cardW,
-                              tableFeedbackWidth: cardW,
-                              onTap: () {},
-                              onHandReorder: (global) {
-                                final rummy = vm.gameState.rummyState;
-                                if (rummy == null) return;
-                                final draggingId = vm.draggingSource?.id;
-                                if (draggingId == null) return;
-
-                                final targetMap = boxIndex == 0
-                                    ? rummy.boxAByPid
-                                    : rummy.boxBByPid;
-                                final list = targetMap[pid];
-                                if (list == null || !list.contains(draggingId)) {
-                                  return;
-                                }
-
-                                final renderBox = key.currentContext
-                                    ?.findRenderObject() as RenderBox?;
-                                if (renderBox == null || !renderBox.hasSize) {
-                                  return;
-                                }
-                                final local = renderBox.globalToLocal(global);
-                                if (local.dx < 0 ||
-                                    local.dx > renderBox.size.width) {
-                                  return;
-                                }
-
-                                final len = list.length;
-                                if (len <= 1) return;
-
-                                final rel = (local.dx / renderBox.size.width)
-                                    .clamp(0.0, 0.9999);
-                                final to = (rel * len).floor().clamp(0, len - 1);
-                                final from = list.indexOf(draggingId);
-                                if (from < 0 || from == to) return;
-
-                                list.removeAt(from);
-                                list.insert(to, draggingId);
-                                vm.notifyListeners();
-                              },
-                              child: FlightAwareCard(
-                                key: vm.keyForCard(cards[i].id, CardSlot.myHand),
-                                motion: vm.motion,
-                                cardId: cards[i].id,
-                                width: cardW,
-                                child: PlayingCard(
-                                  playingCardModel: cards[i],
-                                  width: cardW,
-                                heightMultiplyer: boxCardHeightMultiplier,
-                                  isSelected: false,
-                                ),
-                              ),
-                            ),
+                          _boxFanCard(
+                            vm: vm,
+                            card: cards[i],
+                            index: i,
+                            gap: gap,
+                            totalW: totalW,
+                            cardW: cardW,
+                            cardH: cardH,
+                            boxIndex: boxIndex,
+                            draggingId: draggingId,
+                            rummyEnabled: rummyEnabled,
+                            celebrating: celebrating,
                           ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF5F3ECE2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          satisfied
+                              ? CupertinoIcons.checkmark_circle_fill
+                              : CupertinoIcons.circle,
+                          size: 12,
+                          color: satisfied
+                              ? const Color(0xFF2E8B57)
+                              : AppStyle.theme.suitBlack.withValues(alpha: 0.35),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            label,
+                            style: AppStyle.theme.caption.copyWith(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              height: 1.1,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -289,6 +282,118 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
         ),
       ),
     );
+  }
+
+  Widget _boxFanCard({
+    required GeneralGameViewModel vm,
+    required PlayingCardModel card,
+    required int index,
+    required double gap,
+    required double totalW,
+    required double cardW,
+    required double cardH,
+    required int boxIndex,
+    required String? draggingId,
+    required bool rummyEnabled,
+    required bool celebrating,
+  }) {
+    return AnimatedPositioned(
+      key: ValueKey(card.id),
+      duration: draggingId == card.id
+          ? Duration.zero
+          : const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      left: index * gap,
+      top: 0,
+      child: BoardDragHandle(
+        source: BoardDragSource.hand(card),
+        enabled: rummyEnabled && !vm.isAnimating,
+        feedbackWidth: cardW,
+        tableFeedbackWidth: GeneralGameViewModel.rummyHandCardWidth,
+        onTap: () {},
+        onHandReorder: (global) {
+          final target = vm.hitTestDropTarget(
+            global,
+            source: BoardDragSource.hand(card),
+          );
+          if (target != null) {
+            final leavingBox = switch (target.kind) {
+              DropTargetKind.rummyBoxA => boxIndex != 0,
+              DropTargetKind.rummyBoxB => boxIndex != 1,
+              _ => true,
+            };
+            if (leavingBox) return;
+          }
+          final id = vm.draggingSource?.id;
+          if (id == null) return;
+          final rummy = vm.gameState.rummyState;
+          if (rummy == null) return;
+          final pid = vm.me;
+          final list = boxIndex == 0
+              ? rummy.boxAByPid[pid]
+              : rummy.boxBByPid[pid];
+          if (list == null || !list.contains(id)) return;
+          final from = list.indexOf(id);
+          if (from < 0) return;
+          final to = _indexForBoxGlobalCenter(
+            global,
+            list.length,
+            gap,
+            totalW,
+            boxIndex == 0 ? vm.rummyBoxAKey : vm.rummyBoxBKey,
+          );
+          if (to != from) vm.moveRummyBoxCardTo(boxIndex, from, to);
+        },
+        child: Opacity(
+          opacity: vm.isDragHidden(card.id) ? 0 : 1,
+          child: AnimatedScale(
+            scale: celebrating ? 1.08 : 1.0,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            child: AnimatedContainer(
+              duration: draggingId == card.id
+                  ? Duration.zero
+                  : const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              width: cardW,
+              height: cardH,
+              child: WinningHandWave(
+                active: celebrating,
+                index: index,
+                amplitude: 3,
+                child: FlightAwareCard(
+                  key: vm.keyForCard(card.id, CardSlot.rummyBox),
+                  motion: vm.motion,
+                  cardId: card.id,
+                  width: cardW,
+                  child: PlayingCard(
+                    playingCardModel: card,
+                    width: cardW,
+                    isSelected: celebrating,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  int _indexForBoxGlobalCenter(
+    Offset globalCenter,
+    int count,
+    double gap,
+    double totalW,
+    GlobalKey boxKey,
+  ) {
+    if (count <= 0 || gap <= 0) return 0;
+    final box = boxKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return 0;
+    final local = box.globalToLocal(globalCenter);
+    final stackLeft = (box.size.width - totalW) / 2;
+    final stackLocalX = local.dx - stackLeft;
+    return (stackLocalX / gap).round().clamp(0, count - 1);
   }
 
   Widget _drawPile(GeneralGameViewModel vm) {
@@ -434,6 +539,7 @@ class _RummyTopOpponentRow extends StatelessWidget {
 
   static const double rowHeight = 104;
   static const double cardWidth = 54;
+  static const double winGroupCardWidth = 44;
 
   final String oppId;
 
@@ -442,12 +548,10 @@ class _RummyTopOpponentRow extends StatelessWidget {
     final vm = context.watch<GeneralGameViewModel>();
     if (oppId.isEmpty && !vm.showOpenSeats) return const SizedBox.shrink();
 
-    final winner = vm.gameState.gameStatus == GameStatus.gameOver
-        ? vm.gameState.winnerId
-        : null;
-    final isWinner = winner != null && winner == oppId;
-
     final waiting = oppId.isEmpty;
+    final celebrating = !waiting && vm.isCelebratingHand(oppId);
+    final showWinLayout = celebrating;
+
     final info = waiting
         ? const <String, dynamic>{}
         : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
@@ -461,7 +565,7 @@ class _RummyTopOpponentRow extends StatelessWidget {
 
     final rummy = vm.gameState.rummyState;
     List<PlayingCardModel> group(int idx) {
-      if (!isWinner || rummy == null) return const [];
+      if (!showWinLayout || rummy == null) return const [];
       final ids = idx == 0 ? rummy.boxAByPid[oppId] : rummy.boxBByPid[oppId];
       if (ids == null) return const [];
       final byId = {for (final c in cards) c.id: c};
@@ -482,6 +586,7 @@ class _RummyTopOpponentRow extends StatelessWidget {
             top: 0,
             left: 0,
             child: PlayerScoreAvatar(
+              key: waiting ? null : vm.celebrationAvatarKeyForPid(oppId),
               avatarId: avatarId,
               name: name,
               score: score,
@@ -494,38 +599,94 @@ class _RummyTopOpponentRow extends StatelessWidget {
             ),
           ),
 
-          // Simple, compact card display.
-          if (!isWinner)
+          // Opponent hand — FlightAwareCard keys so deal/take/discard animate.
+          if (!showWinLayout)
             Center(
               child: SizedBox(
-                width: cards.length <= 1
-                    ? cardWidth
-                    : cardWidth + ((cards.length - 1) * 18),
+                key: vm.oppHandKey,
                 height: rowHeight,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    for (int i = 0; i < cards.length; i++)
-                      Positioned(
-                        left: i * 18,
-                        top: (rowHeight - cardWidth * 1.4) / 2,
-                        child: PlayingCardBack(width: cardWidth),
-                      ),
-                  ],
+                width: double.infinity,
+                child: Offstage(
+                  offstage: vm.motion.isShuffling,
+                  child: cards.isEmpty
+                      ? const SizedBox.shrink()
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final count = cards.length;
+                            final layout = HandFanLayout.fit(
+                              count: count,
+                              maxWidth: constraints.maxWidth,
+                              preferredCardWidth: cardWidth,
+                              minGap: 12.0,
+                              maxGap: 34.0,
+                              minCardWidth: 36.0,
+                            );
+                            final gap = layout.gap;
+                            final fanCardWidth = layout.cardWidth;
+                            final totalWidth = layout.totalWidth(count);
+                            return Center(
+                              child: SizedBox(
+                                width: totalWidth,
+                                height: rowHeight,
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    for (int i = 0; i < count; i++)
+                                      AnimatedPositioned(
+                                        key: ValueKey(cards[i].id),
+                                        duration:
+                                            const Duration(milliseconds: 280),
+                                        curve: Curves.easeOutCubic,
+                                        left: i * gap,
+                                        top: (rowHeight - fanCardWidth * 1.4) /
+                                            2,
+                                        child: FlightAwareCard(
+                                          key: vm.keyForCard(
+                                            cards[i].id,
+                                            CardSlot.oppHand,
+                                          ),
+                                          motion: vm.motion,
+                                          cardId: cards[i].id,
+                                          width: fanCardWidth,
+                                          child: PlayingCardBack(
+                                            width: fanCardWidth,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ),
             )
           else
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Split the top-hand width into two side-by-side groups.
-                  _GroupFan(cards: groupA, width: cardWidth / 2),
-                  const SizedBox(width: 10),
-                  _GroupFan(cards: groupB, width: cardWidth / 2),
-                ],
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final groupMaxW = (constraints.maxWidth - 10) / 2;
+                return Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _GroupFan(
+                        cards: groupA,
+                        width: winGroupCardWidth,
+                        celebrating: true,
+                        maxWidth: groupMaxW,
+                      ),
+                      const SizedBox(width: 10),
+                      _GroupFan(
+                        cards: groupB,
+                        width: winGroupCardWidth,
+                        celebrating: true,
+                        maxWidth: groupMaxW,
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
         ],
       ),
@@ -534,17 +695,35 @@ class _RummyTopOpponentRow extends StatelessWidget {
 }
 
 class _GroupFan extends StatelessWidget {
-  const _GroupFan({required this.cards, required this.width});
+  const _GroupFan({
+    required this.cards,
+    required this.width,
+    this.celebrating = false,
+    this.maxWidth,
+  });
 
   final List<PlayingCardModel> cards;
   final double width;
+  final bool celebrating;
+  final double? maxWidth;
 
   @override
   Widget build(BuildContext context) {
     if (cards.isEmpty) return const SizedBox.shrink();
-    const overlap = 18.0;
-    final cardH = width * 1.4;
-    final totalW = width + (cards.length - 1) * overlap;
+    final scale = HandFanLayout.visualScale(celebrating: celebrating);
+    final layout = HandFanLayout.fit(
+      count: cards.length,
+      maxWidth: maxWidth ?? width + (cards.length - 1) * 18,
+      preferredCardWidth: width,
+      minGap: 8.0,
+      maxGap: 18.0,
+      minCardWidth: width * 0.7,
+      visualScale: scale,
+    );
+    final gap = layout.gap;
+    final fanWidth = layout.cardWidth;
+    final cardH = layout.cardHeight;
+    final totalW = layout.totalWidth(cards.length);
     return SizedBox(
       width: totalW,
       height: cardH,
@@ -553,12 +732,22 @@ class _GroupFan extends StatelessWidget {
         children: [
           for (int i = 0; i < cards.length; i++)
             Positioned(
-              left: i * overlap,
+              left: i * gap,
               top: 0,
-              child: PlayingCard(
-                playingCardModel: cards[i],
-                width: width,
-                  isSelected: false,
+              child: AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                child: WinningHandWave(
+                  active: celebrating,
+                  index: i,
+                  amplitude: 3,
+                  child: PlayingCard(
+                    playingCardModel: cards[i],
+                    width: fanWidth,
+                    isSelected: celebrating,
+                  ),
+                ),
               ),
             ),
         ],
@@ -575,6 +764,8 @@ class _RummySideSeat extends StatelessWidget {
 
   static const double sideCardWidth = 30;
   static const double sideOverlap = 8;
+  static const double winCardWidth = 50;
+  static const double maxHandWidth = 120;
 
   @override
   Widget build(BuildContext context) {
@@ -583,12 +774,10 @@ class _RummySideSeat extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final winner = vm.gameState.gameStatus == GameStatus.gameOver
-        ? vm.gameState.winnerId
-        : null;
-    final isWinner = winner != null && winner == oppId;
-
     final waiting = oppId.isEmpty;
+    final celebrating = !waiting && vm.isCelebratingHand(oppId);
+    final showWinLayout = celebrating;
+
     final info = waiting
         ? const <String, dynamic>{}
         : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
@@ -602,14 +791,14 @@ class _RummySideSeat extends StatelessWidget {
     final rummy = vm.gameState.rummyState;
 
     List<PlayingCardModel> groupA() {
-      if (!isWinner || rummy == null) return const [];
+      if (!showWinLayout || rummy == null) return const [];
       final ids = rummy.boxAByPid[oppId] ?? const [];
       final byId = {for (final c in cards) c.id: c};
       return ids.map((id) => byId[id]).whereType<PlayingCardModel>().toList();
     }
 
     List<PlayingCardModel> groupB() {
-      if (!isWinner || rummy == null) return const [];
+      if (!showWinLayout || rummy == null) return const [];
       final ids = rummy.boxBByPid[oppId] ?? const [];
       final byId = {for (final c in cards) c.id: c};
       return ids.map((id) => byId[id]).whereType<PlayingCardModel>().toList();
@@ -618,11 +807,6 @@ class _RummySideSeat extends StatelessWidget {
     final gA = groupA();
     final gB = groupB();
 
-    final handH = sideCardWidth * 1.4;
-    final fanW = cards.isEmpty
-        ? sideCardWidth
-        : sideCardWidth + ((cards.length - 1) * sideOverlap);
-
     return Container(
       width: 120,
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -630,6 +814,7 @@ class _RummySideSeat extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           PlayerScoreAvatar(
+            key: waiting ? null : vm.celebrationAvatarKeyForPid(oppId),
             avatarId: avatarId,
             name: name,
             score: score,
@@ -641,31 +826,79 @@ class _RummySideSeat extends StatelessWidget {
             turnTotal: vm.turnTotal,
           ),
           if (!waiting) const SizedBox(height: 8),
-          if (isWinner)
+          if (showWinLayout)
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Center(child: _GroupFan(cards: gA, width: sideCardWidth)),
+                Center(
+                  child: _GroupFan(
+                    cards: gA,
+                    width: winCardWidth,
+                    celebrating: true,
+                    maxWidth: maxHandWidth,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Center(child: _GroupFan(cards: gB, width: sideCardWidth)),
+                Center(
+                  child: _GroupFan(
+                    cards: gB,
+                    width: winCardWidth,
+                    celebrating: true,
+                    maxWidth: maxHandWidth,
+                  ),
+                ),
               ],
             )
           else
             if (cards.isNotEmpty)
-              Center(
+              Offstage(
+                offstage: vm.motion.isShuffling,
                 child: SizedBox(
-                  width: fanW,
-                  height: handH,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      for (int i = 0; i < cards.length; i++)
-                        Positioned(
-                          left: i * sideOverlap,
-                          top: 0,
-                          child: PlayingCardBack(width: sideCardWidth),
+                  width: maxHandWidth,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final layout = HandFanLayout.fit(
+                        count: cards.length,
+                        maxWidth: constraints.maxWidth,
+                        preferredCardWidth: sideCardWidth,
+                        minGap: 4.0,
+                        maxGap: sideOverlap,
+                        minCardWidth: 24.0,
+                      );
+                      final gap = layout.gap;
+                      final fanCardWidth = layout.cardWidth;
+                      final fanW = layout.totalWidth(cards.length);
+                      final handH = layout.cardHeight;
+                      return Center(
+                        child: SizedBox(
+                          width: fanW,
+                          height: handH,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              for (int i = 0; i < cards.length; i++)
+                                AnimatedPositioned(
+                                  key: ValueKey(cards[i].id),
+                                  duration: const Duration(milliseconds: 280),
+                                  curve: Curves.easeOutCubic,
+                                  left: i * gap,
+                                  top: 0,
+                                  child: FlightAwareCard(
+                                    key: vm.keyForCard(
+                                      cards[i].id,
+                                      CardSlot.oppHand,
+                                    ),
+                                    motion: vm.motion,
+                                    cardId: cards[i].id,
+                                    width: fanCardWidth,
+                                    child: PlayingCardBack(width: fanCardWidth),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ),

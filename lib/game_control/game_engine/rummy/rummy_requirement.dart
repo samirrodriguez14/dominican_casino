@@ -15,7 +15,8 @@ enum RummyColor {
 ///
 /// Examples:
 /// - `set(2)` => two cards of the same rank
-/// - `run(4)` => four consecutive ranks, same suit, with Ace low or high
+/// - `run(4)` => four consecutive ranks (any suits), Ace low or high
+/// - `runOf(4, red)` => consecutive ranks, all red suits
 /// - `color(5, red)` => five cards of the same color (all red or all black)
 class RummyRequirement {
   RummyRequirement({
@@ -44,6 +45,14 @@ class RummyRequirement {
         count: count,
       );
 
+  /// Consecutive ranks where every card is red or black per [color].
+  static RummyRequirement runOf(int count, RummyColor color) =>
+      RummyRequirement(
+        kind: RummyKind.run,
+        count: count,
+        color: color,
+      );
+
   static RummyRequirement colorOf(int count, RummyColor color) =>
       RummyRequirement(
         kind: RummyKind.color,
@@ -53,7 +62,9 @@ class RummyRequirement {
 
   String get label => switch (kind) {
         RummyKind.set => 'Set of $count',
-        RummyKind.run => 'Run of $count',
+        RummyKind.run => color == null
+            ? 'Run of $count'
+            : 'Run of $count (${color == RummyColor.red ? 'red' : 'black'})',
         RummyKind.color => '${color == RummyColor.red ? 'Red' : 'Black'} of $count',
       };
 
@@ -109,8 +120,12 @@ class RummyRequirement {
   }
 
   bool _matchesRun(List<PlayingCardModel> cards) {
-    final suit = cards.first.suit;
-    if (!cards.every((c) => c.suit == suit)) return false;
+    if (color != null) {
+      final expectedRed = color == RummyColor.red;
+      if (!cards.every((c) => _isRedSuit(c.suit) == expectedRed)) {
+        return false;
+      }
+    }
 
     final aceLow = cards.map((c) => _rankValue(c.rank, aceHigh: false)).toList()
       ..sort();

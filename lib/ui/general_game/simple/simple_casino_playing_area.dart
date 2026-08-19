@@ -10,6 +10,7 @@ import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_area_stack.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
+import 'package:dominican_casino/ui/general_game/hand_fan_layout.dart';
 import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_hint_pulse.dart';
@@ -432,11 +433,22 @@ class SimpleOpponentRow extends StatelessWidget {
                 builder: (context, constraints) {
                   if (cards.isEmpty) return const SizedBox.shrink();
                   final count = cards.length;
-                  final gap = count == 1
-                      ? 0.0
-                      : ((constraints.maxWidth - cardWidth) / (count - 1))
-                            .clamp(16.0, celebrating ? 42.0 : 34.0);
-                  final totalWidth = cardWidth + ((count - 1) * gap);
+                  final scale = HandFanLayout.visualScale(
+                    celebrating: celebrating,
+                    highlightTurn: highlightTurn,
+                  );
+                  final layout = HandFanLayout.fit(
+                    count: count,
+                    maxWidth: constraints.maxWidth,
+                    preferredCardWidth: cardWidth,
+                    minGap: 16.0,
+                    maxGap: celebrating ? 42.0 : 34.0,
+                    minCardWidth: 40.0,
+                    visualScale: scale,
+                  );
+                  final gap = layout.gap;
+                  final fanCardWidth = layout.cardWidth;
+                  final totalWidth = layout.totalWidth(count);
                   return Center(
                     child: SizedBox(
                       width: totalWidth,
@@ -450,14 +462,10 @@ class SimpleOpponentRow extends StatelessWidget {
                               duration: const Duration(milliseconds: 280),
                               curve: Curves.easeOutCubic,
                               left: i * gap,
-                              top: (rowHeight - cardWidth * 1.4) / 2,
+                              top: (rowHeight - fanCardWidth * 1.4) / 2,
                               child: AnimatedScale(
                                 duration: const Duration(milliseconds: 180),
-                                scale: celebrating
-                                    ? 1.08
-                                    : highlightTurn
-                                    ? 1.02
-                                    : 1,
+                                scale: scale,
                                 child: WinningHandWave(
                                   active: celebrating,
                                   index: i,
@@ -469,16 +477,16 @@ class SimpleOpponentRow extends StatelessWidget {
                                   ),
                                   motion: vm.motion,
                                   cardId: cards[i].id,
-                                  width: cardWidth,
+                                  width: fanCardWidth,
                                   child:
                                       vm.gameState.round.roundStatus ==
                                           RoundStatus.completed
                                       ? PlayingCard(
                                           playingCardModel: cards[i],
                                           isSelected: celebrating,
-                                          width: cardWidth,
+                                          width: fanCardWidth,
                                         )
-                                      : PlayingCardBack(width: cardWidth),
+                                      : PlayingCardBack(width: fanCardWidth),
                                 ),
                                 ),
                               ),

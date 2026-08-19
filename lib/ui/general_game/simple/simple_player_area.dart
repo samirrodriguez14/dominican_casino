@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
+import 'package:dominican_casino/ui/general_game/hand_fan_layout.dart';
 import 'package:dominican_casino/ui/general_game/play_action_bar.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_hint_pulse.dart';
 import 'package:dominican_casino/ui/widgets/winning_hand_wave.dart';
@@ -13,7 +13,11 @@ import 'package:dominican_casino/view_models/games/general_game_view_model.dart'
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-/// Casino player hand: tap-select plus inline actions over a centered fan.
+/// Player hand: tap-select plus inline actions over a centered fan.
+///
+/// Fan layout and drag-reorder behavior are shared across game modes.
+/// Modes that hide cards elsewhere (e.g. Rummy boxes) filter via
+/// [GeneralGameViewModel.myHandFanCards] but still reorder [myHandCards].
 class SimplePlayerArea extends StatefulWidget {
   const SimplePlayerArea({super.key});
 
@@ -25,7 +29,6 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
   double _fanGap = 48;
   static const double _cardWidth = 110.0;
   static const double _fanHeight = 168.0;
-  // Reduced to keep the fan visually tighter on small screens.
   static const double _edgeAngle = 0.16;
   static const double _selectedLift = 12.0;
 
@@ -40,45 +43,40 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
           height: _fanHeight,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final cards = vm.myUnboxedHandCards;
-              if (cards.isEmpty) return const SizedBox.shrink();
-              final celebrating = vm.isCelebratingHand(vm.me);
-              final count = cards.length;
-              final isRummy = vm.gameState.gameMode == GameMode.rummy;
-              // Prefer tightening the gap first (cards closer), and only
-              // shrink cards if we can't keep the minimum gap.
-              final minGap = isRummy ? 6.0 : 12.0;
-              const minCardWidth = 56.0;
-
-              double cardWidth;
-              double gap;
-              if (count == 1) {
-                cardWidth = _cardWidth;
-                gap = 0.0;
-              } else {
-                final gapForFullCards =
-                    (constraints.maxWidth - _cardWidth) / (count - 1);
-                final targetGap = isRummy ? gapForFullCards * 0.65 : gapForFullCards;
-                final maxGap = isRummy ? 44.0 : (celebrating ? 64.0 : 56.0);
-                if (targetGap >= minGap) {
-                  cardWidth = _cardWidth;
-                  gap = targetGap.clamp(minGap, maxGap);
-                } else {
-                  // Keep a tighter gap, reduce card width to fit.
-                  gap = minGap;
-                  cardWidth = constraints.maxWidth - (count - 1) * gap;
-                  if (cardWidth < minCardWidth) {
-                    // Last resort: shrink evenly so everything fits.
-                    cardWidth = constraints.maxWidth / count;
-                    gap = (constraints.maxWidth - cardWidth) / (count - 1);
-                  }
-                }
+              final fanCards = vm.myHandFanCards;
+              if (fanCards.isEmpty) {
+                if (vm.myHandCards.isEmpty) return const SizedBox.shrink();
+                // Hand still holds cards rendered in another zone (Rummy boxes).
+                return SizedBox(
+                  width: constraints.maxWidth,
+                  height: _fanHeight,
+                  child: Center(
+                    child: SizedBox(
+                      key: vm.myHandKey,
+                      width: constraints.maxWidth * 0.85,
+                      height: 48,
+                    ),
+                  ),
+                );
               }
-
-              final cardH = cardWidth * 1.4;
+              final celebrating = vm.isCelebratingHand(vm.me);
+              final count = fanCards.length;
+              final scale = HandFanLayout.visualScale(celebrating: celebrating);
+              final layout = HandFanLayout.fit(
+                count: count,
+                maxWidth: constraints.maxWidth,
+                preferredCardWidth: _cardWidth,
+                minGap: 12.0,
+                maxGap: celebrating ? 64.0 : 56.0,
+                minCardWidth: 56.0,
+                visualScale: scale,
+              );
+              final cardWidth = layout.cardWidth;
+              final gap = layout.gap;
+              final cardH = layout.cardHeight;
               _fanGap = gap;
 
-              final totalWidth = cardWidth + ((count - 1) * gap);
+              final totalWidth = layout.totalWidth(count);
               final draggingId = vm.draggingSource?.id;
               final mid = (count - 1) / 2.0;
               final baseTop = _fanHeight - cardH;
@@ -87,10 +85,9 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                 listenable: vm.motion,
                 builder: (context, _) {
                   if (vm.motion.isShuffling) return const SizedBox.shrink();
-                  // Deal flights land upright; fan once every hand card has arrived.
                   final holdFlat =
-                      cards.isNotEmpty &&
-                      cards.every((c) => vm.motion.isInFlight(c.id));
+                      fanCards.isNotEmpty &&
+                      fanCards.every((c) => vm.motion.isInFlight(c.id));
                   return SizedBox(
                     width: constraints.maxWidth,
                     height: _fanHeight,
@@ -105,7 +102,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                             for (int i = 0; i < count; i++)
                               _fanCard(
                                 vm: vm,
-                                card: cards[i],
+                                card: fanCards[i],
                                 index: i,
                                 count: count,
                                 mid: mid,
@@ -163,38 +160,55 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
         child: BoardDragHandle(
           source: BoardDragSource.hand(card),
           enabled: !vm.isAnimating && !vm.hasDropPending,
-            feedbackWidth: cardWidth,
+          feedbackWidth: cardWidth,
           tableFeedbackWidth: 72,
           onTap: () => vm.selectCard(card),
           onHandReorder: (global) {
-            if (vm.gameState.gameMode == GameMode.rummy) return;
-            if (vm.hitTestDropTarget(global) != null) return;
+            if (vm.hitTestDropTarget(
+                  global,
+                  source: BoardDragSource.hand(card),
+                ) !=
+                null) {
+              return;
+            }
             final id = vm.draggingSource?.id;
             if (id == null) return;
-            final live = vm.myUnboxedHandCards;
-            final liveFrom = live.indexWhere((c) => c.id == id);
-            if (liveFrom < 0) return;
-            final to = _indexForGlobalCenter(global, live.length);
-            if (to != liveFrom) vm.moveHandCardTo(liveFrom, to);
+            final hand = vm.myHandCards;
+            final from = hand.indexWhere((c) => c.id == id);
+            if (from < 0) return;
+            final fan = vm.myHandFanCards;
+            if (!fan.any((c) => c.id == id)) return;
+            final toFan = _indexForGlobalCenter(global, fan.length);
+            if (toFan < 0 || toFan >= fan.length) return;
+            final toHand = hand.indexWhere((c) => c.id == fan[toFan].id);
+            if (toHand >= 0 && toHand != from) {
+              vm.moveHandCardTo(from, toHand);
+            }
           },
-          child: Opacity(
-            opacity: vm.isDragHidden(card.id) ? 0 : 1,
-            child: WinningHandWave(
-              active: celebrating,
-              index: index,
-              amplitude: 4,
-              child: TutorialPulse(
-                cardId: card.id,
-                targetKey: vm.keyForCard(card.id, CardSlot.myHand),
-                child: FlightAwareCard(
-                  key: vm.keyForCard(card.id, CardSlot.myHand),
-                  motion: vm.motion,
+          child: AnimatedScale(
+            scale: celebrating ? HandFanLayout.celebrationScale : 1.0,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.bottomCenter,
+            child: Opacity(
+              opacity: vm.isDragHidden(card.id) ? 0 : 1,
+              child: WinningHandWave(
+                active: celebrating,
+                index: index,
+                amplitude: 4,
+                child: TutorialPulse(
                   cardId: card.id,
+                  targetKey: vm.keyForCard(card.id, CardSlot.myHand),
+                  child: FlightAwareCard(
+                    key: vm.keyForCard(card.id, CardSlot.myHand),
+                    motion: vm.motion,
+                    cardId: card.id,
+                    width: cardWidth,
+                    child: PlayingCard(
+                      playingCardModel: card,
                       width: cardWidth,
-                  child: PlayingCard(
-                    playingCardModel: card,
-                        width: cardWidth,
-                    isSelected: selected || celebrating,
+                      isSelected: selected || celebrating,
+                    ),
                   ),
                 ),
               ),
