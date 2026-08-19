@@ -30,7 +30,7 @@ class RummyState {
 
     final contract = RummyContract.fromJson(contractRaw);
 
-    Map<String, List<String>> _mapList(dynamic raw) {
+    Map<String, List<String>> mapList(dynamic raw) {
       if (raw is! Map) return {};
       return raw.map(
         (k, v) => MapEntry(
@@ -42,8 +42,8 @@ class RummyState {
 
     return RummyState(
       contract: contract,
-      boxAByPid: _mapList(m['boxAByPid']),
-      boxBByPid: _mapList(m['boxBByPid']),
+      boxAByPid: mapList(m['boxAByPid']),
+      boxBByPid: mapList(m['boxBByPid']),
     );
   }
 }

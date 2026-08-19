@@ -1782,8 +1782,9 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (pending?.buildPreview != null) {
       final t = pending!.target;
       if (cardId != null && t.card?.id == cardId) return pending.buildPreview;
-      if (stackId != null && t.stack?.id == stackId)
+      if (stackId != null && t.stack?.id == stackId) {
         return pending.buildPreview;
+      }
     }
     return null;
   }

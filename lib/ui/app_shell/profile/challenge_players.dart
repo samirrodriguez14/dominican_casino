@@ -53,7 +53,7 @@ class ChallengePlayersSection extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               itemCount: 8,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 return _ChallengePlayerTile(
                   playerName: "Player ${index + 1}",

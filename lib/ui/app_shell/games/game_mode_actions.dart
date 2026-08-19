@@ -55,12 +55,11 @@ void showJoinGameDialog(BuildContext context, String mode) {
         ),
         actions: [
           CupertinoDialogAction(
-            child: Text(l10n.cancel),
             onPressed: SoundService.wrapTap(() => Navigator.pop(context)),
+            child: Text(l10n.cancel),
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
-            child: Text(l10n.join, style: AppStyle.theme.title),
             onPressed: SoundService.wrapTap(() {
               final gameId = controller.text.trim();
               Navigator.pop(context);
@@ -68,6 +67,7 @@ void showJoinGameDialog(BuildContext context, String mode) {
                 context.go(GameRoutes.game(gameId: gameId, gameMode: mode));
               }
             }),
+            child: Text(l10n.join, style: AppStyle.theme.title),
           ),
         ],
       );

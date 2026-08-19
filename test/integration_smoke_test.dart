@@ -7,7 +7,7 @@ void main() {
     final result = GameRoutes.parseInvite(uri);
     expect(result, isNotNull);
     expect(result!.gameId, 'ABCD');
-    expect(result!.gameMode, 'casino');
+    expect(result.gameMode, 'casino');
   });
 
   test('GameRoutes.game includes tutorial flag segment', () {

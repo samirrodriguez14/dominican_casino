@@ -210,7 +210,7 @@ class _PreviewMiniIcon extends StatelessWidget {
       child: Image.asset(
         imagePath,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) =>
+        errorBuilder: (_, _, _) =>
             Icon(CupertinoIcons.app_fill, color: theme.turnHighlight, size: 28),
       ),
     );

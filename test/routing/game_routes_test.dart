@@ -22,7 +22,7 @@ void main() {
       final result = GameRoutes.parseNotificationData(data);
       expect(result, isNotNull);
       expect(result!.gameId, 'ABCD');
-      expect(result!.gameMode, 'casinoSpeed');
+      expect(result.gameMode, 'casinoSpeed');
     });
 
     test('returns null for invalid game id', () {
@@ -43,7 +43,7 @@ void main() {
       final result = GameRoutes.parseNotificationData(data);
       expect(result, isNotNull);
       expect(result!.gameId, 'ABCD');
-      expect(result!.gameMode, 'casino');
+      expect(result.gameMode, 'casino');
     });
   });
 }

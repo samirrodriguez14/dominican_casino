@@ -1,10 +1,6 @@
-import 'package:dominican_casino/game_control/game_engine/general_handlers/game_action_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/rummy/rummy_contract.dart';
 import 'package:dominican_casino/game_control/game_engine/rummy/rummy_matcher.dart';
 import 'package:dominican_casino/game_control/game_engine/rummy/rummy_state.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_requirement.dart';
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
@@ -58,7 +54,10 @@ class RummyGameStateHandler {
 
     final allById = {for (final c in hand) c.id: c};
 
-    List<PlayingCardModel> buildGroup(String pid, Map<String, List<String>> map) {
+    List<PlayingCardModel> buildGroup(
+      String pid,
+      Map<String, List<String>> map,
+    ) {
       final ids = map[pid] ?? const [];
       final out = <PlayingCardModel>[];
       for (final id in ids) {
@@ -95,10 +94,8 @@ class RummyGameStateHandler {
     gameState.round.nextAcknowledged = false;
     gameState.winnerId = performedBy;
     gameState.gameStatus = GameStatus.gameOver;
-    gameState.scores[performedBy] =
-        (gameState.scores[performedBy] ?? 0) + 1;
+    gameState.scores[performedBy] = (gameState.scores[performedBy] ?? 0) + 1;
     // No next round for Rummy (single go-out contract).
     return gameState;
   }
 }
-

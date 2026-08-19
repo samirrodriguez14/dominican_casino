@@ -26,8 +26,8 @@ class InstructionsScreen extends StatelessWidget {
         middle: const Text("Instructions"),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
-          child: const Icon(CupertinoIcons.back),
           onPressed: SoundService.wrapTap(() => context.go('/home')),
+          child: const Icon(CupertinoIcons.back),
         ),
       ),
       child: SafeArea(

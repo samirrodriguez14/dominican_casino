@@ -297,8 +297,9 @@ class RummyPlayer {
     final values = <int>{};
     for (final c in suited) {
       final r = c.rank.trim().toUpperCase();
-      if (r == 'A') values.add(aceHigh ? 14 : 1);
-      else if (r == 'J') values.add(11);
+      if (r == 'A') {
+        values.add(aceHigh ? 14 : 1);
+      } else if (r == 'J') values.add(11);
       else if (r == 'Q') values.add(12);
       else if (r == 'K') values.add(13);
       else {

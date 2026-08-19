@@ -17,24 +17,20 @@ enum DropTargetKind {
 
 /// What the player is dragging.
 class BoardDragSource {
-  const BoardDragSource.hand(PlayingCardModel card)
+  const BoardDragSource.hand(PlayingCardModel this.card)
     : kind = BoardDragKind.handCard,
-      card = card,
       stack = null;
 
-  const BoardDragSource.tableCard(PlayingCardModel card)
+  const BoardDragSource.tableCard(PlayingCardModel this.card)
     : kind = BoardDragKind.tableCard,
-      card = card,
       stack = null;
 
-  const BoardDragSource.tableStack(PlayingAreaStackModel stack)
+  const BoardDragSource.tableStack(PlayingAreaStackModel this.stack)
     : kind = BoardDragKind.tableStack,
-      card = null,
-      stack = stack;
+      card = null;
 
-  const BoardDragSource.deck(PlayingCardModel card)
+  const BoardDragSource.deck(PlayingCardModel this.card)
     : kind = BoardDragKind.deckCard,
-      card = card,
       stack = null;
 
   final BoardDragKind kind;
@@ -62,15 +58,13 @@ class DropTarget {
       card = null,
       stack = null;
 
-  const DropTarget.tableCard(PlayingCardModel card)
+  const DropTarget.tableCard(PlayingCardModel this.card)
     : kind = DropTargetKind.tableCard,
-      card = card,
       stack = null;
 
-  const DropTarget.tableStack(PlayingAreaStackModel stack)
+  const DropTarget.tableStack(PlayingAreaStackModel this.stack)
     : kind = DropTargetKind.tableStack,
-      card = null,
-      stack = stack;
+      card = null;
 
   const DropTarget.playerHand()
     : kind = DropTargetKind.playerHand,

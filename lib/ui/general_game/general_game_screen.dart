@@ -587,7 +587,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         cardIds = {usedCard.id, targetCard.id};
         if (vm.gameState.gameMode == GameMode.tresydos) {
           final takeFrom = fromZone == ZoneType.table ? 'pile' : 'deck';
-          final message = 'Hint: take from the ${takeFrom}.';
+          final message = 'Hint: take from the $takeFrom.';
 
           return (
             message: message,
@@ -710,10 +710,10 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                 CupertinoActivityIndicator(),
                 Text("taking too long?"),
                 CupertinoButton(
-                  child: Text("Home"),
                   onPressed: SoundService.wrapTap(() {
                     context.go('/landing');
                   }),
+                  child: Text("Home"),
                 ),
               ],
             ),
