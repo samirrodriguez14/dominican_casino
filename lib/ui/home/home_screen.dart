@@ -137,6 +137,12 @@ class HomeScreenState extends State<HomeScreen> {
         return;
       }
       suggested = result.suggestedName?.trim();
+      if (suggested != null && suggested.isNotEmpty) {
+        await vm.updatePlayerName(suggested);
+        if (!mounted) return;
+        context.go('/landing');
+        return;
+      }
       needsName = true;
     } finally {
       if (mounted) setState(() => _entering = false);

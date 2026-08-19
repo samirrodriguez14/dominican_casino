@@ -10,6 +10,8 @@ import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
+import 'package:dominican_casino/repositories/account_display_name.dart';
+import 'package:dominican_casino/repositories/apple_account_deletion.dart';
 import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/services/notifications_service.dart';
@@ -145,8 +147,6 @@ class AppRepo extends ChangeNotifier {
   static const _ownedPacksKey = 'ownedPacks';
 
   static const _appleProviderId = 'apple.com';
-
-  String? _lastAppleAuthorizationCode;
 
   bool get isGoogleLinked {
     final user = FirebaseAuth.instance.currentUser;
@@ -1305,18 +1305,15 @@ class AppRepo extends ChangeNotifier {
         return const GoogleAuthResult.failed('missing-id-token');
       }
 
-      _lastAppleAuthorizationCode = appleCredential.authorizationCode;
-
       final oauthCredential = OAuthProvider(_appleProviderId).credential(
         idToken: idToken,
         accessToken: appleCredential.authorizationCode,
       );
 
-      final given = appleCredential.givenName?.trim();
-      final family = appleCredential.familyName?.trim();
-      final appleName = (given != null && given.isNotEmpty)
-          ? given
-          : ((family != null && family.isNotEmpty) ? family : null);
+      final appleName = appleFullName(
+        givenName: appleCredential.givenName,
+        familyName: appleCredential.familyName,
+      );
 
       return await _linkOrSignIn(current, oauthCredential, appleName);
     } on SignInWithAppleAuthorizationException catch (e) {
@@ -1431,6 +1428,9 @@ class AppRepo extends ChangeNotifier {
   }) async {
     if (user == null) return const GoogleAuthResult.failed('unknown');
     final suggested = _displayNameFromGoogle(user, googleName);
+    if (suggested != null) {
+      await _rememberAuthDisplayName(user, suggested);
+    }
     final previousUid = player?.id ?? _walletUid;
 
     Map<String, dynamic>? remote;
@@ -1572,11 +1572,29 @@ class AppRepo extends ChangeNotifier {
   }
 
   String? _displayNameFromAuth(User user, [String? fallback]) {
-    final raw = (user.displayName ?? fallback)?.trim();
-    if (raw == null || raw.isEmpty) return null;
-    final first = raw.split(RegExp(r'\s+')).first;
-    if (first.isEmpty) return null;
-    return first.length <= 10 ? first : first.substring(0, 10);
+    return playerDisplayName(
+      authDisplayName: user.displayName,
+      providerDisplayName: _providerDisplayName(user),
+      fallback: fallback,
+    );
+  }
+
+  String? _providerDisplayName(User user) {
+    for (final info in user.providerData) {
+      final name = info.displayName?.trim();
+      if (name != null && name.isNotEmpty) return name;
+    }
+    return null;
+  }
+
+  Future<void> _rememberAuthDisplayName(User user, String name) async {
+    final current = user.displayName?.trim();
+    if (current != null && current.isNotEmpty) return;
+    try {
+      await user.updateDisplayName(name);
+    } catch (e) {
+      developer.log('AppRepo.updateDisplayName: $e');
+    }
   }
 
   String? _displayNameFromGoogle(User user, [String? fallback]) =>
@@ -2072,13 +2090,23 @@ class AppRepo extends ChangeNotifier {
   }
 
   /// Permanently delete the signed-in account and all of its cloud data.
-  Future<DeleteAccountResult> deleteAccount() async {
+  ///
+  /// For Apple accounts this presents Sign in with Apple first so the loader
+  /// passed to [onBusy] is not shown over that sheet.
+  Future<DeleteAccountResult> deleteAccount({VoidCallback? onBusy}) async {
     try {
-      final appleLinked = isAppleLinked;
+      String? appleAuthorizationCode;
+      if (isAppleLinked) {
+        appleAuthorizationCode = await _reauthenticateAppleForDeletion();
+        if (appleAuthorizationCode == null) {
+          return DeleteAccountResult.canceled;
+        }
+      }
+      onBusy?.call();
       await _endAuthSession(
         keepCloud: false,
         deleteAuthUser: isLinkedAccount,
-        revokeAppleToken: appleLinked,
+        appleAuthorizationCode: appleAuthorizationCode,
       );
       return DeleteAccountResult.success;
     } on StateError catch (e) {
@@ -2098,7 +2126,7 @@ class AppRepo extends ChangeNotifier {
   Future<void> _endAuthSession({
     required bool keepCloud,
     bool deleteAuthUser = false,
-    bool revokeAppleToken = false,
+    String? appleAuthorizationCode,
   }) async {
     final uid = player?.id ?? FirebaseAuth.instance.currentUser?.uid;
     final walletUid = _walletUid ?? uid;
@@ -2134,21 +2162,22 @@ class AppRepo extends ChangeNotifier {
 
     if (deleteAuthUser) {
       final user = FirebaseAuth.instance.currentUser;
-      final appleLinked = user != null && _isAppleLinked(user);
-      try {
-        await user?.delete();
-      } on FirebaseAuthException catch (e) {
-        if (e.code != 'requires-recent-login') rethrow;
-        final reauthed = await _reauthenticateLinked();
-        if (!reauthed) {
-          _walletPersistPaused = false;
-          _ensureEnergyTicker();
-          throw StateError('delete-canceled');
-        }
-        await FirebaseAuth.instance.currentUser?.delete();
-      }
-      if (revokeAppleToken && appleLinked) {
-        await _revokeAppleTokenIfPossible();
+      final code = appleAuthorizationCode;
+      if (code != null && code.isNotEmpty) {
+        await revokeAppleTokenThenDeleteUser(
+          revokeToken: () =>
+              FirebaseAuth.instance.revokeTokenWithAuthorizationCode(code),
+          deleteUser: () => _deleteAuthUser(user, allowReauth: false),
+          onRevokeError: (e, st) {
+            developer.log(
+              'AppRepo.revokeAppleToken: $e',
+              error: e,
+              stackTrace: st,
+            );
+          },
+        );
+      } else {
+        await _deleteAuthUser(user, allowReauth: true);
       }
     }
 
@@ -2167,86 +2196,59 @@ class AppRepo extends ChangeNotifier {
     await loadApp();
   }
 
+  Future<void> _deleteAuthUser(User? user, {required bool allowReauth}) async {
+    try {
+      await user?.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code != 'requires-recent-login') rethrow;
+      if (!allowReauth) rethrow;
+      final reauthed = await _reauthenticateLinked();
+      if (!reauthed) {
+        _walletPersistPaused = false;
+        _ensureEnergyTicker();
+        throw StateError('delete-canceled');
+      }
+      await FirebaseAuth.instance.currentUser?.delete();
+    }
+  }
+
   Future<bool> _reauthenticateLinked() async {
     final current = FirebaseAuth.instance.currentUser;
     if (current == null) return false;
-    if (_isAppleLinked(current)) return _reauthenticateApple();
+    if (_isAppleLinked(current)) {
+      return await _reauthenticateAppleForDeletion() != null;
+    }
     if (_isGoogleLinked(current)) return _reauthenticateGoogle();
     return false;
   }
 
-  Future<bool> _reauthenticateApple() async {
-    try {
-      if (kIsWeb ||
-          (defaultTargetPlatform != TargetPlatform.iOS &&
-              defaultTargetPlatform != TargetPlatform.macOS)) {
-        return false;
-      }
-      final current = FirebaseAuth.instance.currentUser;
-      if (current == null) return false;
-      final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: const [AppleIDAuthorizationScopes.email],
-      );
-      final idToken = appleCredential.identityToken;
-      if (idToken == null || idToken.isEmpty) return false;
-      _lastAppleAuthorizationCode = appleCredential.authorizationCode;
-      await current.reauthenticateWithCredential(
-        OAuthProvider(_appleProviderId).credential(
-          idToken: idToken,
-          accessToken: appleCredential.authorizationCode,
-        ),
-      );
-      return true;
-    } on SignInWithAppleAuthorizationException catch (e) {
-      if (e.code == AuthorizationErrorCode.canceled) return false;
-      developer.log('AppRepo.reauthenticateApple Apple: ${e.code}');
-      return false;
-    } on FirebaseAuthException catch (e) {
-      if (_isAuthCanceled(e.code)) return false;
-      developer.log('AppRepo.reauthenticateApple Auth: ${e.code}', error: e);
-      return false;
-    } catch (e, st) {
-      developer.log(
-        'AppRepo.reauthenticateApple: $e',
-        error: e,
-        stackTrace: st,
-      );
-      return false;
-    }
-  }
-
-  Future<void> _revokeAppleTokenIfPossible() async {
-    var code = _lastAppleAuthorizationCode;
-    if (code == null || code.isEmpty) {
-      code = await _appleAuthorizationCodeForRevoke();
-    }
-    if (code == null || code.isEmpty) return;
-    try {
-      await FirebaseAuth.instance.revokeTokenWithAuthorizationCode(code);
-    } catch (e, st) {
-      developer.log(
-        'AppRepo.revokeAppleToken: $e',
-        error: e,
-        stackTrace: st,
-      );
-    } finally {
-      _lastAppleAuthorizationCode = null;
-    }
-  }
-
-  Future<String?> _appleAuthorizationCodeForRevoke() async {
+  /// Fresh Apple Sign In for deletion. Uses the id token for reauth and
+  /// returns the unused authorization code so Apple's token can be revoked.
+  Future<String?> _reauthenticateAppleForDeletion() async {
     try {
       if (kIsWeb ||
           (defaultTargetPlatform != TargetPlatform.iOS &&
               defaultTargetPlatform != TargetPlatform.macOS)) {
         return null;
       }
+      final current = FirebaseAuth.instance.currentUser;
+      if (current == null) return null;
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: const [AppleIDAuthorizationScopes.email],
+      );
+      final idToken = appleCredential.identityToken;
+      if (idToken == null || idToken.isEmpty) return null;
+      await current.reauthenticateWithCredential(
+        OAuthProvider(_appleProviderId).credential(idToken: idToken),
       );
       return appleCredential.authorizationCode;
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) return null;
+      developer.log('AppRepo.reauthenticateApple Apple: ${e.code}');
+      rethrow;
+    } on FirebaseAuthException catch (e) {
+      if (_isAuthCanceled(e.code)) return null;
+      developer.log('AppRepo.reauthenticateApple Auth: ${e.code}', error: e);
       rethrow;
     }
   }

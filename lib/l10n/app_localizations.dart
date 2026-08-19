@@ -348,6 +348,9 @@ class AppLocalizations {
   String get deleteAccountBody => isEs
       ? 'Esto elimina tu cuenta de forma permanente. Si solo quieres borrar los datos de este dispositivo, cierra sesión.'
       : 'This permanently deletes your account. To only clear this device, log out instead.';
+  String get deleteAccountAppleBody => isEs
+      ? 'Esto elimina tu cuenta de forma permanente y desconecta Iniciar sesión con Apple. Apple te pedirá confirmar: así se quita la app de tu Apple ID.'
+      : 'This permanently deletes your account and disconnects Sign in with Apple. Apple will ask you to confirm — that\'s how the app is removed from your Apple ID.';
   String get deleteLocalData => isEs ? 'Eliminar datos' : 'Delete data';
   String get deleteLocalDataBody => isEs
       ? 'Se borrarán los datos de este dispositivo y no se podrán recuperar.'

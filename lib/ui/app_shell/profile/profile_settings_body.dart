@@ -311,12 +311,17 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
   ) async {
     if (_deleting) return;
     final linked = appRepo.isLinkedAccount;
+    final appleLinked = appRepo.isAppleLinked;
     final go = await showCupertinoDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: Text(linked ? l10n.deleteAccount : l10n.deleteLocalData),
         content: Text(
-          linked ? l10n.deleteAccountBody : l10n.deleteLocalDataBody,
+          appleLinked
+              ? l10n.deleteAccountAppleBody
+              : linked
+              ? l10n.deleteAccountBody
+              : l10n.deleteLocalDataBody,
         ),
         actions: [
           CupertinoDialogAction(
@@ -335,52 +340,61 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
 
     setState(() => _deleting = true);
     final shown = Completer<BuildContext>();
-    unawaited(
-      showCupertinoDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        useRootNavigator: true,
-        builder: (ctx) {
-          if (!shown.isCompleted) shown.complete(ctx);
-          return PopScope(
-            canPop: false,
-            child: CupertinoAlertDialog(
-              content: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CupertinoActivityIndicator(),
-                    const SizedBox(height: 12),
-                    Text(
-                      linked ? l10n.deletingAccount : l10n.deletingLocalData,
-                    ),
-                  ],
+    var loaderRequested = false;
+
+    void showDeletingLoader() {
+      if (loaderRequested) return;
+      loaderRequested = true;
+      unawaited(
+        showCupertinoDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          useRootNavigator: true,
+          builder: (ctx) {
+            if (!shown.isCompleted) shown.complete(ctx);
+            return PopScope(
+              canPop: false,
+              child: CupertinoAlertDialog(
+                content: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CupertinoActivityIndicator(),
+                      const SizedBox(height: 12),
+                      Text(
+                        linked ? l10n.deletingAccount : l10n.deletingLocalData,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        },
-      ),
-    );
-    final dialogContext = await shown.future;
+            );
+          },
+        ),
+      );
+    }
 
     var failed = false;
     var canceled = false;
     try {
       if (linked) {
-        final result = await appRepo.deleteAccount();
+        final result = await appRepo.deleteAccount(onBusy: showDeletingLoader);
         canceled = result == DeleteAccountResult.canceled;
         failed = result == DeleteAccountResult.failed;
       } else {
+        showDeletingLoader();
         await appRepo.deleteLocalAccount();
       }
     } catch (_) {
       failed = true;
     }
 
-    if (dialogContext.mounted) {
-      Navigator.of(dialogContext).pop();
+    if (loaderRequested) {
+      final dialogContext = await shown.future;
+      if (dialogContext.mounted) {
+        Navigator.of(dialogContext).pop();
+      }
     }
     if (!context.mounted) return;
     setState(() => _deleting = false);
