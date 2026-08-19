@@ -384,6 +384,7 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
                 builder: (_, _) {
                   final peekOut = _extraPeekOut(deckCount);
                   final stackH = cardHeight + rise + peekOut;
+                  final pileBottom = peekOut;
                   return SizedBox(
                     width: cardWidth,
                     height: stackH,
@@ -428,16 +429,20 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
                                 deckCount: deckCount,
                                 cardWidth: cardWidth,
                                 face: _extraFaces[i],
-                                faceBottom: rise,
+                                pileBottom: pileBottom,
                               ),
                         if (deckCount == 0)
-                          SizedBox(
-                            width: cardWidth,
-                            height: cardHeight,
-                            child: Icon(
-                              CupertinoIcons.minus_circle_fill,
-                              color: AppStyle.theme.muted.withValues(
-                                alpha: .45,
+                          Positioned(
+                            left: 0,
+                            bottom: pileBottom,
+                            child: SizedBox(
+                              width: cardWidth,
+                              height: cardHeight,
+                              child: Icon(
+                                CupertinoIcons.minus_circle_fill,
+                                color: AppStyle.theme.muted.withValues(
+                                  alpha: .45,
+                                ),
                               ),
                             ),
                           )
@@ -447,7 +452,7 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
                               left: 0,
                               // First card sits on the bottom of the pile.
                               // Each next card is on top of it, moved up.
-                              bottom: CardDeck.stackOffsetY(i),
+                              bottom: pileBottom + CardDeck.stackOffsetY(i),
                               child: (!widget.back)
                                   ? PlayingCard(
                                       width: cardWidth,
@@ -464,7 +469,7 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
                           Positioned(
                             left: 0,
                             right: 0,
-                            bottom: rise + cardHeight * 0.28,
+                            bottom: pileBottom + rise + cardHeight * 0.28,
                             child: Center(
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
@@ -495,7 +500,7 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
                             _lastTake.value > 0.001)
                           Positioned(
                             left: 0,
-                            bottom: rise,
+                            bottom: pileBottom + rise,
                             child: _buildLastTakeFan(cardWidth, cardHeight),
                           ),
                       ],
@@ -573,14 +578,14 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
     required int deckCount,
     required double cardWidth,
     required PlayingCardModel face,
-    required double faceBottom,
+    required double pileBottom,
   }) {
     final peek = _peekHeight(index, deckCount, _shownExtra);
     final t = _extraT(index);
 
     return Positioned(
       left: 1,
-      bottom: faceBottom + peek * t,
+      bottom: pileBottom - peek * t,
       child: PlayingCard(
         playingCardModel: face,
         isSelected: false,
