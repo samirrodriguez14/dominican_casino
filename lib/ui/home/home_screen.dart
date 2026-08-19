@@ -9,6 +9,7 @@ import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/home/home_login_card.dart';
 import 'package:dominican_casino/ui/home/home_settings_card.dart';
 import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
+import 'package:dominican_casino/ui/widgets/apple_mark.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:dominican_casino/view_models/home_view_model.dart';
@@ -107,16 +108,27 @@ class HomeScreenState extends State<HomeScreen> {
     if (_entering) return;
     final confirmed = await confirmConnectGoogle(context);
     if (!confirmed || !mounted) return;
+    await _finishLink(context.read<HomeViewModel>().linkGoogle);
+  }
+
+  Future<void> _onApple() async {
+    if (_entering) return;
+    final confirmed = await confirmConnectApple(context);
+    if (!confirmed || !mounted) return;
+    await _finishLink(context.read<HomeViewModel>().linkApple);
+  }
+
+  Future<void> _finishLink(Future<GoogleAuthResult> Function() link) async {
     setState(() => _entering = true);
     var needsName = false;
     String? suggested;
     try {
       final vm = context.read<HomeViewModel>();
-      final result = await vm.linkGoogle();
+      final result = await link();
       if (!mounted) return;
       if (result.status == GoogleAuthStatus.canceled) return;
       if (result.status == GoogleAuthStatus.failed) {
-        await _showGoogleError(result.errorCode);
+        await showLinkAccountError(context, result.errorCode);
         return;
       }
       final player = vm.player;
@@ -135,24 +147,6 @@ class HomeScreenState extends State<HomeScreen> {
     );
     if (!mounted || name == null || name.isEmpty) return;
     await _saveNameAndEnter(name);
-  }
-
-  Future<void> _showGoogleError(String? code) async {
-    final l10n = AppLocalizations.of(context);
-    await showCupertinoDialog<void>(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(l10n.google),
-        content: Text(l10n.googleSignInError(code)),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
-            child: Text(l10n.back),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _startTutorial() async {
@@ -240,7 +234,7 @@ class HomeScreenState extends State<HomeScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         const bylineReserve = 36.0;
-        const buttonsHeight = 44.0;
+        final buttonsHeight = appleSignInAvailable ? 96.0 : 44.0;
         final stageH = homeCarouselStageHeight(constraints);
         final gapBelow = ((constraints.maxHeight - stageH) / 2).clamp(
           0.0,
@@ -286,23 +280,46 @@ class HomeScreenState extends State<HomeScreen> {
                   constraints: const BoxConstraints(
                     maxWidth: homeCarouselMaxWidth,
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: HomeAuthPill(
-                          label: l10n.guest,
-                          icon: CupertinoIcons.person,
-                          onPressed: _entering ? null : _onGuest,
-                        ),
+                      HomeAuthPill(
+                        label: l10n.guest,
+                        icon: CupertinoIcons.person,
+                        onPressed: _entering ? null : _onGuest,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: HomeAuthPill(
-                          label: l10n.google,
-                          leading: const GoogleGMark(size: 15),
-                          onPressed: _entering ? null : _onGoogle,
+                      if (appleSignInAvailable) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: HomeAuthPill(
+                                label: l10n.google,
+                                leading: const GoogleGMark(size: 15),
+                                onPressed: _entering ? null : _onGoogle,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: HomeAuthPill(
+                                label: l10n.apple,
+                                leading: const AppleMark(size: 15),
+                                onPressed: _entering ? null : _onApple,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                      ] else
+                        Row(
+                          children: [
+                            Expanded(
+                              child: HomeAuthPill(
+                                label: l10n.google,
+                                leading: const GoogleGMark(size: 15),
+                                onPressed: _entering ? null : _onGoogle,
+                              ),
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),

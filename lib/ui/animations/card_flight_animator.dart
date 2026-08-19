@@ -13,13 +13,14 @@ import 'package:flutter/cupertino.dart';
 class CardFlightAnimator {
   static Future<void> flyAll({
     required FlightLayerController layer,
-    required TickerProvider vsync,
+    required FlightTickerBag tickers,
     required List<CardFlightRequest> flights,
     VoidCallback? onLanded,
     VoidCallback? onLaunched,
     Duration perCard = const Duration(milliseconds: 400),
     Duration stagger = const Duration(milliseconds: 55),
   }) async {
+    if (tickers.isCancelled) return;
     if (flights.isEmpty) {
       onLaunched?.call();
       return;
@@ -36,7 +37,7 @@ class CardFlightAnimator {
         begin ??= layer.centerOf(flight.fromKey);
         if (begin == null) continue;
 
-        final controller = AnimationController(vsync: vsync, duration: perCard);
+        final controller = tickers.create(duration: perCard);
         final entry = _FlightEntry(
           flight: flight,
           layer: layer,
@@ -65,6 +66,7 @@ class CardFlightAnimator {
       // One frame so new slots exist; then move immediately and chase the
       // live destination so table reflow and the flyer stay in sync.
       await WidgetsBinding.instance.endOfFrame;
+      if (tickers.isCancelled) return;
       for (final entry in entries) {
         entry.syncDestination();
       }
@@ -75,6 +77,7 @@ class CardFlightAnimator {
         final entry = entries[i];
         futures.add(
           Future<void>.delayed(stagger * i).then((_) async {
+            if (tickers.isCancelled) return;
             final toDeck = entry.flight.to.type == ZoneType.playerDeck;
             if (entry.flight.hapticOnLaunch) {
               if (toDeck) {
@@ -90,11 +93,16 @@ class CardFlightAnimator {
               );
               cardTicks++;
             }
-            await entry.controller.forward();
+            await entry.controller.forward().orCancel;
           }),
         );
       }
-      await Future.wait(futures);
+      try {
+        await Future.wait(futures);
+      } on TickerCanceled {
+        return;
+      }
+      if (tickers.isCancelled) return;
 
       onLanded?.call();
       await WidgetsBinding.instance.endOfFrame;
@@ -104,7 +112,7 @@ class CardFlightAnimator {
           if (e.sprite != null) e.sprite!,
       ]);
       for (final entry in entries) {
-        entry.controller.dispose();
+        tickers.release(entry.controller);
       }
     }
   }

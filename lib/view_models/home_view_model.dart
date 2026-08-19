@@ -39,4 +39,10 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
     return result;
   }
+
+  Future<GoogleAuthResult> linkApple() async {
+    final result = await _appRepo.linkAppleAccount();
+    notifyListeners();
+    return result;
+  }
 }

@@ -6,6 +6,7 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/currency_burst.dart';
 import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
+import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_bundle_card.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_catalog.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_theme_card.dart';
@@ -271,8 +272,8 @@ Future<void> _claimDailyChallenge(
   Offset? origin,
 ) async {
   var repo = context.read<AppRepo>();
-  if (!repo.isGoogleLinked) {
-    final linked = await _ensureGoogleForDailyReward(context);
+  if (!repo.isLinkedAccount) {
+    final linked = await _ensureLinkedForDailyReward(context);
     if (!linked || !context.mounted) return;
     repo = context.read<AppRepo>();
   }
@@ -298,8 +299,8 @@ Future<void> _claimDailyChallenge(
 
 Future<void> _claimDailyReward(BuildContext context, Offset? origin) async {
   var repo = context.read<AppRepo>();
-  if (!repo.isGoogleLinked) {
-    final linked = await _ensureGoogleForDailyReward(context);
+  if (!repo.isLinkedAccount) {
+    final linked = await _ensureLinkedForDailyReward(context);
     if (!linked || !context.mounted) return;
     repo = context.read<AppRepo>();
   }
@@ -320,56 +321,13 @@ Future<void> _claimDailyReward(BuildContext context, Offset? origin) async {
   }
 }
 
-Future<bool> _ensureGoogleForDailyReward(BuildContext context) async {
-  final repo = context.read<AppRepo>();
-  if (repo.isGoogleLinked) return true;
+Future<bool> _ensureLinkedForDailyReward(BuildContext context) {
   final l10n = AppLocalizations.of(context);
-  final connect = await showCupertinoDialog<bool>(
-    context: context,
-    builder: (ctx) => CupertinoAlertDialog(
-      title: Text(l10n.googleRequiredForDailyTitle),
-      content: Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Text(
-          '${l10n.googleRequiredForDailyBody}\n\n${l10n.connectGoogleWarning}',
-        ),
-      ),
-      actions: [
-        CupertinoDialogAction(
-          onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
-          child: Text(l10n.cancel),
-        ),
-        CupertinoDialogAction(
-          isDefaultAction: true,
-          onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
-          child: Text(l10n.connectGoogle),
-        ),
-      ],
-    ),
+  return ensureLinkedAccount(
+    context,
+    title: l10n.googleRequiredForDailyTitle,
+    body: l10n.googleRequiredForDailyBody,
   );
-  if (connect != true || !context.mounted) return false;
-
-  final result = await repo.linkGoogleAccount();
-  if (!context.mounted) return false;
-  if (result.status == GoogleAuthStatus.canceled) return false;
-  if (result.status == GoogleAuthStatus.failed) {
-    await showCupertinoDialog<void>(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(l10n.google),
-        content: Text(l10n.googleSignInError(result.errorCode)),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
-            child: Text(l10n.back),
-          ),
-        ],
-      ),
-    );
-    return false;
-  }
-  return repo.isGoogleLinked;
 }
 
 class _BundleGrid extends StatelessWidget {

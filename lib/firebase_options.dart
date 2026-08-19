@@ -61,11 +61,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDYylFD_Vl8q60bRPO_6r0vAjX_EV02w8g',
-    appId: '1:932020449632:ios:316853b7dc8a39fdc9ee05',
+    appId: '1:932020449632:ios:93523b9132363a72c9ee05',
     messagingSenderId: '932020449632',
     projectId: 'dominican-casino',
     storageBucket: 'dominican-casino.firebasestorage.app',
-    iosClientId: '932020449632-pdpqg0pmdj5mr46of60vcqijitqq45gv.apps.googleusercontent.com',
-    iosBundleId: 'com.example.dominicanCasino',
+    iosClientId:
+        '932020449632-hkq967iebi5413bfr275l3es99n03oj8.apps.googleusercontent.com',
+    iosBundleId: 'com.sr2.dominicanCasino',
   );
 }

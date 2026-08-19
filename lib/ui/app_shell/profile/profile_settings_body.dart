@@ -8,6 +8,7 @@ import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/settings/legal_links.dart';
 import 'package:dominican_casino/ui/settings/settings_controls.dart';
 import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
+import 'package:dominican_casino/ui/widgets/apple_mark.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
@@ -151,7 +152,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                                     ),
                                   )
                                 : Text(
-                                    appRepo.isGoogleLinked
+                                    appRepo.isLinkedAccount
                                         ? l10n.deleteAccount
                                         : l10n.deleteLocalData,
                                     style: const TextStyle(
@@ -169,10 +170,12 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
               ),
               const SizedBox(height: 8),
               _AccountActions(
-                linked: appRepo.isGoogleLinked,
-                email: appRepo.googleEmail,
+                googleLinked: appRepo.isGoogleLinked,
+                appleLinked: appRepo.isAppleLinked,
+                email: appRepo.linkedEmail,
                 deleting: _deleting,
-                onConnect: () => _connectGoogle(context, appRepo, l10n),
+                onConnectGoogle: () => _connectGoogle(context, appRepo, l10n),
+                onConnectApple: () => _connectApple(context, appRepo, l10n),
                 onLogOut: () => _confirmLogOut(context, appRepo, l10n),
               ),
               const SizedBox(height: 12),
@@ -266,20 +269,30 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     if (!context.mounted) return;
     if (result.status == GoogleAuthStatus.canceled) return;
     if (result.status == GoogleAuthStatus.failed) {
-      await showCupertinoDialog<void>(
-        context: context,
-        builder: (ctx) => CupertinoAlertDialog(
-          title: Text(l10n.google),
-          content: Text(l10n.googleSignInError(result.errorCode)),
-          actions: [
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
-              child: Text(l10n.back),
-            ),
-          ],
-        ),
-      );
+      await showLinkAccountError(context, result.errorCode);
+      return;
+    }
+    final suggested = result.suggestedName?.trim();
+    final player = appRepo.player;
+    if (suggested != null &&
+        suggested.isNotEmpty &&
+        (player?.needsAccountSetup ?? true)) {
+      await appRepo.updatePlayer(suggested);
+    }
+  }
+
+  Future<void> _connectApple(
+    BuildContext context,
+    AppRepo appRepo,
+    AppLocalizations l10n,
+  ) async {
+    final confirmed = await confirmConnectApple(context);
+    if (!confirmed || !context.mounted) return;
+    final result = await appRepo.linkAppleAccount();
+    if (!context.mounted) return;
+    if (result.status == GoogleAuthStatus.canceled) return;
+    if (result.status == GoogleAuthStatus.failed) {
+      await showLinkAccountError(context, result.errorCode);
       return;
     }
     final suggested = result.suggestedName?.trim();
@@ -297,7 +310,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     AppLocalizations l10n,
   ) async {
     if (_deleting) return;
-    final linked = appRepo.isGoogleLinked;
+    final linked = appRepo.isLinkedAccount;
     final go = await showCupertinoDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
@@ -424,27 +437,62 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
 
 class _AccountActions extends StatelessWidget {
   const _AccountActions({
-    required this.linked,
+    required this.googleLinked,
+    required this.appleLinked,
     required this.email,
     required this.deleting,
-    required this.onConnect,
+    required this.onConnectGoogle,
+    required this.onConnectApple,
     required this.onLogOut,
   });
 
-  final bool linked;
+  final bool googleLinked;
+  final bool appleLinked;
   final String? email;
   final bool deleting;
-  final VoidCallback onConnect;
+  final VoidCallback onConnectGoogle;
+  final VoidCallback onConnectApple;
   final VoidCallback onLogOut;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final linked = googleLinked || appleLinked;
     final address = email?.trim();
-    final googleTitle = linked ? l10n.googleConnected : l10n.connectGoogle;
-    final String? googleSubtitle = linked
-        ? ((address != null && address.isNotEmpty) ? address : l10n.google)
-        : null;
+
+    if (linked) {
+      final title = appleLinked ? l10n.appleConnected : l10n.googleConnected;
+      final leading = appleLinked
+          ? const AppleMark(size: 26)
+          : const GoogleGMark(size: 26);
+      final subtitle = (address != null && address.isNotEmpty)
+          ? address
+          : (appleLinked ? l10n.apple : l10n.google);
+
+      return Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ActionPill(
+                leading: leading,
+                value: title,
+                subtitle: subtitle,
+                semanticLabel: title,
+                onPressed: null,
+              ),
+              const SizedBox(width: 8),
+              _CircleAction(
+                icon: CupertinoIcons.square_arrow_right,
+                semanticLabel: l10n.logOut,
+                onPressed: deleting ? null : onLogOut,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Center(
       child: FittedBox(
@@ -454,19 +502,17 @@ class _AccountActions extends StatelessWidget {
           children: [
             _ActionPill(
               leading: const GoogleGMark(size: 26),
-              value: googleTitle,
-              subtitle: googleSubtitle,
-              semanticLabel: linked
-                  ? l10n.googleConnected
-                  : l10n.connectGoogle,
-              onPressed: deleting || linked ? null : onConnect,
+              value: l10n.connectGoogle,
+              semanticLabel: l10n.connectGoogle,
+              onPressed: deleting ? null : onConnectGoogle,
             ),
-            if (linked) ...[
+            if (appleSignInAvailable) ...[
               const SizedBox(width: 8),
-              _CircleAction(
-                icon: CupertinoIcons.square_arrow_right,
-                semanticLabel: l10n.logOut,
-                onPressed: deleting ? null : onLogOut,
+              _ActionPill(
+                leading: const AppleMark(size: 26),
+                value: l10n.connectApple,
+                semanticLabel: l10n.connectApple,
+                onPressed: deleting ? null : onConnectApple,
               ),
             ],
           ],

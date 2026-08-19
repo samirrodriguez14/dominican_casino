@@ -21,6 +21,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:uuid/uuid.dart';
 
 enum AppStatus { notReady, appReady, inGame, appError }
@@ -52,13 +53,13 @@ class InsufficientFundsException implements Exception {
   final bool energy;
 }
 
-enum DailyRewardClaimResult { claimed, alreadyClaimed, needsGoogle }
+enum DailyRewardClaimResult { claimed, alreadyClaimed, needsLinkedAccount }
 
 enum DailyChallengeClaimResult {
   claimed,
   alreadyClaimed,
   incomplete,
-  needsGoogle,
+  needsLinkedAccount,
 }
 
 class HomeCoinClaim {
@@ -143,19 +144,34 @@ class AppRepo extends ChangeNotifier {
   static const _cardBackTintKey = 'cardBackTint';
   static const _ownedPacksKey = 'ownedPacks';
 
+  static const _appleProviderId = 'apple.com';
+
+  String? _lastAppleAuthorizationCode;
+
   bool get isGoogleLinked {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
-    return user.providerData.any(
-      (info) => info.providerId == GoogleAuthProvider.PROVIDER_ID,
-    );
+    return _isGoogleLinked(user);
   }
 
-  String? get googleEmail {
+  bool get isAppleLinked {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    return _isAppleLinked(user);
+  }
+
+  bool get isLinkedAccount {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    return _isLinkedAccount(user);
+  }
+
+  String? get linkedEmail {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
     for (final info in user.providerData) {
-      if (info.providerId == GoogleAuthProvider.PROVIDER_ID) {
+      if (info.providerId == GoogleAuthProvider.PROVIDER_ID ||
+          info.providerId == _appleProviderId) {
         final email = info.email?.trim();
         if (email != null && email.isNotEmpty) return email;
       }
@@ -164,6 +180,9 @@ class AppRepo extends ChangeNotifier {
     if (email == null || email.isEmpty) return null;
     return email;
   }
+
+  /// @deprecated Use [linkedEmail].
+  String? get googleEmail => linkedEmail;
 
   AppRepo({required this.fs});
 
@@ -502,20 +521,20 @@ class AppRepo extends ChangeNotifier {
   }
 
   bool get isDailyRewardAvailable =>
-      isGoogleLinked &&
+      isLinkedAccount &&
       !_dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now());
 
   bool get hasClaimedDailyRewardToday =>
-      isGoogleLinked &&
+      isLinkedAccount &&
       _dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now());
 
   Duration? get dailyRewardCooldownRemaining {
-    if (!isGoogleLinked) return null;
+    if (!isLinkedAccount) return null;
     return _dailyRewardCooldownRemaining(_lastDailyClaimAt, DateTime.now());
   }
 
   Future<DailyRewardClaimResult> claimDailyReward() async {
-    if (!isGoogleLinked) return DailyRewardClaimResult.needsGoogle;
+    if (!isLinkedAccount) return DailyRewardClaimResult.needsLinkedAccount;
     if (_dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now())) {
       return DailyRewardClaimResult.alreadyClaimed;
     }
@@ -645,14 +664,14 @@ class AppRepo extends ChangeNotifier {
   }
 
   bool canClaimDailyChallenge(DailyChallengeDef def) {
-    if (!isGoogleLinked) return false;
+    if (!isLinkedAccount) return false;
     return _dailyChallenges.forDay(_localDayKey()).canClaim(def);
   }
 
   Future<DailyChallengeClaimResult> claimDailyChallenge(
     DailyChallengeId id,
   ) async {
-    if (!isGoogleLinked) return DailyChallengeClaimResult.needsGoogle;
+    if (!isLinkedAccount) return DailyChallengeClaimResult.needsLinkedAccount;
     _rollDailyChallengesIfNeeded();
     final def = dailyChallengeById(id);
     if (def == null) return DailyChallengeClaimResult.incomplete;
@@ -1256,6 +1275,68 @@ class AppRepo extends ChangeNotifier {
     }
   }
 
+  /// Attach Apple to the current anonymous uid, or sign in if that Apple
+  /// account already exists. Returns a display name to confirm.
+  Future<GoogleAuthResult> linkAppleAccount() async {
+    try {
+      await _ensureAnonymousAuth();
+      final current = FirebaseAuth.instance.currentUser;
+      if (current != null && _isAppleLinked(current)) {
+        return GoogleAuthResult.success(
+          _displayNameFromAuth(current) ?? player?.name,
+        );
+      }
+
+      if (kIsWeb ||
+          (defaultTargetPlatform != TargetPlatform.iOS &&
+              defaultTargetPlatform != TargetPlatform.macOS)) {
+        return const GoogleAuthResult.failed('unsupported');
+      }
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final idToken = appleCredential.identityToken;
+      if (idToken == null || idToken.isEmpty) {
+        return const GoogleAuthResult.failed('missing-id-token');
+      }
+
+      _lastAppleAuthorizationCode = appleCredential.authorizationCode;
+
+      final oauthCredential = OAuthProvider(_appleProviderId).credential(
+        idToken: idToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      final given = appleCredential.givenName?.trim();
+      final family = appleCredential.familyName?.trim();
+      final appleName = (given != null && given.isNotEmpty)
+          ? given
+          : ((family != null && family.isNotEmpty) ? family : null);
+
+      return await _linkOrSignIn(current, oauthCredential, appleName);
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        return const GoogleAuthResult.canceled();
+      }
+      developer.log('AppRepo.linkAppleAccount Apple: ${e.code}');
+      return GoogleAuthResult.failed(e.code.name);
+    } on FirebaseAuthException catch (e) {
+      developer.log('AppRepo.linkAppleAccount Auth: ${e.code}', error: e);
+      if (_isAuthCanceled(e.code)) {
+        return const GoogleAuthResult.canceled();
+      }
+      return GoogleAuthResult.failed(e.code);
+    } catch (e, st) {
+      developer.log('AppRepo.linkAppleAccount: $e', error: e, stackTrace: st);
+      return const GoogleAuthResult.failed('unknown');
+    }
+  }
+
   Future<GoogleAuthResult> _linkGoogleWeb(User? current) async {
     final provider = GoogleAuthProvider()
       ..addScope('email')
@@ -1303,7 +1384,7 @@ class AppRepo extends ChangeNotifier {
   ) async {
     try {
       if (current != null &&
-          (current.isAnonymous || !_isGoogleLinked(current))) {
+          (current.isAnonymous || !_isLinkedAccount(current))) {
         try {
           final cred = await current.linkWithCredential(credential);
           return await _afterGoogleUser(
@@ -1470,6 +1551,19 @@ class AppRepo extends ChangeNotifier {
     );
   }
 
+  bool _isAppleLinked(User user) {
+    return user.providerData.any(
+      (info) => info.providerId == _appleProviderId,
+    );
+  }
+
+  bool _isLinkedAccount(User user) =>
+      _isGoogleLinked(user) || _isAppleLinked(user);
+
+  bool _isAuthCanceled(String code) {
+    return _isGoogleCanceled(code);
+  }
+
   bool _isGoogleCanceled(String code) {
     return code == 'canceled' ||
         code == 'web-context-canceled' ||
@@ -1477,13 +1571,16 @@ class AppRepo extends ChangeNotifier {
         code == 'cancelled-popup-request';
   }
 
-  String? _displayNameFromGoogle(User user, [String? fallback]) {
+  String? _displayNameFromAuth(User user, [String? fallback]) {
     final raw = (user.displayName ?? fallback)?.trim();
     if (raw == null || raw.isEmpty) return null;
     final first = raw.split(RegExp(r'\s+')).first;
     if (first.isEmpty) return null;
     return first.length <= 10 ? first : first.substring(0, 10);
   }
+
+  String? _displayNameFromGoogle(User user, [String? fallback]) =>
+      _displayNameFromAuth(user, fallback);
 
   Future<Player> _fallbackLocalPlayer() async {
     final sp = await SharedPreferences.getInstance();
@@ -1977,7 +2074,12 @@ class AppRepo extends ChangeNotifier {
   /// Permanently delete the signed-in account and all of its cloud data.
   Future<DeleteAccountResult> deleteAccount() async {
     try {
-      await _endAuthSession(keepCloud: false, deleteAuthUser: isGoogleLinked);
+      final appleLinked = isAppleLinked;
+      await _endAuthSession(
+        keepCloud: false,
+        deleteAuthUser: isLinkedAccount,
+        revokeAppleToken: appleLinked,
+      );
       return DeleteAccountResult.success;
     } on StateError catch (e) {
       if (e.message == 'delete-canceled') {
@@ -1996,6 +2098,7 @@ class AppRepo extends ChangeNotifier {
   Future<void> _endAuthSession({
     required bool keepCloud,
     bool deleteAuthUser = false,
+    bool revokeAppleToken = false,
   }) async {
     final uid = player?.id ?? FirebaseAuth.instance.currentUser?.uid;
     final walletUid = _walletUid ?? uid;
@@ -2030,17 +2133,22 @@ class AppRepo extends ChangeNotifier {
     }
 
     if (deleteAuthUser) {
+      final user = FirebaseAuth.instance.currentUser;
+      final appleLinked = user != null && _isAppleLinked(user);
       try {
-        await FirebaseAuth.instance.currentUser?.delete();
+        await user?.delete();
       } on FirebaseAuthException catch (e) {
         if (e.code != 'requires-recent-login') rethrow;
-        final reauthed = await _reauthenticateGoogle();
+        final reauthed = await _reauthenticateLinked();
         if (!reauthed) {
           _walletPersistPaused = false;
           _ensureEnergyTicker();
           throw StateError('delete-canceled');
         }
         await FirebaseAuth.instance.currentUser?.delete();
+      }
+      if (revokeAppleToken && appleLinked) {
+        await _revokeAppleTokenIfPossible();
       }
     }
 
@@ -2057,6 +2165,90 @@ class AppRepo extends ChangeNotifier {
     _loadFuture = null;
     _walletPersistPaused = false;
     await loadApp();
+  }
+
+  Future<bool> _reauthenticateLinked() async {
+    final current = FirebaseAuth.instance.currentUser;
+    if (current == null) return false;
+    if (_isAppleLinked(current)) return _reauthenticateApple();
+    if (_isGoogleLinked(current)) return _reauthenticateGoogle();
+    return false;
+  }
+
+  Future<bool> _reauthenticateApple() async {
+    try {
+      if (kIsWeb ||
+          (defaultTargetPlatform != TargetPlatform.iOS &&
+              defaultTargetPlatform != TargetPlatform.macOS)) {
+        return false;
+      }
+      final current = FirebaseAuth.instance.currentUser;
+      if (current == null) return false;
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [AppleIDAuthorizationScopes.email],
+      );
+      final idToken = appleCredential.identityToken;
+      if (idToken == null || idToken.isEmpty) return false;
+      _lastAppleAuthorizationCode = appleCredential.authorizationCode;
+      await current.reauthenticateWithCredential(
+        OAuthProvider(_appleProviderId).credential(
+          idToken: idToken,
+          accessToken: appleCredential.authorizationCode,
+        ),
+      );
+      return true;
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return false;
+      developer.log('AppRepo.reauthenticateApple Apple: ${e.code}');
+      return false;
+    } on FirebaseAuthException catch (e) {
+      if (_isAuthCanceled(e.code)) return false;
+      developer.log('AppRepo.reauthenticateApple Auth: ${e.code}', error: e);
+      return false;
+    } catch (e, st) {
+      developer.log(
+        'AppRepo.reauthenticateApple: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return false;
+    }
+  }
+
+  Future<void> _revokeAppleTokenIfPossible() async {
+    var code = _lastAppleAuthorizationCode;
+    if (code == null || code.isEmpty) {
+      code = await _appleAuthorizationCodeForRevoke();
+    }
+    if (code == null || code.isEmpty) return;
+    try {
+      await FirebaseAuth.instance.revokeTokenWithAuthorizationCode(code);
+    } catch (e, st) {
+      developer.log(
+        'AppRepo.revokeAppleToken: $e',
+        error: e,
+        stackTrace: st,
+      );
+    } finally {
+      _lastAppleAuthorizationCode = null;
+    }
+  }
+
+  Future<String?> _appleAuthorizationCodeForRevoke() async {
+    try {
+      if (kIsWeb ||
+          (defaultTargetPlatform != TargetPlatform.iOS &&
+              defaultTargetPlatform != TargetPlatform.macOS)) {
+        return null;
+      }
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [AppleIDAuthorizationScopes.email],
+      );
+      return appleCredential.authorizationCode;
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return null;
+      rethrow;
+    }
   }
 
   Future<bool> _reauthenticateGoogle() async {

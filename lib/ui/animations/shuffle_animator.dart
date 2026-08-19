@@ -26,12 +26,13 @@ class ShuffleAnimator {
 
   static Future<void> play({
     required FlightLayerController layer,
-    required TickerProvider vsync,
+    required FlightTickerBag tickers,
     required ShuffleRequest request,
     Future<void> Function()? onFlyersAttached,
     Future<void> Function()? onHidden,
     Future<void> Function()? onSquared,
   }) async {
+    if (tickers.isCancelled) return;
     if (request.cards.isEmpty) {
       await onSquared?.call();
       return;
@@ -51,10 +52,7 @@ class ShuffleAnimator {
     for (final source in picked) {
       final originLocal = layer.toLocal(source.origin);
       if (originLocal == null) continue;
-      final controller = AnimationController(
-        vsync: vsync,
-        duration: gatherDuration,
-      );
+      final controller = tickers.create(duration: gatherDuration);
       final flyer = _ShuffleFlyer(
         begin: originLocal,
         end: originLocal,
@@ -84,25 +82,32 @@ class ShuffleAnimator {
 
     try {
       await WidgetsBinding.instance.endOfFrame;
+      if (tickers.isCancelled) return;
       await onFlyersAttached?.call();
+      if (tickers.isCancelled) return;
       await onHidden?.call();
+      if (tickers.isCancelled) return;
       await WidgetsBinding.instance.endOfFrame;
+      if (tickers.isCancelled) return;
 
       final needsFlip = flyers.any((f) => f.faceUp);
       if (needsFlip) {
-        await _runFlip(flyers, vsync);
+        await _runFlip(flyers, tickers);
       }
+      if (tickers.isCancelled) return;
 
       // Shrink all flyers to the same target size *before* motion begins.
       // During gather/wash/square the width stays constant.
       await _runPhase(
         flyers,
+        tickers,
         shrinkDuration,
         (i, f) => f.pos,
         (i, f) => f.rotation,
         stagger: const Duration(milliseconds: 6),
         shrinkToTarget: true,
       );
+      if (tickers.isCancelled) return;
 
       var cardTicks = 0;
       for (var i = 0; i < flyers.length; i++) {
@@ -118,38 +123,46 @@ class ShuffleAnimator {
 
       await _runPhase(
         flyers,
+        tickers,
         gatherDuration,
         (i, _) => _ellipsePoint(center, rng, spread: 0.55),
         (i, _) => _randRot(rng),
         stagger: const Duration(milliseconds: 8),
       );
+      if (tickers.isCancelled) return;
 
       SoundService.instance.play(GameSound.shuffle);
       for (var hop = 0; hop < washHops; hop++) {
         await _runPhase(
           flyers,
+          tickers,
           washHopDuration,
           (i, _) => _ellipsePoint(center, rng),
           (i, _) => _randRot(rng),
         );
+        if (tickers.isCancelled) return;
       }
 
       AppHaptics.lightImpact();
       await _runPhase(
         flyers,
+        tickers,
         squareDuration,
         (i, _) =>
             deckTarget + Offset(0, -i * ShuffleRequest.pileBackStep * 0.35),
         (i, _) => 0,
       );
+      if (tickers.isCancelled) return;
 
       await onSquared?.call();
       await WidgetsBinding.instance.endOfFrame;
     } finally {
       layer.detachAll(flyers.map((f) => f.sprite).whereType<FlightSprite>());
       for (final flyer in flyers) {
-        flyer.flipController?.dispose();
-        flyer.controller.dispose();
+        if (flyer.flipController != null) {
+          tickers.release(flyer.flipController!);
+        }
+        tickers.release(flyer.controller);
       }
     }
   }
@@ -162,19 +175,22 @@ class ShuffleAnimator {
 
   static Future<void> _runFlip(
     List<_ShuffleFlyer> flyers,
-    TickerProvider vsync,
+    FlightTickerBag tickers,
   ) async {
+    if (tickers.isCancelled) return;
     final futures = <Future<void>>[];
     for (final flyer in flyers) {
       if (!flyer.faceUp) continue;
-      flyer.flipController = AnimationController(
-        vsync: vsync,
-        duration: flipDuration,
-      );
+      flyer.flipController = tickers.create(duration: flipDuration);
       flyer.flipController!.addListener(flyer.onPhaseChange);
-      futures.add(flyer.flipController!.forward());
+      futures.add(flyer.flipController!.forward().orCancel);
     }
-    await Future.wait(futures);
+    try {
+      await Future.wait(futures);
+    } on TickerCanceled {
+      return;
+    }
+    if (tickers.isCancelled) return;
     for (final flyer in flyers) {
       flyer.faceUp = false;
     }
@@ -199,12 +215,14 @@ class ShuffleAnimator {
 
   static Future<void> _runPhase(
     List<_ShuffleFlyer> flyers,
+    FlightTickerBag tickers,
     Duration duration,
     Offset Function(int i, _ShuffleFlyer f) endOf,
     double Function(int i, _ShuffleFlyer f) rotOf, {
     Duration stagger = Duration.zero,
     bool shrinkToTarget = false,
   }) async {
+    if (tickers.isCancelled) return;
     final futures = <Future<void>>[];
     for (var i = 0; i < flyers.length; i++) {
       final flyer = flyers[i];
@@ -221,7 +239,8 @@ class ShuffleAnimator {
       flyer.onPhaseChange();
       futures.add(
         Future<void>.delayed(stagger * i).then((_) async {
-          await flyer.controller.forward();
+          if (tickers.isCancelled) return;
+          await flyer.controller.forward().orCancel;
           flyer.pos = flyer.end;
           flyer.rotation = flyer.rotEnd;
           if (shrinkToTarget) {
@@ -232,7 +251,11 @@ class ShuffleAnimator {
         }),
       );
     }
-    await Future.wait(futures);
+    try {
+      await Future.wait(futures);
+    } on TickerCanceled {
+      return;
+    }
   }
 }
 

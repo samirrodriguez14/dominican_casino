@@ -4,6 +4,7 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
+import 'package:dominican_casino/ui/widgets/apple_mark.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
@@ -60,32 +61,16 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
     }
   }
 
-  Future<void> _saveGoogle() async {
+  Future<void> _saveLinked(Future<GoogleAuthResult> Function() link) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
       final repo = context.read<AppRepo>();
-      final l10n = AppLocalizations.of(context);
-      final confirmed = await confirmConnectGoogle(context);
-      if (!confirmed || !mounted) return;
-      final result = await repo.linkGoogleAccount();
+      final result = await link();
       if (!mounted) return;
       if (result.status == GoogleAuthStatus.canceled) return;
       if (result.status == GoogleAuthStatus.failed) {
-        await showCupertinoDialog<void>(
-          context: context,
-          builder: (ctx) => CupertinoAlertDialog(
-            title: Text(l10n.google),
-            content: Text(l10n.googleSignInError(result.errorCode)),
-            actions: [
-              CupertinoDialogAction(
-                isDefaultAction: true,
-                onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
-                child: Text(l10n.back),
-              ),
-            ],
-          ),
-        );
+        await showLinkAccountError(context, result.errorCode);
         return;
       }
       final typed = _controller.text.trim();
@@ -99,6 +84,20 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _saveGoogle() async {
+    if (_busy) return;
+    final confirmed = await confirmConnectGoogle(context);
+    if (!confirmed || !mounted) return;
+    await _saveLinked(() => context.read<AppRepo>().linkGoogleAccount());
+  }
+
+  Future<void> _saveApple() async {
+    if (_busy) return;
+    final confirmed = await confirmConnectApple(context);
+    if (!confirmed || !mounted) return;
+    await _saveLinked(() => context.read<AppRepo>().linkAppleAccount());
   }
 
   Future<void> _saveName(String raw) async {
@@ -159,35 +158,33 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
               ),
             ],
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: CupertinoButton(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    color: theme.surfaceAlt,
-                    borderRadius: BorderRadius.circular(12),
-                    onPressed: SoundService.wrapTap(_busy ? null : _saveGuest),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          CupertinoIcons.person,
-                          size: 16,
-                          color: theme.textPrimary,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          l10n.guest,
-                          style: TextStyle(
-                            color: theme.textPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              color: theme.surfaceAlt,
+              borderRadius: BorderRadius.circular(12),
+              onPressed: SoundService.wrapTap(_busy ? null : _saveGuest),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.person,
+                    size: 16,
+                    color: theme.textPrimary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    l10n.guest,
+                    style: TextStyle(
+                      color: theme.textPrimary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
                 Expanded(
                   child: CupertinoButton(
                     padding: const EdgeInsets.symmetric(vertical: 10),
@@ -212,6 +209,33 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
                           ),
                   ),
                 ),
+                if (appleSignInAvailable) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      color: theme.surfaceRaised,
+                      borderRadius: BorderRadius.circular(12),
+                      onPressed: SoundService.wrapTap(_busy ? null : _saveApple),
+                      child: _busy
+                          ? const CupertinoActivityIndicator()
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const AppleMark(size: 15),
+                                const SizedBox(width: 6),
+                                Text(
+                                  l10n.apple,
+                                  style: TextStyle(
+                                    color: theme.textPrimary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
               ],
             ),
             CupertinoButton(

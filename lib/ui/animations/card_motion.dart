@@ -44,6 +44,44 @@ typedef CardFlightRunner =
       VoidCallback? onLaunched,
     });
 
+/// Owns [AnimationController]s created against a screen [TickerProvider].
+///
+/// Call [cancel] from [State.dispose] *before* `super.dispose()` so tickers
+/// are not still active when [TickerProviderStateMixin] tears down.
+class FlightTickerBag {
+  FlightTickerBag(this.vsync);
+
+  final TickerProvider vsync;
+  final List<AnimationController> _live = [];
+  bool _cancelled = false;
+
+  bool get isCancelled => _cancelled;
+
+  AnimationController create({required Duration duration}) {
+    if (_cancelled) {
+      throw StateError('FlightTickerBag cancelled');
+    }
+    final controller = AnimationController(vsync: vsync, duration: duration);
+    _live.add(controller);
+    return controller;
+  }
+
+  void release(AnimationController controller) {
+    if (_live.remove(controller)) {
+      controller.dispose();
+    }
+  }
+
+  void cancel() {
+    _cancelled = true;
+    final controllers = List<AnimationController>.of(_live);
+    _live.clear();
+    for (final controller in controllers) {
+      controller.dispose();
+    }
+  }
+}
+
 class ShuffleCardSource {
   final Offset origin;
   final double width;
@@ -96,6 +134,7 @@ class CardMotionController extends ChangeNotifier {
   final Set<String> _inFlight = {};
   CardFlightRunner? runner;
   ShuffleRunner? shuffleRunner;
+  bool _disposed = false;
 
   /// Board-local flight host — set by [GeneralGameScreen].
   FlightLayerController? flightLayer;
@@ -113,39 +152,51 @@ class CardMotionController extends ChangeNotifier {
   bool anyInFlight(Iterable<PlayingCardModel> cards) =>
       cards.any((c) => isInFlight(c.id));
 
-  void markInFlight(Iterable<String> ids) {
-    _inFlight.addAll(ids);
+  void _notify() {
+    if (_disposed) return;
     notifyListeners();
   }
 
+  void markInFlight(Iterable<String> ids) {
+    if (_disposed) return;
+    _inFlight.addAll(ids);
+    _notify();
+  }
+
   void clearInFlight([Iterable<String>? ids]) {
+    if (_disposed) return;
     if (ids == null) {
       _inFlight.clear();
     } else {
       _inFlight.removeAll(ids);
     }
-    notifyListeners();
+    _notify();
   }
 
   void setShuffling(bool value) {
-    if (_shuffling == value) return;
+    if (_disposed || _shuffling == value) return;
     _shuffling = value;
-    notifyListeners();
+    _notify();
   }
 
   Future<void> run(List<CardFlightRequest> flights) async {
-    if (flights.isEmpty) return;
+    if (_disposed || flights.isEmpty) return;
+    final ids = flights.map((f) => f.cardId);
     final run = runner;
     if (run == null) {
       onFlightsAttached?.call();
-      clearInFlight(flights.map((f) => f.cardId));
+      clearInFlight(ids);
       return;
     }
-    await run(
-      flights,
-      onLanded: () => clearInFlight(flights.map((f) => f.cardId)),
-      onLaunched: onFlightsAttached,
-    );
+    try {
+      await run(
+        flights,
+        onLanded: () => clearInFlight(ids),
+        onLaunched: onFlightsAttached,
+      );
+    } finally {
+      clearInFlight(ids);
+    }
   }
 
   Future<void> runShuffle(
@@ -154,6 +205,7 @@ class CardMotionController extends ChangeNotifier {
     Future<void> Function()? onHidden,
     Future<void> Function()? onSquared,
   }) async {
+    if (_disposed) return;
     if (request.cards.isEmpty) {
       await onSquared?.call();
       return;
@@ -169,5 +221,13 @@ class CardMotionController extends ChangeNotifier {
       onHidden: onHidden,
       onSquared: onSquared,
     );
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    runner = null;
+    shuffleRunner = null;
+    super.dispose();
   }
 }

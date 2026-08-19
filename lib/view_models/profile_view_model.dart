@@ -19,10 +19,19 @@ class ProfileViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get isGoogleLinked => _appRepo.isGoogleLinked;
+  bool get isLinkedAccount => _appRepo.isLinkedAccount;
+
+  /// @deprecated Use [isLinkedAccount].
+  bool get isGoogleLinked => _appRepo.isLinkedAccount;
 
   Future<GoogleAuthResult> linkGoogle() async {
     final result = await _appRepo.linkGoogleAccount();
+    notifyListeners();
+    return result;
+  }
+
+  Future<GoogleAuthResult> linkApple() async {
+    final result = await _appRepo.linkAppleAccount();
     notifyListeners();
     return result;
   }

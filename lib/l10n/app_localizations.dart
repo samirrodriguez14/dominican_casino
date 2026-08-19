@@ -122,10 +122,10 @@ class AppLocalizations {
       ? 'Gana una partida de Casino clásico'
       : 'Win a classic Casino match';
   String get googleRequiredForDailyTitle =>
-      isEs ? 'Entra con Google' : 'Sign in with Google';
+      isEs ? 'Conecta tu cuenta' : 'Connect your account';
   String get googleRequiredForDailyBody => isEs
-      ? 'Conecta Google para reclamar recompensas y desafíos diarios.'
-      : 'Connect Google to claim daily rewards and challenges.';
+      ? 'Conecta Google o Apple para reclamar recompensas y desafíos diarios.'
+      : 'Connect Google or Apple to claim daily rewards and challenges.';
   String get debugResetDailyReward => isEs
       ? 'Mantén pulsado para probar de nuevo (debug).'
       : 'Long-press to claim again (debug).';
@@ -360,21 +360,33 @@ class AppLocalizations {
   String get deletingLocalData =>
       isEs ? 'Eliminando datos…' : 'Removing data…';
   String get connectGoogle => isEs ? 'Conectar Google' : 'Connect Google';
+  String get connectApple => isEs ? 'Conectar Apple' : 'Connect Apple';
   String get connectGoogleWarning => isEs
       ? 'Si esta cuenta de Google ya tiene progreso, reemplazará lo de este dispositivo. El progreso local se perderá.'
       : 'If this Google account already has progress, it will replace what\'s on this device. Local progress will be lost.';
+  String get connectAppleWarning => isEs
+      ? 'Si esta cuenta de Apple ya tiene progreso, reemplazará lo de este dispositivo. El progreso local se perderá.'
+      : 'If this Apple account already has progress, it will replace what\'s on this device. Local progress will be lost.';
+  String get connectAccountTitle =>
+      isEs ? 'Conectar cuenta' : 'Connect account';
+  String get connectAccountBody => isEs
+      ? 'Elige Google o Apple para guardar tu progreso en la nube.'
+      : 'Choose Google or Apple to save your progress to the cloud.';
   String get googleRequiredForFriendsTitle =>
-      isEs ? 'Entra con Google' : 'Sign in with Google';
+      isEs ? 'Conecta tu cuenta' : 'Connect your account';
   String get googleRequiredForFriendsBody => isEs
-      ? 'Las partidas con amigos y unirse por ID necesitan una cuenta de Google.'
-      : 'Friend matches and join by ID need a Google account.';
+      ? 'Las partidas con amigos y unirse por ID necesitan una cuenta de Google o Apple.'
+      : 'Friend matches and join by ID need a Google or Apple account.';
   String get googleConnected =>
       isEs ? 'Conectado con Google' : 'Connected with Google';
+  String get appleConnected =>
+      isEs ? 'Conectado con Apple' : 'Connected with Apple';
+  String get apple => 'Apple';
   String get account => isEs ? 'Cuenta' : 'Account';
   String get logOut => isEs ? 'Cerrar sesión' : 'Log out';
   String get logOutBody => isEs
-      ? 'Sales de Google y se borra el progreso de este dispositivo. Nombre, temas, monedas y energía se restauran al volver a entrar.'
-      : 'Signs out of Google and clears progress on this device. Your name, themes, coins, and energy restore when you sign in again.';
+      ? 'Sales de tu cuenta y se borra el progreso de este dispositivo. Nombre, temas, monedas y energía se restauran al volver a entrar.'
+      : 'Signs out of your account and clears progress on this device. Your name, themes, coins, and energy restore when you sign in again.';
 
   String googleSignInError(String? code) {
     switch (code) {
@@ -397,6 +409,17 @@ class AppLocalizations {
             : 'Couldn\'t connect with Google. Please try again.';
     }
   }
+
+  String linkAccountError(String? code) {
+    if (code == 'unsupported') {
+      return isEs
+          ? 'Apple no está disponible en este dispositivo.'
+          : 'Apple sign-in isn\'t available on this device.';
+    }
+    return googleSignInError(code);
+  }
+
+  String appleSignInError(String? code) => linkAccountError(code);
 }
 
 class _AppLocalizationsDelegate

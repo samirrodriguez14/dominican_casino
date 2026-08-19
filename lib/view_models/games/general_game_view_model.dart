@@ -126,6 +126,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   void _onGameRepoChanged() {
+    if (_disposed) return;
     // If the board is mid-flight, repo echo updates must not paint interim
     // card states (it causes the "deal flash" in other game modes).
     if (isAnimating || motion.hasFlights) {
@@ -136,6 +137,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   Future<void> _syncFromRepo() async {
+    if (_disposed) return;
     if (_syncScheduled) {
       _pendingRepoSync = true;
       return;
@@ -146,6 +148,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     try {
       do {
+        if (_disposed) return;
         _pendingRepoSync = false;
         final nextState = gameRepo.gameState;
         if (nextState == null) break;
@@ -177,11 +180,13 @@ class GeneralGameViewModel extends ChangeNotifier {
           _shuffleOverlayRoundId = nextState.round.id;
           await _playShuffleMotion(
             onSquared: () async {
+              if (_disposed) return;
               await _commitStateWithMotion(
                 nextState,
                 newEvents,
                 settlementEvents: newSettlement,
               );
+              if (_disposed) return;
               motion.setShuffling(false);
               motion.clearInFlight();
             },
@@ -195,6 +200,7 @@ class GeneralGameViewModel extends ChangeNotifier {
             settlementEvents: newSettlement,
           );
         }
+        if (_disposed) return;
 
         final meGain = gameState.pendingCoinsFor(me) - oldMe;
         final oppGain = oppId == null
@@ -220,10 +226,11 @@ class GeneralGameViewModel extends ChangeNotifier {
           );
           _maybeBotReact(took: botTook, botPlayed: botPlayed, fromPid: actor);
         }
-      } while (_pendingRepoSync);
+      } while (_pendingRepoSync && !_disposed);
     } catch (e) {
       developer.log("GameViewModel._syncFromRepo Error $e");
     } finally {
+      if (_disposed) return;
       motion.setShuffling(false);
       isAnimating = false;
       _syncScheduled = false;
@@ -377,6 +384,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     List<CardMoveEvent> settlementEvents = const [],
     DailyChallengeGameSnap? progressFrom,
   }) async {
+    if (_disposed) return;
     selectedCard = null;
     selectedCards = [];
     selectedStacks = [];
@@ -402,12 +410,15 @@ class GeneralGameViewModel extends ChangeNotifier {
       final intermediate = _stateWithLeftoversOnTable(next, settlementEvents);
 
       await _flyCommit(intermediate, events, playOrigins);
+      if (_disposed) return;
 
       // Beat so everyone can read the last play before leftovers collect.
       await Future<void>.delayed(const Duration(milliseconds: 750));
+      if (_disposed) return;
 
       final settleOrigins = _captureOrigins(settlementEvents);
       await _flyCommit(next, settlementEvents, settleOrigins);
+      if (_disposed) return;
 
       await Future<void>.delayed(const Duration(milliseconds: 320));
       return;
@@ -423,6 +434,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     final origins = _captureOrigins(events);
     await _flyCommit(next, orderedEvents, origins);
+    if (_disposed) return;
 
     if (orderedEvents.isEmpty) return;
 
@@ -502,6 +514,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     List<CardMoveEvent> events,
     Map<String, Offset> origins,
   ) async {
+    if (_disposed) return;
     final handoff = dragHandoff;
     dragHandoff = null;
 
@@ -511,6 +524,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     _preserveMyHandOrder(commit);
     gameState = commit;
+    if (_disposed) return;
     notifyListeners();
 
     if (events.isEmpty) {
@@ -684,6 +698,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     Future<void> Function()? onSquared,
   }) async {
     await WidgetsBinding.instance.endOfFrame;
+    if (_disposed) return;
 
     final cards = _collectShuffleCardSources();
     final center = _centerOf(tableKey);
@@ -691,7 +706,9 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (cards.isEmpty || center == null || deckTarget == null) {
       motion.setShuffling(true);
       await onHidden?.call();
+      if (_disposed) return;
       await onSquared?.call();
+      if (_disposed) return;
       motion.setShuffling(false);
       motion.clearInFlight();
       return;
@@ -707,12 +724,14 @@ class GeneralGameViewModel extends ChangeNotifier {
         targetCardWidth: isCasinoFamily ? 52.0 : 60.0,
       ),
       onFlyersAttached: () async {
+        if (_disposed) return;
         if (hideIds.isNotEmpty) motion.markInFlight(hideIds);
         motion.setShuffling(true);
         notifyListeners();
       },
       onHidden: onHidden,
       onSquared: () async {
+        if (_disposed) return;
         motion.clearInFlight();
         await onSquared?.call();
       },

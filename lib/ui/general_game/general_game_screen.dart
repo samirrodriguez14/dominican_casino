@@ -17,6 +17,7 @@ import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
 import 'package:dominican_casino/ui/animations/card_flight_animator.dart';
+import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/ui/animations/currency_burst.dart';
 import 'package:dominican_casino/ui/animations/flight_layer.dart';
 import 'package:dominican_casino/ui/animations/shuffle_animator.dart';
@@ -64,6 +65,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
   late final TutorialViewModel tutorialVm;
   final FlightLayerController _flightLayer = FlightLayerController();
+  late final FlightTickerBag _flightTickers = FlightTickerBag(this);
 
   /// Prevents stacking duplicate round/game status popups.
   String? _shownStatusKey;
@@ -84,7 +86,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     gameVm.motion.runner = (flights, {onLanded, onLaunched}) =>
         CardFlightAnimator.flyAll(
           layer: _flightLayer,
-          vsync: this,
+          tickers: _flightTickers,
           flights: flights,
           onLanded: onLanded,
           onLaunched: onLaunched,
@@ -92,7 +94,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     gameVm.motion.shuffleRunner = (request, {onFlyersAttached, onHidden, onSquared}) =>
         ShuffleAnimator.play(
           layer: _flightLayer,
-          vsync: this,
+          tickers: _flightTickers,
           request: request,
           onFlyersAttached: onFlyersAttached,
           onHidden: onHidden,
@@ -189,6 +191,9 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   @override
   void dispose() {
     _boundVm?.removeListener(_onVmChanged);
+    _boundVm?.motion.runner = null;
+    _boundVm?.motion.shuffleRunner = null;
+    _flightTickers.cancel();
     _idleHintTimer?.cancel();
     _idleHintTimer = null;
     tutorialVm.clearIdleHint();

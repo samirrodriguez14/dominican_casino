@@ -9,6 +9,7 @@ import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/services/sound_service.dart';
+import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
@@ -145,56 +146,13 @@ void showEnterGameDialog(
   );
 }
 
-Future<bool> ensureGoogleForOnlinePlay(BuildContext context) async {
-  final repo = context.read<AppRepo>();
-  if (repo.isGoogleLinked) return true;
+Future<bool> ensureGoogleForOnlinePlay(BuildContext context) {
   final l10n = AppLocalizations.of(context);
-  final connect = await showCupertinoDialog<bool>(
-    context: context,
-    builder: (ctx) => CupertinoAlertDialog(
-      title: Text(l10n.googleRequiredForFriendsTitle),
-      content: Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Text(
-          '${l10n.googleRequiredForFriendsBody}\n\n${l10n.connectGoogleWarning}',
-        ),
-      ),
-      actions: [
-        CupertinoDialogAction(
-          onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
-          child: Text(l10n.cancel),
-        ),
-        CupertinoDialogAction(
-          isDefaultAction: true,
-          onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
-          child: Text(l10n.connectGoogle),
-        ),
-      ],
-    ),
+  return ensureLinkedAccount(
+    context,
+    title: l10n.googleRequiredForFriendsTitle,
+    body: l10n.googleRequiredForFriendsBody,
   );
-  if (connect != true || !context.mounted) return false;
-
-  final result = await repo.linkGoogleAccount();
-  if (!context.mounted) return false;
-  if (result.status == GoogleAuthStatus.canceled) return false;
-  if (result.status == GoogleAuthStatus.failed) {
-    await showCupertinoDialog<void>(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(l10n.google),
-        content: Text(l10n.googleSignInError(result.errorCode)),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
-            child: Text(l10n.back),
-          ),
-        ],
-      ),
-    );
-    return false;
-  }
-  return repo.isGoogleLinked;
 }
 
 String _modeTitle(GamesViewModel vm, GameMode mode) {
