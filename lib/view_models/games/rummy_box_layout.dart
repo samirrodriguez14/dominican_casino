@@ -1,9 +1,6 @@
 /// Card fan layout inside a Rummy requirement dotted box.
 class RummyBoxLayout {
-  const RummyBoxLayout({
-    required this.cardWidth,
-    required this.gap,
-  });
+  const RummyBoxLayout({required this.cardWidth, required this.gap});
 
   final double cardWidth;
   final double gap;
@@ -19,12 +16,19 @@ class RummyBoxLayout {
   /// Usable horizontal space inside the dotted border (padding excluded).
   static const double innerWidth = 156.0;
 
+  /// Inset inside the dotted border.
+  static const double borderPad = 6.0;
+
   /// Largest card width when the box holds few cards.
   static const double maxCardWidth = 58.0;
 
   static const double minCardWidth = 32.0;
   static const double minGap = 4.0;
   static const double maxGap = 16.0;
+
+  static const double boxWidth = innerWidth + borderPad * 2;
+  static const double boxHeight = maxCardWidth * 1.4 + borderPad * 2 + 6;
+  static const double stripHeight = boxHeight;
 
   static RummyBoxLayout forCount(int count) {
     if (count <= 0) {
@@ -37,10 +41,7 @@ class RummyBoxLayout {
     var cardW = maxCardWidth;
     var gap = (innerWidth - cardW) / (count - 1);
     if (gap >= minGap) {
-      return RummyBoxLayout(
-        cardWidth: cardW,
-        gap: gap.clamp(minGap, maxGap),
-      );
+      return RummyBoxLayout(cardWidth: cardW, gap: gap.clamp(minGap, maxGap));
     }
 
     gap = minGap;

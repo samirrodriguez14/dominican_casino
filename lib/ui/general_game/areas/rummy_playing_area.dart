@@ -18,6 +18,7 @@ import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.da
 import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
 import 'package:dominican_casino/ui/widgets/take_hint_bounce.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
+import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
 import 'package:dominican_casino/ui/widgets/winning_hand_wave.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
@@ -66,7 +67,7 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
           final rightOpp = _seatFor(vm, _TableSeat.right);
 
           const sideInset = 78.0;
-          const boxStripHeight = 164.0;
+          const boxStripHeight = RummyBoxLayout.stripHeight;
           return Stack(
             clipBehavior: Clip.none,
             children: [
@@ -88,15 +89,19 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
                 height: boxStripHeight,
                 child: Opacity(
                   opacity: shuffling ? 0 : 1,
-                  child: Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _requirementBox(vm, boxIndex: 0),
-                        const SizedBox(width: 14),
-                        _requirementBox(vm, boxIndex: 1),
-                      ],
-                    ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _boxDropSlot(vm, boxIndex: 0),
+                          _boxDropSlot(vm, boxIndex: 1),
+                        ],
+                      ),
+                      if (vm.hasRummyBoxedCards) _returnBoxesButton(vm),
+                    ],
                   ),
                 ),
               ),
@@ -178,13 +183,12 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
         .toList();
 
     final label = requirement?.label ?? (boxIndex == 0 ? 'Box A' : 'Box B');
-    final boxKey = boxIndex == 0 ? vm.rummyBoxAKey : vm.rummyBoxBKey;
     final satisfied =
         requirement != null &&
         RummyMatcher.matchesRequirement(requirement: requirement, cards: cards);
 
-    const boxWidth = 180.0;
-    const boxHeight = 132.0;
+    const boxWidth = RummyBoxLayout.boxWidth;
+    const boxHeight = RummyBoxLayout.boxHeight;
 
     final count = cards.length;
     final layout = RummyBoxLayout.forCount(count);
@@ -204,110 +208,130 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
     return SizedBox(
       width: boxWidth,
       height: boxHeight,
-      child: Container(
-        key: boxKey,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: AppStyle.theme.dottedBox(
-          color: AppStyle.theme.suitBlack,
-          padding: const EdgeInsets.all(6),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned.fill(
-                child: Align(
-                  alignment: Alignment.center,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 320),
-                    curve: Curves.easeOutCubic,
-                    width: totalW,
-                    height: cardH,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        for (int i = 0; i < count; i++)
-                          _boxFanCard(
-                            vm: vm,
-                            card: cards[i],
-                            index: i,
-                            gap: gap,
-                            totalW: totalW,
-                            cardW: cardW,
-                            cardH: cardH,
-                            boxIndex: boxIndex,
-                            draggingId: draggingId,
-                            rummyEnabled: rummyEnabled,
-                            celebrating: celebrating,
-                          ),
-                      ],
-                    ),
+      child: AppStyle.theme.dottedBox(
+        color: AppStyle.theme.suitBlack,
+        padding: const EdgeInsets.all(RummyBoxLayout.borderPad),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.center,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                  width: totalW,
+                  height: cardH,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      for (int i = 0; i < count; i++)
+                        _boxFanCard(
+                          vm: vm,
+                          card: cards[i],
+                          index: i,
+                          gap: gap,
+                          totalW: totalW,
+                          cardW: cardW,
+                          cardH: cardH,
+                          boxIndex: boxIndex,
+                          draggingId: draggingId,
+                          rummyEnabled: rummyEnabled,
+                          celebrating: celebrating,
+                        ),
+                    ],
                   ),
                 ),
               ),
-              Positioned(
-                left: 4,
-                right: 4,
-                bottom: 2,
-                child: IgnorePointer(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
+            ),
+            Positioned(
+              left: 4,
+              right: 4,
+              bottom: 2,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xF2EDE6DC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppStyle.theme.suitBlack.withValues(alpha: 0.14),
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xF2EDE6DC),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppStyle.theme.suitBlack.withValues(alpha: 0.14),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 1),
                       ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x22000000),
-                          blurRadius: 6,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          satisfied
-                              ? CupertinoIcons.checkmark_circle_fill
-                              : CupertinoIcons.circle,
-                          size: 14,
-                          color: satisfied
-                              ? const Color(0xFF2E8B57)
-                              : AppStyle.theme.suitBlack.withValues(
-                                  alpha: 0.55,
-                                ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            label,
-                            style: AppStyle.theme.caption.copyWith(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              height: 1.25,
-                              color: satisfied
-                                  ? labelColorSatisfied
-                                  : labelColor,
-                              letterSpacing: 0.15,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        satisfied
+                            ? CupertinoIcons.checkmark_circle_fill
+                            : CupertinoIcons.circle,
+                        size: 14,
+                        color: satisfied
+                            ? const Color(0xFF2E8B57)
+                            : AppStyle.theme.suitBlack.withValues(alpha: 0.55),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          label,
+                          style: AppStyle.theme.caption.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            height: 1.25,
+                            color: satisfied ? labelColorSatisfied : labelColor,
+                            letterSpacing: 0.15,
                           ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _boxDropSlot(GeneralGameViewModel vm, {required int boxIndex}) {
+    final boxKey = boxIndex == 0 ? vm.rummyBoxAKey : vm.rummyBoxBKey;
+    return Expanded(
+      child: KeyedSubtree(
+        key: boxKey,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: _requirementBox(vm, boxIndex: boxIndex),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _returnBoxesButton(GeneralGameViewModel vm) {
+    return PopupCircleButton(
+      size: 36,
+      emphasized: true,
+      icon: CupertinoIcons.arrow_down,
+      onPressed: () {
+        AppHaptics.selectionClick();
+        vm.returnAllRummyBoxesToHand();
+      },
     );
   }
 
@@ -524,7 +548,7 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
                   : const Duration(milliseconds: 150),
               transform: selected
                   ? Matrix4.translationValues(0, -12, 0)
-                  : Matrix4.translationValues(0, 4, 0),
+                  : Matrix4.translationValues(0, -4, 0),
               child: Opacity(
                 opacity: hidden ? 0 : 1,
                 child: FlightAwareCard(

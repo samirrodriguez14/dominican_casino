@@ -975,6 +975,29 @@ class GeneralGameViewModel extends ChangeNotifier {
         (rummy.boxBByPid[pid]?.contains(cardId) ?? false);
   }
 
+  bool get hasRummyBoxedCards {
+    if (gameState.gameMode != GameMode.rummy) return false;
+    final rummy = gameState.rummyState;
+    if (rummy == null) return false;
+    return (rummy.boxAByPid[me]?.isNotEmpty ?? false) ||
+        (rummy.boxBByPid[me]?.isNotEmpty ?? false);
+  }
+
+  /// Local overlay only: cards stay in the engine hand, they just leave
+  /// the dotted boxes and return to the fan.
+  void returnAllRummyBoxesToHand() {
+    if (gameState.gameMode != GameMode.rummy) return;
+    if (isAnimating || hasDropPending) return;
+    final rummy = gameState.rummyState;
+    if (rummy == null) return;
+    final a = rummy.boxAByPid[me];
+    final b = rummy.boxBByPid[me];
+    if ((a == null || a.isEmpty) && (b == null || b.isEmpty)) return;
+    a?.clear();
+    b?.clear();
+    notifyListeners();
+  }
+
   /// Drag ghost width while hovering a drop target in Rummy.
   double rummyDragTargetWidth(
     DropTarget? target, {

@@ -17,9 +17,21 @@ void main() {
 
     test('many cards shrink and pack tighter', () {
       final layout = RummyBoxLayout.forCount(7);
-      expect(layout.totalWidthFor(7), lessThanOrEqualTo(RummyBoxLayout.innerWidth + 0.5));
+      expect(
+        layout.totalWidthFor(7),
+        lessThanOrEqualTo(RummyBoxLayout.innerWidth + 0.5),
+      );
       expect(layout.gap, lessThanOrEqualTo(RummyBoxLayout.maxGap));
       expect(layout.cardWidth, lessThanOrEqualTo(RummyBoxLayout.maxCardWidth));
+    });
+
+    test('inner padding is small and the outer box follows it', () {
+      expect(RummyBoxLayout.borderPad, 6);
+      expect(
+        RummyBoxLayout.boxWidth,
+        RummyBoxLayout.innerWidth + RummyBoxLayout.borderPad * 2,
+      );
+      expect(RummyBoxLayout.stripHeight, RummyBoxLayout.boxHeight);
     });
   });
 }

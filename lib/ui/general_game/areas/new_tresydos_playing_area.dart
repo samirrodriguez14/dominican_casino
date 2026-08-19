@@ -239,7 +239,7 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                   : const Duration(milliseconds: 150),
               transform: selected || highlighted
                   ? Matrix4.translationValues(0, -12, 0)
-                  : Matrix4.translationValues(0, 4, 0),
+                  : Matrix4.translationValues(0, -4, 0),
               child: Opacity(
                 opacity: hidden ? 0 : 1,
                 child: FlightAwareCard(
