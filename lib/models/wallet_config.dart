@@ -6,7 +6,7 @@ class WalletConfig {
   /// Free coins for a Google-linked account once per local calendar day.
   static const int dailyLoginRewardCoins = 50;
   static const int energyCap = 50;
-  static const Duration regenInterval = Duration(minutes: 5);
+  static const Duration regenInterval = Duration(minutes: 3);
 
   /// Coins each player stakes to sit at a table (friend or vs Puli).
   static const int entryCost = 100;

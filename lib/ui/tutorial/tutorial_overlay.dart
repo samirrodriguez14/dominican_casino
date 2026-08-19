@@ -1,10 +1,15 @@
 import 'dart:math' as math;
 
+import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/tutorial_step.dart';
 import 'package:dominican_casino/services/sound_service.dart';
+import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:dominican_casino/style/app_theme.dart';
+
+enum _BubbleTail { none, up, down }
 
 class TutorialOverlay extends StatefulWidget {
   final TutorialStep step;
@@ -40,22 +45,30 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late Animation<double> _popAnimation;
   final GlobalKey _overlayKey = GlobalKey();
 
-  static const double _tooltipWidth = 320;
-  static const double _tooltipMinHeight = 160;
+  static const double _avatarSize = 32;
+  static const double _avatarGap = 8;
+  static const double _bubbleWidth = 248;
+  static const double _tooltipWidth = _avatarSize + _avatarGap + _bubbleWidth;
+  static const double _tooltipMinHeight = 88;
+  static const double _tailSize = 12;
 
   @override
   void initState() {
     super.initState();
 
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 350),
+      duration: const Duration(milliseconds: 280),
       vsync: this,
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+    _popAnimation = Tween<double>(begin: 0.88, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
     );
 
     _animationController.forward();
@@ -89,6 +102,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
       opacity: _fadeAnimation,
       child: Stack(
         key: _overlayKey,
+        clipBehavior: Clip.none,
         children: [
           if (widget.step.highlightKeys.isNotEmpty)
             _buildTooltipForTarget(context)
@@ -148,17 +162,19 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         ? overlay.size
         : MediaQuery.of(context).size;
 
+    final placeAbove = rect.center.dy > overlaySize.height * 0.5;
+    final tail = placeAbove ? _BubbleTail.down : _BubbleTail.up;
     Offset tooltipOffset;
 
-    if (rect.center.dy > overlaySize.height * 0.5) {
+    if (placeAbove) {
       tooltipOffset = Offset(
         rect.center.dx - _tooltipWidth / 2,
-        rect.top - _tooltipMinHeight - 20,
+        rect.top - _tooltipMinHeight - 16,
       );
     } else {
       tooltipOffset = Offset(
         rect.center.dx - _tooltipWidth / 2,
-        rect.bottom + 16,
+        rect.bottom + 12,
       );
     }
 
@@ -170,7 +186,10 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     return Positioned(
       left: tooltipOffset.dx,
       top: tooltipOffset.dy,
-      child: Material(color: Colors.transparent, child: _buildTooltipContent()),
+      child: Material(
+        color: Colors.transparent,
+        child: _buildTooltipContent(tail: tail),
+      ),
     );
   }
 
@@ -181,7 +200,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         : MediaQuery.of(context).size;
 
     final table = _rectForKey(widget.tableAnchorKey);
-    const estimatedH = 210.0;
+    const estimatedH = 150.0;
     final safeTop = MediaQuery.paddingOf(context).top + 8;
     var top = safeTop;
     if (table != null) {
@@ -196,7 +215,10 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     return Positioned(
       left: left,
       top: top,
-      child: Material(color: Colors.transparent, child: _buildTooltipContent()),
+      child: Material(
+        color: Colors.transparent,
+        child: _buildTooltipContent(tail: _BubbleTail.down),
+      ),
     );
   }
 
@@ -204,182 +226,339 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
-        child: _buildTooltipContent(),
+        child: _buildTooltipContent(tail: _BubbleTail.none),
       ),
     );
   }
 
-  Widget _buildTooltipContent() {
+  Widget _buildTooltipContent({required _BubbleTail tail}) {
     final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    final fill = theme.surfaceRaised;
+    final stroke = theme.turnHighlight.withValues(alpha: .45);
+    final message = widget.step.description.isNotEmpty
+        ? widget.step.description
+        : widget.step.title;
+
+    final bubble = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: _bubbleWidth,
+          padding: const EdgeInsets.fromLTRB(16, 16, 18, 12),
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: stroke, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: .32),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 36),
+                child: Text(
+                  message,
+                  style: theme.body.copyWith(
+                    color: theme.textPrimary,
+                    fontSize: 20,
+                    height: 1.28,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              _buildBubbleActions(theme, l10n),
+            ],
+          ),
+        ),
+        Positioned(
+          top: -6,
+          right: -6,
+          child: _StepProgressCircle(
+            current: widget.currentStep + 1,
+            total: widget.totalSteps,
+          ),
+        ),
+      ],
+    );
+
+    Widget tailedBubble = bubble;
+    if (tail != _BubbleTail.none) {
+      final painter = _TutorialBubbleTailPainter(
+        fill: fill,
+        stroke: stroke,
+        direction: tail,
+      );
+      tailedBubble = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (tail == _BubbleTail.up)
+            CustomPaint(size: const Size(18, _tailSize), painter: painter),
+          bubble,
+          if (tail == _BubbleTail.down)
+            CustomPaint(size: const Size(18, _tailSize), painter: painter),
+        ],
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(
+            bottom: tail == _BubbleTail.down ? _tailSize : 0,
+          ),
+          child: PlayerAvatarView(
+            avatarId: GameState.localBotAvatarId,
+            size: _avatarSize,
+          ),
+        ),
+        const SizedBox(width: _avatarGap),
+        ScaleTransition(scale: _popAnimation, child: tailedBubble),
+      ],
+    );
+  }
+
+  Widget _buildBubbleActions(AppTheme theme, AppLocalizations l10n) {
     final isLastStep = widget.isLastScreen;
     final canPressNext = widget.canGoNext || widget.step.onShow != null;
+
+    if (isLastStep) {
+      return Row(
+        children: [
+          Expanded(
+            child: CupertinoButton(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              color: theme.surface,
+              borderRadius: BorderRadius.circular(14),
+              onPressed: SoundService.wrapTap(widget.onExit),
+              child: Text(
+                l10n.home,
+                style: theme.body.copyWith(
+                  color: theme.muted,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: CupertinoButton(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              color: theme.turnHighlight,
+              borderRadius: BorderRadius.circular(14),
+              onPressed: SoundService.wrapTap(widget.onPlay),
+              child: Text(
+                l10n.play,
+                style: theme.body.copyWith(
+                  color: theme.background,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        if (widget.step.showSkipButton)
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            minimumSize: Size.zero,
+            onPressed: SoundService.wrapTap(widget.onSkip),
+            child: Text(
+              l10n.skipTutorial,
+              style: theme.body.copyWith(
+                color: theme.muted,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        const Spacer(),
+        if (widget.step.showNextButton)
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            minimumSize: Size.zero,
+            color: canPressNext
+                ? theme.turnHighlight
+                : theme.muted.withValues(alpha: .35),
+            borderRadius: BorderRadius.circular(14),
+            onPressed: canPressNext
+                ? SoundService.wrapTap(
+                    widget.step.onShow != null
+                        ? () => widget.step.onShow!(context)
+                        : widget.onNext,
+                  )
+                : null,
+            child: Text(
+              l10n.tutorialGotIt,
+              style: theme.body.copyWith(
+                color: canPressNext
+                    ? theme.background
+                    : theme.textPrimary.withValues(alpha: .45),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _StepProgressCircle extends StatelessWidget {
+  const _StepProgressCircle({required this.current, required this.total});
+
+  final int current;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final progress = total <= 0 ? 0.0 : current / total;
     return Container(
-      width: _tooltipWidth,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
-        color: theme.surfaceRaised,
-        borderRadius: BorderRadius.circular(theme.radius),
-        border: Border.all(
-          color: theme.turnHighlight.withValues(alpha: .65),
-          width: 1.5,
-        ),
+        color: theme.surface,
+        shape: BoxShape.circle,
+        border: Border.all(color: theme.border.withValues(alpha: .55)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .35),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: .28),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Row(
-            children: [
-              Text(
-                'Step ${widget.currentStep + 1} of ${widget.totalSteps}',
-                style: theme.caption.copyWith(
-                  color: theme.muted,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: .2,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: List.generate(widget.totalSteps, (index) {
-                    final isCurrent = index == widget.currentStep;
-                    final isDone = index < widget.currentStep;
-
-                    return Flexible(
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: isCurrent || isDone
-                              ? theme.turnHighlight
-                              : theme.muted.withValues(alpha: .35),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ],
+          CustomPaint(
+            size: const Size(40, 40),
+            painter: _ProgressRingPainter(
+              progress: progress.clamp(0.0, 1.0),
+              track: theme.muted.withValues(alpha: .28),
+              fill: theme.turnHighlight,
+            ),
           ),
-
-          const SizedBox(height: 14),
-
           Text(
-            widget.step.title,
-            style: theme.title.copyWith(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+            '$current/$total',
+            style: theme.caption.copyWith(
               color: theme.textPrimary,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              height: 1,
             ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            widget.step.description,
-            style: theme.body.copyWith(
-              color: theme.textPrimary.withValues(alpha: .9),
-              fontSize: 13.5,
-              height: 1.35,
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          Row(
-            children: [
-              if (isLastStep) ...[
-                Expanded(
-                  child: CupertinoButton(
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    color: theme.surface,
-                    borderRadius: BorderRadius.circular(theme.radius),
-                    onPressed: SoundService.wrapTap(widget.onExit),
-                    child: Text(
-                      'Exit',
-                      style: theme.body.copyWith(
-                        color: theme.muted,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: CupertinoButton(
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    color: theme.turnHighlight,
-                    borderRadius: BorderRadius.circular(theme.radius),
-                    onPressed: SoundService.wrapTap(widget.onPlay),
-                    child: Text(
-                      'Play',
-                      style: theme.body.copyWith(
-                        color: theme.background,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ] else ...[
-                if (widget.step.showSkipButton) ...[
-                  Expanded(
-                    child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      color: theme.surface,
-                      borderRadius: BorderRadius.circular(theme.radius),
-                      onPressed: SoundService.wrapTap(widget.onSkip),
-                      child: Text(
-                        'Skip',
-                        style: theme.body.copyWith(
-                          color: theme.muted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-                if (widget.step.showNextButton)
-                  Expanded(
-                    child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      color: canPressNext
-                          ? theme.turnHighlight
-                          : theme.muted.withValues(alpha: .35),
-                      borderRadius: BorderRadius.circular(theme.radius),
-                      onPressed: canPressNext
-                          ? SoundService.wrapTap(
-                              widget.step.onShow != null
-                                  ? () => widget.step.onShow!(context)
-                                  : widget.onNext,
-                            )
-                          : null,
-                      child: Text(
-                        'Next',
-                        style: theme.body.copyWith(
-                          color: canPressNext
-                              ? theme.background
-                              : theme.textPrimary.withValues(alpha: .45),
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ],
           ),
         ],
       ),
     );
   }
+}
+
+class _ProgressRingPainter extends CustomPainter {
+  _ProgressRingPainter({
+    required this.progress,
+    required this.track,
+    required this.fill,
+  });
+
+  final double progress;
+  final Color track;
+  final Color fill;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 4;
+    final trackPaint = Paint()
+      ..color = track
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    final fillPaint = Paint()
+      ..color = fill
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, trackPaint);
+    if (progress <= 0) return;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * progress,
+      false,
+      fillPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ProgressRingPainter oldDelegate) =>
+      progress != oldDelegate.progress ||
+      track != oldDelegate.track ||
+      fill != oldDelegate.fill;
+}
+
+class _TutorialBubbleTailPainter extends CustomPainter {
+  _TutorialBubbleTailPainter({
+    required this.fill,
+    required this.stroke,
+    required this.direction,
+  });
+
+  final Color fill;
+  final Color stroke;
+  final _BubbleTail direction;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path();
+    if (direction == _BubbleTail.up) {
+      path
+        ..moveTo(0, size.height)
+        ..lineTo(size.width / 2, 0)
+        ..lineTo(size.width, size.height)
+        ..close();
+    } else {
+      path
+        ..moveTo(0, 0)
+        ..lineTo(size.width / 2, size.height)
+        ..lineTo(size.width, 0)
+        ..close();
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = fill
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = stroke
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _TutorialBubbleTailPainter oldDelegate) =>
+      fill != oldDelegate.fill ||
+      stroke != oldDelegate.stroke ||
+      direction != oldDelegate.direction;
 }

@@ -14,7 +14,6 @@ import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/services/notifications_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
@@ -121,6 +120,7 @@ class AppRepo extends ChangeNotifier {
   String? _savedFcmToken;
   String? _activeGameId;
   Future<void> _activeGameWrite = Future.value();
+  Timer? _energyTestTimer;
 
   static const _themeKey = 'appTheme';
   static const _cardBackKey = 'cardBack';
@@ -1728,18 +1728,31 @@ class AppRepo extends ChangeNotifier {
     return true;
   }
 
-  /// Debug helper: fire the energy-full push now, without waiting for regen.
+  /// Debug: mark energy-full as due so onEnergyFull can send on its next
+  /// minute tick. Does not use a callable (v2 IAM blocks those here).
   Future<bool> testEnergyFullNotification() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      debugPrint('testEnergyFull failed: no FirebaseAuth user');
+      return false;
+    }
+    _walletPersistPaused = true;
+    _energyTestTimer?.cancel();
     try {
-      final fn = FirebaseFunctions.instanceFor(region: 'us-central1');
-      final result = await fn.httpsCallable('testEnergyFull').call();
-      developer.log(
-        'testEnergyFull: ${result.data}',
-        name: 'notifications',
+      await fs.armEnergyFullNotification(uid);
+      debugPrint(
+        'testEnergyFull: armed energyFullAt. '
+        'Keep this screen (or lock the phone). Banner within ~1 min.',
       );
+      _energyTestTimer = Timer(const Duration(minutes: 2), () {
+        _walletPersistPaused = false;
+        unawaited(_persistWallet());
+        debugPrint('testEnergyFull: restored wallet persist');
+      });
       return true;
     } catch (e) {
-      developer.log('testEnergyFull: $e', name: 'notifications');
+      _walletPersistPaused = false;
+      debugPrint('testEnergyFull failed: $e');
       return false;
     }
   }

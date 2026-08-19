@@ -16,6 +16,7 @@ import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 class AppShell extends StatefulWidget {
@@ -197,6 +198,14 @@ class AppShellState extends State<AppShell> {
                         }
                         _onTabTap(0);
                       },
+                      onLongPress: kDebugMode
+                          ? () async {
+                              AppHaptics.mediumImpact();
+                              await context
+                                  .read<AppRepo>()
+                                  .testEnergyFullNotification();
+                            }
+                          : null,
                       behavior: HitTestBehavior.opaque,
                       child: const CurrencyBar(),
                     ),

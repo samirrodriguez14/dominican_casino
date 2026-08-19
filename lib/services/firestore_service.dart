@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_reaction.dart';
 import 'package:dominican_casino/models/wallet.dart';
+import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/services/game_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -220,6 +221,20 @@ class FirestoreService extends GameService {
   Future<void> saveActiveGameId(String uid, String? gameId) async {
     await _users.doc(uid).set({
       'activeGameId': gameId ?? FieldValue.delete(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Make onEnergyFull due on the next scheduler tick without waiting
+  /// for real regen. Stored energy is temporarily below cap so the
+  /// function does not treat the bar as already full.
+  Future<void> armEnergyFullNotification(String uid) async {
+    await _users.doc(uid).set({
+      'energy': WalletConfig.energyCap - 1,
+      'activeGameId': FieldValue.delete(),
+      'energyFullAt': Timestamp.fromDate(
+        DateTime.now().subtract(const Duration(seconds: 15)),
+      ),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

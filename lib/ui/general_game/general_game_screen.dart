@@ -92,12 +92,11 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
       tutorialVm = TutorialViewModel(
         getCasinoTutorialSteps(
+          l10n: AppLocalizations.of(context),
           tableContentKey: initvm.tableContentKey,
           myDeckKey: initvm.myDeckKey,
-          oppDeckKey: initvm.oppDeckKey,
           addButtonKey: initvm.addButtonKey,
           takeStackButtonKey: initvm.takeStackButtonKey,
-          scoreKey: initvm.scoreKey,
           handCardKey: (id) => initvm.keyForCard(id, CardSlot.myHand),
           tableCardKey: (id) {
             final table = initvm.keyForCard(id, CardSlot.table);

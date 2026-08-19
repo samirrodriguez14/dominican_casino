@@ -163,6 +163,22 @@ class _DailySection extends StatelessWidget {
             l10n.debugResetDailyReward,
             style: theme.mutedText.copyWith(fontSize: 12),
           ),
+          const SizedBox(height: 8),
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            minimumSize: Size.zero,
+            color: theme.textPrimary.withValues(alpha: .14),
+            onPressed: SoundService.wrapTap(() {
+              context.read<AppRepo>().testEnergyFullNotification();
+            }),
+            child: Text(
+              l10n.debugTestEnergyPush,
+              style: theme.body.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
         const SizedBox(height: 28),
       ],

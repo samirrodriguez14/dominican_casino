@@ -65,16 +65,21 @@ export const onEnergyFull = onSchedule(
 /**
  * Send the energy-full push to the signed-in caller. Use this to test
  * FCM without waiting for regen; does not change energyFullAt.
+ * invoker public is Cloud Run IAM (not Firebase Auth). The handler still
+ * requires request.auth.
  * @return {{result: string}} sent | skip | clear
  */
-export const testEnergyFull = onCall(async (request) => {
-  const uid = request.auth?.uid;
-  if (!uid) {
-    throw new HttpsError("unauthenticated", "Sign in first");
-  }
-  const result = await _notifyEnergyFull(uid, {force: true});
-  return {result};
-});
+export const testEnergyFull = onCall(
+  {invoker: "public"},
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "Sign in first");
+    }
+    const result = await _notifyEnergyFull(uid, {force: true});
+    return {result};
+  },
+);
 
 /**
  * Local/AI seats are not real FCM recipients.

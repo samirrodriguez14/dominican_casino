@@ -1,14 +1,14 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/tutorial_action.dart';
 import 'package:dominican_casino/models/tutorial_step.dart';
 import 'package:flutter/cupertino.dart';
 
 List<TutorialStep> getCasinoTutorialSteps({
+  required AppLocalizations l10n,
   required GlobalKey tableContentKey,
   required GlobalKey myDeckKey,
-  required GlobalKey oppDeckKey,
   required GlobalKey addButtonKey,
   required GlobalKey takeStackButtonKey,
-  required GlobalKey scoreKey,
   required GlobalKey Function(String cardId) handCardKey,
   required GlobalKey Function(String cardId) tableCardKey,
   required GlobalKey? Function() firstStackKey,
@@ -30,8 +30,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 0,
       section: 0,
       title: "Welcome",
-      description:
-          "Let's learn how to play Casino! You'll learn how to capture cards, build stacks, sweep the table, and score points.",
+      description: l10n.tutorialWelcome,
       autoAdvance: false,
       allowInteraction: false,
       blockGameInteraction: true,
@@ -43,8 +42,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 1,
       section: 1,
       title: "Select your card",
-      description:
-          "Tap the 5♦ in your hand, or drag it onto the 3♥ to build a stack.",
+      description: l10n.tutorialTapFive,
       targetKey: handCardKey("tutorial_5"),
       expectedAction: TutorialAction.selectHandCard,
       expectedCardId: "tutorial_5",
@@ -62,8 +60,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 2,
       section: 1,
       title: "Choose a table card",
-      description:
-          "Tap the 3♥, or drop your 5♦ on it. We'll use this to create a stack.",
+      description: l10n.tutorialTapThree,
       targetKey: tableCardKey("table_3"),
       resolveTargets: () => [tableCardKey("table_3")],
       expectedAction: TutorialAction.selectTableCard,
@@ -83,8 +80,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 3,
       section: 1,
       title: "Create a stack",
-      description:
-          "Press Add, or drop the 5♦ on the 3♥, to combine them into a stack.",
+      description: l10n.tutorialPressAdd,
       targetKey: addButtonKey,
       expectedAction: TutorialAction.addStack,
       dragIds: const ["tutorial_5", "table_3"],
@@ -102,8 +98,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 4,
       section: 2,
       title: "Opponent's turn",
-      description:
-          "Your opponent captured the 9♠. Your stack of 8 is still on the table — you'll take it next.",
+      description: l10n.tutorialPuliTookNine,
       targetKey: tableContentKey,
       resolveTargets: tableCardsOrArea,
       allowInteraction: false,
@@ -118,8 +113,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 5,
       section: 2,
       title: "Select your 8",
-      description:
-          "Tap the 8♠ in your hand, or drag it onto the stack of 8 to take it.",
+      description: l10n.tutorialTapEight,
       targetKey: handCardKey("tutorial_8"),
       expectedAction: TutorialAction.selectHandCard,
       expectedCardId: "tutorial_8",
@@ -137,8 +131,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 6,
       section: 2,
       title: "Select the stack",
-      description:
-          "Tap the stack that totals 8, or drop your 8♠ on it. Since you created it, you can take it.",
+      description: l10n.tutorialTapStackEight,
       targetKey: tableContentKey,
       resolveTargets: () {
         final stack = firstStackKey();
@@ -160,8 +153,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       step: 7,
       section: 2,
       title: "Take the stack",
-      description:
-          "Press Take Stack, or drop your 8♠ on the stack, to collect the cards.",
+      description: l10n.tutorialPressTake,
       targetKey: takeStackButtonKey,
       expectedAction: TutorialAction.takeStack,
       dragIds: const ["tutorial_8"],
@@ -178,35 +170,8 @@ List<TutorialStep> getCasinoTutorialSteps({
     TutorialStep(
       step: 8,
       section: 3,
-      title: "Collected cards",
-      description:
-          "Captured cards go here. These cards count toward scoring at the end of the round.",
-      targetKey: myDeckKey,
-      allowInteraction: false,
-      blockGameInteraction: true,
-      allowedActions: [],
-    ),
-
-    // 9
-    TutorialStep(
-      step: 9,
-      section: 3,
-      title: "Opponent collection",
-      description:
-          "Opponent captures appear here. The highlighted collection means that player captured cards last. At the end of the round, leftover table cards go to whoever captured last.",
-      targetKey: oppDeckKey,
-      allowInteraction: false,
-      blockGameInteraction: true,
-      allowedActions: [],
-    ),
-
-    // 10
-    TutorialStep(
-      step: 10,
-      section: 4,
       title: "Opponent's turn",
-      description:
-          "Your opponent played a 2♥ next to the J♣. Those two cards add up to 13 — the same as your King.",
+      description: l10n.tutorialPuliPlayedTwo,
       targetKey: tableContentKey,
       resolveTargets: tableCardsOrArea,
       allowInteraction: false,
@@ -216,13 +181,12 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 11 — combine J and 2 on the table (no Add & Take)
+    // 9 — combine J and 2 on the table (no Add & Take)
     TutorialStep(
-      step: 11,
-      section: 4,
+      step: 9,
+      section: 3,
       title: "Combine J and 2",
-      description:
-          "Tap the J♣ and the 2♥, or drag one onto the other. Together they total 13.",
+      description: l10n.tutorialTapJackAndTwo,
       targetKey: tableContentKey,
       resolveTargets: () => [
         tableCardKey("table_J"),
@@ -232,7 +196,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       expectedCardIds: ["table_J", "opp_2"],
       dragIds: const ["table_J", "opp_2"],
       dropAction: TutorialAction.addStack,
-      dropToStep: 13,
+      dropToStep: 11,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
@@ -240,18 +204,17 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [TutorialAction.selectTableCard],
     ),
 
-    // 12
+    // 10
     TutorialStep(
-      step: 12,
-      section: 4,
+      step: 10,
+      section: 3,
       title: "Add them",
-      description:
-          "Press Add to build a stack of 13. You can also drag one card onto the other.",
+      description: l10n.tutorialPressAddShort,
       targetKey: addButtonKey,
       expectedAction: TutorialAction.addStack,
       dragIds: const ["table_J", "opp_2"],
       dropAction: TutorialAction.addStack,
-      dropToStep: 13,
+      dropToStep: 11,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
@@ -259,32 +222,30 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [TutorialAction.addStack],
     ),
 
-    // 13
+    // 11
     TutorialStep(
-      step: 13,
-      section: 4,
+      step: 11,
+      section: 3,
       title: "Select your King",
-      description:
-          "Tap the K♣ in your hand. A King is worth 13, so it can take that stack. You can also drag it onto the stack.",
+      description: l10n.tutorialTapKing,
       targetKey: handCardKey("tutorial_13"),
       expectedAction: TutorialAction.selectHandCard,
       expectedCardId: "tutorial_13",
       dragIds: const ["tutorial_13"],
       dropAction: TutorialAction.takeStack,
-      dropToStep: 16,
+      dropToStep: 14,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
       allowedActions: [TutorialAction.selectHandCard],
     ),
 
-    // 14
+    // 12
     TutorialStep(
-      step: 14,
-      section: 4,
+      step: 12,
+      section: 3,
       title: "Select the stack",
-      description:
-          "Tap the stack of 13, or drop your King on it to take it.",
+      description: l10n.tutorialTapStack,
       targetKey: tableContentKey,
       resolveTargets: () {
         final stack = firstStackKey();
@@ -293,7 +254,7 @@ List<TutorialStep> getCasinoTutorialSteps({
       expectedAction: TutorialAction.selectStack,
       dragIds: const ["tutorial_13"],
       dropAction: TutorialAction.takeStack,
-      dropToStep: 16,
+      dropToStep: 14,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
@@ -301,18 +262,17 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [TutorialAction.selectStack],
     ),
 
-    // 15
+    // 13
     TutorialStep(
-      step: 15,
-      section: 4,
+      step: 13,
+      section: 3,
       title: "Take with the King",
-      description:
-          "Press Take Stack to capture with your King, or drop the King on the stack.",
+      description: l10n.tutorialPressTakeShort,
       targetKey: takeStackButtonKey,
       expectedAction: TutorialAction.takeStack,
       dragIds: const ["tutorial_13"],
       dropAction: TutorialAction.takeStack,
-      dropToStep: 16,
+      dropToStep: 14,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
@@ -320,26 +280,12 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [TutorialAction.takeStack],
     ),
 
-    // 16
+    // 14
     TutorialStep(
-      step: 16,
+      step: 14,
       section: 4,
       title: "Sweep (virao)",
-      description:
-          "Jack plus 2 made 13, matching your King, so you took the stack. That cleared the table — a sweep, or virao. The extra card on your collection is the bonus.",
-      targetKey: myDeckKey,
-      allowInteraction: false,
-      blockGameInteraction: true,
-      allowedActions: [],
-    ),
-
-    // 17 — opponent plays leftover 4; extras collect to last capturer
-    TutorialStep(
-      step: 17,
-      section: 5,
-      title: "Last cards",
-      description:
-          "That last card came to you because you captured last. When a round ends, leftover table cards go to whoever took last.",
+      description: l10n.tutorialSweep,
       targetKey: myDeckKey,
       playOpponent: true,
       allowInteraction: false,
@@ -347,9 +293,9 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 18 — overlay hidden; Round Complete popup
+    // 15 — overlay hidden; Round Complete popup
     TutorialStep(
-      step: 18,
+      step: 15,
       section: 5,
       title: "End of round",
       description: "",
@@ -361,26 +307,12 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 19
+    // 16
     TutorialStep(
-      step: 19,
-      section: 5,
-      title: "Game status",
-      description:
-          "Open this anytime to see the previous round's score, go back to the lobby, or leave the match.",
-      targetKey: scoreKey,
-      allowInteraction: false,
-      blockGameInteraction: true,
-      allowedActions: [],
-    ),
-
-    // 20
-    TutorialStep(
-      step: 20,
+      step: 16,
       section: 5,
       title: "You're ready!",
-      description:
-          "You know the basics: build stacks, capture cards, sweep the table, and score. Tap or drag cards to play. Play a real game against Puli, or head home.",
+      description: l10n.tutorialReady,
       autoAdvance: false,
       allowInteraction: false,
       blockGameInteraction: true,

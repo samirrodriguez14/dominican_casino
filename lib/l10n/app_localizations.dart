@@ -119,6 +119,9 @@ class AppLocalizations {
   String get debugResetDailyReward => isEs
       ? 'Mantén pulsado para probar de nuevo (debug).'
       : 'Long-press to claim again (debug).';
+  String get debugTestEnergyPush => isEs
+      ? 'Probar aviso de energía'
+      : 'Test energy notification';
   String get buyEnergyWithCoins =>
       isEs ? 'Energía por monedas' : 'Energy for coins';
   String get howToPlay => isEs ? 'Cómo jugar' : 'How to play';
@@ -285,6 +288,38 @@ class AppLocalizations {
   String get skipTutorialBody => isEs
       ? 'Sigue en el tutorial, ve al inicio o empieza una partida contra Puli.'
       : 'Stay in the tutorial, head home, or start a real game against Puli.';
+  String get tutorialGotIt => isEs ? 'Ok' : 'Got it';
+  String get tutorialWelcome => isEs
+      ? '¡Vamos! Junta cartas para capturarlas.'
+      : "Let's go! Match cards to capture them.";
+  String get tutorialTapFive => isEs ? 'Toca tu 5♦.' : 'Tap your 5♦.';
+  String get tutorialTapThree => isEs ? 'Ahora toca el 3♥.' : 'Now tap the 3♥.';
+  String get tutorialPressAdd =>
+      isEs ? 'Toca Añadir para juntarlas.' : 'Tap Add to stack them.';
+  String get tutorialPuliTookNine => isEs
+      ? 'Puli se llevó el 9. Tu montón sigue ahí.'
+      : 'Puli took the 9. Your stack is still there.';
+  String get tutorialTapEight => isEs ? 'Toca tu 8♠.' : 'Tap your 8♠.';
+  String get tutorialTapStackEight =>
+      isEs ? 'Toca el montón de 8.' : 'Tap the stack of 8.';
+  String get tutorialPressTake =>
+      isEs ? 'Toca Tomar para quedártelo.' : 'Tap Take Stack to keep it.';
+  String get tutorialPuliPlayedTwo => isEs
+      ? 'Puli jugó un 2 junto al J. Eso suma 13.'
+      : 'Puli played a 2 next to the Jack. That\'s 13.';
+  String get tutorialTapJackAndTwo =>
+      isEs ? 'Toca el J♣ y el 2♥.' : 'Tap the J♣ and the 2♥.';
+  String get tutorialPressAddShort => isEs ? 'Toca Añadir.' : 'Tap Add.';
+  String get tutorialTapKing =>
+      isEs ? 'Toca tu Rey — también vale 13.' : 'Tap your King — it\'s also 13.';
+  String get tutorialTapStack => isEs ? 'Toca el montón.' : 'Tap the stack.';
+  String get tutorialPressTakeShort => isEs ? 'Toca Tomar.' : 'Tap Take Stack.';
+  String get tutorialSweep => isEs
+      ? '¡Mesa vacía — un virao!'
+      : 'Empty table — that\'s a sweep (virao)!';
+  String get tutorialReady => isEs
+      ? '¡Listo! ¿Juegas una de verdad?'
+      : 'You\'re ready. Play a real game?';
   String get stay => isEs ? 'Quedarse' : 'Stay';
   String get home => isEs ? 'Inicio' : 'Home';
   String get next => isEs ? 'Siguiente' : 'Next';
