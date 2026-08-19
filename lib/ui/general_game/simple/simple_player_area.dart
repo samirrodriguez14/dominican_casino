@@ -24,7 +24,8 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
   double _fanGap = 48;
   static const double _cardWidth = 110.0;
   static const double _fanHeight = 168.0;
-  static const double _edgeAngle = 0.20;
+  // Reduced to keep the fan visually tighter on small screens.
+  static const double _edgeAngle = 0.16;
   static const double _selectedLift = 12.0;
 
   @override
@@ -42,14 +43,35 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
               if (cards.isEmpty) return const SizedBox.shrink();
               final celebrating = vm.isCelebratingHand(vm.me);
               final count = cards.length;
-              // Shrink the fan cards on small screens so we can still fit all
-              // cards (e.g. 6-card Tres y Dos hands) without overflowing.
-              final cardWidth = math.min(_cardWidth, constraints.maxWidth / count);
+              // Prefer tightening the gap first (cards closer), and only
+              // shrink cards if we can't keep the minimum gap.
+              const minGap = 12.0;
+              const minCardWidth = 56.0;
+
+              double cardWidth;
+              double gap;
+              if (count == 1) {
+                cardWidth = _cardWidth;
+                gap = 0.0;
+              } else {
+                final gapForFullCards =
+                    (constraints.maxWidth - _cardWidth) / (count - 1);
+                if (gapForFullCards >= minGap) {
+                  cardWidth = _cardWidth;
+                  gap = gapForFullCards.clamp(0.0, celebrating ? 64.0 : 56.0);
+                } else {
+                  // Keep a tighter gap, reduce card width to fit.
+                  gap = minGap;
+                  cardWidth = constraints.maxWidth - (count - 1) * gap;
+                  if (cardWidth < minCardWidth) {
+                    // Last resort: shrink evenly so everything fits.
+                    cardWidth = constraints.maxWidth / count;
+                    gap = (constraints.maxWidth - cardWidth) / (count - 1);
+                  }
+                }
+              }
+
               final cardH = cardWidth * 1.4;
-              final gap = count == 1
-                  ? 0.0
-                  : ((constraints.maxWidth - cardWidth) / (count - 1))
-                        .clamp(0.0, celebrating ? 64.0 : 56.0);
               _fanGap = gap;
 
               final totalWidth = cardWidth + ((count - 1) * gap);
@@ -120,7 +142,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
     final selected = vm.selectedCard == card && draggingId != card.id;
     final t = count == 1 ? 0.0 : (index - mid) / mid;
     final angle = holdFlat || celebrating ? 0.0 : t * _edgeAngle;
-    final arcDrop = holdFlat || celebrating ? 0.0 : t.abs() * 10;
+    final arcDrop = holdFlat || celebrating ? 0.0 : t.abs() * 8;
     return AnimatedPositioned(
       key: ValueKey(card.id),
       duration: draggingId == card.id
