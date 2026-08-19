@@ -12,6 +12,7 @@ import 'package:dominican_casino/game_control/interfaces/card_event.dart';
 import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
 import 'package:dominican_casino/local_player/local_player.dart';
+import 'package:dominican_casino/models/daily_challenge.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/models/player.dart';
@@ -372,6 +373,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     GameState next,
     List<CardMoveEvent> events, {
     List<CardMoveEvent> settlementEvents = const [],
+    DailyChallengeGameSnap? progressFrom,
   }) async {
     selectedCard = null;
     selectedCards = [];
@@ -380,7 +382,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (!tutorialMode) {
       unawaited(
         appRepo.noteDailyChallengeProgress(
-          prev: gameState,
+          prev: progressFrom ?? DailyChallengeGameSnap.of(gameState, me),
           next: next,
           pid: me,
         ),
@@ -1488,6 +1490,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     final beforeMe = gameState.pendingCoinsFor(me);
     final oppId = opp;
     final beforeOpp = oppId == null ? 0 : gameState.pendingCoinsFor(oppId);
+    final progressFrom = DailyChallengeGameSnap.of(gameState, me);
     final next = gameEngine.performPlayAction(gameState, selection, action);
     final events = List<CardMoveEvent>.from(next.cardMoveEvents);
     final settlement = List<CardMoveEvent>.from(next.settlementEvents);
@@ -1499,14 +1502,24 @@ class GeneralGameViewModel extends ChangeNotifier {
       }
       await Future.wait([
         gameRepo.fs.updateGame(next),
-        _commitStateWithMotion(next, events, settlementEvents: settlement),
+        _commitStateWithMotion(
+          next,
+          events,
+          settlementEvents: settlement,
+          progressFrom: progressFrom,
+        ),
       ]);
       _queueDeckCoinFlight(
         meGain: next.pendingCoinsFor(me) - beforeMe,
         oppGain: oppId == null ? 0 : next.pendingCoinsFor(oppId) - beforeOpp,
       );
     } else {
-      await _commitStateWithMotion(next, events, settlementEvents: settlement);
+      await _commitStateWithMotion(
+        next,
+        events,
+        settlementEvents: settlement,
+        progressFrom: progressFrom,
+      );
       _queueDeckCoinFlight(
         meGain: next.pendingCoinsFor(me) - beforeMe,
         oppGain: oppId == null ? 0 : next.pendingCoinsFor(oppId) - beforeOpp,
@@ -1732,7 +1745,10 @@ class GeneralGameViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> performInGameAction(InGameAction action) async {
+  Future<void> performInGameAction(InGameAction action) =>
+      _performInGameAction(action, me);
+
+  Future<void> _performInGameAction(InGameAction action, String pid) async {
     if (isAnimating) return;
     isAnimating = true;
     notifyListeners();
@@ -1745,7 +1761,8 @@ class GeneralGameViewModel extends ChangeNotifier {
         // Capture piles first — the engine shuffle clears them in place.
         await _playShuffleMotion(
           onHidden: () async {
-            final next = gameEngine.performInGameAction(gameState, action, me);
+            final progressFrom = DailyChallengeGameSnap.of(gameState, me);
+            final next = gameEngine.performInGameAction(gameState, action, pid);
             final events = List<CardMoveEvent>.from(next.cardMoveEvents);
             if (!tutorialMode) {
               for (final e in events) {
@@ -1753,7 +1770,11 @@ class GeneralGameViewModel extends ChangeNotifier {
               }
               await gameRepo.fs.updateGame(next);
             }
-            await _commitStateWithMotion(next, events);
+            await _commitStateWithMotion(
+              next,
+              events,
+              progressFrom: progressFrom,
+            );
           },
           onSquared: () async {
             motion.setShuffling(false);
@@ -1762,7 +1783,8 @@ class GeneralGameViewModel extends ChangeNotifier {
         return;
       }
 
-      final next = gameEngine.performInGameAction(gameState, action, me);
+      final progressFrom = DailyChallengeGameSnap.of(gameState, me);
+      final next = gameEngine.performInGameAction(gameState, action, pid);
       final events = List<CardMoveEvent>.from(next.cardMoveEvents);
 
       if (!tutorialMode) {
@@ -1772,7 +1794,7 @@ class GeneralGameViewModel extends ChangeNotifier {
         await gameRepo.fs.updateGame(next);
       }
 
-      await _commitStateWithMotion(next, events);
+      await _commitStateWithMotion(next, events, progressFrom: progressFrom);
     } catch (e) {
       developer.log("performInGameAction Error $e");
     } finally {
@@ -1903,10 +1925,26 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (gameState.round.roundStatus != RoundStatus.completed) return;
 
     gameState.round.nextAcknowledged = true;
+    notifyListeners();
+
+    // Bot dealer: play the gather-wash here. The on-device AI mutates the
+    // shared GameState in place, which skips the repo-echo overlay.
+    if (gameState.isLocalBotPid(gameState.controllerId)) {
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      if (_disposed) return;
+      if (gameState.round.roundStatus != RoundStatus.completed) return;
+      if (!isAnimating) {
+        await _performInGameAction(
+          InGameAction.shuffle,
+          gameState.controllerId,
+        );
+        return;
+      }
+    }
+
     if (!tutorialMode) {
       await gameRepo.fs.updateGame(gameState);
     }
-    notifyListeners();
   }
 
   PlayingCardModel? selectedCard;

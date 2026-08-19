@@ -239,6 +239,7 @@ class FirestoreService extends GameService {
     String? cardBack,
     String? cardBackMark,
     String? cardBackTint,
+    String? locale,
   }) async {
     await _users.doc(uid).set({
       'name': ?name,
@@ -250,6 +251,7 @@ class FirestoreService extends GameService {
       'cardBack': ?cardBack,
       'cardBackMark': ?cardBackMark,
       'cardBackTint': ?cardBackTint,
+      'locale': ?locale,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -267,8 +269,12 @@ class FirestoreService extends GameService {
   }
 
   Future<void> saveWallet({required String uid, required Wallet wallet}) async {
+    final fullAt = wallet.fullAt;
     await _users.doc(uid).set({
       ...wallet.toJson(),
+      'energyFullAt': fullAt == null
+          ? FieldValue.delete()
+          : Timestamp.fromDate(fullAt),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

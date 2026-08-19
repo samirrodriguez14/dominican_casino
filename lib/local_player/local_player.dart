@@ -205,11 +205,15 @@ class LocalPlayer extends ChangeNotifier {
         }
         pid = afterWait.controllerId;
 
+        // Copy first — in-place shuffle would also clear the board's
+        // GameState, and the gather-wash overlay would have nothing to fly.
         final next = engine.performInGameAction(
-          afterWait,
+          GameState.fromMap(afterWait.toJson()),
           InGameAction.shuffle,
           pid,
         );
+        gameRepo.gameState = next;
+        gameRepo.notifyListeners();
         await _persist(next);
         return true;
 

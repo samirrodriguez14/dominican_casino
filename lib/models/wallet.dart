@@ -22,6 +22,14 @@ class Wallet {
 
   bool get isAtOrAboveCap => energy >= WalletConfig.energyCap;
 
+  /// When regen will reach [WalletConfig.energyCap], or null if already full.
+  DateTime? get fullAt {
+    if (isAtOrAboveCap) return null;
+    final room = WalletConfig.energyCap - energy;
+    if (room <= 0) return null;
+    return energyUpdatedAt.add(WalletConfig.regenInterval * room);
+  }
+
   Duration timeToNextEnergy([DateTime? now]) {
     if (isAtOrAboveCap) return Duration.zero;
     final at = now ?? DateTime.now();

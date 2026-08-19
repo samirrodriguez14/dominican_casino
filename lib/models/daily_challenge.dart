@@ -1,4 +1,33 @@
+import 'package:dominican_casino/models/game_state.dart';
+
 enum DailyChallengeId { tydRounds, casinoClassic }
+
+/// Immutable fields we need before the engine mutates [GameState] in place.
+class DailyChallengeGameSnap {
+  const DailyChallengeGameSnap({
+    required this.id,
+    required this.mode,
+    required this.status,
+    required this.winnerId,
+    required this.score,
+  });
+
+  factory DailyChallengeGameSnap.of(GameState game, String pid) {
+    return DailyChallengeGameSnap(
+      id: game.id,
+      mode: game.gameMode,
+      status: game.gameStatus,
+      winnerId: game.winnerId,
+      score: (game.scores[pid] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  final String id;
+  final GameMode mode;
+  final GameStatus status;
+  final String? winnerId;
+  final int score;
+}
 
 enum DailyChallengeRewardKind { coins, energy }
 

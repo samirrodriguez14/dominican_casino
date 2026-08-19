@@ -12,6 +12,7 @@ import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
+import 'package:dominican_casino/services/notifications_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -115,6 +116,8 @@ class AppRepo extends ChangeNotifier {
   DateTime? get lastDailyClaimAt => _lastDailyClaimAt;
   DailyChallengeState _dailyChallenges = DailyChallengeState.empty('');
   DailyChallengeState get dailyChallengesState => _dailyChallenges;
+  StreamSubscription<String>? _fcmTokenSub;
+  String? _savedFcmToken;
 
   static const _themeKey = 'appTheme';
   static const _cardBackKey = 'cardBack';
@@ -244,6 +247,7 @@ class AppRepo extends ChangeNotifier {
     _locale = locale;
     final sp = await SharedPreferences.getInstance();
     await sp.setString('locale', locale.languageCode);
+    unawaited(_persistPlayerRemote());
     notifyListeners();
   }
 
@@ -265,6 +269,8 @@ class AppRepo extends ChangeNotifier {
       await _persistLooksRemote();
       _ensureEnergyTicker();
       gamesInfo = await loadGames();
+      await NotificationsService.instance.configure();
+      _listenForFcmTokenRefresh();
       await refreshNotificationStatus();
       if (player != null) appStatus = AppStatus.appReady;
     } catch (e, st) {
@@ -280,6 +286,7 @@ class AppRepo extends ChangeNotifier {
         _ensureEnergyTicker();
       } catch (_) {}
       try {
+        await NotificationsService.instance.configure();
         await refreshNotificationStatus();
       } catch (_) {}
     }
@@ -604,7 +611,7 @@ class AppRepo extends ChangeNotifier {
   }
 
   Future<void> noteDailyChallengeProgress({
-    required GameState prev,
+    required DailyChallengeGameSnap prev,
     required GameState next,
     required String pid,
   }) async {
@@ -613,7 +620,7 @@ class AppRepo extends ChangeNotifier {
     var changed = false;
 
     if (next.gameMode == GameMode.tresydos) {
-      final oldScore = (prev.scores[pid] as num?)?.toInt() ?? 0;
+      final oldScore = prev.score;
       final newScore = (next.scores[pid] as num?)?.toInt() ?? 0;
       if (newScore > oldScore) {
         for (var score = oldScore + 1; score <= newScore; score++) {
@@ -628,10 +635,13 @@ class AppRepo extends ChangeNotifier {
       }
     }
 
+    final winner = next.winnerId;
     if (next.gameMode == GameMode.casino &&
         next.gameStatus == GameStatus.gameOver &&
-        prev.gameStatus != GameStatus.gameOver &&
-        next.winnerId == pid) {
+        prev.status != GameStatus.gameOver &&
+        winner != null &&
+        winner.isNotEmpty &&
+        winner == pid) {
       final eventId = 'casino:${next.id}';
       if (!_dailyChallenges.credited.contains(eventId)) {
         _dailyChallenges.credited.add(eventId);
@@ -886,7 +896,60 @@ class AppRepo extends ChangeNotifier {
     } catch (e) {
       developer.log('AppRepo.refreshNotificationStatus: $e');
     }
+    if (notificationsEnabled) {
+      unawaited(_syncFcmToken());
+    }
     notifyListeners();
+  }
+
+  void _listenForFcmTokenRefresh() {
+    _fcmTokenSub ??= FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+      unawaited(_saveFcmToken(token));
+    });
+  }
+
+  /// Fetch the current FCM token and write it to users/{uid}.fcmToken.
+  Future<void> _syncFcmToken() async {
+    if (!notificationsEnabled) return;
+    try {
+      final messaging = FirebaseMessaging.instance;
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        String? apns;
+        for (var i = 0; i < 8; i++) {
+          apns = await messaging.getAPNSToken();
+          if (apns != null) break;
+          await Future.delayed(const Duration(milliseconds: 250));
+        }
+        if (apns == null) {
+          developer.log('APNS token not ready yet');
+          return;
+        }
+      }
+      final token = await messaging.getToken();
+      if (token == null) return;
+      await _saveFcmToken(token);
+    } catch (e) {
+      developer.log('AppRepo._syncFcmToken: $e');
+    }
+  }
+
+  Future<void> _saveFcmToken(String token) async {
+    final current = player;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (current == null || uid == null || current.id != uid) return;
+    if (_savedFcmToken == token && current.token == token) return;
+    player = current.copyWith(token: token);
+    await _persistPlayerLocal();
+    try {
+      await fs.saveUserToken(uid, token, player!.name);
+      _savedFcmToken = token;
+      developer.log(
+        'FCM token saved for $uid …${token.substring(token.length - 6)}',
+        name: 'notifications',
+      );
+    } catch (e) {
+      developer.log('AppRepo.saveUserToken: $e');
+    }
   }
 
   Future<void> _ensureAnonymousAuth() async {
@@ -955,6 +1018,10 @@ class AppRepo extends ChangeNotifier {
       player = current.copyWith(id: uid);
       await _persistPlayer();
       await _loadWallet();
+      if (notificationsEnabled) {
+        _savedFcmToken = null;
+        unawaited(_syncFcmToken());
+      }
       notifyListeners();
     } else if (_walletUid != uid) {
       await _loadWallet();
@@ -1146,6 +1213,10 @@ class AppRepo extends ChangeNotifier {
       await _persistLooksLocal();
       await _persistPlayerLocal();
       await _loadWallet(preferRemote: true);
+      if (notificationsEnabled) {
+        _savedFcmToken = null;
+        unawaited(_syncFcmToken());
+      }
       notifyListeners();
       return GoogleAuthResult.success(suggested ?? player?.name);
     }
@@ -1171,6 +1242,10 @@ class AppRepo extends ChangeNotifier {
       await _persistWallet();
     } else {
       await _loadWallet();
+    }
+    if (notificationsEnabled) {
+      _savedFcmToken = null;
+      unawaited(_syncFcmToken());
     }
     notifyListeners();
     return GoogleAuthResult.success(suggested ?? player?.name);
@@ -1619,28 +1694,9 @@ class AppRepo extends ChangeNotifier {
       return false;
     }
 
-    // APNS must be ready on iOS before getToken.
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-      final apns = await messaging.getAPNSToken();
-      if (apns == null) {
-        developer.log('APNS token not ready yet');
-        notificationsEnabled = true;
-        notifyListeners();
-        return true;
-      }
-    }
-
-    final fcmToken = await messaging.getToken();
-    if (fcmToken == null || player == null) {
-      notificationsEnabled = true;
-      notifyListeners();
-      return true;
-    }
-
-    player = player!.copyWith(token: fcmToken);
-    await _persistPlayerLocal();
-    await fs.saveUserToken(player!.id, fcmToken, player!.name);
     notificationsEnabled = true;
+    await NotificationsService.instance.configure();
+    await _syncFcmToken();
     notifyListeners();
     return true;
   }
@@ -1682,7 +1738,7 @@ class AppRepo extends ChangeNotifier {
       }
       await _persistPlayer();
       if (player!.token != null) {
-        await fs.saveUserToken(player!.id, player!.token!, player!.name);
+        unawaited(_saveFcmToken(player!.token!));
       }
       notifyListeners();
       return true;
@@ -1937,6 +1993,7 @@ class AppRepo extends ChangeNotifier {
         cardBack: _cardBack.name,
         cardBackMark: _cardBackMark.name,
         cardBackTint: _cardBackTintId,
+        locale: _locale.languageCode,
       );
     } catch (e) {
       developer.log('AppRepo.saveUserProfile: $e');

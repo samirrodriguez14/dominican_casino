@@ -23,6 +23,8 @@ service cloud.firestore {
           'coins',
           'energy',
           'energyUpdatedAt',
+          'energyFullAt',
+          'locale',
           'lastDailyClaimAt',
           'dailyChallenges',
           'ownedPacks',
