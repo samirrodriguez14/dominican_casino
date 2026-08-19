@@ -127,6 +127,12 @@ class FirestoreService extends GameService {
       ];
       changed = true;
     }
+    if (game.payoutClaimedBy.contains(from)) {
+      game.payoutClaimedBy = [
+        for (final id in game.payoutClaimedBy) id == from ? to : id,
+      ];
+      changed = true;
+    }
     changed = _rebindMapKey(game.playersInfo, from, to) || changed;
     for (final raw in game.playersInfo.values) {
       if (raw is Map && raw['id'] == from) {

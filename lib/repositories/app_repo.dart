@@ -712,7 +712,7 @@ class AppRepo extends ChangeNotifier {
   /// [completeHomeCoinClaim]. Zero-amount games just mark payout applied.
   Future<void> queueHomeCoinClaim(GameState game, String me) async {
     if (game.gameStatus != GameStatus.gameOver) return;
-    if (game.payoutApplied) return;
+    if (game.isPayoutClaimedBy(me)) return;
     if (me.isEmpty) return;
     final amount = game.coinsToClaim(me);
     if (amount <= 0) {
@@ -736,7 +736,7 @@ class AppRepo extends ChangeNotifier {
       developer.log('AppRepo.completeHomeCoinClaim load: $e');
     }
     if (game != null && uid != null) {
-      if (!game.payoutApplied) {
+      if (!game.isPayoutClaimedBy(uid)) {
         await claimMatchCoins(game, uid);
       }
     } else {
@@ -876,10 +876,10 @@ class AppRepo extends ChangeNotifier {
 
   Future<void> claimMatchCoins(GameState game, String me) async {
     if (game.gameStatus != GameStatus.gameOver) return;
-    if (game.payoutApplied) return;
+    if (game.isPayoutClaimedBy(me)) return;
     if (me.isEmpty) return;
     final amount = game.coinsToClaim(me);
-    game.payoutApplied = true;
+    game.markPayoutClaimedBy(me);
     if (amount > 0) await grantCoins(amount);
     try {
       await fs.updateGame(game);

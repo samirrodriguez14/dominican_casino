@@ -99,8 +99,11 @@ class GameState {
   /// Uids that already paid [entryCost]. Host is added at create.
   List<String> entryPaidBy;
 
-  /// True after this player's match coins were written to their wallet.
-  bool payoutApplied;
+  /// Players whose match payout coins were already written to their wallet.
+  ///
+  /// This must be per-player (not one boolean for the whole match) so a
+  /// resigner can't accidentally block the winner from claiming later.
+  List<String> payoutClaimedBy;
 
   /// Casino bonuses earned this match, claimed at game over.
   Map<String, int> pendingCoins;
@@ -150,7 +153,7 @@ class GameState {
     List<String>? botPlayerIds,
     int? entryCost,
     List<String>? entryPaidBy,
-    this.payoutApplied = false,
+    List<String>? payoutClaimedBy,
     Map<String, int>? pendingCoins,
     this.viraosCreditedRoundId = -1,
     Map<String, int>? roundTakeCoins,
@@ -164,6 +167,7 @@ class GameState {
        tableOrder = tableOrder ?? [],
        entryCost = entryCost ?? WalletConfig.entryCost,
        entryPaidBy = entryPaidBy ?? [],
+       payoutClaimedBy = payoutClaimedBy ?? [],
        pendingCoins = pendingCoins ?? {},
        roundTakeCoins = roundTakeCoins ?? {},
        roundSpecialCoins = roundSpecialCoins ?? {},
@@ -255,6 +259,14 @@ class GameState {
   }
 
   int pendingCoinsFor(String pid) => pendingCoins[pid] ?? 0;
+
+  bool isPayoutClaimedBy(String pid) => payoutClaimedBy.contains(pid);
+
+  void markPayoutClaimedBy(String pid) {
+    if (pid.isEmpty) return;
+    if (payoutClaimedBy.contains(pid)) return;
+    payoutClaimedBy.add(pid);
+  }
 
   void addPendingCoins(String pid, int amount) {
     if (amount <= 0 || pid.isEmpty) return;
@@ -390,7 +402,7 @@ class GameState {
       round: round,
       entryCost: WalletConfig.entryCost,
       entryPaidBy: [],
-      payoutApplied: false,
+      payoutClaimedBy: [],
       pendingCoins: {},
       viraosCreditedRoundId: -1,
       roundTakeCoins: {},
@@ -511,7 +523,7 @@ class GameState {
     'botPlayerIds': botPlayerIds,
     'entryCost': entryCost,
     'entryPaidBy': entryPaidBy,
-    'payoutApplied': payoutApplied,
+    'payoutClaimedBy': payoutClaimedBy,
     'pendingCoins': pendingCoins,
     'viraosCreditedRoundId': viraosCreditedRoundId,
     'roundTakeCoins': roundTakeCoins,
@@ -619,9 +631,11 @@ class GameState {
               ?.map((e) => e.toString())
               .toList() ??
           <String>[],
-      payoutApplied: m.containsKey('payoutApplied')
-          ? m['payoutApplied'] == true
-          : gameStatus == GameStatus.gameOver,
+      // Legacy migrations:
+      // - Old documents used a single boolean `payoutApplied`.
+      // - We can no longer reconstruct "who" claimed from that boolean.
+      //   New games store `payoutClaimedBy`.
+      payoutClaimedBy: _stringList(m['payoutClaimedBy']),
       pendingCoins: _intMap(m['pendingCoins']),
       viraosCreditedRoundId: (m['viraosCreditedRoundId'] as num?)?.toInt() ?? -1,
       roundTakeCoins: _intMap(m['roundTakeCoins']),
@@ -630,6 +644,14 @@ class GameState {
       turnDeadline: _dateTime(m['turnDeadline']),
       turnDurationSeconds: _speedTurnSeconds(m['turnDurationSeconds']),
     );
+  }
+
+  static List<String> _stringList(dynamic raw) {
+    if (raw is! List) return const <String>[];
+    return raw
+        .map((e) => e.toString())
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 
   static int _speedTurnSeconds(dynamic raw) {

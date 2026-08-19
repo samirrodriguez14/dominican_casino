@@ -486,7 +486,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       botPlayerIds: List<String>.from(next.botPlayerIds),
       entryCost: next.entryCost,
       entryPaidBy: List<String>.from(next.entryPaidBy),
-      payoutApplied: next.payoutApplied,
+      payoutClaimedBy: List<String>.from(next.payoutClaimedBy),
       pendingCoins: Map<String, int>.from(next.pendingCoins),
       viraosCreditedRoundId: next.viraosCreditedRoundId,
       roundTakeCoins: Map<String, int>.from(next.roundTakeCoins),
@@ -2002,7 +2002,8 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   Future<void> resign() async {
-    if (opp == null || tutorialMode) {
+    final remaining = gameState.playersInfo.keys.where((id) => id != me).toList();
+    if (remaining.isEmpty || tutorialMode) {
       await appRepo.deleteGame(gameState.id);
       notifyListeners();
       return;
@@ -2010,7 +2011,21 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     gameState.cardMoveEvents = [];
     gameState.settlementEvents = [];
-    gameState.winnerId = opp;
+    // Resign should pay the match winner: the best remaining seat.
+    // (Heads-up collapses to "the opponent"; multi-seat ranks by score.)
+    final paidRemaining = remaining
+        .where((pid) => gameState.entryPaidBy.contains(pid))
+        .toList();
+    final candidates = paidRemaining.isNotEmpty ? paidRemaining : remaining;
+    String best = candidates.first;
+    for (final pid in candidates.skip(1)) {
+      final cur = gameState.scoreOf(pid);
+      final bestScore = gameState.scoreOf(best);
+      if (cur > bestScore || (cur == bestScore && pid.compareTo(best) < 0)) {
+        best = pid;
+      }
+    }
+    gameState.winnerId = best;
     gameState.gameStatus = GameStatus.gameOver;
     await gameRepo.fs.updateGame(gameState);
     notifyListeners();

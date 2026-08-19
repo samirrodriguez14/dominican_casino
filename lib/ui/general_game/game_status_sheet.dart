@@ -200,6 +200,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                     avatarId: null,
                     score: 0,
                     pendingCoins: 0,
+                    showMatchCoins: false,
                     beforeScore: 0,
                     roundScore: 0,
                     isDealer: false,
@@ -213,7 +214,11 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                       name: _playerLabel(pid),
                       avatarId: _playerAvatarId(pid),
                       score: totalScores[pid] ?? 0,
-                      pendingCoins: gameState.pendingCoinsFor(pid),
+                      pendingCoins: gameOver
+                          ? gameState.winPotCoins(pid) +
+                              gameState.pendingCoinsFor(pid)
+                          : gameState.pendingCoinsFor(pid),
+                      showMatchCoins: gameOver,
                       beforeScore: _beforeScore(
                         totalScores[pid] ?? 0,
                         roundScores[pid],
@@ -430,6 +435,7 @@ class _BoardSpec {
     required this.avatarId,
     required this.score,
     required this.pendingCoins,
+    required this.showMatchCoins,
     required this.beforeScore,
     required this.roundScore,
     required this.isDealer,
@@ -444,6 +450,7 @@ class _BoardSpec {
   final String? avatarId;
   final dynamic score;
   final int pendingCoins;
+  final bool showMatchCoins;
   final int beforeScore;
   final int roundScore;
   final bool isDealer;
@@ -816,6 +823,8 @@ class _AvatarFlipBoardState extends State<_AvatarFlipBoard>
                         avatarId: spec.avatarId,
                         isCasino: spec.isCasino,
                         scoreMap: spec.scoreMap,
+                        matchCoins: spec.pendingCoins,
+                        showMatchCoins: spec.showMatchCoins,
                         raised: widget.isFront,
                         place: spec.place,
                         placeLabel: spec.placeLabel,
@@ -1308,6 +1317,8 @@ class _ScoreBoardBack extends StatefulWidget {
     required this.avatarId,
     required this.isCasino,
     required this.scoreMap,
+    required this.matchCoins,
+    required this.showMatchCoins,
     this.raised = true,
     this.place,
     this.placeLabel,
@@ -1319,6 +1330,8 @@ class _ScoreBoardBack extends StatefulWidget {
   final String? avatarId;
   final bool isCasino;
   final Map<String, dynamic> scoreMap;
+  final int matchCoins;
+  final bool showMatchCoins;
   final bool raised;
   final int? place;
   final String? placeLabel;
@@ -1348,24 +1361,32 @@ class _ScoreBoardBackState extends State<_ScoreBoardBack> {
   ];
 
   List<({String label, int amount})> get _coinChips => [
-    if (_n('coinsTake') > 0) (label: 'Big take', amount: _n('coinsTake')),
-    if (_n('coinsSpecial') > 0)
+    if (widget.showMatchCoins) ...const [],
+    if (!widget.showMatchCoins && _n('coinsTake') > 0)
+      (label: 'Big take', amount: _n('coinsTake')),
+    if (!widget.showMatchCoins && _n('coinsSpecial') > 0)
       (label: 'Special cards', amount: _n('coinsSpecial')),
-    if (_n('coinsVirao') > 0) (label: 'Viraos', amount: _n('coinsVirao')),
+    if (!widget.showMatchCoins && _n('coinsVirao') > 0)
+      (label: 'Viraos', amount: _n('coinsVirao')),
   ];
 
   @override
   void initState() {
     super.initState();
     if (widget.playReveal) {
+      if (widget.showMatchCoins) {
+        // Match payout coins are already known; hide the per-round chip
+        // animation so the tally shows the total immediately.
+        _coins = widget.matchCoins;
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _runReveal();
       });
     } else {
       _shownPoints = _pointChips.length;
-      _shownCoins = _coinChips.length;
+      _shownCoins = widget.showMatchCoins ? 0 : _coinChips.length;
       _points = _n('total');
-      _coins = _n('coins');
+      _coins = widget.showMatchCoins ? widget.matchCoins : _n('coins');
     }
   }
 
