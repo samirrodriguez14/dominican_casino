@@ -22,10 +22,10 @@ class ReactionBubble extends StatelessWidget {
     final fill = theme.surface.withValues(alpha: .96);
     final stroke = theme.border.withValues(alpha: .5);
     final body = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: fill,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: stroke),
         boxShadow: [
           BoxShadow(
@@ -35,7 +35,7 @@ class ReactionBubble extends StatelessWidget {
           ),
         ],
       ),
-      child: Text(emoji, style: const TextStyle(fontSize: 28, height: 1.1)),
+      child: Text(emoji, style: const TextStyle(fontSize: 40, height: 1)),
     );
 
     if (tail == ReactionBubbleTail.top) {
@@ -43,7 +43,7 @@ class ReactionBubble extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           CustomPaint(
-            size: const Size(14, 8),
+            size: const Size(16, 9),
             painter: _BubbleTailPainter(
               fill: fill,
               stroke: stroke,
@@ -61,7 +61,7 @@ class ReactionBubble extends StatelessWidget {
         children: [
           body,
           CustomPaint(
-            size: const Size(14, 8),
+            size: const Size(16, 9),
             painter: _BubbleTailPainter(
               fill: fill,
               stroke: stroke,
@@ -77,7 +77,7 @@ class ReactionBubble extends StatelessWidget {
       children: [
         body,
         CustomPaint(
-          size: const Size(8, 14),
+          size: const Size(10, 16),
           painter: _BubbleTailPainter(
             fill: fill,
             stroke: stroke,
@@ -194,7 +194,7 @@ class GameReactionPicker extends StatelessWidget {
 
   final ValueChanged<String> onSelected;
 
-  static const _cell = 40.0;
+  static const _cell = 54.0;
 
   @override
   Widget build(BuildContext context) {
@@ -208,10 +208,10 @@ class GameReactionPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Container(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: fill,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(color: stroke),
             boxShadow: [
               BoxShadow(
@@ -240,7 +240,7 @@ class GameReactionPicker extends StatelessWidget {
                           ),
                           child: Text(
                             emoji,
-                            style: const TextStyle(fontSize: 24, height: 1.1),
+                            style: const TextStyle(fontSize: 34, height: 1),
                           ),
                         ),
                       ),
@@ -250,9 +250,9 @@ class GameReactionPicker extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(right: 19),
+          padding: const EdgeInsets.only(right: 24),
           child: CustomPaint(
-            size: const Size(14, 8),
+            size: const Size(16, 9),
             painter: _BubbleTailPainter(
               fill: fill,
               stroke: stroke,

@@ -193,18 +193,28 @@ class _DailyLoginCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = context.watch<AppRepo>();
     final l10n = AppLocalizations.of(context);
-    final claimed = repo.hasClaimedDailyRewardToday;
+    final remaining = repo.dailyRewardCooldownRemaining;
+    final unavailable = remaining != null;
+    final overlayLabel = !unavailable
+        ? null
+        : remaining.inHours >= 1
+            ? l10n.comeBackInHours(remaining.inHours)
+            : l10n.comeBackInMinutes(
+                remaining.inMinutes.clamp(1, 59).toInt(),
+              );
 
     return StoreBundleCard(
       bundle: dailyRewardBundle(
         l10n.free,
         caption: l10n.dailyLoginCaption,
       ),
-      overlayLabel: claimed ? l10n.comeBackTomorrow : null,
-      onLongPress: kDebugMode && claimed
+      overlayLabel: overlayLabel,
+      onLongPress: kDebugMode && unavailable
           ? () => repo.debugRewindDailyClaim()
           : null,
-      onTap: claimed ? null : (origin) => _claimDailyReward(context, origin),
+      onTap: unavailable
+          ? null
+          : (origin) => _claimDailyReward(context, origin),
     );
   }
 }

@@ -5,6 +5,11 @@ class WalletConfig {
 
   /// Free coins for a Google-linked account once per local calendar day.
   static const int dailyLoginRewardCoins = 50;
+  /// Daily login reward cooldown length.
+  ///
+  /// This is intentionally not "24h" so users get a slightly more forgiving
+  /// window vs a strict midnight-based calendar day.
+  static const Duration dailyLoginRewardCooldown = Duration(hours: 23);
   static const int energyCap = 50;
   static const Duration regenInterval = Duration(minutes: 3);
 

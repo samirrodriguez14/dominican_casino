@@ -181,108 +181,9 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 9 — combine J and 2 on the table (no Add & Take)
+    // 9 — Sweep (virao)
     TutorialStep(
       step: 9,
-      section: 3,
-      title: "Combine J and 2",
-      description: l10n.tutorialTapJackAndTwo,
-      targetKey: tableContentKey,
-      resolveTargets: () => [
-        tableCardKey("table_J"),
-        tableCardKey("opp_2"),
-      ],
-      expectedAction: TutorialAction.selectTableCard,
-      expectedCardIds: ["table_J", "opp_2"],
-      dragIds: const ["table_J", "opp_2"],
-      dropAction: TutorialAction.addStack,
-      dropToStep: 11,
-      allowInteraction: true,
-      blockGameInteraction: false,
-      showNextButton: false,
-      promptAboveTable: true,
-      allowedActions: [TutorialAction.selectTableCard],
-    ),
-
-    // 10
-    TutorialStep(
-      step: 10,
-      section: 3,
-      title: "Add them",
-      description: l10n.tutorialPressAddShort,
-      targetKey: addButtonKey,
-      expectedAction: TutorialAction.addStack,
-      dragIds: const ["table_J", "opp_2"],
-      dropAction: TutorialAction.addStack,
-      dropToStep: 11,
-      allowInteraction: true,
-      blockGameInteraction: false,
-      showNextButton: false,
-      promptAboveTable: true,
-      allowedActions: [TutorialAction.addStack],
-    ),
-
-    // 11
-    TutorialStep(
-      step: 11,
-      section: 3,
-      title: "Select your King",
-      description: l10n.tutorialTapKing,
-      targetKey: handCardKey("tutorial_13"),
-      expectedAction: TutorialAction.selectHandCard,
-      expectedCardId: "tutorial_13",
-      dragIds: const ["tutorial_13"],
-      dropAction: TutorialAction.takeStack,
-      dropToStep: 14,
-      allowInteraction: true,
-      blockGameInteraction: false,
-      showNextButton: false,
-      allowedActions: [TutorialAction.selectHandCard],
-    ),
-
-    // 12
-    TutorialStep(
-      step: 12,
-      section: 3,
-      title: "Select the stack",
-      description: l10n.tutorialTapStack,
-      targetKey: tableContentKey,
-      resolveTargets: () {
-        final stack = firstStackKey();
-        return [stack ?? tableContentKey];
-      },
-      expectedAction: TutorialAction.selectStack,
-      dragIds: const ["tutorial_13"],
-      dropAction: TutorialAction.takeStack,
-      dropToStep: 14,
-      allowInteraction: true,
-      blockGameInteraction: false,
-      showNextButton: false,
-      promptAboveTable: true,
-      allowedActions: [TutorialAction.selectStack],
-    ),
-
-    // 13
-    TutorialStep(
-      step: 13,
-      section: 3,
-      title: "Take with the King",
-      description: l10n.tutorialPressTakeShort,
-      targetKey: takeStackButtonKey,
-      expectedAction: TutorialAction.takeStack,
-      dragIds: const ["tutorial_13"],
-      dropAction: TutorialAction.takeStack,
-      dropToStep: 14,
-      allowInteraction: true,
-      blockGameInteraction: false,
-      showNextButton: false,
-      promptAboveTable: true,
-      allowedActions: [TutorialAction.takeStack],
-    ),
-
-    // 14
-    TutorialStep(
-      step: 14,
       section: 4,
       title: "Sweep (virao)",
       description: l10n.tutorialSweep,
@@ -293,10 +194,10 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 15 — overlay hidden; Round Complete popup
+    // 10 — overlay hidden; Round Complete popup
     TutorialStep(
-      step: 15,
-      section: 5,
+      step: 10,
+      section: 4,
       title: "End of round",
       description: "",
       awaitRoundStatus: true,
@@ -307,10 +208,10 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 16
+    // 11
     TutorialStep(
-      step: 16,
-      section: 5,
+      step: 11,
+      section: 4,
       title: "You're ready!",
       description: l10n.tutorialReady,
       autoAdvance: false,

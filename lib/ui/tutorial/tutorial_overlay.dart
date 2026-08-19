@@ -164,31 +164,47 @@ class _TutorialOverlayState extends State<TutorialOverlay>
 
     final placeAbove = rect.center.dy > overlaySize.height * 0.5;
     final tail = placeAbove ? _BubbleTail.down : _BubbleTail.up;
-    Offset tooltipOffset;
+    final desiredTooltipOffset = placeAbove
+        ? Offset(
+            rect.center.dx - _tooltipWidth / 2,
+            rect.top - _tooltipMinHeight - 16,
+          )
+        : Offset(
+            rect.center.dx - _tooltipWidth / 2,
+            rect.bottom + 12,
+          );
 
-    if (placeAbove) {
-      tooltipOffset = Offset(
-        rect.center.dx - _tooltipWidth / 2,
-        rect.top - _tooltipMinHeight - 16,
-      );
-    } else {
-      tooltipOffset = Offset(
-        rect.center.dx - _tooltipWidth / 2,
-        rect.bottom + 12,
-      );
-    }
-
-    tooltipOffset = Offset(
-      tooltipOffset.dx.clamp(12.0, overlaySize.width - _tooltipWidth - 12),
-      tooltipOffset.dy.clamp(12.0, overlaySize.height - _tooltipMinHeight - 12),
+    final clampedTooltipOffset = Offset(
+      desiredTooltipOffset.dx
+          .clamp(12.0, overlaySize.width - _tooltipWidth - 12),
+      desiredTooltipOffset.dy.clamp(
+        12.0,
+        overlaySize.height - _tooltipMinHeight - 12,
+      ),
     );
 
+    // Keep the tail pointed at the target rect even if we have to clamp the
+    // tooltip to stay on-screen (otherwise clamping shifts the bubble, and
+    // the tail "misses" the card/stack).
+    final bubbleCenterX = clampedTooltipOffset.dx +
+        _avatarSize +
+        _avatarGap +
+        _bubbleWidth / 2;
+    final tailShiftX = rect.center.dx - bubbleCenterX;
+    final maxTailShiftX = _bubbleWidth / 2 - 9; // 9 = 18px tail / 2
+    final safeTailShiftX = tailShiftX.clamp(-maxTailShiftX, maxTailShiftX);
+    final tailShiftY = desiredTooltipOffset.dy - clampedTooltipOffset.dy;
+
     return Positioned(
-      left: tooltipOffset.dx,
-      top: tooltipOffset.dy,
+      left: clampedTooltipOffset.dx,
+      top: clampedTooltipOffset.dy,
       child: Material(
         color: Colors.transparent,
-        child: _buildTooltipContent(tail: tail),
+        child: _buildTooltipContent(
+          tail: tail,
+          tailShiftX: safeTailShiftX,
+          tailShiftY: tailShiftY,
+        ),
       ),
     );
   }
@@ -199,25 +215,45 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         ? overlay.size
         : MediaQuery.of(context).size;
 
-    final table = _rectForKey(widget.tableAnchorKey);
-    const estimatedH = 150.0;
     final safeTop = MediaQuery.paddingOf(context).top + 8;
-    var top = safeTop;
-    if (table != null) {
-      final preferred = table.top - estimatedH - 10;
-      if (preferred > safeTop) top = preferred;
-    }
+
+    // Aim the tail at the same highlight rect (not just centered above the
+    // table). If the tooltip has to be clamped, we also translate the tail
+    // to compensate.
+    final rect = _targetRect();
+    final desiredTop = rect != null
+        ? rect.top - _tooltipMinHeight - 16
+        : safeTop;
+    final desiredLeft = rect != null
+        ? rect.center.dx - _tooltipWidth / 2
+        : (overlaySize.width - _tooltipWidth) / 2;
+
+    final clampedLeft =
+        desiredLeft.clamp(12.0, overlaySize.width - _tooltipWidth - 12);
+    final clampedTop = desiredTop.clamp(
+      safeTop,
+      overlaySize.height - _tooltipMinHeight - 12,
+    );
+
+    final bubbleCenterX =
+        clampedLeft + _avatarSize + _avatarGap + _bubbleWidth / 2;
+    final tailShiftX = rect?.center.dx != null ? rect!.center.dx - bubbleCenterX : 0.0;
+    final maxTailShiftX = _bubbleWidth / 2 - 9; // 9 = 18px tail / 2
+    final safeTailShiftX = tailShiftX.clamp(-maxTailShiftX, maxTailShiftX);
+    final tailShiftY = desiredTop - clampedTop;
+
     final maxLeft = math.max(12.0, overlaySize.width - _tooltipWidth - 12);
-    final left = ((overlaySize.width - _tooltipWidth) / 2)
-        .clamp(12.0, maxLeft)
-        .toDouble();
 
     return Positioned(
-      left: left,
-      top: top,
+      left: clampedLeft.clamp(12.0, maxLeft),
+      top: clampedTop,
       child: Material(
         color: Colors.transparent,
-        child: _buildTooltipContent(tail: _BubbleTail.down),
+        child: _buildTooltipContent(
+          tail: _BubbleTail.down,
+          tailShiftX: safeTailShiftX,
+          tailShiftY: tailShiftY,
+        ),
       ),
     );
   }
@@ -231,7 +267,11 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     );
   }
 
-  Widget _buildTooltipContent({required _BubbleTail tail}) {
+  Widget _buildTooltipContent({
+    required _BubbleTail tail,
+    double tailShiftX = 0.0,
+    double tailShiftY = 0.0,
+  }) {
     final theme = AppStyle.theme;
     final l10n = AppLocalizations.of(context);
     final fill = theme.surfaceRaised;
@@ -301,10 +341,18 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         mainAxisSize: MainAxisSize.min,
         children: [
           if (tail == _BubbleTail.up)
-            CustomPaint(size: const Size(18, _tailSize), painter: painter),
+            Transform.translate(
+              offset: Offset(tailShiftX, tailShiftY),
+              child:
+                  CustomPaint(size: const Size(18, _tailSize), painter: painter),
+            ),
           bubble,
           if (tail == _BubbleTail.down)
-            CustomPaint(size: const Size(18, _tailSize), painter: painter),
+            Transform.translate(
+              offset: Offset(tailShiftX, tailShiftY),
+              child:
+                  CustomPaint(size: const Size(18, _tailSize), painter: painter),
+            ),
         ],
       );
     }

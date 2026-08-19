@@ -18,10 +18,12 @@ class TutorialCasinoFactory {
     // tiny remaining deck so game engine doesn't break
     final tutorialDeck = Deck.casinoTutorialDeck();
 
+    // Tutorial is intentionally short: only teach the 5♦ add and 8♠ take
+    // flow. The King card is omitted so the later "King take" beats
+    // don't exist anymore.
     final playerHand = [
       tutorialDeck[0], // 5♦
       tutorialDeck[1], // 8♠
-      tutorialDeck[2], // K♣
     ];
     final botPid = Uuid().v4().substring(0, 8);
 

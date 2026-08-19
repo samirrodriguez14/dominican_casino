@@ -10,7 +10,9 @@ import 'package:dominican_casino/ui/app_shell/games/welcome_tutorial_popup.dart'
 import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_screen.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
+import 'package:dominican_casino/models/daily_challenge.dart';
 import 'package:dominican_casino/ui/widgets/home_coin_celebration.dart';
+import 'package:dominican_casino/ui/widgets/home_energy_celebration.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -33,7 +35,9 @@ class AppShellState extends State<AppShell> {
   final _gamesKey = GlobalKey<GamesScreenState>();
   final _profileKey = GlobalKey<ProfileScreenState>();
   bool _offeredTutorial = false;
-  HomeCoinClaim? _activeCelebration;
+  HomeCoinClaim? _activeCoinCelebration;
+  List<DailyChallengeId>? _activeEnergyCelebrationChallengeIds;
+  int? _activeEnergyAmount;
   String? _listeningPid;
 
   @override
@@ -61,7 +65,10 @@ class AppShellState extends State<AppShell> {
   void _maybeOfferFirstRun() {
     if (_offeredTutorial || !mounted) return;
     final repo = context.read<AppRepo>();
-    if (repo.pendingHomeCoinClaim != null || _activeCelebration != null) {
+    if (repo.pendingHomeCoinClaim != null ||
+        repo.pendingHomeDailyChallengeEnergy.isNotEmpty ||
+        _activeCoinCelebration != null ||
+        _activeEnergyAmount != null) {
       return;
     }
     final player = repo.player;
@@ -78,13 +85,42 @@ class AppShellState extends State<AppShell> {
 
   void _maybeStartHomeCoinCelebration(AppRepo repo) {
     final pending = repo.pendingHomeCoinClaim;
-    if (pending == null || _activeCelebration != null) return;
+    if (pending == null || _activeCoinCelebration != null || _activeEnergyAmount != null) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_activeCelebration != null) return;
+      if (_activeCoinCelebration != null || _activeEnergyAmount != null) {
+        return;
+      }
       final claim = context.read<AppRepo>().pendingHomeCoinClaim;
       if (claim == null) return;
-      setState(() => _activeCelebration = claim);
+      setState(() => _activeCoinCelebration = claim);
+    });
+  }
+
+  void _maybeStartHomeEnergyCelebration(AppRepo repo) {
+    final pending = repo.pendingHomeDailyChallengeEnergy;
+    if (pending.isEmpty) return;
+    if (repo.pendingHomeCoinClaim != null) return; // coin overlay has priority
+    if (_activeCoinCelebration != null || _activeEnergyAmount != null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (repo.pendingHomeCoinClaim != null) return;
+      if (context.read<AppRepo>().pendingHomeDailyChallengeEnergy.isEmpty) {
+        return;
+      }
+      final ids = context
+          .read<AppRepo>()
+          .pendingHomeDailyChallengeEnergy
+          .toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+      setState(() {
+        _activeEnergyCelebrationChallengeIds = ids;
+        _activeEnergyAmount =
+            context.read<AppRepo>().pendingHomeDailyChallengeEnergyAmount;
+      });
     });
   }
 
@@ -135,6 +171,7 @@ class AppShellState extends State<AppShell> {
       });
     }
     _maybeStartHomeCoinCelebration(appRepo);
+    _maybeStartHomeEnergyCelebration(appRepo);
     if (player?.id != _listeningPid) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _syncGameListener();
@@ -222,16 +259,41 @@ class AppShellState extends State<AppShell> {
             ),
           ),
           const Positioned.fill(child: CurrentGamesPeekCard()),
-          if (_activeCelebration != null)
+          if (_activeCoinCelebration != null)
             Positioned.fill(
               child: HomeCoinCelebrationOverlay(
-                key: ValueKey(_activeCelebration!.gameId),
-                amount: _activeCelebration!.amount,
+                key: ValueKey(_activeCoinCelebration!.gameId),
+                amount: _activeCoinCelebration!.amount,
                 onCollected: () =>
                     context.read<AppRepo>().completeHomeCoinClaim(),
                 onDismissed: () {
                   if (!mounted) return;
-                  setState(() => _activeCelebration = null);
+                  setState(() => _activeCoinCelebration = null);
+                  _offeredTutorial = false;
+                  _maybeOfferFirstRun();
+                },
+              ),
+            ),
+          if (_activeEnergyAmount != null)
+            Positioned.fill(
+              child: HomeEnergyCelebrationOverlay(
+                key: ValueKey(
+                  (_activeEnergyCelebrationChallengeIds ??
+                          <DailyChallengeId>[])
+                      .map((e) => e.name)
+                      .join('_'),
+                ),
+                amount: _activeEnergyAmount!,
+                onCollected: () =>
+                    context
+                        .read<AppRepo>()
+                        .completeHomeDailyChallengeEnergyClaims(),
+                onDismissed: () {
+                  if (!mounted) return;
+                  setState(() {
+                    _activeEnergyCelebrationChallengeIds = null;
+                    _activeEnergyAmount = null;
+                  });
                   _offeredTutorial = false;
                   _maybeOfferFirstRun();
                 },

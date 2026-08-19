@@ -1771,6 +1771,16 @@ class GeneralGameViewModel extends ChangeNotifier {
   bool isCelebratingHand(String pid) =>
       pid.isNotEmpty && celebratingHandPid == pid;
 
+  /// Player id whose avatar should receive the win celebration confetti.
+  /// - Tres y Dos: uses [celebratingHandPid] (the completed 3+2 owner).
+  /// - Casino family: uses [gameState.winnerId].
+  String? get winCelebrationPid {
+    if (gameState.gameMode == GameMode.tresydos) {
+      return celebratingHandPid;
+    }
+    return gameState.winnerId;
+  }
+
   String? get _liveWinCelebrationKey {
     if (motion.isShuffling) return null;
     final inMatch = gameState.gameStatus == GameStatus.inProgress;
@@ -2210,7 +2220,8 @@ class GeneralGameViewModel extends ChangeNotifier {
       notifyListeners();
     });
     notifyListeners();
-    AppHaptics.lightImpact();
+    AppHaptics.heavyImpact();
+    SoundService.instance.playLayered(GameSound.softCard, volume: 0.55);
   }
 
   bool _isTakeAction(PlayAction action) {
@@ -2228,6 +2239,11 @@ class GeneralGameViewModel extends ChangeNotifier {
   Future<void> queueHomeCoinClaim() async {
     if (tutorialMode) return;
     await appRepo.queueHomeCoinClaim(gameState, me);
+  }
+
+  Future<void> queueHomeDailyChallengeEnergyClaims() async {
+    if (tutorialMode) return;
+    await appRepo.queueHomeDailyChallengeEnergyClaims(gameState);
   }
 
   /// Occasional local-bot emoji after a play/take. Never writes game state.
@@ -2372,5 +2388,18 @@ class GeneralGameViewModel extends ChangeNotifier {
         if (sid != null && sid.isNotEmpty) return keyForStack(sid);
         return tableKey;
     }
+  }
+
+  final Map<String, GlobalKey> _celebrationAvatarKeys = {};
+
+  /// GlobalKey for the winner's avatar UI.
+  /// Uses shared keys for me/opp in 1v1, and per-pid keys for multi-seat games.
+  GlobalKey celebrationAvatarKeyForPid(String pid) {
+    if (pid == me) return scoreKey;
+    if (opp != null && pid == opp) return oppScoreKey;
+    return _celebrationAvatarKeys.putIfAbsent(
+      pid,
+      () => GlobalKey(debugLabel: 'celebrate_$pid'),
+    );
   }
 }

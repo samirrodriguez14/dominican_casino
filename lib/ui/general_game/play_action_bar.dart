@@ -6,7 +6,9 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_hint_pulse.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:dominican_casino/view_models/tutorial_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
 /// Hand-play choices: action chips, with cancel inline when a drop
 /// needs a follow-up. The row always keeps its height so the board
@@ -26,6 +28,9 @@ class PlayActionBar extends StatelessWidget {
     final showChips = choosing || (vm.canPlayTurn && actions.isNotEmpty);
     final roundPlaying =
         vm.gameState.round.roundStatus == RoundStatus.playing;
+    final idleHint = context.select<TutorialViewModel, String?>(
+      (t) => t.idleHintMessage,
+    );
     final turnPid = vm.gameState.currentTurnPlayerId ?? '';
     final bool? hintMine;
     if (showChips || !roundPlaying) {
@@ -41,17 +46,56 @@ class PlayActionBar extends StatelessWidget {
     return SizedBox(
       height: height,
       width: double.infinity,
-      child: showChips
-          ? _ActionChipRow(
-              vm: vm,
-              actions: actions,
-              choosing: choosing,
-            )
-          : Center(
-              child: hintMine == null
-                  ? const SizedBox.shrink()
-                  : _TurnHint(isMyTurn: hintMine),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          showChips
+              ? _ActionChipRow(
+                  vm: vm,
+                  actions: actions,
+                  choosing: choosing,
+                )
+              : Center(
+                  child: idleHint != null
+                      ? _IdleHintText(message: idleHint)
+                      : hintMine == null
+                          ? const SizedBox.shrink()
+                          : _TurnHint(isMyTurn: hintMine),
+                ),
+          if (showChips && idleHint != null)
+            Positioned(
+              top: -18,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: _IdleHintText(message: idleHint),
+              ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IdleHintText extends StatelessWidget {
+  const _IdleHintText({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Center(
+      child: Text(
+        message,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.caption.copyWith(
+          fontWeight: FontWeight.w600,
+          color: theme.turnHighlight,
+          height: 1.0,
+        ),
+      ),
     );
   }
 }

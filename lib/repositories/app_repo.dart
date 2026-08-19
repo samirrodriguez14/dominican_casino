@@ -112,6 +112,18 @@ class AppRepo extends ChangeNotifier {
   int? get shellTabRequest => _shellTabRequest;
   HomeCoinClaim? _pendingHomeCoinClaim;
   HomeCoinClaim? get pendingHomeCoinClaim => _pendingHomeCoinClaim;
+  Set<DailyChallengeId> _pendingHomeDailyChallengeEnergy = {};
+  Set<DailyChallengeId> get pendingHomeDailyChallengeEnergy =>
+      Set.unmodifiable(_pendingHomeDailyChallengeEnergy);
+  int get pendingHomeDailyChallengeEnergyAmount {
+    var sum = 0;
+    for (final id in _pendingHomeDailyChallengeEnergy) {
+      final def = dailyChallengeById(id);
+      if (def == null) continue;
+      sum += def.reward;
+    }
+    return sum;
+  }
   DateTime? _lastDailyClaimAt;
   DateTime? get lastDailyClaimAt => _lastDailyClaimAt;
   DailyChallengeState _dailyChallenges = DailyChallengeState.empty('');
@@ -121,6 +133,8 @@ class AppRepo extends ChangeNotifier {
   String? _activeGameId;
   Future<void> _activeGameWrite = Future.value();
   Timer? _energyTestTimer;
+  Timer? _dailyRewardTimer;
+  Duration? _dailyRewardLastRemaining;
 
   static const _themeKey = 'appTheme';
   static const _cardBackKey = 'cardBack';
@@ -271,6 +285,7 @@ class AppRepo extends ChangeNotifier {
       await _loadWallet();
       await _persistLooksRemote();
       _ensureEnergyTicker();
+      _ensureDailyRewardTicker();
       gamesInfo = await loadGames();
       await NotificationsService.instance.configure();
       _listenForFcmTokenRefresh();
@@ -288,6 +303,7 @@ class AppRepo extends ChangeNotifier {
       try {
         await _loadWallet();
         _ensureEnergyTicker();
+        _ensureDailyRewardTicker();
       } catch (_) {}
       try {
         await NotificationsService.instance.configure();
@@ -319,6 +335,15 @@ class AppRepo extends ChangeNotifier {
     });
   }
 
+  void _ensureDailyRewardTicker() {
+    // Keep the store daily card countdown fresh while the user is watching
+    // (no push notifications).
+    _dailyRewardTimer ??= Timer.periodic(const Duration(seconds: 20), (_) {
+      _tickDailyRewardCooldown();
+    });
+    _tickDailyRewardCooldown();
+  }
+
   /// Apply pending regen. Notifies only when energy actually changes.
   void tickEnergy() {
     if (_walletPersistPaused) return;
@@ -333,6 +358,21 @@ class AppRepo extends ChangeNotifier {
   }
 
   Duration get timeToNextEnergy => _wallet.timeToNextEnergy();
+
+  void _tickDailyRewardCooldown() {
+    if (_walletPersistPaused) return;
+    final remaining = dailyRewardCooldownRemaining;
+    final prev = _dailyRewardLastRemaining;
+    if (remaining == null) {
+      _dailyRewardTimer?.cancel();
+      _dailyRewardTimer = null;
+      _dailyRewardLastRemaining = null;
+      return;
+    }
+    if (prev != null && prev.inSeconds == remaining.inSeconds) return;
+    _dailyRewardLastRemaining = remaining;
+    notifyListeners();
+  }
 
   Future<void> _loadWallet({bool preferRemote = false}) async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? player?.id;
@@ -391,6 +431,7 @@ class AppRepo extends ChangeNotifier {
       await _persistWallet();
     }
     await _loadHomeCoinClaim(uid);
+    await _loadHomeDailyChallengeEnergyClaim(uid);
     await _cacheDailyClaimLocal(uid);
     await _cacheDailyChallengesLocal(uid);
   }
@@ -443,25 +484,49 @@ class AppRepo extends ChangeNotifier {
     return a.isAfter(b) ? a : b;
   }
 
-  static bool _claimedOnLocalDay(DateTime? last, DateTime now) {
+  static bool _dailyRewardCooldownActive(
+    DateTime? last,
+    DateTime now,
+  ) {
     if (last == null) return false;
     final a = last.toLocal();
     final b = now.toLocal();
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+    final end = a.add(WalletConfig.dailyLoginRewardCooldown);
+    return b.isBefore(end);
+  }
+
+  static Duration? _dailyRewardCooldownRemaining(
+    DateTime? last,
+    DateTime now,
+  ) {
+    if (!_dailyRewardCooldownActive(last, now)) return null;
+    final a = last!.toLocal();
+    final b = now.toLocal();
+    final end = a.add(WalletConfig.dailyLoginRewardCooldown);
+    return end.difference(b);
   }
 
   bool get isDailyRewardAvailable =>
-      isGoogleLinked && !_claimedOnLocalDay(_lastDailyClaimAt, DateTime.now());
+      isGoogleLinked && !_dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now());
 
   bool get hasClaimedDailyRewardToday =>
-      isGoogleLinked && _claimedOnLocalDay(_lastDailyClaimAt, DateTime.now());
+      isGoogleLinked && _dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now());
+
+  Duration? get dailyRewardCooldownRemaining {
+    if (!isGoogleLinked) return null;
+    return _dailyRewardCooldownRemaining(
+      _lastDailyClaimAt,
+      DateTime.now(),
+    );
+  }
 
   Future<DailyRewardClaimResult> claimDailyReward() async {
     if (!isGoogleLinked) return DailyRewardClaimResult.needsGoogle;
-    if (_claimedOnLocalDay(_lastDailyClaimAt, DateTime.now())) {
+    if (_dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now())) {
       return DailyRewardClaimResult.alreadyClaimed;
     }
     _lastDailyClaimAt = DateTime.now();
+    _ensureDailyRewardTicker();
     notifyListeners();
     await grantCoins(WalletConfig.dailyLoginRewardCoins);
     await _persistDailyClaim();
@@ -705,6 +770,89 @@ class AppRepo extends ChangeNotifier {
       await sp.remove(key);
     } else {
       await sp.setString(key, jsonEncode(pending.toJson()));
+    }
+  }
+
+  String _homeDailyChallengeEnergyPrefsKey(String uid) =>
+      'home_daily_challenge_energy_$uid';
+
+  Future<void> _loadHomeDailyChallengeEnergyClaim(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_homeDailyChallengeEnergyPrefsKey(uid));
+      if (raw == null) {
+        _pendingHomeDailyChallengeEnergy = {};
+        return;
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        _pendingHomeDailyChallengeEnergy = {};
+        return;
+      }
+      final ids = decoded
+          .whereType<String>()
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      final parsed = <DailyChallengeId>{};
+      for (final s in ids) {
+        try {
+          final id = DailyChallengeId.values.firstWhere((v) => v.name == s);
+          // Drop invalid ids (defensive for stored old data).
+          if (dailyChallengeById(id) != null) parsed.add(id);
+        } catch (_) {}
+      }
+      _pendingHomeDailyChallengeEnergy = parsed;
+    } catch (e) {
+      developer.log('AppRepo.loadHomeDailyChallengeEnergyClaim: $e');
+      _pendingHomeDailyChallengeEnergy = {};
+    }
+  }
+
+  Future<void> _persistHomeDailyChallengeEnergyClaim() async {
+    final uid = _walletUid;
+    if (uid == null) return;
+    final sp = await SharedPreferences.getInstance();
+    final key = _homeDailyChallengeEnergyPrefsKey(uid);
+    if (_pendingHomeDailyChallengeEnergy.isEmpty) {
+      await sp.remove(key);
+    } else {
+      final ids = _pendingHomeDailyChallengeEnergy.map((e) => e.name).toList();
+      await sp.setString(key, jsonEncode(ids));
+    }
+  }
+
+  /// Queue completed daily-challenge energy so it can be claimed with a
+  /// "celebrate on home" overlay (no manual Store tap).
+  ///
+  /// Does not grant until [completeHomeDailyChallengeEnergyClaims].
+  Future<void> queueHomeDailyChallengeEnergyClaims(GameState game) async {
+    if (game.gameStatus != GameStatus.gameOver) return;
+    if (_walletUid == null) return;
+
+    var changed = false;
+    for (final def in dailyChallenges) {
+      if (_pendingHomeDailyChallengeEnergy.contains(def.id)) continue;
+      if (!canClaimDailyChallenge(def)) continue;
+      _pendingHomeDailyChallengeEnergy.add(def.id);
+      changed = true;
+    }
+    if (!changed) return;
+    await _persistHomeDailyChallengeEnergyClaim();
+    notifyListeners();
+  }
+
+  /// Grants energy for any queued daily challenges, then clears the queue.
+  Future<void> completeHomeDailyChallengeEnergyClaims() async {
+    if (_pendingHomeDailyChallengeEnergy.isEmpty) return;
+
+    final pending = _pendingHomeDailyChallengeEnergy.toList(growable: false);
+    _pendingHomeDailyChallengeEnergy = {};
+    await _persistHomeDailyChallengeEnergyClaim();
+    notifyListeners();
+
+    for (final id in pending) {
+      await claimDailyChallenge(id);
     }
   }
 
@@ -1870,6 +2018,8 @@ class AppRepo extends ChangeNotifier {
     _walletPersistPaused = true;
     _energyTimer?.cancel();
     _energyTimer = null;
+    _dailyRewardTimer?.cancel();
+    _dailyRewardTimer = null;
 
     if (keepCloud && walletUid != null) {
       try {
@@ -1994,6 +2144,7 @@ class AppRepo extends ChangeNotifier {
     final sp = await SharedPreferences.getInstance();
     await sp.remove(_walletPrefsKey(uid));
     await sp.remove(_homeCoinClaimPrefsKey(uid));
+    await sp.remove(_homeDailyChallengeEnergyPrefsKey(uid));
     await sp.remove(_dailyClaimPrefsKey(uid));
     await sp.remove(_dailyChallengesPrefsKey(uid));
   }
@@ -2026,6 +2177,7 @@ class AppRepo extends ChangeNotifier {
     _wallet = Wallet.starter();
     _walletUid = null;
     _pendingHomeCoinClaim = null;
+    _pendingHomeDailyChallengeEnergy = {};
     _lastDailyClaimAt = null;
     _dailyChallenges = DailyChallengeState.empty(_localDayKey());
     _resetLooksInMemory();

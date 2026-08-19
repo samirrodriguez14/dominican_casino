@@ -710,9 +710,10 @@ class _AccountActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final address = email?.trim();
-    final googleValue = linked
+    final googleTitle = linked ? l10n.googleConnected : l10n.connectGoogle;
+    final String? googleSubtitle = linked
         ? ((address != null && address.isNotEmpty) ? address : l10n.google)
-        : l10n.connectGoogle;
+        : null;
 
     return Center(
       child: FittedBox(
@@ -722,8 +723,8 @@ class _AccountActions extends StatelessWidget {
           children: [
             _ActionPill(
               leading: const GoogleGMark(size: 26),
-              value: googleValue,
-              subtitle: linked ? l10n.google : null,
+              value: googleTitle,
+              subtitle: googleSubtitle,
               semanticLabel: linked
                   ? l10n.googleConnected
                   : l10n.connectGoogle,
@@ -763,7 +764,7 @@ class _ActionPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final pill = Container(
-      constraints: const BoxConstraints(minHeight: 52, maxWidth: 188),
+      constraints: const BoxConstraints(minHeight: 52, maxWidth: 260),
       padding: const EdgeInsets.fromLTRB(14, 8, 16, 8),
       decoration: BoxDecoration(
         color: theme.textPrimary.withValues(alpha: .12),

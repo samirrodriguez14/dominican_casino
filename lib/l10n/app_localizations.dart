@@ -91,6 +91,10 @@ class AppLocalizations {
   String get coinsCongratsTitle => isEs ? '¡Felicidades!' : 'Congrats!';
   String coinsCongratsBody(int n) =>
       isEs ? 'Ganaste $n monedas' : 'You made $n coins';
+
+  String get energyCongratsTitle => isEs ? '¡Felicidades!' : 'Congrats!';
+  String energyCongratsBody(int n) =>
+      isEs ? 'Ganaste $n de energía' : 'You earned $n energy';
   String confirmBuyEnergy(int energy, int coins) => isEs
       ? '¿Gastar $coins monedas para obtener $energy de energía?'
       : 'Spend $coins coins to get $energy energy?';
@@ -102,6 +106,12 @@ class AppLocalizations {
   String get free => isEs ? 'Gratis' : 'Free';
   String get comeBackTomorrow =>
       isEs ? 'Vuelve mañana' : 'Come back tomorrow';
+
+  String comeBackInHours(int hours) =>
+      isEs ? 'Vuelve en $hours h' : 'Come back in $hours h';
+
+  String comeBackInMinutes(int minutes) =>
+      isEs ? 'Vuelve en $minutes min' : 'Come back in $minutes min';
   String get dailyLoginCaption => isEs ? 'Entrar' : 'Login';
   String get dailyChallengeTydCaption => 'Tres y Dos';
   String get dailyChallengeCasinoCaption => isEs ? 'Casino clásico' : 'Classic Casino';

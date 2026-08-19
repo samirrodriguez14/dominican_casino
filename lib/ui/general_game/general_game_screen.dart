@@ -1,9 +1,13 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:dominican_casino/game_control/game_registry.dart';
+import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
+import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/local_player/casino_player.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
@@ -63,6 +67,14 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   bool _statusPopupOpen = false;
   bool _leavingTutorial = false;
   bool _playingDeckCoins = false;
+
+  // Idle hints (after tutorial): if the player does nothing for 5–8 seconds,
+  // highlight a suggested legal move.
+  Timer? _idleHintTimer;
+  int _idleHintToken = 0;
+  final math.Random _idleHintRng = math.Random();
+  int _idleHintRoundId = -1;
+  String _idleHintTurnPid = '';
 
   void _bindFlightRunner(GeneralGameViewModel gameVm) {
     gameVm.motion.flightLayer = _flightLayer;
@@ -174,6 +186,9 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   @override
   void dispose() {
     _boundVm?.removeListener(_onVmChanged);
+    _idleHintTimer?.cancel();
+    _idleHintTimer = null;
+    tutorialVm.clearIdleHint();
     super.dispose();
   }
 
@@ -327,8 +342,14 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       if (!mounted) return;
 
       // Wait until card flights finish (incl. leftover collect) before status UI.
-      if (vm.isAnimating) return;
-      if (_leavingTutorial) return;
+      if (vm.isAnimating) {
+        _cancelIdleHintTimer(clearHint: true);
+        return;
+      }
+      if (_leavingTutorial) {
+        _cancelIdleHintTimer(clearHint: true);
+        return;
+      }
       if (_playingDeckCoins) return;
 
       final coinFlight = vm.takeDeckCoinFlight();
@@ -345,6 +366,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       final isRoundDone =
           gs.gameStatus == GameStatus.inProgress &&
           gs.round.roundStatus == RoundStatus.completed;
+
+      _maybeUpdateIdleHint();
 
       if (!isGameOver && !isRoundDone) return;
 
@@ -400,8 +423,197 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     });
   }
 
+  bool _userIsInteracting(GeneralGameViewModel vm) {
+    if (vm.isAnimating) return true;
+    if (vm.motion.isShuffling) return true;
+    if (vm.isBoardDragging) return true;
+    if (vm.hasDropPending) return true;
+    if (vm.draggingSource != null) return true;
+    if (vm.selectedCard != null) return true;
+    if (vm.selectedCards.isNotEmpty) return true;
+    if (vm.selectedStacks.isNotEmpty) return true;
+    return false;
+  }
+
+  void _cancelIdleHintTimer({bool clearHint = true}) {
+    _idleHintTimer?.cancel();
+    _idleHintTimer = null;
+    _idleHintToken++;
+    _idleHintRoundId = -1;
+    _idleHintTurnPid = '';
+    if (clearHint) {
+      tutorialVm.clearIdleHint();
+    }
+  }
+
+  void _maybeUpdateIdleHint() {
+    if (!mounted) return;
+
+    // Only after the guided tutorial finishes.
+    if (tutorialVm.active) {
+      _cancelIdleHintTimer(clearHint: true);
+      return;
+    }
+
+    // Clear when not in a live casino round.
+    final gs = vm.gameState;
+    if (gs.gameStatus != GameStatus.inProgress ||
+        gs.round.roundStatus != RoundStatus.playing ||
+        !vm.isCasinoFamily) {
+      _cancelIdleHintTimer(clearHint: true);
+      return;
+    }
+
+    // Only on your turn, and only when it is safe to highlight (no dragging /
+    // no deal/shuffle animations).
+    if (!vm.isMyTurn || !vm.canPlayTurn) {
+      _cancelIdleHintTimer(clearHint: true);
+      return;
+    }
+
+    if (_userIsInteracting(vm)) {
+      _cancelIdleHintTimer(clearHint: true);
+      return;
+    }
+
+    // If a hint is already on screen, keep it until the next interaction
+    // (or the turn changes).
+    if (tutorialVm.idleHintActive || _idleHintTimer != null) return;
+
+    final delay = Duration(seconds: 5 + _idleHintRng.nextInt(4)); // 5–8
+    _idleHintRoundId = gs.round.id;
+    _idleHintTurnPid = gs.currentTurnPlayerId ?? '';
+    final token = ++_idleHintToken;
+
+    _idleHintTimer = Timer(delay, () async {
+      if (!mounted) return;
+      if (_idleHintToken != token) return;
+
+      final currentVm = context.read<GeneralGameViewModel>();
+      final curGs = currentVm.gameState;
+      if (currentVm.isAnimating ||
+          currentVm.motion.isShuffling ||
+          currentVm.selectedCard != null ||
+          currentVm.selectedCards.isNotEmpty ||
+          currentVm.selectedStacks.isNotEmpty) {
+        return;
+      }
+      if (tutorialVm.active) return;
+      if (curGs.gameStatus != GameStatus.inProgress ||
+          curGs.round.roundStatus != RoundStatus.playing ||
+          !currentVm.isCasinoFamily) {
+        return;
+      }
+      if (!currentVm.isMyTurn || !currentVm.canPlayTurn) return;
+      if (curGs.round.id != _idleHintRoundId) return;
+      if ((curGs.currentTurnPlayerId ?? '') != _idleHintTurnPid) return;
+      if (_userIsInteracting(currentVm)) return;
+
+      final best = await CasinoPlayer.casinoBestAction(
+        currentVm.me,
+        currentVm.gameState,
+      );
+
+      if (!mounted) return;
+      if (_idleHintToken != token) return;
+      if (tutorialVm.active) return;
+
+      final action = best.playAction;
+      final hint = _idleHintForPlayAction(action);
+      if (hint == null) return;
+
+      tutorialVm.setIdleHint(
+        message: hint.message,
+        cardIds: hint.cardIds,
+        stackIds: hint.stackIds,
+      );
+    });
+  }
+
+  ({String message, Set<String> cardIds, Set<String> stackIds})?
+      _idleHintForPlayAction(PlayAction action) {
+    Set<String> cardIds = const {};
+    Set<String> stackIds = const {};
+
+    int sumOf(Iterable<PlayingCardModel> cards) =>
+        cards.fold(0, (acc, c) => acc + c.valueHigh);
+
+    switch (action) {
+      case PlayCardAction(:final usedCard):
+        cardIds = {usedCard.id};
+        return (
+          message: 'Hint: play ${usedCard.rank}.',
+          cardIds: cardIds,
+          stackIds: stackIds,
+        );
+
+      case TakeCardAction(:final usedCard, :final targetCard):
+        cardIds = {usedCard.id, targetCard.id};
+        return (
+          message:
+              'Hint: take ${targetCard.rank} with ${usedCard.rank}.',
+          cardIds: cardIds,
+          stackIds: stackIds,
+        );
+
+      case TakeStackAction(:final usedCard, :final targetStack):
+        cardIds = {usedCard.id};
+        stackIds = {targetStack.id};
+        return (
+          message:
+              'Hint: take the ${targetStack.stackValue}-point stack with ${usedCard.rank}.',
+          cardIds: cardIds,
+          stackIds: stackIds,
+        );
+
+      case AddCardsAction(:final usedCard, :final targetCards):
+        cardIds = {usedCard.id, for (final c in targetCards) c.id};
+        final sum = usedCard.valueHigh + sumOf(targetCards);
+        return (
+          message:
+              'Hint: add ${usedCard.rank} and ${targetCards.map((e) => e.rank).join(' and ')} to form $sum.',
+          cardIds: cardIds,
+          stackIds: stackIds,
+        );
+
+      case AddTableCardsAction(:final targetCards):
+        cardIds = {for (final c in targetCards) c.id};
+        final sum = sumOf(targetCards);
+        return (
+          message:
+              'Hint: combine ${targetCards.map((e) => e.rank).join(' and ')} to form $sum.',
+          cardIds: cardIds,
+          stackIds: stackIds,
+        );
+
+      case AddCardStackAction(:final usedCard, :final targetStacks):
+        cardIds = {usedCard.id};
+        stackIds = {for (final s in targetStacks) s.id};
+        final sum = usedCard.valueHigh +
+            targetStacks.fold(0, (acc, s) => acc + s.stackValue);
+        return (
+          message:
+              'Hint: add ${usedCard.rank} to that ${targetStacks.length == 1 ? 'stack' : 'stacks'} to form $sum.',
+          cardIds: cardIds,
+          stackIds: stackIds,
+        );
+
+      case PairCardsAction(:final usedCard):
+        cardIds = {usedCard.id};
+        return (
+          message: 'Hint: pair ${usedCard.rank}.',
+          cardIds: cardIds,
+          stackIds: stackIds,
+        );
+
+      default:
+        return null;
+    }
+  }
+
   Future<void> _leaveToHome() async {
     await vm.queueHomeCoinClaim();
+    await vm.queueHomeDailyChallengeEnergyClaims();
     if (mounted) context.go('/landing');
   }
 
@@ -575,8 +787,49 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                       ],
                       if (vm.showWinCelebration)
                         Positioned.fill(
-                          child: WinConfettiOverlay(
-                            key: ValueKey(vm.activeWinCelebrationKey),
+                          child: Builder(
+                            builder: (context) {
+                              final stackBox =
+                                  context.findRenderObject() as RenderBox?;
+                              final targetPid = vm.winCelebrationPid;
+                              final targetKey = targetPid == null
+                                  ? vm.myHandKey
+                                  : targetPid == vm.me
+                                  ? vm.myHandKey
+                                  : vm.celebrationAvatarKeyForPid(targetPid);
+                              final targetBox = targetKey.currentContext
+                                  ?.findRenderObject() as RenderBox?;
+
+                              if (stackBox == null || targetBox == null) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final stackSize = stackBox.size;
+                              final w = stackSize.width;
+                              final h = stackSize.height;
+                              if (w <= 0 || h <= 0) {
+                                return WinConfettiOverlay(
+                                  originFraction: const Offset(.5, .5),
+                                  key: ValueKey(vm.activeWinCelebrationKey),
+                                );
+                              }
+
+                              final centerGlobal =
+                                  targetBox.localToGlobal(
+                                    targetBox.size.center(Offset.zero),
+                                  );
+                              final centerLocal = stackBox.globalToLocal(centerGlobal);
+
+                              final originFraction = Offset(
+                                (centerLocal.dx / w).clamp(0.08, 0.92),
+                                (centerLocal.dy / h).clamp(0.08, 0.92),
+                              );
+
+                              return WinConfettiOverlay(
+                                originFraction: originFraction,
+                                key: ValueKey(vm.activeWinCelebrationKey),
+                              );
+                            },
                           ),
                         ),
                       AnimatedBuilder(

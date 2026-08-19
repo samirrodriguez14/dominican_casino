@@ -104,6 +104,7 @@ class _GenGameControlState extends State<GenGameControl> {
       case InGameAction.exit:
         return () async {
           await vm.queueHomeCoinClaim();
+          await vm.queueHomeDailyChallengeEnergyClaims();
           if (!mounted) return;
           context.go('/landing');
         };

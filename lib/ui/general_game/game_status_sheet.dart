@@ -200,6 +200,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                     avatarId: null,
                     score: 0,
                     pendingCoins: 0,
+                    roundCoins: 0,
                     showMatchCoins: false,
                     beforeScore: 0,
                     roundScore: 0,
@@ -218,6 +219,10 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                           ? gameState.winPotCoins(pid) +
                               gameState.pendingCoinsFor(pid)
                           : gameState.pendingCoinsFor(pid),
+                      roundCoins: _scoreN(
+                        Map<String, dynamic>.from(roundScores[pid] ?? {}),
+                        'coins',
+                      ),
                       showMatchCoins: gameOver,
                       beforeScore: _beforeScore(
                         totalScores[pid] ?? 0,
@@ -259,6 +264,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                     onPressed: () async {
                       Navigator.of(context).pop();
                       await vm.queueHomeCoinClaim();
+                      await vm.queueHomeDailyChallengeEnergyClaims();
                       if (!context.mounted) return;
                       context.go('/landing');
                     },
@@ -362,6 +368,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     await vm.resign();
     if (!context.mounted) return;
     await vm.queueHomeCoinClaim();
+    await vm.queueHomeDailyChallengeEnergyClaims();
     if (!context.mounted) return;
     Navigator.of(context).pop();
     context.go('/landing');
@@ -382,7 +389,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
               onPressed: SoundService.wrapTap(
                 () => Navigator.of(context).pop(false),
               ),
-              child: Text('Cancel', style: AppStyle.theme.mutedText),
+              child: const Text('Cancel'),
             ),
             CupertinoDialogAction(
               isDestructiveAction: true,
@@ -412,7 +419,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
               onPressed: SoundService.wrapTap(
                 () => Navigator.of(context).pop(false),
               ),
-              child: Text('Cancel', style: AppStyle.theme.mutedText),
+              child: const Text('Cancel'),
             ),
             CupertinoDialogAction(
               isDestructiveAction: true,
@@ -435,6 +442,7 @@ class _BoardSpec {
     required this.avatarId,
     required this.score,
     required this.pendingCoins,
+    required this.roundCoins,
     required this.showMatchCoins,
     required this.beforeScore,
     required this.roundScore,
@@ -450,6 +458,7 @@ class _BoardSpec {
   final String? avatarId;
   final dynamic score;
   final int pendingCoins;
+  final int roundCoins;
   final bool showMatchCoins;
   final int beforeScore;
   final int roundScore;
@@ -838,6 +847,7 @@ class _AvatarFlipBoardState extends State<_AvatarFlipBoard>
                       avatarId: spec.avatarId,
                       score: spec.score,
                       pendingCoins: spec.pendingCoins,
+                      roundCoins: spec.roundCoins,
                       beforeScore: spec.beforeScore,
                       roundScore: spec.roundScore,
                       isDealer: spec.isDealer,
@@ -1131,6 +1141,7 @@ class _ScoreBoardFront extends StatelessWidget {
     required this.avatarId,
     required this.score,
     required this.pendingCoins,
+    required this.roundCoins,
     required this.beforeScore,
     required this.roundScore,
     required this.isDealer,
@@ -1145,6 +1156,7 @@ class _ScoreBoardFront extends StatelessWidget {
   final String? avatarId;
   final dynamic score;
   final int pendingCoins;
+  final int roundCoins;
   final int beforeScore;
   final int roundScore;
   final bool isDealer;
@@ -1168,6 +1180,8 @@ class _ScoreBoardFront extends StatelessWidget {
           final avatarSize = (56 * scale).clamp(32.0, 56.0);
           final nameSize = (13 * scale).clamp(10.0, 13.0);
           final scoreSize = (40 * scale).clamp(24.0, 40.0);
+          final coinSize = (14 * scale).clamp(11.0, 14.0);
+          final coinIconSize = (16 * scale).clamp(12.0, 16.0);
           final eqSize = (16 * scale).clamp(11.0, 16.0);
           final eqNowSize = (18 * scale).clamp(12.0, 18.0);
           final gap = (10 * scale).clamp(4.0, 10.0);
@@ -1179,7 +1193,7 @@ class _ScoreBoardFront extends StatelessWidget {
                 child: PlayerScoreAvatar(
                   avatarId: avatarId,
                   score: score,
-                  pendingCoins: pendingCoins,
+                  pendingCoins: 0,
                   size: avatarSize,
                 ),
               ),
@@ -1225,6 +1239,44 @@ class _ScoreBoardFront extends StatelessWidget {
                   height: 1,
                 ),
               ),
+              if (roundCoins > 0) ...[
+                SizedBox(height: (4 * scale).clamp(2.0, 4.0)),
+                Center(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: (10 * scale).clamp(7.0, 10.0),
+                      vertical: (4 * scale).clamp(2.0, 4.0),
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.panel.withValues(alpha: 0.88),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppStyle.theme.turnHighlight.withValues(alpha: 0.28),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          CupertinoIcons.money_dollar_circle_fill,
+                          size: coinIconSize,
+                          color: AppStyle.theme.turnHighlight,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '+$roundCoins',
+                          style: AppStyle.theme.body.copyWith(
+                            color: ink,
+                            fontWeight: FontWeight.w800,
+                            fontSize: coinSize,
+                            height: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const Spacer(),
               if (isCasino)
                 Container(

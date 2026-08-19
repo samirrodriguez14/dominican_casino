@@ -334,6 +334,7 @@ class _CompactSideSeat extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             PlayerScoreAvatar(
+              key: waiting ? null : vm.celebrationAvatarKeyForPid(oppId),
               avatarId: avatarId,
               name: name,
               score: score,

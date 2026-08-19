@@ -14,6 +14,7 @@ import 'package:flutter/cupertino.dart';
 class ShuffleAnimator {
   static const int maxFlyers = 24;
   static const Duration flipDuration = Duration(milliseconds: 260);
+  static const Duration shrinkDuration = Duration(milliseconds: 200);
   static const Duration gatherDuration = Duration(milliseconds: 380);
   static const Duration washHopDuration = Duration(milliseconds: 367);
   static const int washHops = 3;
@@ -88,6 +89,17 @@ class ShuffleAnimator {
         await _runFlip(flyers, vsync);
       }
 
+      // Shrink all flyers to the same target size *before* motion begins.
+      // During gather/wash/square the width stays constant.
+      await _runPhase(
+        flyers,
+        shrinkDuration,
+        (i, f) => f.pos,
+        (i, f) => f.rotation,
+        stagger: const Duration(milliseconds: 6),
+        shrinkToTarget: true,
+      );
+
       var cardTicks = 0;
       for (var i = 0; i < flyers.length; i++) {
         if (cardTicks >= SoundService.cardTickMax) break;
@@ -106,7 +118,6 @@ class ShuffleAnimator {
         (i, _) => _ellipsePoint(center, rng, spread: 0.55),
         (i, _) => _randRot(rng),
         stagger: const Duration(milliseconds: 8),
-        shrinkToTarget: true,
       );
 
       SoundService.instance.play(GameSound.shuffle);
@@ -210,6 +221,8 @@ class ShuffleAnimator {
           flyer.rotation = flyer.rotEnd;
           if (shrinkToTarget) {
             flyer.width = flyer.targetWidth;
+            flyer.widthBegin = 0;
+            flyer.widthEnd = 0;
           }
         }),
       );

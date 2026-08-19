@@ -65,7 +65,7 @@ class HomeScreenState extends State<HomeScreen> {
           actions: [
             CupertinoDialogAction(
               onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
-              child: Text(l10n.cancel, style: theme.mutedText),
+              child: Text(l10n.cancel),
             ),
             CupertinoDialogAction(
               isDefaultAction: true,

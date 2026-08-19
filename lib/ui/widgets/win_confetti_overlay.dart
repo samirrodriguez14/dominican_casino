@@ -4,7 +4,14 @@ import 'package:flutter/cupertino.dart';
 
 /// Short particle burst for round-win celebrations.
 class WinConfettiOverlay extends StatefulWidget {
-  const WinConfettiOverlay({super.key});
+  const WinConfettiOverlay({
+    super.key,
+    required this.originFraction,
+  });
+
+  /// Origin of the confetti burst within this widget, as a fraction of width/height.
+  /// (0,0)=top-left, (1,1)=bottom-right.
+  final Offset originFraction;
 
   @override
   State<WinConfettiOverlay> createState() => _WinConfettiOverlayState();
@@ -48,11 +55,11 @@ class _WinConfettiOverlayState extends State<WinConfettiOverlay>
         builder: (context, _) {
           return CustomPaint(
             painter: _ConfettiPainter(
+              originFraction: widget.originFraction,
               progress: _controller.value,
               particles: _particles,
               colors: _colors,
             ),
-            size: Size.infinite,
           );
         },
       ),
@@ -62,8 +69,8 @@ class _WinConfettiOverlayState extends State<WinConfettiOverlay>
 
 class _ConfettiParticle {
   _ConfettiParticle({
-    required this.originX,
-    required this.originY,
+    required this.originXOffset,
+    required this.originYOffset,
     required this.vx,
     required this.vy,
     required this.spin,
@@ -71,8 +78,8 @@ class _ConfettiParticle {
     required this.colorIndex,
   });
 
-  final double originX;
-  final double originY;
+  final double originXOffset;
+  final double originYOffset;
   final double vx;
   final double vy;
   final double spin;
@@ -81,8 +88,9 @@ class _ConfettiParticle {
 
   factory _ConfettiParticle.random(math.Random rng) {
     return _ConfettiParticle(
-      originX: 0.35 + rng.nextDouble() * 0.3,
-      originY: 0.28 + rng.nextDouble() * 0.12,
+      // Small offsets around the supplied origin.
+      originXOffset: (rng.nextDouble() - 0.5) * 0.18,
+      originYOffset: (rng.nextDouble() - 0.5) * 0.14,
       vx: (rng.nextDouble() - 0.5) * 0.55,
       vy: 0.25 + rng.nextDouble() * 0.45,
       spin: (rng.nextDouble() - 0.5) * 8,
@@ -94,11 +102,13 @@ class _ConfettiParticle {
 
 class _ConfettiPainter extends CustomPainter {
   _ConfettiPainter({
+    required this.originFraction,
     required this.progress,
     required this.particles,
     required this.colors,
   });
 
+  final Offset originFraction;
   final double progress;
   final List<_ConfettiParticle> particles;
   final List<Color> colors;
@@ -110,8 +120,9 @@ class _ConfettiPainter extends CustomPainter {
 
     for (final p in particles) {
       final t = progress;
-      final x = (p.originX + p.vx * t) * size.width;
-      final y = (p.originY + p.vy * t + 0.35 * t * t) * size.height;
+      final x = (originFraction.dx + p.originXOffset + p.vx * t) * size.width;
+      final y = (originFraction.dy + p.originYOffset + p.vy * t + 0.35 * t * t) *
+          size.height;
       final paint = Paint()
         ..color = colors[p.colorIndex % colors.length].withValues(alpha: fade);
       canvas.save();

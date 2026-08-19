@@ -8,6 +8,14 @@ class TutorialViewModel extends ChangeNotifier {
   int _current = 0;
   bool _active = false;
 
+  // Non-blocking, after-tutorial hinting. This reuses the same pulse system
+  // as the guided tutorial so cards/targets bounce consistently.
+  bool _idleHintActive = false;
+  String? _idleHintMessage;
+  final Set<String> _idleHintCardIds = {};
+  final Set<String> _idleHintStackIds = {};
+  final Set<GlobalKey> _idleHintKeys = {};
+
   TutorialViewModel(this.steps);
 
   bool get active => _active;
@@ -30,16 +38,57 @@ class TutorialViewModel extends ChangeNotifier {
 
   bool get isLastStep => _current >= steps.length - 1;
 
-  bool pulsesTarget({String? cardId, String? stackId, GlobalKey? key}) {
-    if (!_active) return false;
-    if (step.awaitRoundStatus) return false;
+  bool get idleHintActive => _idleHintActive;
+  String? get idleHintMessage => _idleHintActive ? _idleHintMessage : null;
 
-    if (cardId != null) {
-      if (step.expectedCardId == cardId) return true;
-      if (step.expectedCardIds?.contains(cardId) == true) return true;
+  void setIdleHint({
+    required String message,
+    Set<String> cardIds = const {},
+    Set<String> stackIds = const {},
+    Set<GlobalKey> keys = const {},
+  }) {
+    _idleHintMessage = message;
+    _idleHintActive = true;
+    _idleHintCardIds
+      ..clear()
+      ..addAll(cardIds);
+    _idleHintStackIds
+      ..clear()
+      ..addAll(stackIds);
+    _idleHintKeys
+      ..clear()
+      ..addAll(keys);
+    notifyListeners();
+  }
+
+  void clearIdleHint() {
+    if (!_idleHintActive) return;
+    _idleHintActive = false;
+    _idleHintMessage = null;
+    _idleHintCardIds.clear();
+    _idleHintStackIds.clear();
+    _idleHintKeys.clear();
+    notifyListeners();
+  }
+
+  bool pulsesTarget({String? cardId, String? stackId, GlobalKey? key}) {
+    if (_active) {
+      if (step.awaitRoundStatus) return false;
+
+      if (cardId != null) {
+        if (step.expectedCardId == cardId) return true;
+        if (step.expectedCardIds?.contains(cardId) == true) return true;
+      }
+      if (stackId != null && step.expectedStackId == stackId) return true;
+      if (key != null && step.highlightKeys.contains(key)) return true;
+      return false;
     }
-    if (stackId != null && step.expectedStackId == stackId) return true;
-    if (key != null && step.highlightKeys.contains(key)) return true;
+
+    // After tutorial: non-blocking hint highlighting.
+    if (!_idleHintActive) return false;
+    if (cardId != null && _idleHintCardIds.contains(cardId)) return true;
+    if (stackId != null && _idleHintStackIds.contains(stackId)) return true;
+    if (key != null && _idleHintKeys.contains(key)) return true;
     return false;
   }
 
@@ -48,12 +97,20 @@ class TutorialViewModel extends ChangeNotifier {
 
     _active = true;
     _current = 0;
+    clearIdleHint();
     notifyListeners();
   }
 
   void finish() {
     _active = false;
     _current = 0;
+    // Idle hints begin after the tutorial completes (timer managed elsewhere),
+    // so clear any previous hint immediately.
+    _idleHintActive = false;
+    _idleHintMessage = null;
+    _idleHintCardIds.clear();
+    _idleHintStackIds.clear();
+    _idleHintKeys.clear();
     notifyListeners();
   }
 

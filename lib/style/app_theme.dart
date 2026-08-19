@@ -77,7 +77,9 @@ CupertinoThemeData buildCupertinoTheme(AppTheme theme) {
   final t = theme;
   return CupertinoThemeData(
     brightness: Brightness.dark,
-    primaryColor: t.surfaceAlt,
+    // Use a brighter accent so CupertinoDialogAction (esp. non-destructive)
+    // is readable on dark backgrounds.
+    primaryColor: t.turnHighlight,
     scaffoldBackgroundColor: t.background,
     barBackgroundColor: t.surface,
     textTheme: CupertinoTextThemeData(

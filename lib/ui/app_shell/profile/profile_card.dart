@@ -458,15 +458,15 @@ Future<void> _changeName(BuildContext context, ProfileViewModel vm) async {
               ),
               actions: [
                 CupertinoDialogAction(
-                  child: Text(l10n.cancel, style: AppStyle.theme.mutedText),
                   onPressed: SoundService.wrapTap(() => Navigator.pop(context)),
+                  child: Text(l10n.cancel),
                 ),
                 CupertinoDialogAction(
                   isDefaultAction: true,
-                  child: Text(l10n.save, style: AppStyle.theme.title),
                   onPressed: SoundService.wrapTap(() {
                     Navigator.pop(context, controller.text.trim());
                   }),
+                  child: Text(l10n.save, style: AppStyle.theme.title),
                 ),
               ],
             );

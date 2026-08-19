@@ -96,7 +96,8 @@ class ProfileScreenState extends State<ProfileScreen> {
         Positioned(
           left: 0,
           right: 0,
-          bottom: 108,
+          // Lift the slide hint above the floating tab bar.
+          bottom: 124,
           child: Center(
             child: _looksMode
                 ? Row(
