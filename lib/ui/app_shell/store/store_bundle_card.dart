@@ -97,6 +97,23 @@ class StoreBundleCard extends StatelessWidget {
                             letterSpacing: 0.2,
                           ),
                         ),
+                        if (bundle.caption != null) ...[
+                          SizedBox(height: w * 0.04),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: inset),
+                            child: Text(
+                              bundle.caption!,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.body.copyWith(
+                                fontSize: (w * 0.11).clamp(8.0, 11.0),
+                                height: 1.1,
+                                color: theme.textPrimary.withValues(alpha: .72),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

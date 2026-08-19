@@ -377,6 +377,16 @@ class GeneralGameViewModel extends ChangeNotifier {
     selectedCards = [];
     selectedStacks = [];
 
+    if (!tutorialMode) {
+      unawaited(
+        appRepo.noteDailyChallengeProgress(
+          prev: gameState,
+          next: next,
+          pid: me,
+        ),
+      );
+    }
+
     if (settlementEvents.isNotEmpty) {
       final playOrigins = _captureOrigins(events);
       final intermediate = _stateWithLeftoversOnTable(next, settlementEvents);

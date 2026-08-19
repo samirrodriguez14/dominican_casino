@@ -2,8 +2,8 @@ import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
-import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:dominican_casino/ui/widgets/theme_lock_cover.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Coin-locked theme pack for sale, painted in that pack's table colors.
@@ -42,67 +42,55 @@ class StoreThemeCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
-            child: Column(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
               children: [
-                Text(
-                  themeLabel(pack.id),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: packTheme.title.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    height: 1.05,
-                    color: ink,
-                  ),
-                ),
-                const Spacer(),
-                if (avatars.isNotEmpty)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+                  child: Column(
                     children: [
-                      for (var i = 0; i < avatars.length; i++) ...[
-                        if (i > 0) const SizedBox(width: 4),
-                        PlayerAvatarView(
-                          avatarId: avatars[i],
-                          size: 22,
-                          showBorder: true,
+                      Text(
+                        themeLabel(pack.id),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: packTheme.title.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          height: 1.05,
+                          color: ink,
                         ),
-                      ],
+                      ),
+                      const Spacer(),
+                      if (avatars.isNotEmpty)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (var i = 0; i < avatars.length; i++) ...[
+                              if (i > 0) const SizedBox(width: 4),
+                              PlayerAvatarView(
+                                avatarId: avatars[i],
+                                size: 22,
+                                showBorder: true,
+                              ),
+                            ],
+                          ],
+                        ),
+                      const SizedBox(height: 8),
+                      PlayingCardBack(
+                        width: 28,
+                        tintId: pack.defaultTintId,
+                        mark: CardBackMark.logo,
+                        avatarId: pack.avatarIds.first,
+                        previewTheme: packTheme,
+                      ),
+                      const Spacer(),
                     ],
                   ),
-                const SizedBox(height: 8),
-                PlayingCardBack(
-                  width: 28,
-                  tintId: pack.defaultTintId,
-                  mark: CardBackMark.logo,
-                  avatarId: pack.avatarIds.first,
-                  previewTheme: packTheme,
                 ),
-                const Spacer(),
-                Icon(
-                  CupertinoIcons.lock_fill,
-                  color: ink.withValues(alpha: .82),
-                  size: 16,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(coinIcon, size: 11, color: packTheme.turnHighlight),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${pack.coinCost}',
-                      style: packTheme.title.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                        color: ink.withValues(alpha: .88),
-                      ),
-                    ),
-                  ],
+                Positioned.fill(
+                  child: ThemeLockCover(coinCost: pack.coinCost),
                 ),
               ],
             ),

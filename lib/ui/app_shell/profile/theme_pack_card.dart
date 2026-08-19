@@ -7,6 +7,7 @@ import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
+import 'package:dominican_casino/ui/widgets/theme_lock_cover.dart';
 import 'package:dominican_casino/ui/widgets/winning_card_preview.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
@@ -230,7 +231,7 @@ class _ThemePackCardState extends State<ThemePackCard> {
                 ),
               if (!owned)
                 Positioned.fill(
-                  child: _LockedCover(
+                  child: ThemeLockCover(
                     coinCost: widget.compact && pack.isCoinLocked
                         ? pack.coinCost
                         : null,
@@ -436,54 +437,6 @@ Future<void> buyThemePack(BuildContext context, ThemePack pack) async {
   final ok = await context.read<AppThemeViewModel>().buyPack(pack.id);
   if (!ok && context.mounted) {
     await showInsufficientFundsDialog(context, energy: false);
-  }
-}
-
-class _LockedCover extends StatelessWidget {
-  const _LockedCover({this.coinCost});
-
-  final int? coinCost;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: const Color(0x6B000000),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              CupertinoIcons.lock_fill,
-              color: Color(0xE6FFFFFF),
-              size: 36,
-            ),
-            if (coinCost != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    coinIcon,
-                    size: 14,
-                    color: Color(0xE6FFFFFF),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$coinCost',
-                    style: const TextStyle(
-                      color: Color(0xE6FFFFFF),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/daily_challenge.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -57,7 +58,7 @@ class StoreScreenState extends State<StoreScreen> {
         const SizedBox(height: 8),
         Text(l10n.noRealMoney, style: theme.body),
         const SizedBox(height: 28),
-        const _DailyRewardSection(),
+        const _DailySection(),
         Text(l10n.buyEnergyWithCoins, style: theme.title.copyWith(fontSize: 22)),
         const SizedBox(height: 12),
         _BundleGrid(
@@ -115,15 +116,13 @@ class StoreScreenState extends State<StoreScreen> {
   }
 }
 
-class _DailyRewardSection extends StatelessWidget {
-  const _DailyRewardSection();
+class _DailySection extends StatelessWidget {
+  const _DailySection();
 
   @override
   Widget build(BuildContext context) {
-    final repo = context.watch<AppRepo>();
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
-    final claimed = repo.hasClaimedDailyRewardToday;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,26 +136,28 @@ class _DailyRewardSection extends StatelessWidget {
             final cardWidth =
                 (constraints.maxWidth - gap * (columns - 1)) / columns;
             final cardHeight = cardWidth / StoreScreen._cardAspect;
-            return Align(
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                width: cardWidth,
-                height: cardHeight,
-                child: StoreBundleCard(
-                  bundle: dailyRewardBundle(l10n.free),
-                  overlayLabel: claimed ? l10n.comeBackTomorrow : null,
-                  onLongPress: kDebugMode && claimed
-                      ? () => repo.debugRewindDailyClaim()
-                      : null,
-                  onTap: claimed
-                      ? null
-                      : (origin) => _claimDailyReward(context, origin),
-                ),
+            final cards = <Widget>[
+              const _DailyLoginCard(),
+              for (final def in dailyChallenges) _DailyChallengeCard(def: def),
+            ];
+            return SizedBox(
+              height: cardHeight,
+              child: Row(
+                children: [
+                  for (var i = 0; i < cards.length; i++) ...[
+                    if (i > 0) SizedBox(width: gap),
+                    SizedBox(
+                      width: cardWidth,
+                      height: cardHeight,
+                      child: cards[i],
+                    ),
+                  ],
+                ],
               ),
             );
           },
         ),
-        if (kDebugMode && claimed) ...[
+        if (kDebugMode) ...[
           const SizedBox(height: 8),
           Text(
             l10n.debugResetDailyReward,
@@ -165,6 +166,99 @@ class _DailyRewardSection extends StatelessWidget {
         ],
         const SizedBox(height: 28),
       ],
+    );
+  }
+}
+
+class _DailyLoginCard extends StatelessWidget {
+  const _DailyLoginCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = context.watch<AppRepo>();
+    final l10n = AppLocalizations.of(context);
+    final claimed = repo.hasClaimedDailyRewardToday;
+
+    return StoreBundleCard(
+      bundle: dailyRewardBundle(
+        l10n.free,
+        caption: l10n.dailyLoginCaption,
+      ),
+      overlayLabel: claimed ? l10n.comeBackTomorrow : null,
+      onLongPress: kDebugMode && claimed
+          ? () => repo.debugRewindDailyClaim()
+          : null,
+      onTap: claimed ? null : (origin) => _claimDailyReward(context, origin),
+    );
+  }
+}
+
+class _DailyChallengeCard extends StatelessWidget {
+  const _DailyChallengeCard({required this.def});
+
+  final DailyChallengeDef def;
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = context.watch<AppRepo>();
+    final l10n = AppLocalizations.of(context);
+    final progress = repo.dailyChallengeProgress(def.id);
+    final claimed = repo.isDailyChallengeClaimed(def.id);
+    final complete = progress >= def.goal;
+    final caption = switch (def.id) {
+      DailyChallengeId.tydRounds => l10n.dailyChallengeTydCaption,
+      DailyChallengeId.casinoClassic => l10n.dailyChallengeCasinoCaption,
+    };
+    final priceLabel = complete
+        ? l10n.free
+        : '$progress/${def.goal}';
+
+    return StoreBundleCard(
+      bundle: dailyChallengeBundle(
+        def: def,
+        priceLabel: priceLabel,
+        caption: caption,
+      ),
+      overlayLabel: claimed
+          ? l10n.comeBackTomorrow
+          : (complete ? null : '$progress/${def.goal}'),
+      onLongPress: kDebugMode
+          ? () => repo.debugTweakDailyChallenge(def.id)
+          : null,
+      onTap: claimed || !complete
+          ? null
+          : (origin) => _claimDailyChallenge(context, def, origin),
+    );
+  }
+}
+
+Future<void> _claimDailyChallenge(
+  BuildContext context,
+  DailyChallengeDef def,
+  Offset? origin,
+) async {
+  var repo = context.read<AppRepo>();
+  if (!repo.isGoogleLinked) {
+    final linked = await _ensureGoogleForDailyReward(context);
+    if (!linked || !context.mounted) return;
+    repo = context.read<AppRepo>();
+  }
+
+  final result = await repo.claimDailyChallenge(def.id);
+  if (result != DailyChallengeClaimResult.claimed || !context.mounted) return;
+
+  final energy = def.rewardKind == DailyChallengeRewardKind.energy;
+  final to = CurrencyBar.centerOf(
+    energy ? CurrencyBar.energyChipKey : CurrencyBar.coinsChipKey,
+  );
+  if (origin != null && to != null) {
+    await CurrencyBurst.play(
+      context: context,
+      from: origin,
+      to: to,
+      icon: energy ? CupertinoIcons.bolt_fill : coinIcon,
+      color: energy ? AppStyle.theme.warning : AppStyle.theme.turnHighlight,
+      count: def.reward.clamp(5, 10),
     );
   }
 }

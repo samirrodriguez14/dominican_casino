@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dominican_casino/l10n/app_localizations.dart';
@@ -26,6 +27,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
   static const _flipDuration = Duration(milliseconds: 420);
 
   late final AnimationController _flip;
+  bool _deleting = false;
 
   @override
   void initState() {
@@ -186,7 +188,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     return _cardShell(
       face: face,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -267,7 +269,9 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                                 style: theme.mutedText.copyWith(
                                   color: appRepo.notificationsEnabled
                                       ? theme.success
-                                      : theme.textPrimary.withValues(alpha: .7),
+                                      : theme.textPrimary.withValues(
+                                          alpha: .7,
+                                        ),
                                 ),
                               ),
                             ),
@@ -278,7 +282,9 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                                   vertical: 6,
                                 ),
                                 minimumSize: Size.zero,
-                                color: theme.textPrimary.withValues(alpha: .14),
+                                color: theme.textPrimary.withValues(
+                                  alpha: .14,
+                                ),
                                 onPressed: SoundService.wrapTap(
                                   () => _requestNotifications(
                                     context,
@@ -299,50 +305,65 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                         ),
                         const _SectionDivider(),
                         _SectionLabel(l10n.account),
-                        const SizedBox(height: 2),
-                        _GoogleAccountRow(
-                          linked: appRepo.isGoogleLinked,
-                          email: appRepo.googleEmail,
-                          onConnect: () =>
-                              _connectGoogle(context, appRepo, l10n),
-                          onLogOut: () =>
-                              _confirmLogOut(context, appRepo, l10n),
-                          onDelete: () =>
-                              _confirmDelete(context, appRepo, l10n),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Center(
-                          child: CupertinoButton(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 2,
-                            ),
-                            minimumSize: Size.zero,
-                            onPressed: _openPrivacy,
-                            child: Text(
-                              l10n.privacyPolicy,
-                              style: theme.mutedText.copyWith(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
-                                decorationColor: theme.muted.withValues(
-                                  alpha: .45,
+                        const SizedBox(height: 4),
+                        CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          onPressed: _deleting
+                              ? null
+                              : SoundService.wrapTap(
+                                  () => _confirmDelete(context, appRepo, l10n),
                                 ),
-                              ),
-                            ),
-                          ),
+                          child: _deleting
+                              ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 6),
+                                  child: CupertinoActivityIndicator(
+                                    radius: 8,
+                                  ),
+                                )
+                              : Text(
+                                  appRepo.isGoogleLinked
+                                      ? l10n.deleteAccount
+                                      : l10n.deleteLocalData,
+                                  style: const TextStyle(
+                                    color: CupertinoColors.destructiveRed,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                         ),
                       ],
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            _AccountActions(
+              linked: appRepo.isGoogleLinked,
+              email: appRepo.googleEmail,
+              deleting: _deleting,
+              onConnect: () => _connectGoogle(context, appRepo, l10n),
+              onLogOut: () => _confirmLogOut(context, appRepo, l10n),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 2,
+                ),
+                minimumSize: Size.zero,
+                onPressed: _openPrivacy,
+                child: Text(
+                  l10n.privacyPolicy,
+                  style: theme.mutedText.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    decoration: TextDecoration.underline,
+                    decorationColor: theme.muted.withValues(alpha: .45),
+                  ),
+                ),
               ),
             ),
           ],
@@ -418,6 +439,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     AppRepo appRepo,
     AppLocalizations l10n,
   ) async {
+    if (_deleting) return;
     final linked = appRepo.isGoogleLinked;
     final go = await showCupertinoDialog<bool>(
       context: context,
@@ -439,15 +461,61 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
         ],
       ),
     );
-    if (go != true) return;
-    var ok = true;
-    if (linked) {
-      ok = await appRepo.deleteAccount();
-    } else {
-      await appRepo.deleteLocalAccount();
+    if (go != true || !context.mounted) return;
+
+    setState(() => _deleting = true);
+    final shown = Completer<BuildContext>();
+    unawaited(
+      showCupertinoDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        useRootNavigator: true,
+        builder: (ctx) {
+          if (!shown.isCompleted) shown.complete(ctx);
+          return PopScope(
+            canPop: false,
+            child: CupertinoAlertDialog(
+              content: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CupertinoActivityIndicator(),
+                    const SizedBox(height: 12),
+                    Text(
+                      linked ? l10n.deletingAccount : l10n.deletingLocalData,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    final dialogContext = await shown.future;
+
+    var failed = false;
+    var canceled = false;
+    try {
+      if (linked) {
+        final result = await appRepo.deleteAccount();
+        canceled = result == DeleteAccountResult.canceled;
+        failed = result == DeleteAccountResult.failed;
+      } else {
+        await appRepo.deleteLocalAccount();
+      }
+    } catch (_) {
+      failed = true;
     }
-    if (!ok) {
-      if (!context.mounted) return;
+
+    if (dialogContext.mounted) {
+      Navigator.of(dialogContext).pop();
+    }
+    if (!context.mounted) return;
+    setState(() => _deleting = false);
+    if (canceled) return;
+    if (failed) {
       await showCupertinoDialog<void>(
         context: context,
         builder: (ctx) => CupertinoAlertDialog(
@@ -464,7 +532,7 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
       );
       return;
     }
-    if (context.mounted) context.go('/home');
+    context.go('/home');
   }
 
   Future<void> _confirmLogOut(
@@ -522,7 +590,7 @@ class _SectionDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 1,
-      margin: const EdgeInsets.symmetric(vertical: 5),
+      margin: const EdgeInsets.symmetric(vertical: 12),
       color: AppStyle.theme.textPrimary.withValues(alpha: .12),
     );
   }
@@ -623,83 +691,178 @@ class _SettingsToggleRow extends StatelessWidget {
   }
 }
 
-class _GoogleAccountRow extends StatelessWidget {
-  const _GoogleAccountRow({
+class _AccountActions extends StatelessWidget {
+  const _AccountActions({
     required this.linked,
     required this.email,
+    required this.deleting,
     required this.onConnect,
     required this.onLogOut,
-    required this.onDelete,
   });
 
   final bool linked;
   final String? email;
+  final bool deleting;
   final VoidCallback onConnect;
   final VoidCallback onLogOut;
-  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final address = email?.trim();
+    final googleValue = linked
+        ? ((address != null && address.isNotEmpty) ? address : l10n.google)
+        : l10n.connectGoogle;
+
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ActionPill(
+              leading: const GoogleGMark(size: 26),
+              value: googleValue,
+              subtitle: linked ? l10n.google : null,
+              semanticLabel: linked
+                  ? l10n.googleConnected
+                  : l10n.connectGoogle,
+              onPressed: deleting || linked ? null : onConnect,
+            ),
+            if (linked) ...[
+              const SizedBox(width: 8),
+              _CircleAction(
+                icon: CupertinoIcons.square_arrow_right,
+                semanticLabel: l10n.logOut,
+                onPressed: deleting ? null : onLogOut,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionPill extends StatelessWidget {
+  const _ActionPill({
+    required this.leading,
+    required this.value,
+    required this.semanticLabel,
+    this.subtitle,
+    this.onPressed,
+  });
+
+  final Widget leading;
+  final String value;
+  final String semanticLabel;
+  final String? subtitle;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
-    final l10n = AppLocalizations.of(context);
-    final address = email?.trim();
-
-    return Row(
-      children: [
-        const GoogleGMark(size: 16),
-        const SizedBox(width: 8),
-        Expanded(
-          child: !linked
-              ? Align(
-                  alignment: Alignment.centerLeft,
-                  child: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    onPressed: SoundService.wrapTap(onConnect),
-                    child: Text(
-                      l10n.connectGoogle,
-                      style: theme.body.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                )
-              : Text(
-                  address ?? '',
+    final pill = Container(
+      constraints: const BoxConstraints(minHeight: 52, maxWidth: 188),
+      padding: const EdgeInsets.fromLTRB(14, 8, 16, 8),
+      decoration: BoxDecoration(
+        color: theme.textPrimary.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: theme.textPrimary.withValues(alpha: .18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          leading,
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.body.copyWith(fontSize: 14),
+                  style: theme.title.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                    color: theme.textPrimary,
+                  ),
                 ),
-        ),
-        if (linked)
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            minimumSize: Size.zero,
-            color: theme.textPrimary.withValues(alpha: .14),
-            onPressed: SoundService.wrapTap(onLogOut),
-            child: Text(
-              l10n.logOut,
-              style: TextStyle(
-                color: theme.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.caption.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      height: 1,
+                      color: theme.muted,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-        const SizedBox(width: 2),
-        CupertinoButton(
-          padding: const EdgeInsets.all(6),
-          minimumSize: Size.zero,
-          onPressed: SoundService.wrapTap(onDelete),
-          child: Icon(
-            CupertinoIcons.delete,
-            size: 18,
-            color: CupertinoColors.destructiveRed,
-            semanticLabel: linked ? l10n.deleteAccount : l10n.deleteLocalData,
-          ),
+        ],
+      ),
+    );
+
+    return Semantics(
+      button: onPressed != null,
+      label: semanticLabel,
+      child: onPressed == null
+          ? pill
+          : CupertinoButton(
+              padding: EdgeInsets.zero,
+              minimumSize: Size.zero,
+              onPressed: SoundService.wrapTap(onPressed),
+              child: pill,
+            ),
+    );
+  }
+}
+
+class _CircleAction extends StatelessWidget {
+  const _CircleAction({
+    required this.icon,
+    required this.semanticLabel,
+    this.color,
+    this.busy = false,
+    this.onPressed,
+  });
+
+  final IconData icon;
+  final String semanticLabel;
+  final Color? color;
+  final bool busy;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final fg = color ?? theme.textPrimary;
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: onPressed == null ? null : SoundService.wrapTap(onPressed),
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: theme.textPrimary.withValues(alpha: .12),
+          shape: BoxShape.circle,
+          border: Border.all(color: theme.textPrimary.withValues(alpha: .18)),
         ),
-      ],
+        alignment: Alignment.center,
+        child: busy
+            ? const CupertinoActivityIndicator(radius: 10)
+            : Icon(icon, size: 22, color: fg, semanticLabel: semanticLabel),
+      ),
     );
   }
 }

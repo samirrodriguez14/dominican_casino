@@ -1,3 +1,4 @@
+import 'package:dominican_casino/models/daily_challenge.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:flutter/cupertino.dart';
@@ -11,6 +12,7 @@ class StoreBundle {
     required this.priceLabel,
     this.coinCost,
     this.comingSoon = false,
+    this.caption,
   });
 
   final StoreBundleKind kind;
@@ -18,6 +20,7 @@ class StoreBundle {
   final String priceLabel;
   final int? coinCost;
   final bool comingSoon;
+  final String? caption;
 
   bool get pricedInCoins => coinCost != null;
 
@@ -40,10 +43,25 @@ class StoreBundle {
   }
 }
 
-StoreBundle dailyRewardBundle(String freeLabel) => StoreBundle(
-  kind: StoreBundleKind.coins,
-  amount: WalletConfig.dailyLoginRewardCoins,
-  priceLabel: freeLabel,
+StoreBundle dailyRewardBundle(String freeLabel, {String? caption}) =>
+    StoreBundle(
+      kind: StoreBundleKind.coins,
+      amount: WalletConfig.dailyLoginRewardCoins,
+      priceLabel: freeLabel,
+      caption: caption,
+    );
+
+StoreBundle dailyChallengeBundle({
+  required DailyChallengeDef def,
+  required String priceLabel,
+  String? caption,
+}) => StoreBundle(
+  kind: def.rewardKind == DailyChallengeRewardKind.energy
+      ? StoreBundleKind.energy
+      : StoreBundleKind.coins,
+  amount: def.reward,
+  priceLabel: priceLabel,
+  caption: caption,
 );
 
 final energyBundles = <StoreBundle>[

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/models/daily_challenge.dart';
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
@@ -24,6 +25,8 @@ import 'package:uuid/uuid.dart';
 enum AppStatus { notReady, appReady, inGame, appError }
 
 enum GoogleAuthStatus { success, canceled, failed }
+
+enum DeleteAccountResult { success, canceled, failed }
 
 class GoogleAuthResult {
   const GoogleAuthResult.success(this.suggestedName)
@@ -49,6 +52,13 @@ class InsufficientFundsException implements Exception {
 }
 
 enum DailyRewardClaimResult { claimed, alreadyClaimed, needsGoogle }
+
+enum DailyChallengeClaimResult {
+  claimed,
+  alreadyClaimed,
+  incomplete,
+  needsGoogle,
+}
 
 class HomeCoinClaim {
   const HomeCoinClaim({required this.gameId, required this.amount});
@@ -103,6 +113,8 @@ class AppRepo extends ChangeNotifier {
   HomeCoinClaim? get pendingHomeCoinClaim => _pendingHomeCoinClaim;
   DateTime? _lastDailyClaimAt;
   DateTime? get lastDailyClaimAt => _lastDailyClaimAt;
+  DailyChallengeState _dailyChallenges = DailyChallengeState.empty('');
+  DailyChallengeState get dailyChallengesState => _dailyChallenges;
 
   static const _themeKey = 'appTheme';
   static const _cardBackKey = 'cardBack';
@@ -317,6 +329,7 @@ class AppRepo extends ChangeNotifier {
       _wallet = Wallet.starter();
       _walletUid = null;
       _lastDailyClaimAt = null;
+      _dailyChallenges = DailyChallengeState.empty(_localDayKey());
       return;
     }
 
@@ -354,6 +367,11 @@ class AppRepo extends ChangeNotifier {
         Wallet.tryParseWalletTime(remote?['lastDailyClaimAt']),
         preferRemote ? null : await _loadDailyClaimPrefs(uid),
       );
+      await _loadDailyChallenges(
+        uid,
+        remote: remote,
+        preferRemote: preferRemote,
+      );
     } finally {
       _walletPersistPaused = false;
     }
@@ -363,6 +381,7 @@ class AppRepo extends ChangeNotifier {
     }
     await _loadHomeCoinClaim(uid);
     await _cacheDailyClaimLocal(uid);
+    await _cacheDailyChallengesLocal(uid);
   }
 
   String _dailyClaimPrefsKey(String uid) => 'daily_claim_$uid';
@@ -443,6 +462,203 @@ class AppRepo extends ChangeNotifier {
     final last = _lastDailyClaimAt ?? DateTime.now();
     _lastDailyClaimAt = last.toLocal().subtract(const Duration(days: 1));
     await _persistDailyClaim();
+    _dailyChallenges = DailyChallengeState.empty(_localDayKey());
+    await _persistDailyChallenges();
+    notifyListeners();
+  }
+
+  String _localDayKey([DateTime? now]) {
+    final at = (now ?? DateTime.now()).toLocal();
+    final m = at.month.toString().padLeft(2, '0');
+    final d = at.day.toString().padLeft(2, '0');
+    return '${at.year}-$m-$d';
+  }
+
+  String _dailyChallengesPrefsKey(String uid) => 'daily_challenges_$uid';
+
+  void _rollDailyChallengesIfNeeded() {
+    final today = _localDayKey();
+    if (_dailyChallenges.dayKey == today) return;
+    _dailyChallenges = DailyChallengeState.empty(today);
+  }
+
+  DailyChallengeState _mergeDailyChallenges(
+    DailyChallengeState a,
+    DailyChallengeState b,
+    String today,
+  ) {
+    a = a.forDay(today);
+    b = b.forDay(today);
+    final counts = Map<String, int>.from(a.counts);
+    b.counts.forEach((key, value) {
+      final cur = counts[key] ?? 0;
+      if (value > cur) counts[key] = value;
+    });
+    return DailyChallengeState(
+      dayKey: today,
+      counts: counts,
+      claimed: {...a.claimed, ...b.claimed},
+      credited: {...a.credited, ...b.credited},
+    );
+  }
+
+  Future<void> _loadDailyChallenges(
+    String uid, {
+    Map<String, dynamic>? remote,
+    required bool preferRemote,
+  }) async {
+    final today = _localDayKey();
+    Map<String, dynamic>? remoteMap;
+    final rawRemote = remote?['dailyChallenges'];
+    if (rawRemote is Map) {
+      remoteMap = Map<String, dynamic>.from(rawRemote);
+    }
+    final remoteState = DailyChallengeState.fromJson(remoteMap, today);
+    DailyChallengeState localState = DailyChallengeState.empty(today);
+    if (!preferRemote) {
+      localState = await _loadDailyChallengesPrefs(uid, today);
+    }
+    _dailyChallenges = _mergeDailyChallenges(remoteState, localState, today);
+  }
+
+  Future<DailyChallengeState> _loadDailyChallengesPrefs(
+    String uid,
+    String today,
+  ) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_dailyChallengesPrefsKey(uid));
+      if (raw == null || raw.isEmpty) {
+        return DailyChallengeState.empty(today);
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return DailyChallengeState.empty(today);
+      return DailyChallengeState.fromJson(
+        Map<String, dynamic>.from(decoded),
+        today,
+      );
+    } catch (e) {
+      developer.log('AppRepo.loadDailyChallenges: $e');
+      return DailyChallengeState.empty(today);
+    }
+  }
+
+  Future<void> _cacheDailyChallengesLocal(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      await sp.setString(
+        _dailyChallengesPrefsKey(uid),
+        jsonEncode(_dailyChallenges.toJson()),
+      );
+    } catch (e) {
+      developer.log('AppRepo.cacheDailyChallenges: $e');
+    }
+  }
+
+  Future<void> _persistDailyChallenges() async {
+    final uid = _walletUid;
+    if (uid == null) return;
+    await _cacheDailyChallengesLocal(uid);
+    try {
+      await fs.saveDailyChallenges(uid: uid, data: _dailyChallenges.toJson());
+    } catch (e) {
+      developer.log('AppRepo.saveDailyChallenges: $e');
+    }
+  }
+
+  int dailyChallengeProgress(DailyChallengeId id) {
+    return _dailyChallenges.forDay(_localDayKey()).countFor(id);
+  }
+
+  bool isDailyChallengeClaimed(DailyChallengeId id) {
+    return _dailyChallenges.forDay(_localDayKey()).isClaimed(id);
+  }
+
+  bool canClaimDailyChallenge(DailyChallengeDef def) {
+    if (!isGoogleLinked) return false;
+    return _dailyChallenges.forDay(_localDayKey()).canClaim(def);
+  }
+
+  Future<DailyChallengeClaimResult> claimDailyChallenge(
+    DailyChallengeId id,
+  ) async {
+    if (!isGoogleLinked) return DailyChallengeClaimResult.needsGoogle;
+    _rollDailyChallengesIfNeeded();
+    final def = dailyChallengeById(id);
+    if (def == null) return DailyChallengeClaimResult.incomplete;
+    if (_dailyChallenges.isClaimed(id)) {
+      return DailyChallengeClaimResult.alreadyClaimed;
+    }
+    if (!_dailyChallenges.isComplete(def)) {
+      return DailyChallengeClaimResult.incomplete;
+    }
+    _dailyChallenges.claimed.add(id.name);
+    notifyListeners();
+    if (def.rewardKind == DailyChallengeRewardKind.energy) {
+      await grantEnergy(def.reward);
+    } else {
+      await grantCoins(def.reward);
+    }
+    await _persistDailyChallenges();
+    return DailyChallengeClaimResult.claimed;
+  }
+
+  Future<void> noteDailyChallengeProgress({
+    required GameState prev,
+    required GameState next,
+    required String pid,
+  }) async {
+    if (pid.isEmpty || prev.id != next.id) return;
+    _rollDailyChallengesIfNeeded();
+    var changed = false;
+
+    if (next.gameMode == GameMode.tresydos) {
+      final oldScore = (prev.scores[pid] as num?)?.toInt() ?? 0;
+      final newScore = (next.scores[pid] as num?)?.toInt() ?? 0;
+      if (newScore > oldScore) {
+        for (var score = oldScore + 1; score <= newScore; score++) {
+          final eventId = 'tyd:${next.id}:$score';
+          if (_dailyChallenges.credited.contains(eventId)) continue;
+          _dailyChallenges.credited.add(eventId);
+          final cur =
+              _dailyChallenges.counts[DailyChallengeId.tydRounds.name] ?? 0;
+          _dailyChallenges.counts[DailyChallengeId.tydRounds.name] = cur + 1;
+          changed = true;
+        }
+      }
+    }
+
+    if (next.gameMode == GameMode.casino &&
+        next.gameStatus == GameStatus.gameOver &&
+        prev.gameStatus != GameStatus.gameOver &&
+        next.winnerId == pid) {
+      final eventId = 'casino:${next.id}';
+      if (!_dailyChallenges.credited.contains(eventId)) {
+        _dailyChallenges.credited.add(eventId);
+        final cur =
+            _dailyChallenges.counts[DailyChallengeId.casinoClassic.name] ?? 0;
+        _dailyChallenges.counts[DailyChallengeId.casinoClassic.name] = cur + 1;
+        changed = true;
+      }
+    }
+
+    if (!changed) return;
+    notifyListeners();
+    await _persistDailyChallenges();
+  }
+
+  Future<void> debugTweakDailyChallenge(DailyChallengeId id) async {
+    if (!kDebugMode) return;
+    _rollDailyChallengesIfNeeded();
+    final def = dailyChallengeById(id);
+    if (def == null) return;
+    if (_dailyChallenges.isClaimed(id)) {
+      _dailyChallenges.claimed.remove(id.name);
+      _dailyChallenges.counts[id.name] = 0;
+    } else {
+      _dailyChallenges.counts[id.name] = def.goal;
+    }
+    await _persistDailyChallenges();
     notifyListeners();
   }
 
@@ -1501,16 +1717,22 @@ class AppRepo extends ChangeNotifier {
   }
 
   /// Permanently delete the signed-in account and all of its cloud data.
-  Future<bool> deleteAccount() async {
+  Future<DeleteAccountResult> deleteAccount() async {
     try {
       await _endAuthSession(
         keepCloud: false,
         deleteAuthUser: isGoogleLinked,
       );
-      return true;
+      return DeleteAccountResult.success;
+    } on StateError catch (e) {
+      if (e.message == 'delete-canceled') {
+        return DeleteAccountResult.canceled;
+      }
+      developer.log('AppRepo.deleteAccount: $e', error: e);
+      return DeleteAccountResult.failed;
     } catch (e, st) {
       developer.log('AppRepo.deleteAccount: $e', error: e, stackTrace: st);
-      return false;
+      return DeleteAccountResult.failed;
     }
   }
 
@@ -1527,15 +1749,6 @@ class AppRepo extends ChangeNotifier {
     _walletPersistPaused = true;
     _energyTimer?.cancel();
     _energyTimer = null;
-
-    if (deleteAuthUser && isGoogleLinked) {
-      final reauthed = await _reauthenticateGoogle();
-      if (!reauthed) {
-        _walletPersistPaused = false;
-        _ensureEnergyTicker();
-        throw StateError('delete-canceled');
-      }
-    }
 
     if (keepCloud && walletUid != null) {
       try {
@@ -1554,25 +1767,23 @@ class AppRepo extends ChangeNotifier {
     } else if (!keepCloud && uid != null) {
       try {
         await fs.deleteUserProfile(uid);
-      } catch (_) {}
+      } catch (e) {
+        developer.log('AppRepo.deleteUserProfile: $e');
+      }
     }
 
     if (deleteAuthUser) {
-      final user = FirebaseAuth.instance.currentUser;
       try {
-        await user?.delete();
+        await FirebaseAuth.instance.currentUser?.delete();
       } on FirebaseAuthException catch (e) {
-        if (e.code == 'requires-recent-login') {
-          final reauthed = await _reauthenticateGoogle();
-          if (!reauthed) {
-            _walletPersistPaused = false;
-            _ensureEnergyTicker();
-            throw StateError('delete-canceled');
-          }
-          await FirebaseAuth.instance.currentUser?.delete();
-        } else {
-          rethrow;
+        if (e.code != 'requires-recent-login') rethrow;
+        final reauthed = await _reauthenticateGoogle();
+        if (!reauthed) {
+          _walletPersistPaused = false;
+          _ensureEnergyTicker();
+          throw StateError('delete-canceled');
         }
+        await FirebaseAuth.instance.currentUser?.delete();
       }
     }
 
@@ -1603,13 +1814,13 @@ class AppRepo extends ChangeNotifier {
         return true;
       }
       await _ensureGoogleSignIn();
-      final account = await GoogleSignIn.instance.authenticate(
-        scopeHint: const ['email', 'profile'],
-      );
+      final account = await _googleAccountForReauth();
+      if (account == null) return false;
       final idToken = account.authentication.idToken;
-      if (idToken == null) return false;
-      final credential = GoogleAuthProvider.credential(idToken: idToken);
-      await current.reauthenticateWithCredential(credential);
+      if (idToken == null || idToken.isEmpty) return false;
+      await current.reauthenticateWithCredential(
+        GoogleAuthProvider.credential(idToken: idToken),
+      );
       return true;
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) return false;
@@ -1629,11 +1840,41 @@ class AppRepo extends ChangeNotifier {
     }
   }
 
+  Future<GoogleSignInAccount?> _googleAccountForReauth() async {
+    try {
+      final pending = GoogleSignIn.instance.attemptLightweightAuthentication();
+      if (pending != null) {
+        final existing = await pending;
+        final token = existing?.authentication.idToken;
+        if (existing != null && token != null && token.isNotEmpty) {
+          return existing;
+        }
+      }
+    } catch (e) {
+      developer.log('AppRepo.reauthenticateGoogle lightweight: $e');
+    }
+    try {
+      return await GoogleSignIn.instance.authenticate(
+        scopeHint: const ['email', 'profile'],
+      );
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) rethrow;
+      developer.log('AppRepo.reauthenticateGoogle authenticate: $e');
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
+      return GoogleSignIn.instance.authenticate(
+        scopeHint: const ['email', 'profile'],
+      );
+    }
+  }
+
   Future<void> _clearUidLocalCache(String uid) async {
     final sp = await SharedPreferences.getInstance();
     await sp.remove(_walletPrefsKey(uid));
     await sp.remove(_homeCoinClaimPrefsKey(uid));
     await sp.remove(_dailyClaimPrefsKey(uid));
+    await sp.remove(_dailyChallengesPrefsKey(uid));
   }
 
   Future<void> _clearLocalSession() async {
@@ -1650,7 +1891,8 @@ class AppRepo extends ChangeNotifier {
     for (final key in sp.getKeys().toList()) {
       if (key.startsWith('wallet_') ||
           key.startsWith('home_coin_claim_') ||
-          key.startsWith('daily_claim_')) {
+          key.startsWith('daily_claim_') ||
+          key.startsWith('daily_challenges_')) {
         await sp.remove(key);
       }
     }
@@ -1664,6 +1906,7 @@ class AppRepo extends ChangeNotifier {
     _walletUid = null;
     _pendingHomeCoinClaim = null;
     _lastDailyClaimAt = null;
+    _dailyChallenges = DailyChallengeState.empty(_localDayKey());
     _resetLooksInMemory();
     appStatus = AppStatus.notReady;
   }

@@ -186,6 +186,120 @@ String _modeTitle(GamesViewModel vm, GameMode mode) {
   };
 }
 
+class _PathPicker extends StatelessWidget {
+  const _PathPicker({
+    required this.selected,
+    required this.onChanged,
+    required this.friendTitle,
+    required this.friendIcon,
+  });
+
+  final _PlayPath selected;
+  final ValueChanged<_PlayPath> onChanged;
+  final String friendTitle;
+  final IconData friendIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: _PathChip(
+            icon: friendIcon,
+            label: friendTitle,
+            selected: selected == _PlayPath.friend,
+            onTap: () => onChanged(_PlayPath.friend),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _PathChip(
+            icon: CupertinoIcons.bolt_fill,
+            label: l10n.playPuliChip,
+            selected: selected == _PlayPath.puli,
+            onTap: () => onChanged(_PlayPath.puli),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _PathChip(
+            icon: CupertinoIcons.number,
+            label: l10n.join,
+            selected: selected == _PlayPath.join,
+            onTap: () => onChanged(_PlayPath.join),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PathChip extends StatelessWidget {
+  const _PathChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        pressedOpacity: 0.72,
+        onPressed: SoundService.wrapTap(onTap),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: selected ? theme.surfaceRaised : theme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? theme.turnHighlight.withValues(alpha: .7)
+                  : theme.border.withValues(alpha: .55),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected ? theme.turnHighlight : theme.muted,
+              ),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: theme.title.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? theme.textPrimary : theme.muted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StakePicker extends StatelessWidget {
   const _StakePicker({
     required this.stakes,
@@ -322,31 +436,16 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
     final l10n = AppLocalizations.of(context);
     final mode = widget.mode;
     final energy = WalletConfig.energyCostFor(mode.name);
-    final energyCost = _EntryCost(
-      label: '$energy',
-      icon: CupertinoIcons.bolt_fill,
-      energy: true,
-    );
-    final suitColor = switch (mode) {
-      GameMode.tresydos => theme.suitRed,
-      GameMode.casino ||
-      GameMode.casinoSpeed ||
-      GameMode.robaito => theme.textPrimary,
-    };
-    final suit = switch (mode) {
-      GameMode.casino || GameMode.casinoSpeed => '♠',
-      GameMode.tresydos => '♦',
-      GameMode.robaito => '♣',
-    };
+    final joining = _path == _PlayPath.join;
 
     return Center(
       child: Material(
         color: CupertinoColors.transparent,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 340),
+          constraints: const BoxConstraints(maxWidth: 320),
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 28),
-            padding: const EdgeInsets.fromLTRB(18, 22, 18, 8),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 8),
             decoration: BoxDecoration(
               color: theme.surface,
               borderRadius: BorderRadius.circular(20),
@@ -363,72 +462,26 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  suit,
-                  style: TextStyle(
-                    color: suitColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
                   widget.gameTitle,
                   textAlign: TextAlign.center,
                   style: theme.title.copyWith(
-                    fontSize: 24,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.playHowPrompt,
-                  textAlign: TextAlign.center,
-                  style: theme.mutedText.copyWith(fontSize: 14),
-                ),
-                const SizedBox(height: 18),
-                _ChoiceTile(
-                  icon: widget.mode == GameMode.tresydos
+                const SizedBox(height: 16),
+                _PathPicker(
+                  selected: _path,
+                  onChanged: (path) => setState(() => _path = path),
+                  friendIcon: mode == GameMode.tresydos
                       ? CupertinoIcons.group_solid
                       : CupertinoIcons.person_2_fill,
-                  title: widget.mode == GameMode.tresydos
-                      ? l10n.playWithFriends
-                      : l10n.playWithFriend,
-                  subtitle: widget.mode == GameMode.tresydos
-                      ? l10n.playWithFriendsHint
-                      : l10n.playWithFriendHint,
-                  costs: [energyCost],
-                  emphasized: _path == _PlayPath.friend,
-                  onTap: () => setState(() => _path = _PlayPath.friend),
+                  friendTitle: mode == GameMode.tresydos
+                      ? l10n.playFriendsChip
+                      : l10n.playFriendChip,
                 ),
-                const SizedBox(height: 10),
-                _ChoiceTile(
-                  icon: CupertinoIcons.bolt_fill,
-                  title: l10n.playVsPuli,
-                  subtitle: l10n.playVsPuliHint,
-                  costs: [energyCost],
-                  emphasized: _path == _PlayPath.puli,
-                  onTap: () => setState(() => _path = _PlayPath.puli),
-                ),
-                const SizedBox(height: 10),
-                _ChoiceTile(
-                  icon: CupertinoIcons.number,
-                  title: l10n.joinById,
-                  subtitle: l10n.playJoinByIdHint,
-                  costs: [energyCost],
-                  emphasized: _path == _PlayPath.join,
-                  onTap: () => setState(() => _path = _PlayPath.join),
-                ),
-                if (_path != _PlayPath.join) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.matchStake,
-                    style: theme.mutedText.copyWith(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                if (!joining) ...[
+                  const SizedBox(height: 14),
                   _StakePicker(
                     stakes: WalletConfig.stakesFor(
                       allowNoBet:
@@ -440,15 +493,44 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
                   ),
                 ],
                 const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      CupertinoIcons.bolt_fill,
+                      size: 14,
+                      color: theme.warning,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$energy',
+                      style: theme.title.copyWith(fontSize: 14),
+                    ),
+                    if (!joining) ...[
+                      const SizedBox(width: 14),
+                      Icon(
+                        coinIcon,
+                        size: 14,
+                        color: theme.turnHighlight,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_stake',
+                        style: theme.title.copyWith(fontSize: 14),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: CupertinoButton(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                     color: theme.turnHighlight,
                     borderRadius: BorderRadius.circular(14),
                     onPressed: SoundService.wrapTap(_start),
                     child: Text(
-                      _path == _PlayPath.join ? l10n.join : l10n.startGame,
+                      joining ? l10n.join : l10n.startGame,
                       style: theme.title.copyWith(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -588,18 +670,6 @@ class _AiTableSizePopupState extends State<_AiTableSizePopup> {
   }
 }
 
-class _EntryCost {
-  const _EntryCost({
-    required this.label,
-    required this.icon,
-    this.energy = false,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool energy;
-}
-
 class _ChoiceTile extends StatelessWidget {
   const _ChoiceTile({
     required this.icon,
@@ -607,7 +677,6 @@ class _ChoiceTile extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.emphasized = false,
-    this.costs = const [],
   });
 
   final IconData icon;
@@ -615,7 +684,6 @@ class _ChoiceTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final bool emphasized;
-  final List<_EntryCost> costs;
 
   @override
   Widget build(BuildContext context) {
@@ -696,35 +764,6 @@ class _ChoiceTile extends StatelessWidget {
                             ],
                           ),
                         ),
-                        if (costs.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              for (var i = 0; i < costs.length; i++) ...[
-                                if (i > 0) const SizedBox(height: 4),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      costs[i].icon,
-                                      size: 14,
-                                      color: costs[i].energy
-                                          ? theme.warning
-                                          : theme.turnHighlight,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      costs[i].label,
-                                      style: theme.title.copyWith(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),

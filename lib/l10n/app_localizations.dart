@@ -25,6 +25,8 @@ class AppLocalizations {
       isEs ? '¿Cómo quieres jugar?' : 'How do you want to play?';
   String get playWithFriend => isEs ? 'Con un amigo' : 'With a friend';
   String get playWithFriends => isEs ? 'Con amigo(s)' : 'With friend(s)';
+  String get playFriendChip => isEs ? 'Amigo' : 'Friend';
+  String get playFriendsChip => isEs ? 'Amigos' : 'Friends';
   String get playWithFriendHint => isEs
       ? 'Crea una mesa y comparte el ID'
       : 'Create a table and share the ID';
@@ -33,6 +35,7 @@ class AppLocalizations {
       : 'Create a table for 2–4 and share the ID';
   String get openSeat => isEs ? 'Libre' : 'Open';
   String get playVsPuli => isEs ? 'Contra bots' : 'Vs AI bot';
+  String get playPuliChip => isEs ? 'Bots' : 'AI';
   String get playVsPuliHint =>
       isEs ? 'Juega contra la casa' : 'Play against the house AI';
   String get playHowManyPlayers =>
@@ -95,14 +98,24 @@ class AppLocalizations {
       ? '¿Comprar $coins monedas por $price?'
       : 'Buy $coins coins for $price?';
   String get dailyReward => isEs ? 'Recompensa diaria' : 'Daily reward';
+  String get dailyChallenges => isEs ? 'Desafíos diarios' : 'Daily challenges';
   String get free => isEs ? 'Gratis' : 'Free';
   String get comeBackTomorrow =>
       isEs ? 'Vuelve mañana' : 'Come back tomorrow';
+  String get dailyLoginCaption => isEs ? 'Entrar' : 'Login';
+  String get dailyChallengeTydCaption => 'Tres y Dos';
+  String get dailyChallengeCasinoCaption => isEs ? 'Casino clásico' : 'Classic Casino';
+  String get dailyChallengeTydHint => isEs
+      ? 'Gana 3 rondas de Tres y Dos'
+      : 'Win 3 Tres y Dos rounds';
+  String get dailyChallengeCasinoHint => isEs
+      ? 'Gana una partida de Casino clásico'
+      : 'Win a classic Casino match';
   String get googleRequiredForDailyTitle =>
       isEs ? 'Entra con Google' : 'Sign in with Google';
   String get googleRequiredForDailyBody => isEs
-      ? 'Conecta Google para reclamar 50 monedas cada día.'
-      : 'Connect Google to claim 50 coins each day.';
+      ? 'Conecta Google para reclamar recompensas y desafíos diarios.'
+      : 'Connect Google to claim daily rewards and challenges.';
   String get debugResetDailyReward => isEs
       ? 'Mantén pulsado para probar de nuevo (debug).'
       : 'Long-press to claim again (debug).';
@@ -300,6 +313,10 @@ class AppLocalizations {
   String get deleteAccountFailed => isEs
       ? 'No se pudo eliminar la cuenta. Inténtalo de nuevo.'
       : 'Couldn\'t delete the account. Please try again.';
+  String get deletingAccount =>
+      isEs ? 'Eliminando cuenta…' : 'Deleting account…';
+  String get deletingLocalData =>
+      isEs ? 'Eliminando datos…' : 'Removing data…';
   String get connectGoogle => isEs ? 'Conectar Google' : 'Connect Google';
   String get connectGoogleWarning => isEs
       ? 'Si esta cuenta de Google ya tiene progreso, reemplazará lo de este dispositivo. El progreso local se perderá.'

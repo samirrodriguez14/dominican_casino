@@ -24,6 +24,7 @@ service cloud.firestore {
           'energy',
           'energyUpdatedAt',
           'lastDailyClaimAt',
+          'dailyChallenges',
           'ownedPacks',
           'appTheme',
           'cardBack',
