@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
@@ -564,16 +565,32 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     switch (action) {
       case PlayCardAction(:final usedCard):
         cardIds = {usedCard.id};
-        keys.add(vm.playButtonKey);
+        if (vm.gameState.gameMode != GameMode.tresydos) {
+          keys.add(vm.playButtonKey);
+        }
         return (
-          message: 'Hint: play ${usedCard.rank}.',
+          message: vm.gameState.gameMode == GameMode.tresydos
+              ? 'Hint: play ${usedCard.rank} card.'
+              : 'Hint: play ${usedCard.rank}.',
           cardIds: cardIds,
           stackIds: stackIds,
           keys: keys,
         );
 
-      case TakeCardAction(:final usedCard, :final targetCard):
+      case TakeCardAction(:final usedCard, :final targetCard, :final fromZone):
         cardIds = {usedCard.id, targetCard.id};
+        if (vm.gameState.gameMode == GameMode.tresydos) {
+          final takeFrom = fromZone == ZoneType.table ? 'pile' : 'deck';
+          final message = 'Hint: take from the ${takeFrom}.';
+
+          return (
+            message: message,
+            cardIds: cardIds,
+            stackIds: stackIds,
+            keys: const <GlobalKey>{},
+          );
+        }
+
         keys.add(vm.playButtonKey);
         return (
           message:

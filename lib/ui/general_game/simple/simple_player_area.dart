@@ -42,14 +42,17 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
               if (cards.isEmpty) return const SizedBox.shrink();
               final celebrating = vm.isCelebratingHand(vm.me);
               final count = cards.length;
-              final cardH = _cardWidth * 1.4;
+              // Shrink the fan cards on small screens so we can still fit all
+              // cards (e.g. 6-card Tres y Dos hands) without overflowing.
+              final cardWidth = math.min(_cardWidth, constraints.maxWidth / count);
+              final cardH = cardWidth * 1.4;
               final gap = count == 1
                   ? 0.0
-                  : ((constraints.maxWidth - _cardWidth) / (count - 1))
-                        .clamp(38.0, celebrating ? 64.0 : 56.0);
+                  : ((constraints.maxWidth - cardWidth) / (count - 1))
+                        .clamp(0.0, celebrating ? 64.0 : 56.0);
               _fanGap = gap;
 
-              final totalWidth = _cardWidth + ((count - 1) * gap);
+              final totalWidth = cardWidth + ((count - 1) * gap);
               final draggingId = vm.draggingSource?.id;
               final mid = (count - 1) / 2.0;
               final baseTop = _fanHeight - cardH;
@@ -81,6 +84,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                                 count: count,
                                 mid: mid,
                                 gap: gap,
+                                cardWidth: cardWidth,
                                 baseTop: baseTop,
                                 draggingId: draggingId,
                                 holdFlat: holdFlat,
@@ -107,6 +111,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
     required int count,
     required double mid,
     required double gap,
+    required double cardWidth,
     required double baseTop,
     required String? draggingId,
     required bool holdFlat,
@@ -132,7 +137,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
         child: BoardDragHandle(
           source: BoardDragSource.hand(card),
           enabled: !vm.isAnimating && !vm.hasDropPending,
-          feedbackWidth: _cardWidth,
+            feedbackWidth: cardWidth,
           tableFeedbackWidth: 72,
           onTap: () => vm.selectCard(card),
           onHandReorder: (global) {
@@ -158,10 +163,10 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                   key: vm.keyForCard(card.id, CardSlot.myHand),
                   motion: vm.motion,
                   cardId: card.id,
-                  width: _cardWidth,
+                      width: cardWidth,
                   child: PlayingCard(
                     playingCardModel: card,
-                    width: _cardWidth,
+                        width: cardWidth,
                     isSelected: selected || celebrating,
                   ),
                 ),
