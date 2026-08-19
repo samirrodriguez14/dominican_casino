@@ -198,6 +198,7 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
         : null;
     final buried = vm.gameState.playingArea.length > 1
         ? vm.gameState.playingArea
+            .sublist(0, vm.gameState.playingArea.length - 1)
         : const <PlayingCardModel>[];
     final selected =
         currentCard != null && vm.selectedCards.contains(currentCard);

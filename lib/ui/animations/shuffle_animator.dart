@@ -1,16 +1,19 @@
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
+import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/ui/animations/flight_layer.dart';
+import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Cosmetic gather → wash → square in [FlightLayer] space.
 class ShuffleAnimator {
   static const int maxFlyers = 24;
+  static const Duration flipDuration = Duration(milliseconds: 260);
   static const Duration gatherDuration = Duration(milliseconds: 380);
   static const Duration washHopDuration = Duration(milliseconds: 367);
   static const int washHops = 3;
@@ -20,9 +23,11 @@ class ShuffleAnimator {
     required FlightLayerController layer,
     required TickerProvider vsync,
     required ShuffleRequest request,
+    Future<void> Function()? onFlyersAttached,
+    Future<void> Function()? onHidden,
     Future<void> Function()? onSquared,
   }) async {
-    if (request.sources.isEmpty) {
+    if (request.cards.isEmpty) {
       await onSquared?.call();
       return;
     }
@@ -35,42 +40,36 @@ class ShuffleAnimator {
     }
 
     final rng = math.Random();
+    final picked = _pickCards(request.cards);
     final flyers = <_ShuffleFlyer>[];
 
-    final counts = _allocate(request.sources.map((s) => s.count).toList());
-    for (var s = 0; s < request.sources.length; s++) {
-      final source = request.sources[s];
+    for (final source in picked) {
       final originLocal = layer.toLocal(source.origin);
       if (originLocal == null) continue;
-      for (var i = 0; i < counts[s]; i++) {
-        final origin =
-            originLocal +
-            Offset(
-              rng.nextDouble() * 6 - 3,
-              rng.nextDouble() * 6 - 3 - i * 1.1,
-            );
-        final controller = AnimationController(
-          vsync: vsync,
-          duration: gatherDuration,
-        );
-        final flyer = _ShuffleFlyer(
-          begin: origin,
-          end: origin,
-          pos: origin,
-          rotBegin: 0,
-          rotEnd: 0,
-          rotation: 0,
-          controller: controller,
-          width: request.cardWidth,
-          onPhaseChange: layer.poke,
-        );
-        flyer.sprite = FlightSprite(
-          listenable: controller,
-          builder: (_) => flyer.build(),
-        );
-        layer.attach(flyer.sprite!);
-        flyers.add(flyer);
-      }
+      final controller = AnimationController(
+        vsync: vsync,
+        duration: gatherDuration,
+      );
+      final flyer = _ShuffleFlyer(
+        begin: originLocal,
+        end: originLocal,
+        pos: originLocal,
+        rotBegin: 0,
+        rotEnd: 0,
+        rotation: 0,
+        controller: controller,
+        width: source.width,
+        targetWidth: request.targetCardWidth,
+        faceUp: source.faceUp,
+        card: source.card,
+        onPhaseChange: layer.poke,
+      );
+      flyer.sprite = FlightSprite(
+        listenable: controller,
+        builder: (_) => flyer.build(),
+      );
+      layer.attach(flyer.sprite!);
+      flyers.add(flyer);
     }
 
     if (flyers.isEmpty) {
@@ -79,6 +78,16 @@ class ShuffleAnimator {
     }
 
     try {
+      await WidgetsBinding.instance.endOfFrame;
+      await onFlyersAttached?.call();
+      await onHidden?.call();
+      await WidgetsBinding.instance.endOfFrame;
+
+      final needsFlip = flyers.any((f) => f.faceUp);
+      if (needsFlip) {
+        await _runFlip(flyers, vsync);
+      }
+
       var cardTicks = 0;
       for (var i = 0; i < flyers.length; i++) {
         if (cardTicks >= SoundService.cardTickMax) break;
@@ -97,6 +106,7 @@ class ShuffleAnimator {
         (i, _) => _ellipsePoint(center, rng, spread: 0.55),
         (i, _) => _randRot(rng),
         stagger: const Duration(milliseconds: 8),
+        shrinkToTarget: true,
       );
 
       SoundService.instance.play(GameSound.shuffle);
@@ -122,32 +132,36 @@ class ShuffleAnimator {
     } finally {
       layer.detachAll(flyers.map((f) => f.sprite).whereType<FlightSprite>());
       for (final flyer in flyers) {
+        flyer.flipController?.dispose();
         flyer.controller.dispose();
       }
     }
   }
 
-  static List<int> _allocate(List<int> pileCounts) {
-    final out = List<int>.filled(pileCounts.length, 0);
-    final total = pileCounts.fold<int>(0, (a, b) => a + b);
-    if (total <= 0) return out;
+  static List<ShuffleCardSource> _pickCards(List<ShuffleCardSource> cards) {
+    if (cards.length <= maxFlyers) return cards;
+    final step = cards.length / maxFlyers;
+    return List.generate(maxFlyers, (i) => cards[(i * step).floor()]);
+  }
 
-    var used = 0;
-    for (var i = 0; i < pileCounts.length; i++) {
-      if (pileCounts[i] <= 0) continue;
-      out[i] = math.max(1, (maxFlyers * pileCounts[i] / total).round());
-      used += out[i];
+  static Future<void> _runFlip(
+    List<_ShuffleFlyer> flyers,
+    TickerProvider vsync,
+  ) async {
+    final futures = <Future<void>>[];
+    for (final flyer in flyers) {
+      if (!flyer.faceUp) continue;
+      flyer.flipController = AnimationController(
+        vsync: vsync,
+        duration: flipDuration,
+      );
+      flyer.flipController!.addListener(flyer.onPhaseChange);
+      futures.add(flyer.flipController!.forward());
     }
-
-    var i = 0;
-    while (used > maxFlyers) {
-      if (out[i] > 1) {
-        out[i]--;
-        used--;
-      }
-      i = (i + 1) % out.length;
+    await Future.wait(futures);
+    for (final flyer in flyers) {
+      flyer.faceUp = false;
     }
-    return out;
   }
 
   static Offset _ellipsePoint(
@@ -173,6 +187,7 @@ class ShuffleAnimator {
     Offset Function(int i, _ShuffleFlyer f) endOf,
     double Function(int i, _ShuffleFlyer f) rotOf, {
     Duration stagger = Duration.zero,
+    bool shrinkToTarget = false,
   }) async {
     final futures = <Future<void>>[];
     for (var i = 0; i < flyers.length; i++) {
@@ -181,6 +196,10 @@ class ShuffleAnimator {
       flyer.end = endOf(i, flyer);
       flyer.rotBegin = flyer.rotation;
       flyer.rotEnd = rotOf(i, flyer);
+      if (shrinkToTarget) {
+        flyer.widthBegin = flyer.width;
+        flyer.widthEnd = flyer.targetWidth;
+      }
       flyer.controller.duration = duration;
       flyer.controller.reset();
       flyer.onPhaseChange();
@@ -189,6 +208,9 @@ class ShuffleAnimator {
           await flyer.controller.forward();
           flyer.pos = flyer.end;
           flyer.rotation = flyer.rotEnd;
+          if (shrinkToTarget) {
+            flyer.width = flyer.targetWidth;
+          }
         }),
       );
     }
@@ -206,6 +228,9 @@ class _ShuffleFlyer {
     required this.rotation,
     required this.controller,
     required this.width,
+    required this.targetWidth,
+    required this.faceUp,
+    required this.card,
     required this.onPhaseChange,
   });
 
@@ -216,9 +241,15 @@ class _ShuffleFlyer {
   double rotEnd;
   double rotation;
   final AnimationController controller;
-  final double width;
+  double width;
+  final double targetWidth;
+  bool faceUp;
+  final PlayingCardModel? card;
   final VoidCallback onPhaseChange;
+  AnimationController? flipController;
   FlightSprite? sprite;
+  double widthBegin = 0;
+  double widthEnd = 0;
 
   Widget build() {
     final curved = CurvedAnimation(
@@ -228,16 +259,28 @@ class _ShuffleFlyer {
     final t = curved.value;
     final p = Offset.lerp(begin, end, t)!;
     final rot = lerpDouble(rotBegin, rotEnd, t)!;
-    final height = width * 1.4;
+    final drawWidth = widthBegin > 0
+        ? lerpDouble(widthBegin, widthEnd, t)!
+        : width;
+    final height = drawWidth * 1.4;
+    final flipT = flipController?.value ?? (faceUp ? 0.0 : 1.0);
+    final showFace = flipT < 0.5 && faceUp && card != null;
+
     return Positioned(
-      left: p.dx - width / 2,
+      left: p.dx - drawWidth / 2,
       top: p.dy - height / 2,
-      width: width,
+      width: drawWidth,
       height: height,
       child: IgnorePointer(
         child: Transform.rotate(
           angle: rot,
-          child: PlayingCardBack(width: width),
+          child: showFace
+              ? PlayingCard(
+                  playingCardModel: card!,
+                  width: drawWidth,
+                  isSelected: false,
+                )
+              : PlayingCardBack(width: drawWidth),
         ),
       ),
     );

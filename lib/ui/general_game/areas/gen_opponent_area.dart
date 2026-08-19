@@ -29,8 +29,7 @@ class GenOpponentAreaState extends State<GenOpponentArea> {
     }
     bool highlightTurn =
         vm.gameState.round.roundStatus == .playing &&
-        vm.gameState.currentTurnPlayerId == opp &&
-        !vm.isAnimating;
+        vm.gameState.currentTurnPlayerId == opp;
 
     List<PlayingCardModel> collectedCards = vm.gameState.hands[opp] ?? [];
 

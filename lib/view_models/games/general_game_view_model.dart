@@ -179,8 +179,11 @@ class GeneralGameViewModel extends ChangeNotifier {
                 settlementEvents: newSettlement,
               );
               motion.setShuffling(false);
+              motion.clearInFlight();
             },
           );
+        } else if (newEvents.isEmpty && newSettlement.isEmpty) {
+          gameState = nextState;
         } else {
           await _commitStateWithMotion(
             nextState,
@@ -379,6 +382,12 @@ class GeneralGameViewModel extends ChangeNotifier {
     selectedCards = [];
     selectedStacks = [];
 
+    if (events.isEmpty && settlementEvents.isEmpty) {
+      _preserveMyHandOrder(next);
+      gameState = next;
+      return;
+    }
+
     if (!tutorialMode) {
       unawaited(
         appRepo.noteDailyChallengeProgress(
@@ -485,6 +494,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       roundViraoCoins: Map<String, int>.from(next.roundViraoCoins),
       tableOrder: leftovers.map((c) => TableOrder.cardKey(c.id)).toList(),
       turnDeadline: next.turnDeadline,
+      turnDurationSeconds: next.turnDurationSeconds,
     );
   }
 
@@ -657,82 +667,168 @@ class GeneralGameViewModel extends ChangeNotifier {
     return box.localToGlobal(box.size.center(Offset.zero));
   }
 
-  Offset? _centroidOf(Iterable<Offset> points) {
-    var x = 0.0;
-    var y = 0.0;
-    var n = 0;
-    for (final p in points) {
-      x += p.dx;
-      y += p.dy;
-      n++;
-    }
-    if (n == 0) return null;
-    return Offset(x / n, y / n);
-  }
-
-  Offset? _handShuffleOrigin(String pid) {
-    final hand = gameState.hands[pid] ?? [];
-    final slot = pid == me ? CardSlot.myHand : CardSlot.oppHand;
-    final points = <Offset>[];
-    for (final card in hand) {
-      final center = _centerOf(keyForCard(card.id, slot));
-      if (center != null) points.add(center);
-    }
-    final fromCards = _centroidOf(points);
-    if (fromCards != null) return fromCards;
-    if (pid == me) return _centerOf(myHandKey);
-    if (oppIds.isNotEmpty && pid == oppIds[oppIds.length == 1 ? 0 : 1]) {
-      return _centerOf(oppHandKey);
-    }
-    return null;
-  }
-
-  /// Gather visible piles to the table, wash, square on the shoe — then commit.
+  /// Gather visible cards to the table, wash, square on the shoe — then commit.
   Future<void> _playShuffleMotion({
     Future<void> Function()? onHidden,
     Future<void> Function()? onSquared,
   }) async {
     await WidgetsBinding.instance.endOfFrame;
 
-    final sources = <ShuffleSource>[];
-
-    void addSource(GlobalKey key, int count) {
-      if (count <= 0) return;
-      final origin = _centerOf(key);
-      if (origin == null) return;
-      sources.add(ShuffleSource(origin: origin, count: count));
+    final cards = _collectShuffleCardSources();
+    final center = _centerOf(tableKey);
+    final deckTarget = _centerOf(deckKey) ?? center;
+    if (cards.isEmpty || center == null || deckTarget == null) {
+      motion.setShuffling(true);
+      await onHidden?.call();
+      await onSquared?.call();
+      motion.setShuffling(false);
+      motion.clearInFlight();
+      return;
     }
 
-    addSource(deckKey, gameState.deck.length);
-    addSource(myDeckKey, myCollectedCards.length);
-    addSource(oppDeckKey, oppCollectedCards.length);
-    final tableCount =
-        gameState.playingArea.length +
-        gameState.playingAreaStacks.fold<int>(0, (n, s) => n + s.cards.length);
-    addSource(tableKey, tableCount);
+    final hideIds = cards.map((c) => c.hideId).whereType<String>().toList();
+
+    await motion.runShuffle(
+      ShuffleRequest(
+        cards: cards,
+        center: center,
+        deckTarget: deckTarget,
+        targetCardWidth: isCasinoFamily ? 52.0 : 60.0,
+      ),
+      onFlyersAttached: () async {
+        if (hideIds.isNotEmpty) motion.markInFlight(hideIds);
+        motion.setShuffling(true);
+        notifyListeners();
+      },
+      onHidden: onHidden,
+      onSquared: () async {
+        motion.clearInFlight();
+        await onSquared?.call();
+      },
+    );
+  }
+
+  List<ShuffleCardSource> _collectShuffleCardSources() {
+    final sources = <ShuffleCardSource>[];
+
+    void addCard({
+      required GlobalKey? key,
+      required String? hideId,
+      required double width,
+      required bool faceUp,
+      PlayingCardModel? card,
+    }) {
+      final origin = _centerOf(key);
+      if (origin == null) return;
+      sources.add(
+        ShuffleCardSource(
+          origin: origin,
+          width: width,
+          faceUp: faceUp,
+          card: card,
+          hideId: hideId,
+        ),
+      );
+    }
+
+    void addPileBacks({
+      required GlobalKey pileKey,
+      required int count,
+      required double width,
+    }) {
+      final origin = _centerOf(pileKey);
+      if (origin == null || count <= 0) return;
+      for (var i = 0; i < count; i++) {
+        sources.add(
+          ShuffleCardSource(
+            origin: origin + Offset(0, -i * 2.0),
+            width: width,
+            faceUp: false,
+            hideId: null,
+          ),
+        );
+      }
+    }
+
+    final deckWidth = isCasinoFamily ? 52.0 : 72.0;
+    if (gameState.deck.isNotEmpty) {
+      final top = gameState.deck.last;
+      final topKey = keyForCard(top.id, CardSlot.aux);
+      if (topKey.currentContext != null) {
+        addCard(
+          key: topKey,
+          hideId: top.id,
+          width: deckWidth,
+          faceUp: false,
+        );
+        if (gameState.deck.length > 1) {
+          addPileBacks(
+            pileKey: deckKey,
+            count: gameState.deck.length - 1,
+            width: deckWidth,
+          );
+        }
+      } else {
+        addPileBacks(
+          pileKey: deckKey,
+          count: gameState.deck.length,
+          width: deckWidth,
+        );
+      }
+    }
+
+    for (final card in gameState.playingArea) {
+      addCard(
+        key: keyForCard(card.id, CardSlot.table),
+        hideId: card.id,
+        width: 72.0,
+        faceUp: true,
+        card: card,
+      );
+    }
+
+    for (final stack in gameState.playingAreaStacks) {
+      for (final card in stack.cards) {
+        addCard(
+          key: keyForCard(card.id, CardSlot.inStack),
+          hideId: card.id,
+          width: 72.0,
+          faceUp: true,
+          card: card,
+        );
+      }
+    }
 
     for (final pid in gameState.playersInfo.keys) {
       final hand = gameState.hands[pid] ?? [];
       if (hand.isEmpty) continue;
-      final origin = _handShuffleOrigin(pid);
-      if (origin == null) continue;
-      sources.add(ShuffleSource(origin: origin, count: hand.length));
+      final slot = pid == me ? CardSlot.myHand : CardSlot.oppHand;
+      final faceUp =
+          pid == me ||
+          gameState.round.roundStatus == RoundStatus.completed;
+      for (final card in hand) {
+        addCard(
+          key: keyForCard(card.id, slot),
+          hideId: card.id,
+          width: _widthForZone(Zone(type: ZoneType.playerHand, holderId: pid)),
+          faceUp: faceUp,
+          card: faceUp ? card : null,
+        );
+      }
     }
 
-    final center = _centerOf(tableKey);
-    final deckTarget = _centerOf(deckKey) ?? center;
-    if (sources.isEmpty || center == null || deckTarget == null) {
-      await onHidden?.call();
-      await onSquared?.call();
-      return;
-    }
-
-    motion.setShuffling(true);
-    await onHidden?.call();
-    await motion.runShuffle(
-      ShuffleRequest(sources: sources, center: center, deckTarget: deckTarget),
-      onSquared: onSquared,
+    addPileBacks(
+      pileKey: myDeckKey,
+      count: myCollectedCards.length,
+      width: 52.0,
     );
+    addPileBacks(
+      pileKey: oppDeckKey,
+      count: oppCollectedCards.length,
+      width: 52.0,
+    );
+
+    return sources;
   }
 
   bool _startFaceUpFor(CardMoveEvent e) {
@@ -766,7 +862,6 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   /// A player is actually taking a turn — not dealing, shuffling, or waiting.
   bool get isLiveTurn =>
-      !isAnimating &&
       inGameAction == InGameAction.noAction &&
       gameState.round.roundStatus == RoundStatus.playing;
 
@@ -791,6 +886,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   bool get _sharedTurnClockLive =>
       !tutorialMode &&
+      gameState.gameMode == GameMode.casinoSpeed &&
       gameState.gameStatus == GameStatus.inProgress &&
       inGameAction == InGameAction.noAction &&
       gameState.round.roundStatus == RoundStatus.playing &&
@@ -1676,15 +1772,27 @@ class GeneralGameViewModel extends ChangeNotifier {
       pid.isNotEmpty && celebratingHandPid == pid;
 
   String? get _liveWinCelebrationKey {
-    if (gameState.gameMode != GameMode.tresydos) return null;
     if (motion.isShuffling) return null;
     final inMatch = gameState.gameStatus == GameStatus.inProgress;
     final gameOver = gameState.gameStatus == GameStatus.gameOver;
     final roundDone = gameState.round.roundStatus == RoundStatus.completed;
     if (!gameOver && !(inMatch && roundDone)) return null;
+    if (gameState.gameMode != GameMode.tresydos && !isCasinoFamily) {
+      return null;
+    }
     if (gameOver) return 'over_${gameState.round.id}_${gameState.winnerId}';
     return 'round_${gameState.round.id}';
   }
+
+  Duration get _winCelebrationDuration =>
+      gameState.gameMode == GameMode.tresydos
+      ? _winCelebrationFor
+      : const Duration(seconds: 3);
+
+  bool get showWinCelebration =>
+      _liveWinCelebrationKey != null && winCelebrationSecondsLeft > 0;
+
+  String? get activeWinCelebrationKey => _winCelebrationKey;
 
   void _syncWinCelebration() {
     final key = _liveWinCelebrationKey;
@@ -1695,8 +1803,12 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (_winCelebrationKey == key) return;
     _winCelebrationKey = key;
     _winCelebrationSkipped = false;
-    _winCelebrationDeadline = DateTime.now().add(_winCelebrationFor);
-    _winCelebrationSecondsLeft = _winCelebrationFor.inSeconds;
+    final duration = _winCelebrationDuration;
+    _winCelebrationDeadline = DateTime.now().add(duration);
+    _winCelebrationSecondsLeft = duration.inSeconds;
+    if (key.startsWith('round_')) {
+      SoundService.instance.play(GameSound.win);
+    }
     _winCelebrationTimer?.cancel();
     _winCelebrationTimer = Timer.periodic(const Duration(milliseconds: 200), (
       _,
@@ -1732,19 +1844,6 @@ class GeneralGameViewModel extends ChangeNotifier {
     return (ms / 1000).ceil();
   }
 
-  bool get showWinCelebrationSkip =>
-      celebratingHandPid != null && winCelebrationSecondsLeft > 0;
-
-  void skipWinCelebration() {
-    if (!showWinCelebrationSkip) return;
-    _winCelebrationSkipped = true;
-    _winCelebrationDeadline = DateTime.now();
-    _winCelebrationSecondsLeft = 0;
-    _winCelebrationTimer?.cancel();
-    _winCelebrationTimer = null;
-    notifyListeners();
-  }
-
   Future<void> performInGameAction(InGameAction action) =>
       _performInGameAction(action, me);
 
@@ -1778,6 +1877,7 @@ class GeneralGameViewModel extends ChangeNotifier {
           },
           onSquared: () async {
             motion.setShuffling(false);
+            motion.clearInFlight();
           },
         );
         return;

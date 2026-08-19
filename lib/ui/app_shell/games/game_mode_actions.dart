@@ -18,6 +18,11 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+bool _allowsNoBet(GameMode mode) =>
+    mode == GameMode.casino ||
+    mode == GameMode.casinoSpeed ||
+    mode == GameMode.tresydos;
+
 void showJoinGameDialog(BuildContext context, String mode) {
   final TextEditingController controller = TextEditingController();
   final l10n = AppLocalizations.of(context);
@@ -82,24 +87,41 @@ void showEnterGameDialog(
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return _EnterGamePopup(
         mode: mode,
-        onFriend: (entryCost) async {
+        onFriend:
+            (
+              entryCost, {
+              int playerCount = 2,
+              int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
+            }) async {
           if (!await ensureGoogleForOnlinePlay(context)) return;
           if (!context.mounted) return;
           Navigator.pop(dialogContext);
-          gameEnter(context, vm, mode, false, entryCost: entryCost);
+          gameEnter(
+            context,
+            vm,
+            mode,
+            false,
+            entryCost: entryCost,
+            playerCount: playerCount,
+            turnDurationSeconds: turnDurationSeconds,
+          );
         },
-        onPuli: (entryCost) {
+        onPuli:
+            (
+              entryCost, {
+              int playerCount = 2,
+              int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
+            }) {
           Navigator.pop(dialogContext);
-          if (mode == GameMode.tresydos) {
-            showAiTableSizeDialog(
-              context,
-              vm,
-              mode,
-              entryCost: entryCost,
-            );
-          } else {
-            gameEnter(context, vm, mode, true, entryCost: entryCost);
-          }
+          gameEnter(
+            context,
+            vm,
+            mode,
+            true,
+            entryCost: entryCost,
+            playerCount: playerCount,
+            turnDurationSeconds: turnDurationSeconds,
+          );
         },
         onJoin: () async {
           if (!await ensureGoogleForOnlinePlay(context)) return;
@@ -300,6 +322,203 @@ class _PathChip extends StatelessWidget {
   }
 }
 
+class _PlayerCountPicker extends StatelessWidget {
+  const _PlayerCountPicker({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  static const _options = [2, 3, 4];
+
+  IconData _iconFor(int count) {
+    return switch (count) {
+      2 => CupertinoIcons.person_2_fill,
+      3 => CupertinoIcons.group_solid,
+      _ => CupertinoIcons.person_2,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Row(
+      children: [
+        for (var i = 0; i < _options.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: _PlayerCountChip(
+              count: _options[i],
+              icon: _iconFor(_options[i]),
+              selected: selected == _options[i],
+              onTap: () => onChanged(_options[i]),
+              theme: theme,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PlayerCountChip extends StatelessWidget {
+  const _PlayerCountChip({
+    required this.count,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+    required this.theme,
+  });
+
+  final int count;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  final AppTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        pressedOpacity: 0.72,
+        onPressed: SoundService.wrapTap(onTap),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: selected ? theme.surfaceRaised : theme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? theme.turnHighlight.withValues(alpha: .7)
+                  : theme.border.withValues(alpha: .55),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected ? theme.turnHighlight : theme.muted,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$count',
+                style: theme.title.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? theme.textPrimary : theme.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TurnDurationPicker extends StatelessWidget {
+  const _TurnDurationPicker({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Row(
+      children: [
+        for (var i = 0; i < WalletConfig.speedTurnOptions.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: _TurnDurationChip(
+              seconds: WalletConfig.speedTurnOptions[i],
+              selected: selected == WalletConfig.speedTurnOptions[i],
+              onTap: () => onChanged(WalletConfig.speedTurnOptions[i]),
+              theme: theme,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _TurnDurationChip extends StatelessWidget {
+  const _TurnDurationChip({
+    required this.seconds,
+    required this.selected,
+    required this.onTap,
+    required this.theme,
+  });
+
+  final int seconds;
+  final bool selected;
+  final VoidCallback onTap;
+  final AppTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        pressedOpacity: 0.72,
+        onPressed: SoundService.wrapTap(onTap),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: selected ? theme.surfaceRaised : theme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? theme.turnHighlight.withValues(alpha: .7)
+                  : theme.border.withValues(alpha: .55),
+            ),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  CupertinoIcons.timer,
+                  size: 13,
+                  color: selected ? theme.turnHighlight : theme.muted,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  '${seconds}s',
+                  style: theme.title.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? theme.textPrimary : theme.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StakePicker extends StatelessWidget {
   const _StakePicker({
     required this.stakes,
@@ -407,8 +626,18 @@ class _EnterGamePopup extends StatefulWidget {
 
   final GameMode mode;
   final String gameTitle;
-  final void Function(int entryCost) onFriend;
-  final void Function(int entryCost) onPuli;
+  final void Function(
+    int entryCost, {
+    required int playerCount,
+    required int turnDurationSeconds,
+  })
+  onFriend;
+  final void Function(
+    int entryCost, {
+    required int playerCount,
+    required int turnDurationSeconds,
+  })
+  onPuli;
   final VoidCallback onJoin;
 
   @override
@@ -417,14 +646,31 @@ class _EnterGamePopup extends StatefulWidget {
 
 class _EnterGamePopupState extends State<_EnterGamePopup> {
   int _stake = WalletConfig.entryCost;
-  _PlayPath _path = _PlayPath.friend;
+  _PlayPath _path = _PlayPath.puli;
+  int _playerCount = 2;
+  int _turnSeconds = WalletConfig.defaultSpeedTurnSeconds;
 
   void _start() {
+    final playerCount =
+        widget.mode == GameMode.tresydos && _path == _PlayPath.puli
+        ? _playerCount
+        : 2;
+    final turnDurationSeconds = widget.mode == GameMode.casinoSpeed
+        ? _turnSeconds
+        : WalletConfig.defaultSpeedTurnSeconds;
     switch (_path) {
       case _PlayPath.friend:
-        widget.onFriend(_stake);
+        widget.onFriend(
+          _stake,
+          playerCount: playerCount,
+          turnDurationSeconds: turnDurationSeconds,
+        );
       case _PlayPath.puli:
-        widget.onPuli(_stake);
+        widget.onPuli(
+          _stake,
+          playerCount: playerCount,
+          turnDurationSeconds: turnDurationSeconds,
+        );
       case _PlayPath.join:
         widget.onJoin();
     }
@@ -437,6 +683,9 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
     final mode = widget.mode;
     final energy = WalletConfig.energyCostFor(mode.name);
     final joining = _path == _PlayPath.join;
+    final showPlayerCount =
+        mode == GameMode.tresydos && _path == _PlayPath.puli;
+    final showTurnClock = mode == GameMode.casinoSpeed && !joining;
 
     return Center(
       child: Material(
@@ -484,12 +733,24 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
                   const SizedBox(height: 14),
                   _StakePicker(
                     stakes: WalletConfig.stakesFor(
-                      allowNoBet:
-                          mode == GameMode.casino ||
-                          mode == GameMode.casinoSpeed,
+                      allowNoBet: _allowsNoBet(mode),
                     ),
                     selected: _stake,
                     onChanged: (value) => setState(() => _stake = value),
+                  ),
+                ],
+                if (showPlayerCount) ...[
+                  const SizedBox(height: 14),
+                  _PlayerCountPicker(
+                    selected: _playerCount,
+                    onChanged: (value) => setState(() => _playerCount = value),
+                  ),
+                ],
+                if (showTurnClock) ...[
+                  const SizedBox(height: 14),
+                  _TurnDurationPicker(
+                    selected: _turnSeconds,
+                    onChanged: (value) => setState(() => _turnSeconds = value),
                   ),
                 ],
                 const SizedBox(height: 14),
@@ -558,265 +819,6 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
 
 enum _PlayPath { friend, puli, join }
 
-class _AiTableSizePopup extends StatefulWidget {
-  const _AiTableSizePopup({required this.mode, required this.onStart});
-
-  final GameMode mode;
-  final void Function(int playerCount) onStart;
-
-  @override
-  State<_AiTableSizePopup> createState() => _AiTableSizePopupState();
-}
-
-class _AiTableSizePopupState extends State<_AiTableSizePopup> {
-  int _playerCount = 2;
-
-  static const _options = [2, 3, 4];
-
-  IconData _iconFor(int count) {
-    return switch (count) {
-      2 => CupertinoIcons.person_2_fill,
-      3 => CupertinoIcons.group_solid,
-      _ => CupertinoIcons.person_2,
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    final l10n = AppLocalizations.of(context);
-    return Center(
-      child: Material(
-        color: CupertinoColors.transparent,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 340),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 28),
-            padding: const EdgeInsets.fromLTRB(18, 22, 18, 8),
-            decoration: BoxDecoration(
-              color: theme.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: theme.border.withValues(alpha: .7)),
-              boxShadow: [
-                BoxShadow(
-                  color: CupertinoColors.black.withValues(alpha: .45),
-                  blurRadius: 28,
-                  offset: const Offset(0, 14),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l10n.playVsPuli,
-                  textAlign: TextAlign.center,
-                  style: theme.title.copyWith(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.playHowManyPlayers,
-                  textAlign: TextAlign.center,
-                  style: theme.mutedText.copyWith(fontSize: 14),
-                ),
-                const SizedBox(height: 18),
-                for (final count in _options) ...[
-                  if (count != _options.first) const SizedBox(height: 10),
-                  _ChoiceTile(
-                    icon: _iconFor(count),
-                    title: l10n.playersAtTable(count),
-                    subtitle: '${l10n.youPlusBots(count - 1)}. ${l10n.tablePayoutHint(count)}',
-                    emphasized: _playerCount == count,
-                    onTap: () => setState(() => _playerCount = count),
-                  ),
-                ],
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: CupertinoButton(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    color: theme.turnHighlight,
-                    borderRadius: BorderRadius.circular(14),
-                    onPressed: SoundService.wrapTap(
-                      () => widget.onStart(_playerCount),
-                    ),
-                    child: Text(
-                      l10n.actionStart,
-                      style: theme.title.copyWith(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: theme.background,
-                      ),
-                    ),
-                  ),
-                ),
-                CupertinoButton(
-                  padding: const EdgeInsets.only(top: 4),
-                  onPressed: SoundService.wrapTap(() => Navigator.pop(context)),
-                  child: Text(
-                    l10n.cancel,
-                    style: TextStyle(color: theme.muted),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ChoiceTile extends StatelessWidget {
-  const _ChoiceTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.emphasized = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    const radius = 14.0;
-
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      minimumSize: Size.zero,
-      pressedOpacity: 0.72,
-      onPressed: SoundService.wrapTap(onTap),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: emphasized ? theme.surfaceRaised : theme.background,
-          borderRadius: BorderRadius.circular(radius),
-          border: Border.all(
-            color: emphasized
-                ? theme.turnHighlight.withValues(alpha: .5)
-                : theme.border.withValues(alpha: .55),
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  width: 3.5,
-                  color: emphasized
-                      ? theme.turnHighlight
-                      : CupertinoColors.transparent,
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: emphasized
-                                ? theme.turnHighlight.withValues(alpha: .22)
-                                : theme.surfaceAlt.withValues(alpha: .55),
-                          ),
-                          alignment: Alignment.center,
-                          child: Icon(
-                            icon,
-                            size: 18,
-                            color: emphasized
-                                ? theme.turnHighlight
-                                : theme.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                title,
-                                style: theme.title.copyWith(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                subtitle,
-                                style: theme.mutedText.copyWith(
-                                  fontSize: 12,
-                                  height: 1.25,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-Future<void> showAiTableSizeDialog(
-  BuildContext context,
-  GamesViewModel vm,
-  GameMode mode, {
-  int entryCost = WalletConfig.entryCost,
-}) {
-  return showGeneralDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Dismiss',
-    barrierColor: CupertinoColors.black.withValues(alpha: .55),
-    transitionDuration: const Duration(milliseconds: 200),
-    pageBuilder: (dialogContext, animation, secondaryAnimation) {
-      return _AiTableSizePopup(
-        mode: mode,
-        onStart: (playerCount) {
-          Navigator.pop(dialogContext);
-          gameEnter(
-            context,
-            vm,
-            mode,
-            true,
-            playerCount: playerCount,
-            entryCost: entryCost,
-          );
-        },
-      );
-    },
-    transitionBuilder: (context, animation, secondary, child) {
-      return FadeTransition(
-        opacity: animation,
-        child: ScaleTransition(
-          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-          child: child,
-        ),
-      );
-    },
-  );
-}
-
 Future<void> gameEnter(
   BuildContext context,
   GamesViewModel vm,
@@ -824,6 +826,7 @@ Future<void> gameEnter(
   bool local, {
   int playerCount = 2,
   int entryCost = WalletConfig.entryCost,
+  int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
 }) async {
   if (mode == GameMode.robaito) return;
   final repo = context.read<AppRepo>();
@@ -843,6 +846,7 @@ Future<void> gameEnter(
       local,
       playerCount: playerCount,
       entryCost: entryCost,
+      turnDurationSeconds: turnDurationSeconds,
     );
     if (gid != null) {
       router.go(GameRoutes.game(gameId: gid, gameMode: mode.name));

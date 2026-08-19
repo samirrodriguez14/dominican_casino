@@ -23,7 +23,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
 
   @override
   Widget build(BuildContext context) {
-    final highlightTurn = vm.canPlayTurn;
+    final highlightTurn = vm.isSeatTurn(vm.me);
     return Container(
       key: vm.myHandKey,
       decoration: AppStyle.theme.playerSectionBox(

@@ -44,30 +44,41 @@ typedef CardFlightRunner =
       VoidCallback? onLaunched,
     });
 
-class ShuffleSource {
+class ShuffleCardSource {
   final Offset origin;
-  final int count;
+  final double width;
+  final bool faceUp;
+  final PlayingCardModel? card;
+  final String? hideId;
 
-  const ShuffleSource({required this.origin, required this.count});
+  const ShuffleCardSource({
+    required this.origin,
+    required this.width,
+    required this.faceUp,
+    this.card,
+    this.hideId,
+  });
 }
 
 class ShuffleRequest {
-  final List<ShuffleSource> sources;
+  final List<ShuffleCardSource> cards;
   final Offset center;
   final Offset deckTarget;
-  final double cardWidth;
+  final double targetCardWidth;
 
   const ShuffleRequest({
-    required this.sources,
+    required this.cards,
     required this.center,
     required this.deckTarget,
-    this.cardWidth = 60,
+    this.targetCardWidth = 60,
   });
 }
 
 typedef ShuffleRunner =
     Future<void> Function(
       ShuffleRequest request, {
+      Future<void> Function()? onFlyersAttached,
+      Future<void> Function()? onHidden,
       Future<void> Function()? onSquared,
     });
 
@@ -129,9 +140,11 @@ class CardMotionController extends ChangeNotifier {
 
   Future<void> runShuffle(
     ShuffleRequest request, {
+    Future<void> Function()? onFlyersAttached,
+    Future<void> Function()? onHidden,
     Future<void> Function()? onSquared,
   }) async {
-    if (request.sources.isEmpty) {
+    if (request.cards.isEmpty) {
       await onSquared?.call();
       return;
     }
@@ -140,6 +153,11 @@ class CardMotionController extends ChangeNotifier {
       await onSquared?.call();
       return;
     }
-    await run(request, onSquared: onSquared);
+    await run(
+      request,
+      onFlyersAttached: onFlyersAttached,
+      onHidden: onHidden,
+      onSquared: onSquared,
+    );
   }
 }

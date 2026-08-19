@@ -41,6 +41,7 @@ class GamesViewModel extends ChangeNotifier {
     bool local, {
     int playerCount = 2,
     int entryCost = WalletConfig.entryCost,
+    int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
   }) async {
     try {
       final gid = await _appRepo.createNewGame(
@@ -49,6 +50,7 @@ class GamesViewModel extends ChangeNotifier {
         local,
         playerCount: playerCount,
         entryCost: entryCost,
+        turnDurationSeconds: turnDurationSeconds,
       );
       debugPrint('newGame $gid local=$local');
       return gid;

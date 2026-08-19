@@ -406,8 +406,7 @@ class SimpleOpponentRow extends StatelessWidget {
 
     final highlightTurn =
         vm.gameState.round.roundStatus == RoundStatus.playing &&
-        vm.gameState.currentTurnPlayerId == oppId &&
-        !vm.isAnimating;
+        vm.gameState.currentTurnPlayerId == oppId;
     final celebrating = vm.isCelebratingHand(oppId);
     final cards = vm.gameState.hands[oppId] ?? [];
 

@@ -52,8 +52,13 @@ class WalletConfig {
 
   static int winPayout(int entry) => potShareForRank(entry, 2, 1);
 
-  /// Per-turn action clock. Shared on the match so every seat sees it.
-  static const Duration speedTurnDuration = Duration(seconds: 10);
+  /// Per-turn action clock on Casino Speed (chosen at new-game).
+  static const List<int> speedTurnOptions = [5, 10, 25];
+  static const int defaultSpeedTurnSeconds = 10;
+
+  static bool isAllowedSpeedTurn(int seconds) =>
+      speedTurnOptions.contains(seconds);
+
   static const Duration standardTurnDuration = Duration(seconds: 30);
 
   /// Energy to start a Tres y Dos (or Robaito) match.

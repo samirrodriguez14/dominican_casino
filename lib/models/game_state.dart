@@ -121,6 +121,9 @@ class GameState {
   /// Shared on the match so every client can render it.
   DateTime? turnDeadline;
 
+  /// Per-turn seconds for Casino Speed (5 / 10 / 25). Ignored for other modes.
+  int turnDurationSeconds;
+
   GameState({
     required this.gameStatus,
     required this.gameMode,
@@ -156,6 +159,7 @@ class GameState {
     List<String>? tableOrder,
     Map<String, List<PlayingCardModel>>? lastTakes,
     this.turnDeadline,
+    int? turnDurationSeconds,
   }) : settlementEvents = settlementEvents ?? [],
        tableOrder = tableOrder ?? [],
        entryCost = entryCost ?? WalletConfig.entryCost,
@@ -165,7 +169,9 @@ class GameState {
        roundSpecialCoins = roundSpecialCoins ?? {},
        roundViraoCoins = roundViraoCoins ?? {},
        lastTakes = lastTakes ?? {},
-       botPlayerIds = List<String>.from(botPlayerIds ?? const []) {
+       botPlayerIds = List<String>.from(botPlayerIds ?? const []),
+       turnDurationSeconds =
+           turnDurationSeconds ?? WalletConfig.defaultSpeedTurnSeconds {
     if (this.botPlayerIds.isEmpty &&
         botPlayerId != null &&
         botPlayerId!.isNotEmpty) {
@@ -196,10 +202,11 @@ class GameState {
       pid != null && pid.isNotEmpty && localBotPids.contains(pid);
 
   Duration get turnDuration => gameMode == GameMode.casinoSpeed
-      ? WalletConfig.speedTurnDuration
+      ? Duration(seconds: turnDurationSeconds)
       : WalletConfig.standardTurnDuration;
 
   bool get _turnClockLive {
+    if (gameMode != GameMode.casinoSpeed) return false;
     final pid = currentTurnPlayerId;
     return gameStatus == GameStatus.inProgress &&
         round.roundStatus == RoundStatus.playing &&
@@ -389,6 +396,7 @@ class GameState {
       roundTakeCoins: {},
       roundSpecialCoins: {},
       roundViraoCoins: {},
+      turnDurationSeconds: WalletConfig.defaultSpeedTurnSeconds,
     );
   }
 
@@ -510,6 +518,7 @@ class GameState {
     'roundSpecialCoins': roundSpecialCoins,
     'roundViraoCoins': roundViraoCoins,
     'turnDeadline': turnDeadline?.toUtc().toIso8601String(),
+    'turnDurationSeconds': turnDurationSeconds,
   };
 
   static GameState fromMap(Map<String, dynamic> m) {
@@ -619,7 +628,15 @@ class GameState {
       roundSpecialCoins: _intMap(m['roundSpecialCoins']),
       roundViraoCoins: _intMap(m['roundViraoCoins']),
       turnDeadline: _dateTime(m['turnDeadline']),
+      turnDurationSeconds: _speedTurnSeconds(m['turnDurationSeconds']),
     );
+  }
+
+  static int _speedTurnSeconds(dynamic raw) {
+    final seconds = (raw as num?)?.toInt() ?? WalletConfig.defaultSpeedTurnSeconds;
+    return WalletConfig.isAllowedSpeedTurn(seconds)
+        ? seconds
+        : WalletConfig.defaultSpeedTurnSeconds;
   }
 
   static DateTime? _dateTime(dynamic raw) {

@@ -1604,6 +1604,7 @@ class AppRepo extends ChangeNotifier {
     bool local, {
     int playerCount = 2,
     int entryCost = WalletConfig.entryCost,
+    int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
   }) async {
     final existingAuth = FirebaseAuth.instance.currentUser;
     if (local && existingAuth == null) {
@@ -1627,7 +1628,9 @@ class AppRepo extends ChangeNotifier {
     }
     final energyCost = WalletConfig.energyCostFor(mode.name);
     final allowNoBet =
-        mode == GameMode.casino || mode == GameMode.casinoSpeed;
+        mode == GameMode.casino ||
+        mode == GameMode.casinoSpeed ||
+        mode == GameMode.tresydos;
     final stake = WalletConfig.isAllowedStake(
           entryCost,
           allowNoBet: allowNoBet,
@@ -1645,6 +1648,12 @@ class AppRepo extends ChangeNotifier {
     GameState gameState = GameState.create(gid, pid, mode);
     gameState.entryCost = stake;
     gameState.entryPaidBy = [pid];
+    if (mode == GameMode.casinoSpeed) {
+      gameState.turnDurationSeconds =
+          WalletConfig.isAllowedSpeedTurn(turnDurationSeconds)
+          ? turnDurationSeconds
+          : WalletConfig.defaultSpeedTurnSeconds;
+    }
     final host = player;
     if (host != null) {
       gameState.playersInfo[pid] = host.toGameSeat();

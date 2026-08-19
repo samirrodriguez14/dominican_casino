@@ -28,6 +28,7 @@ import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
 import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
+import 'package:dominican_casino/ui/widgets/win_confetti_overlay.dart';
 import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
@@ -73,11 +74,13 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
           onLanded: onLanded,
           onLaunched: onLaunched,
         );
-    gameVm.motion.shuffleRunner = (request, {onSquared}) =>
+    gameVm.motion.shuffleRunner = (request, {onFlyersAttached, onHidden, onSquared}) =>
         ShuffleAnimator.play(
           layer: _flightLayer,
           vsync: this,
           request: request,
+          onFlyersAttached: onFlyersAttached,
+          onHidden: onHidden,
           onSquared: onSquared,
         );
   }
@@ -360,9 +363,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
 
       if (_statusPopupOpen || _shownStatusKey == key) return;
 
-      // Tres y Dos: hold the winning 3+2 until the 5s beat ends or Skip.
-      if (gs.gameMode == GameMode.tresydos &&
-          vm.winCelebrationSecondsLeft > 0) {
+      // Hold the winning beat until the celebration timer expires.
+      if (vm.winCelebrationSecondsLeft > 0) {
         return;
       }
 
@@ -571,6 +573,12 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                           ),
                         ),
                       ],
+                      if (vm.showWinCelebration)
+                        Positioned.fill(
+                          child: WinConfettiOverlay(
+                            key: ValueKey(vm.activeWinCelebrationKey),
+                          ),
+                        ),
                       AnimatedBuilder(
                         animation: tutorialVm,
                         builder: (context, _) {
