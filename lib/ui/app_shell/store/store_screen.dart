@@ -236,8 +236,19 @@ class _DailyChallengeCard extends StatelessWidget {
       DailyChallengeId.casinoClassic => l10n.dailyChallengeCasinoCaption,
     };
     final priceLabel = complete
-        ? l10n.free
+        ? '${progress.clamp(0, def.goal)}/${def.goal}'
         : '$progress/${def.goal}';
+
+    // Challenges reset on a local calendar day boundary (not the rolling
+    // daily-login 23h cooldown), so the "come back" text counts down to
+    // the next midnight.
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day)
+        .add(const Duration(days: 1));
+    final untilReset = nextMidnight.difference(now);
+    final claimedOverlayLabel = untilReset.inHours >= 1
+        ? l10n.comeBackInHours(untilReset.inHours)
+        : l10n.comeBackInMinutes(untilReset.inMinutes.clamp(1, 59).toInt());
 
     return StoreBundleCard(
       bundle: dailyChallengeBundle(
@@ -246,7 +257,7 @@ class _DailyChallengeCard extends StatelessWidget {
         caption: caption,
       ),
       overlayLabel: claimed
-          ? l10n.comeBackTomorrow
+          ? claimedOverlayLabel
           : (complete ? null : '$progress/${def.goal}'),
       onLongPress: kDebugMode
           ? () => repo.debugTweakDailyChallenge(def.id)

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dominican_casino/l10n/app_localizations.dart';
@@ -23,6 +24,7 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
     with TickerProviderStateMixin {
   static const _expandDuration = Duration(milliseconds: 380);
   static const _flipDuration = Duration(milliseconds: 420);
+  static const _nudgeDuration = Duration(milliseconds: 2400);
   static const _peekVisible = 78.0;
   static const _peekAngle = -0.22;
   static const _dragRange = 280.0;
@@ -30,26 +32,110 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
 
   late final AnimationController _expand;
   late final AnimationController _flip;
+  late final AnimationController _nudge;
   bool _draggingExpand = false;
+  GamesViewModel? _gamesVm;
+  int _lastTurnCount = -1;
+  Timer? _nudgeHaptic;
 
   @override
   void initState() {
     super.initState();
     _expand = AnimationController(vsync: this, duration: _expandDuration)
       ..addStatusListener(_onExpandStatus)
-      ..addListener(_tick);
+      ..addListener(_onExpandTick);
     _flip = AnimationController(vsync: this, duration: _flipDuration)
+      ..addListener(_tick);
+    _nudge = AnimationController(vsync: this, duration: _nudgeDuration)
       ..addListener(_tick);
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final vm = context.read<GamesViewModel>();
+    if (identical(_gamesVm, vm)) return;
+    _gamesVm?.removeListener(_onGamesChanged);
+    _gamesVm = vm;
+    _lastTurnCount = vm.yourTurnCount;
+    _gamesVm!.addListener(_onGamesChanged);
+    _syncNudge();
+  }
+
+  @override
   void dispose() {
+    _nudgeHaptic?.cancel();
+    _gamesVm?.removeListener(_onGamesChanged);
     _expand.removeStatusListener(_onExpandStatus);
-    _expand.removeListener(_tick);
+    _expand.removeListener(_onExpandTick);
     _flip.removeListener(_tick);
+    _nudge.removeListener(_tick);
     _expand.dispose();
     _flip.dispose();
+    _nudge.dispose();
     super.dispose();
+  }
+
+  bool get _shouldNudge {
+    final count = _gamesVm?.yourTurnCount ?? 0;
+    return count > 0 && _expand.value <= 0.08 && !_draggingExpand;
+  }
+
+  void _onGamesChanged() {
+    final count = _gamesVm?.yourTurnCount ?? 0;
+    final grew = _lastTurnCount >= 0 && count > _lastTurnCount;
+    _lastTurnCount = count;
+    if (!mounted) return;
+    _syncNudge(restart: grew && _shouldNudge, cue: grew && _shouldNudge);
+  }
+
+  void _syncNudge({bool restart = false, bool cue = false}) {
+    if (!_shouldNudge) {
+      if (_nudge.isAnimating) _nudge.stop();
+      if (_nudge.value != 0) _nudge.value = 0;
+      return;
+    }
+    if (cue) _cueNudgeFeedback();
+    if (restart && _nudge.isAnimating) {
+      _nudge.stop();
+      _nudge.value = 0;
+    }
+    if (!_nudge.isAnimating) {
+      _nudge.repeat(min: 0, max: 1, period: _nudgeDuration);
+    }
+  }
+
+  void _cueNudgeFeedback() {
+    SoundService.instance.playLayered(GameSound.softCard);
+    AppHaptics.mediumImpact();
+    _nudgeHaptic?.cancel();
+    _nudgeHaptic = Timer(const Duration(milliseconds: 240), () {
+      if (!mounted) return;
+      AppHaptics.lightImpact();
+    });
+  }
+
+  /// Decaying hops, then a rest until the cycle repeats.
+  static double _nudgeLift(double t) {
+    final ms = t * _nudgeDuration.inMilliseconds;
+    const hops = <(double, double, double)>[
+      (0, 294, 1.00),
+      (294, 510, 0.52),
+      (510, 686, 0.28),
+      (686, 823, 0.12),
+    ];
+    for (final h in hops) {
+      if (ms >= h.$1 && ms < h.$2) {
+        final local = (ms - h.$1) / (h.$2 - h.$1);
+        return h.$3 * math.sin(local * math.pi);
+      }
+    }
+    return 0;
+  }
+
+  void _onExpandTick() {
+    _syncNudge();
+    _tick();
   }
 
   void _tick() {
@@ -114,6 +200,7 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
   void _onDragStart(DragStartDetails details) {
     if (_expand.isAnimating || _flip.isAnimating) return;
     setState(() => _draggingExpand = true);
+    _syncNudge();
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
@@ -134,6 +221,7 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
     final shouldOpen = v < -650 || (v.abs() < 650 && _expand.value >= 0.4);
     setState(() => _draggingExpand = false);
     _snap(open: shouldOpen);
+    _syncNudge();
   }
 
   static Color _faceFor(AppTheme theme, {required bool history}) {
@@ -192,6 +280,7 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
           _flip.value.clamp(0.0, 1.0),
         );
         final flipAngle = flipT * math.pi;
+        final nudgeLift = _nudgeLift(_nudge.value);
 
         return Stack(
           clipBehavior: Clip.none,
@@ -213,47 +302,55 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
               top: top,
               width: cardW,
               height: cardH,
-              child: Transform.rotate(
-                angle: angle,
-                alignment: Alignment.topLeft,
-                filterQuality: FilterQuality.medium,
-                child: Transform(
-                  alignment: Alignment.center,
+              child: Transform.translate(
+                offset: Offset(-26 * nudgeLift, -22 * nudgeLift),
+                child: Transform.scale(
+                  scale: 1 + 0.05 * nudgeLift,
+                  alignment: Alignment.topLeft,
                   filterQuality: FilterQuality.medium,
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, 0.0012)
-                    ..rotateY(flipAngle),
-                  child: showingHistory
-                      ? Transform(
-                          alignment: Alignment.center,
-                          transform: Matrix4.identity()..rotateY(math.pi),
-                          child: _cardShell(
-                            face: historyFace,
-                            theme: theme,
-                            child: _cardInterior(
-                              l10n: l10n,
+                  child: Transform.rotate(
+                    angle: angle,
+                    alignment: Alignment.topLeft,
+                    filterQuality: FilterQuality.medium,
+                    child: Transform(
+                      alignment: Alignment.center,
+                      filterQuality: FilterQuality.medium,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.0012)
+                        ..rotateY(flipAngle),
+                      child: showingHistory
+                          ? Transform(
+                              alignment: Alignment.center,
+                              transform: Matrix4.identity()..rotateY(math.pi),
+                              child: _cardShell(
+                                face: historyFace,
+                                theme: theme,
+                                child: _cardInterior(
+                                  l10n: l10n,
+                                  theme: theme,
+                                  contentOpacity: contentOpacity,
+                                  peekOpacity: peekOpacity,
+                                  yourTurnCount: yourTurnCount,
+                                  expandT: t,
+                                  history: true,
+                                ),
+                              ),
+                            )
+                          : _cardShell(
+                              face: currentFace,
                               theme: theme,
-                              contentOpacity: contentOpacity,
-                              peekOpacity: peekOpacity,
-                              yourTurnCount: yourTurnCount,
-                              expandT: t,
-                              history: true,
+                              child: _cardInterior(
+                                l10n: l10n,
+                                theme: theme,
+                                contentOpacity: contentOpacity,
+                                peekOpacity: peekOpacity,
+                                yourTurnCount: yourTurnCount,
+                                expandT: t,
+                                history: false,
+                              ),
                             ),
-                          ),
-                        )
-                      : _cardShell(
-                          face: currentFace,
-                          theme: theme,
-                          child: _cardInterior(
-                            l10n: l10n,
-                            theme: theme,
-                            contentOpacity: contentOpacity,
-                            peekOpacity: peekOpacity,
-                            yourTurnCount: yourTurnCount,
-                            expandT: t,
-                            history: false,
-                          ),
-                        ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -425,8 +522,8 @@ class _PeekBadge extends StatelessWidget {
           if (count > 0) ...[
             const SizedBox(width: 6),
             Container(
-              constraints: const BoxConstraints(minWidth: 22),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: theme.danger,
                 borderRadius: BorderRadius.circular(999),
@@ -437,9 +534,9 @@ class _PeekBadge extends StatelessWidget {
                 count > 9 ? '9+' : '$count',
                 style: const TextStyle(
                   color: CupertinoColors.white,
-                  fontSize: 11,
+                  fontSize: 17,
                   fontWeight: FontWeight.w800,
-                  height: 1.1,
+                  height: 1,
                 ),
               ),
             ),

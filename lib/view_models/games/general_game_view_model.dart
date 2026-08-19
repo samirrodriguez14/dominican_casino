@@ -124,7 +124,9 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   void _onGameRepoChanged() {
-    if (isAnimating) {
+    // If the board is mid-flight, repo echo updates must not paint interim
+    // card states (it causes the "deal flash" in other game modes).
+    if (isAnimating || motion.hasFlights) {
       _pendingRepoSync = true;
       return;
     }

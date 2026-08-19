@@ -30,7 +30,6 @@ class TutorialCasinoFactory {
     final oppHand = [
       tutorialDeck[3], // 9♦ — captures the table 9
       tutorialDeck[4], // 2♥ — dumped after the stack take (next to the J)
-      tutorialDeck[5], // 4♣ — played after the sweep, leftover at round end
     ];
 
     final table = [

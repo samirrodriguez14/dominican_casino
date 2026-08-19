@@ -181,23 +181,10 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 9 — Sweep (virao)
+    // 9 — overlay hidden; Round Complete popup
     TutorialStep(
       step: 9,
-      section: 4,
-      title: "Sweep (virao)",
-      description: l10n.tutorialSweep,
-      targetKey: myDeckKey,
-      playOpponent: true,
-      allowInteraction: false,
-      blockGameInteraction: true,
-      allowedActions: [],
-    ),
-
-    // 10 — overlay hidden; Round Complete popup
-    TutorialStep(
-      step: 10,
-      section: 4,
+      section: 3,
       title: "End of round",
       description: "",
       awaitRoundStatus: true,
@@ -208,10 +195,10 @@ List<TutorialStep> getCasinoTutorialSteps({
       allowedActions: [],
     ),
 
-    // 11
+    // 10
     TutorialStep(
-      step: 11,
-      section: 4,
+      step: 10,
+      section: 3,
       title: "You're ready!",
       description: l10n.tutorialReady,
       autoAdvance: false,

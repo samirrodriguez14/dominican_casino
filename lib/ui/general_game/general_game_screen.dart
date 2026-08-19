@@ -8,6 +8,7 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
+import 'package:dominican_casino/local_player/tresdos_player.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
@@ -446,6 +447,11 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     }
   }
 
+  bool _idleHintsEnabledForMode(GameMode mode) =>
+      mode == GameMode.casino ||
+      mode == GameMode.casinoSpeed ||
+      mode == GameMode.tresydos;
+
   void _maybeUpdateIdleHint() {
     if (!mounted) return;
 
@@ -459,7 +465,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     final gs = vm.gameState;
     if (gs.gameStatus != GameStatus.inProgress ||
         gs.round.roundStatus != RoundStatus.playing ||
-        !vm.isCasinoFamily) {
+        !_idleHintsEnabledForMode(gs.gameMode)) {
       _cancelIdleHintTimer(clearHint: true);
       return;
     }
@@ -486,6 +492,9 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     final token = ++_idleHintToken;
 
     _idleHintTimer = Timer(delay, () async {
+      // Timer has fired; allow future idle-hint scheduling later in the
+      // game (after we clear the current hint).
+      _idleHintTimer = null;
       if (!mounted) return;
       if (_idleHintToken != token) return;
 
@@ -501,7 +510,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       if (tutorialVm.active) return;
       if (curGs.gameStatus != GameStatus.inProgress ||
           curGs.round.roundStatus != RoundStatus.playing ||
-          !currentVm.isCasinoFamily) {
+          !_idleHintsEnabledForMode(curGs.gameMode)) {
         return;
       }
       if (!currentVm.isMyTurn || !currentVm.canPlayTurn) return;
@@ -509,31 +518,45 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       if ((curGs.currentTurnPlayerId ?? '') != _idleHintTurnPid) return;
       if (_userIsInteracting(currentVm)) return;
 
-      final best = await CasinoPlayer.casinoBestAction(
-        currentVm.me,
-        currentVm.gameState,
-      );
+      final best = switch (curGs.gameMode) {
+        GameMode.tresydos =>
+          await TresdosPlayer.tresdosBestAction(
+            currentVm.me,
+            currentVm.gameState,
+          ),
+        _ => await CasinoPlayer.casinoBestAction(
+          currentVm.me,
+          currentVm.gameState,
+        ),
+      };
 
       if (!mounted) return;
       if (_idleHintToken != token) return;
       if (tutorialVm.active) return;
 
       final action = best.playAction;
-      final hint = _idleHintForPlayAction(action);
+      final hint = _idleHintForPlayAction(currentVm, action);
       if (hint == null) return;
 
       tutorialVm.setIdleHint(
         message: hint.message,
         cardIds: hint.cardIds,
         stackIds: hint.stackIds,
+        keys: hint.keys,
       );
     });
   }
 
-  ({String message, Set<String> cardIds, Set<String> stackIds})?
-      _idleHintForPlayAction(PlayAction action) {
+  ({
+    String message,
+    Set<String> cardIds,
+    Set<String> stackIds,
+    Set<GlobalKey> keys,
+  })?
+      _idleHintForPlayAction(GeneralGameViewModel vm, PlayAction action) {
     Set<String> cardIds = const {};
     Set<String> stackIds = const {};
+    final keys = <GlobalKey>{};
 
     int sumOf(Iterable<PlayingCardModel> cards) =>
         cards.fold(0, (acc, c) => acc + c.valueHigh);
@@ -541,49 +564,59 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     switch (action) {
       case PlayCardAction(:final usedCard):
         cardIds = {usedCard.id};
+        keys.add(vm.playButtonKey);
         return (
           message: 'Hint: play ${usedCard.rank}.',
           cardIds: cardIds,
           stackIds: stackIds,
+          keys: keys,
         );
 
       case TakeCardAction(:final usedCard, :final targetCard):
         cardIds = {usedCard.id, targetCard.id};
+        keys.add(vm.playButtonKey);
         return (
           message:
               'Hint: take ${targetCard.rank} with ${usedCard.rank}.',
           cardIds: cardIds,
           stackIds: stackIds,
+          keys: keys,
         );
 
       case TakeStackAction(:final usedCard, :final targetStack):
         cardIds = {usedCard.id};
         stackIds = {targetStack.id};
+        keys.add(vm.takeStackButtonKey);
         return (
           message:
               'Hint: take the ${targetStack.stackValue}-point stack with ${usedCard.rank}.',
           cardIds: cardIds,
           stackIds: stackIds,
+          keys: keys,
         );
 
       case AddCardsAction(:final usedCard, :final targetCards):
         cardIds = {usedCard.id, for (final c in targetCards) c.id};
         final sum = usedCard.valueHigh + sumOf(targetCards);
+        keys.add(vm.addButtonKey);
         return (
           message:
               'Hint: add ${usedCard.rank} and ${targetCards.map((e) => e.rank).join(' and ')} to form $sum.',
           cardIds: cardIds,
           stackIds: stackIds,
+          keys: keys,
         );
 
       case AddTableCardsAction(:final targetCards):
         cardIds = {for (final c in targetCards) c.id};
         final sum = sumOf(targetCards);
+        keys.add(vm.addButtonKey);
         return (
           message:
               'Hint: combine ${targetCards.map((e) => e.rank).join(' and ')} to form $sum.',
           cardIds: cardIds,
           stackIds: stackIds,
+          keys: keys,
         );
 
       case AddCardStackAction(:final usedCard, :final targetStacks):
@@ -591,19 +624,23 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
         stackIds = {for (final s in targetStacks) s.id};
         final sum = usedCard.valueHigh +
             targetStacks.fold(0, (acc, s) => acc + s.stackValue);
+        keys.add(vm.addButtonKey);
         return (
           message:
               'Hint: add ${usedCard.rank} to that ${targetStacks.length == 1 ? 'stack' : 'stacks'} to form $sum.',
           cardIds: cardIds,
           stackIds: stackIds,
+          keys: keys,
         );
 
       case PairCardsAction(:final usedCard):
         cardIds = {usedCard.id};
+        keys.add(vm.playButtonKey);
         return (
           message: 'Hint: pair ${usedCard.rank}.',
           cardIds: cardIds,
           stackIds: stackIds,
+          keys: keys,
         );
 
       default:
