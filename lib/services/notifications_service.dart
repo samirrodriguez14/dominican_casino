@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// FCM presentation and notification-tap delivery.
 ///
-/// iOS hides banners while the app is open unless presentation options
-/// are set. Background/killed delivery is handled by the OS from the
-/// payload the cloud function sends. Taps are exposed via [opened].
+/// Some FCM payloads are "data-only". In those cases the OS won't display a
+/// banner when the app is backgrounded/killed, so we render a local
+/// notification from [firebaseMessagingBackgroundHandler].
 class NotificationsService {
   NotificationsService._();
   static final NotificationsService instance = NotificationsService._();
@@ -16,6 +20,12 @@ class NotificationsService {
   RemoteMessage? _launchMessage;
   final _opened = StreamController<RemoteMessage>.broadcast();
 
+  final FlutterLocalNotificationsPlugin _local =
+      FlutterLocalNotificationsPlugin();
+
+  static const _channelId = 'fcm_game';
+  static const _channelName = 'Game notifications';
+
   /// Taps on a notification (cold start after [flushLaunchMessage], and
   /// background via [FirebaseMessaging.onMessageOpenedApp]).
   Stream<RemoteMessage> get opened => _opened.stream;
@@ -23,12 +33,28 @@ class NotificationsService {
   Future<void> configure() async {
     if (_configured) return;
     _configured = true;
+
+    // Allow banners while the app is in the foreground (iOS).
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
           alert: true,
           badge: true,
           sound: true,
         );
+
+    // Initialize local notifications (for backgrounded "data-only" payloads).
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosInit = DarwinInitializationSettings();
+    const init = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
+    await _local.initialize(settings: init);
+
+    FirebaseMessaging.onBackgroundMessage(
+      firebaseMessagingBackgroundHandler,
+    );
+
     FirebaseMessaging.onMessage.listen((message) {
       developer.log(
         'FCM foreground title=${message.notification?.title} '
@@ -36,6 +62,7 @@ class NotificationsService {
         name: 'notifications',
       );
     });
+
     FirebaseMessaging.onMessageOpenedApp.listen(_emitOpened);
     try {
       _launchMessage = await FirebaseMessaging.instance.getInitialMessage();
@@ -64,4 +91,57 @@ class NotificationsService {
     );
     _opened.add(message);
   }
+}
+
+/// Background handler for FirebaseMessaging.
+/// Must be a top-level entry point.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  const channelId = NotificationsService._channelId;
+  const channelName = NotificationsService._channelName;
+
+  final local = FlutterLocalNotificationsPlugin();
+  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const iosInit = DarwinInitializationSettings();
+  const init = InitializationSettings(
+    android: androidInit,
+    iOS: iosInit,
+  );
+  await local.initialize(settings: init);
+
+  final title = message.notification?.title ??
+      message.data['title']?.toString() ??
+      'Dominican Casino';
+  final body = message.notification?.body ??
+      message.data['body']?.toString() ??
+      '';
+
+  if (body.isEmpty && title.isEmpty) return;
+
+  final id = message.messageId?.hashCode ??
+      DateTime.now().millisecondsSinceEpoch;
+  final payload = message.data.isNotEmpty ? jsonEncode(message.data) : null;
+
+  await local.show(
+    id: id,
+    title: title,
+    body: body,
+    notificationDetails: NotificationDetails(
+      android: AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: 'FCM notifications',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentSound: true,
+      ),
+    ),
+    payload: payload,
+  );
 }

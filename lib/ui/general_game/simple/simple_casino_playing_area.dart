@@ -387,12 +387,17 @@ class _SimpleOpponentRowHost extends StatelessWidget {
 }
 
 class SimpleOpponentRow extends StatelessWidget {
-  const SimpleOpponentRow({super.key, required this.oppId});
+  const SimpleOpponentRow({
+    super.key,
+    required this.oppId,
+    this.avatarKeyOverride,
+  });
 
   static const double height = 104;
   static const double cardWidth = 54;
 
   final String oppId;
+  final GlobalKey? avatarKeyOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -494,7 +499,10 @@ class SimpleOpponentRow extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _OpponentScoreChip(oppId: oppId),
+                  _OpponentScoreChip(
+                    oppId: oppId,
+                    avatarKey: avatarKeyOverride,
+                  ),
                 ],
               ),
             ),
@@ -506,9 +514,13 @@ class SimpleOpponentRow extends StatelessWidget {
 }
 
 class _OpponentScoreChip extends StatelessWidget {
-  const _OpponentScoreChip({required this.oppId});
+  const _OpponentScoreChip({
+    required this.oppId,
+    required this.avatarKey,
+  });
 
   final String oppId;
+  final GlobalKey? avatarKey;
 
   @override
   Widget build(BuildContext context) {
@@ -530,7 +542,7 @@ class _OpponentScoreChip extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         PlayerScoreAvatar(
-          key: waiting ? null : vm.oppScoreKey,
+          key: waiting ? null : (avatarKey ?? vm.oppScoreKey),
           avatarId: avatarId,
           name: name,
           score: score,

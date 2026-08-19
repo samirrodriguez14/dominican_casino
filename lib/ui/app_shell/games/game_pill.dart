@@ -173,8 +173,16 @@ class GamePill extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('ID: ${game.id}', style: theme.caption),
-                      if (timeLabel != null)
-                        Text(timeLabel, style: theme.caption),
+                  // Keep vertical height stable while async game fetches
+                  // updatedAt (so the line doesn't appear/disappear).
+                  Text(
+                    timeLabel ?? '',
+                    style: theme.caption.copyWith(
+                      color: (theme.caption.color ?? theme.muted).withValues(
+                        alpha: timeLabel == null ? 0 : 1,
+                      ),
+                    ),
+                  ),
                     ],
                   ),
                 ),

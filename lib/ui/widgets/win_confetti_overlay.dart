@@ -36,9 +36,9 @@ class _WinConfettiOverlayState extends State<WinConfettiOverlay>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2800),
+      duration: const Duration(milliseconds: 1900),
     )..forward();
-    _particles = List.generate(48, (_) => _ConfettiParticle.random(_rng));
+    _particles = List.generate(64, (_) => _ConfettiParticle.random(_rng));
   }
 
   @override
@@ -87,12 +87,16 @@ class _ConfettiParticle {
   final int colorIndex;
 
   factory _ConfettiParticle.random(math.Random rng) {
+    // Firework-ish: strong outward burst + upward initial velocity.
+    final angle = rng.nextDouble() * math.pi * 2;
+    final speed = 0.16 + rng.nextDouble() * 0.65; // fraction-per-t
     return _ConfettiParticle(
-      // Small offsets around the supplied origin.
-      originXOffset: (rng.nextDouble() - 0.5) * 0.18,
-      originYOffset: (rng.nextDouble() - 0.5) * 0.14,
-      vx: (rng.nextDouble() - 0.5) * 0.55,
-      vy: 0.25 + rng.nextDouble() * 0.45,
+      // Small jitter around the supplied origin.
+      originXOffset: (rng.nextDouble() - 0.5) * 0.06,
+      originYOffset: (rng.nextDouble() - 0.5) * 0.06,
+      vx: math.cos(angle) * speed,
+      // Negative y is "up" in our canvas math.
+      vy: -0.55 * speed - (0.08 + rng.nextDouble() * 0.18),
       spin: (rng.nextDouble() - 0.5) * 8,
       size: 4 + rng.nextDouble() * 5,
       colorIndex: rng.nextInt(5),
@@ -115,16 +119,24 @@ class _ConfettiPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final fade = progress > 0.72 ? (1 - progress) / 0.28 : 1.0;
-    if (fade <= 0) return;
+    // Pop bright quickly, then fade out.
+    final pop = progress < 0.18 ? (progress / 0.18) : 1.0;
+    final tail = progress > 0.65 ? (1 - progress) / 0.35 : 1.0;
+    final alpha = pop * tail;
+    if (alpha <= 0) return;
 
     for (final p in particles) {
       final t = progress;
-      final x = (originFraction.dx + p.originXOffset + p.vx * t) * size.width;
-      final y = (originFraction.dy + p.originYOffset + p.vy * t + 0.35 * t * t) *
+      final x =
+          (originFraction.dx + p.originXOffset + p.vx * t) * size.width;
+      // Add a gravity term so it arcs back down like a firework tail.
+      final y = (originFraction.dy +
+              p.originYOffset +
+              p.vy * t +
+              0.42 * t * t) *
           size.height;
       final paint = Paint()
-        ..color = colors[p.colorIndex % colors.length].withValues(alpha: fade);
+        ..color = colors[p.colorIndex % colors.length].withValues(alpha: alpha);
       canvas.save();
       canvas.translate(x, y);
       canvas.rotate(p.spin * t);
@@ -132,8 +144,8 @@ class _ConfettiPainter extends CustomPainter {
         RRect.fromRectAndRadius(
           Rect.fromCenter(
             center: Offset.zero,
-            width: p.size,
-            height: p.size * 0.55,
+            width: (p.size * (1 - 0.35 * t)).clamp(0.0, p.size),
+            height: ((p.size * 0.55) * (1 - 0.25 * t)).clamp(0.0, 999),
           ),
           const Radius.circular(1.5),
         ),

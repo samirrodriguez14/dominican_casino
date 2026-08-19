@@ -77,7 +77,12 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: SimpleOpponentRow(oppId: topOpp),
+                  child: SimpleOpponentRow(
+                    oppId: topOpp,
+                    avatarKeyOverride: topOpp.isEmpty
+                        ? null
+                        : vm.celebrationAvatarKeyForPid(topOpp),
+                  ),
                 ),
               if (rightOpp != null)
                 Positioned(
