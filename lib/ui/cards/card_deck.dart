@@ -45,6 +45,23 @@ class CardDeck extends StatefulWidget {
     this.lastCapturer = false,
   });
 
+  /// Visible thickness of a resting shoe / collected pile.
+  /// Independent of shuffle flyers — those already look right.
+  static const double stackStep = 3.0;
+  static const int _cardsPerLayer = 5;
+  static const int _maxLayers = 8;
+
+  static int visualLayers(int count) {
+    if (count <= 0) return 0;
+    return (count / _cardsPerLayer).ceil().clamp(1, _maxLayers);
+  }
+
+  /// How far layer [layerFromBack] sits above the first card.
+  ///
+  /// Layer 0 is the bottom of the pile. Each later layer is painted on top
+  /// and moved up the screen by this many pixels (Flutter −Y).
+  static double stackOffsetY(int layerFromBack) => layerFromBack * stackStep;
+
   @override
   State<CardDeck> createState() => _CardDeckState();
 }
@@ -337,7 +354,8 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
     final deckCount = widget.cards.length;
     final cardWidth = widget.cardWidth;
     final cardHeight = cardWidth * 1.4;
-    final layers = deckCount <= 0 ? 0 : (deckCount / 8).ceil();
+    final layers = CardDeck.visualLayers(deckCount);
+    final rise = layers <= 1 ? 0.0 : (layers - 1) * CardDeck.stackStep;
     final radius = (cardWidth * 0.125).clamp(6.0, 14.0);
     final highlight = AppStyle.theme.turnHighlight;
 
@@ -361,120 +379,130 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
               ),
             SizedBox(
               width: cardWidth,
-              height: cardHeight,
               child: AnimatedBuilder(
                 animation: Listenable.merge([_lastTake, _slide]),
                 builder: (_, _) {
                   final peekOut = _extraPeekOut(deckCount);
-                  return Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.topCenter,
-                    children: [
-                      Positioned(
-                        left: -3,
-                        top: -3,
-                        right: -3,
-                        bottom: -3 - peekOut,
-                        child: IgnorePointer(
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 280),
-                            curve: Curves.easeOut,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(
-                                radius + 2,
-                              ),
-                              color: widget.lastCapturer
-                                  ? highlight.withValues(alpha: .10)
-                                  : highlight.withValues(alpha: 0),
-                              boxShadow: widget.lastCapturer
-                                  ? [
-                                      BoxShadow(
-                                        color: highlight.withValues(
-                                          alpha: .20,
+                  final stackH = cardHeight + rise + peekOut;
+                  return SizedBox(
+                    width: cardWidth,
+                    height: stackH,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.bottomCenter,
+                      children: [
+                        Positioned(
+                          left: -3,
+                          right: -3,
+                          top: -3,
+                          bottom: -3,
+                          child: IgnorePointer(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 280),
+                              curve: Curves.easeOut,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(radius + 2),
+                                color: widget.lastCapturer
+                                    ? highlight.withValues(alpha: .10)
+                                    : highlight.withValues(alpha: 0),
+                                boxShadow: widget.lastCapturer
+                                    ? [
+                                        BoxShadow(
+                                          color: highlight.withValues(
+                                            alpha: .20,
+                                          ),
+                                          blurRadius: 8,
+                                          spreadRadius: 0.25,
                                         ),
-                                        blurRadius: 8,
-                                        spreadRadius: 0.25,
-                                      ),
-                                    ]
-                                  : const [],
+                                      ]
+                                    : const [],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      if (_shownExtra > 0 && _extraFaces.isNotEmpty)
-                        for (var i = 0; i < _shownExtra; i++)
-                          if (i < _extraFaces.length)
-                            _buildExtraCard(
-                              index: i,
-                              deckCount: deckCount,
-                              cardWidth: cardWidth,
-                              face: _extraFaces[i],
-                            ),
-                      if (deckCount == 0)
-                        SizedBox(
-                          width: cardWidth,
-                          height: cardHeight,
-                          child: Icon(
-                            CupertinoIcons.minus_circle_fill,
-                            color: AppStyle.theme.muted.withValues(
-                              alpha: .45,
-                            ),
-                          ),
-                        )
-                      else
-                        for (var i = 0; i < layers; i++)
-                          Positioned(
-                            top: -((layers - 1 - i) * 2.0),
-                            left: 0,
-                            child: (!widget.back)
-                                ? PlayingCard(
-                                    width: cardWidth,
-                                    playingCardModel: widget.cards.last,
-                                    isSelected:
-                                        widget.selectedTopCard ?? false,
-                                  )
-                                : PlayingCardBack(width: cardWidth),
-                          ),
-                      if (widget.cards.isNotEmpty && widget.showLabel)
-                        Padding(
-                          padding: EdgeInsets.only(top: cardWidth),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppStyle.theme.muted.withValues(
-                                alpha: 0.2,
+                        if (_shownExtra > 0 && _extraFaces.isNotEmpty)
+                          for (var i = 0; i < _shownExtra; i++)
+                            if (i < _extraFaces.length)
+                              _buildExtraCard(
+                                index: i,
+                                deckCount: deckCount,
+                                cardWidth: cardWidth,
+                                face: _extraFaces[i],
+                                faceBottom: rise,
                               ),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: AppStyle.theme.border.withValues(
-                                  alpha: .35,
+                        if (deckCount == 0)
+                          SizedBox(
+                            width: cardWidth,
+                            height: cardHeight,
+                            child: Icon(
+                              CupertinoIcons.minus_circle_fill,
+                              color: AppStyle.theme.muted.withValues(
+                                alpha: .45,
+                              ),
+                            ),
+                          )
+                        else
+                          for (var i = 0; i < layers; i++)
+                            Positioned(
+                              left: 0,
+                              // First card sits on the bottom of the pile.
+                              // Each next card is on top of it, moved up.
+                              bottom: CardDeck.stackOffsetY(i),
+                              child: (!widget.back)
+                                  ? PlayingCard(
+                                      width: cardWidth,
+                                      playingCardModel: widget.cards.last,
+                                      isSelected:
+                                          widget.selectedTopCard ?? false,
+                                    )
+                                  : PlayingCardBack(
+                                      width: cardWidth,
+                                      showShadow: i == layers - 1,
+                                    ),
+                            ),
+                        if (widget.cards.isNotEmpty && widget.showLabel)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: rise + cardHeight * 0.28,
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppStyle.theme.muted.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: AppStyle.theme.border.withValues(
+                                      alpha: .35,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  "x${widget.cards.length}",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppStyle.theme.textPrimary,
+                                  ),
                                 ),
                               ),
                             ),
-                            child: Text(
-                              "x${widget.cards.length}",
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: AppStyle.theme.textPrimary,
-                              ),
-                            ),
                           ),
-                        ),
-                      if (_lastTakeFaces.isNotEmpty &&
-                          _lastTake.value > 0.001)
-                        _buildLastTakeFan(cardWidth, cardHeight),
-                    ],
+                        if (_lastTakeFaces.isNotEmpty &&
+                            _lastTake.value > 0.001)
+                          Positioned(
+                            left: 0,
+                            bottom: rise,
+                            child: _buildLastTakeFan(cardWidth, cardHeight),
+                          ),
+                      ],
+                    ),
                   );
                 },
               ),
-            ),
-            AnimatedBuilder(
-              animation: _slide,
-              builder: (_, _) {
-                return SizedBox(height: _extraPeekOut(deckCount));
-              },
             ),
             if (widget.titleBelow && widget.title.isNotEmpty)
               SizedBox(
@@ -517,11 +545,7 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
     );
   }
 
-  Widget _flippingTakeCard(
-    PlayingCardModel card,
-    double t,
-    double width,
-  ) {
+  Widget _flippingTakeCard(PlayingCardModel card, double t, double width) {
     final angle = t * math.pi;
     final showFace = angle > math.pi / 2;
     return Transform(
@@ -549,13 +573,14 @@ class _CardDeckState extends State<CardDeck> with TickerProviderStateMixin {
     required int deckCount,
     required double cardWidth,
     required PlayingCardModel face,
+    required double faceBottom,
   }) {
     final peek = _peekHeight(index, deckCount, _shownExtra);
     final t = _extraT(index);
 
     return Positioned(
-      top: peek * t,
       left: 1,
+      bottom: faceBottom + peek * t,
       child: PlayingCard(
         playingCardModel: face,
         isSelected: false,

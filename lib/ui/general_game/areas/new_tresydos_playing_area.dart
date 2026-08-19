@@ -140,12 +140,11 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
     final deckCard = vm.gameState.deck.isNotEmpty
         ? vm.gameState.deck.last
         : null;
-    final selected =
-        deckCard != null && vm.selectedCards.contains(deckCard);
+    final selected = deckCard != null && vm.selectedCards.contains(deckCard);
     final hidden = deckCard != null && vm.isDragHidden(deckCard.id);
 
     final pile = Stack(
-      alignment: Alignment.center,
+      alignment: Alignment.topCenter,
       clipBehavior: Clip.none,
       children: [
         IgnorePointer(
@@ -167,7 +166,7 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
               duration: const Duration(milliseconds: 150),
               transform: selected
                   ? Matrix4.translationValues(0, -12, 0)
-                  : Matrix4.translationValues(0, 4, 0),
+                  : Matrix4.translationValues(0, 0, 0),
               child: Opacity(
                 opacity: hidden ? 0 : 1,
                 child: FlightAwareCard(
@@ -203,8 +202,10 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
         ? vm.playingAreaCards.last
         : null;
     final buried = vm.gameState.playingArea.length > 1
-        ? vm.gameState.playingArea
-            .sublist(0, vm.gameState.playingArea.length - 1)
+        ? vm.gameState.playingArea.sublist(
+            0,
+            vm.gameState.playingArea.length - 1,
+          )
         : const <PlayingCardModel>[];
     final selected =
         currentCard != null && vm.selectedCards.contains(currentCard);
@@ -283,10 +284,7 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
 
 /// Side opponent: score avatar with a tight overlapped hand underneath.
 class _CompactSideSeat extends StatelessWidget {
-  const _CompactSideSeat({
-    required this.oppId,
-    required this.overlayAlign,
-  });
+  const _CompactSideSeat({required this.oppId, required this.overlayAlign});
 
   static const double cardWidth = 30;
   static const double overlap = 8;
@@ -307,13 +305,16 @@ class _CompactSideSeat extends StatelessWidget {
 
     final waiting = oppId.isEmpty;
     final highlightTurn = !waiting && vm.isSeatTurn(oppId);
-    final cards = waiting ? const <PlayingCardModel>[] : (vm.gameState.hands[oppId] ?? []);
+    final cards = waiting
+        ? const <PlayingCardModel>[]
+        : (vm.gameState.hands[oppId] ?? []);
     final info = waiting
         ? <String, dynamic>{}
         : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
     final celebrating = !waiting && vm.isCelebratingHand(oppId);
-    final preferredCardWidth =
-        celebrating ? _CompactSideSeat.winCardWidth : _CompactSideSeat.cardWidth;
+    final preferredCardWidth = celebrating
+        ? _CompactSideSeat.winCardWidth
+        : _CompactSideSeat.cardWidth;
     final avatarId = info['avatarId'] as String?;
     final name = waiting
         ? AppLocalizations.of(context).openSeat
@@ -412,7 +413,8 @@ class _CompactSideSeat extends StatelessWidget {
                                   motion: vm.motion,
                                   cardId: cards[i].id,
                                   width: fanCardWidth,
-                                  child: vm.gameState.round.roundStatus ==
+                                  child:
+                                      vm.gameState.round.roundStatus ==
                                           RoundStatus.completed
                                       ? PlayingCard(
                                           playingCardModel: cards[i],

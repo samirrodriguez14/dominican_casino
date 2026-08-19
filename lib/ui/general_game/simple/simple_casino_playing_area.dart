@@ -437,14 +437,12 @@ class SimpleOpponentRow extends StatelessWidget {
                     celebrating: celebrating,
                     highlightTurn: highlightTurn,
                   );
-                  final layout = HandFanLayout.fit(
+                  final layout = HandFanLayout.fitOpponentTop(
                     count: count,
                     maxWidth: constraints.maxWidth,
-                    preferredCardWidth: cardWidth,
-                    minGap: 16.0,
-                    maxGap: celebrating ? 42.0 : 34.0,
-                    minCardWidth: 40.0,
+                    cardWidth: cardWidth,
                     visualScale: scale,
+                    celebrating: celebrating,
                   );
                   final gap = layout.gap;
                   final fanCardWidth = layout.cardWidth;

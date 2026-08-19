@@ -11,6 +11,7 @@ class PlayingCardBack extends StatelessWidget {
   final CardBackMark? mark;
   final String? avatarId;
   final VoidCallback? onTap;
+  final bool showShadow;
 
   const PlayingCardBack({
     super.key,
@@ -21,6 +22,7 @@ class PlayingCardBack extends StatelessWidget {
     this.mark,
     this.avatarId,
     this.onTap,
+    this.showShadow = true,
   });
 
   @override
@@ -28,8 +30,8 @@ class PlayingCardBack extends StatelessWidget {
     final theme = previewTheme ?? AppStyle.theme;
     final height = width * 1.4;
     final radius = (width * 0.125).clamp(6.0, 14.0);
-    final resolvedTint = tintId ??
-        (cardBack != null ? cardBack!.name : AppStyle.cardBackTintId);
+    final resolvedTint =
+        tintId ?? (cardBack != null ? cardBack!.name : AppStyle.cardBackTintId);
     final fill = cardBackTintById(resolvedTint).color;
     final overlay = mark ?? AppStyle.cardBackMark;
     final overlayAvatar = avatarId ?? AppStyle.cardBackAvatarId;
@@ -45,13 +47,15 @@ class PlayingCardBack extends StatelessWidget {
           color: fill,
           borderRadius: BorderRadius.circular(radius),
           border: Border.all(color: edge, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.black.withValues(alpha: .18),
-              blurRadius: (width * 0.12).clamp(4.0, 10.0),
-              offset: Offset(0, (width * 0.045).clamp(2.0, 4.0)),
-            ),
-          ],
+          boxShadow: showShadow
+              ? [
+                  BoxShadow(
+                    color: CupertinoColors.black.withValues(alpha: .18),
+                    blurRadius: (width * 0.12).clamp(4.0, 10.0),
+                    offset: Offset(0, (width * 0.045).clamp(2.0, 4.0)),
+                  ),
+                ]
+              : const [],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(radius),

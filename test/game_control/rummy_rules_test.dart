@@ -21,57 +21,119 @@ void main() {
       expect(GameRegistry.dealCounts(GameMode.rummy), (7, 1, 0, 1));
     });
 
-    test('deal assigns a random contract and sets empty dotted boxes', () async {
-      final pid = pid1;
-      final deck = <PlayingCardModel>[];
-      // Minimal deterministic 15-card deck (2*7 + 1).
-      deck.add(GameStateFixtures.card(id: 'd1', rank: '2', suit: '♠'));
-      deck.add(GameStateFixtures.card(id: 'd2', rank: '3', suit: '♠'));
-      deck.add(GameStateFixtures.card(id: 'd3', rank: '4', suit: '♠'));
-      deck.add(GameStateFixtures.card(id: 'd4', rank: '5', suit: '♠'));
-      deck.add(GameStateFixtures.card(id: 'd5', rank: '6', suit: '♠'));
-      deck.add(GameStateFixtures.card(id: 'd6', rank: '7', suit: '♥'));
-      deck.add(GameStateFixtures.card(id: 'd7', rank: '8', suit: '♦'));
-      deck.add(GameStateFixtures.card(id: 'd8', rank: '9', suit: '♣'));
-      deck.add(GameStateFixtures.card(id: 'd9', rank: '10', suit: '♥'));
-      deck.add(GameStateFixtures.card(id: 'd10', rank: 'J', suit: '♠'));
-      deck.add(GameStateFixtures.card(id: 'd11', rank: 'Q', suit: '♣'));
-      deck.add(GameStateFixtures.card(id: 'd12', rank: 'K', suit: '♦'));
-      deck.add(GameStateFixtures.card(id: 'd13', rank: 'A', suit: '♠'));
-      deck.add(GameStateFixtures.card(id: 'd14', rank: '2', suit: '♥'));
-      deck.add(GameStateFixtures.card(id: 'd15', rank: '3', suit: '♦'));
+    test(
+      'deal assigns a random contract and sets empty dotted boxes',
+      () async {
+        final pid = pid1;
+        final deck = <PlayingCardModel>[];
+        // Minimal deterministic 15-card deck (2*7 + 1).
+        deck.add(GameStateFixtures.card(id: 'd1', rank: '2', suit: '♠'));
+        deck.add(GameStateFixtures.card(id: 'd2', rank: '3', suit: '♠'));
+        deck.add(GameStateFixtures.card(id: 'd3', rank: '4', suit: '♠'));
+        deck.add(GameStateFixtures.card(id: 'd4', rank: '5', suit: '♠'));
+        deck.add(GameStateFixtures.card(id: 'd5', rank: '6', suit: '♠'));
+        deck.add(GameStateFixtures.card(id: 'd6', rank: '7', suit: '♥'));
+        deck.add(GameStateFixtures.card(id: 'd7', rank: '8', suit: '♦'));
+        deck.add(GameStateFixtures.card(id: 'd8', rank: '9', suit: '♣'));
+        deck.add(GameStateFixtures.card(id: 'd9', rank: '10', suit: '♥'));
+        deck.add(GameStateFixtures.card(id: 'd10', rank: 'J', suit: '♠'));
+        deck.add(GameStateFixtures.card(id: 'd11', rank: 'Q', suit: '♣'));
+        deck.add(GameStateFixtures.card(id: 'd12', rank: 'K', suit: '♦'));
+        deck.add(GameStateFixtures.card(id: 'd13', rank: 'A', suit: '♠'));
+        deck.add(GameStateFixtures.card(id: 'd14', rank: '2', suit: '♥'));
+        deck.add(GameStateFixtures.card(id: 'd15', rank: '3', suit: '♦'));
 
-      final state = GameStateFixtures.rummyTwoPlayerState(
-        gameStatus: GameStatus.inProgress,
-        controllerId: pid,
-        currentTurnPlayerId: '',
-        deck: deck, // modifiable list
-        playingArea: [],
-        p1Hand: [],
-        p2Hand: [],
-        scores: {pid1: 0, pid2: 0},
-        round: Round(
-          id: 0,
-          roundStatus: RoundStatus.readyToDeal,
-          roundScores: const {},
-        ),
-        rummyState: null,
-      );
+        final state = GameStateFixtures.rummyTwoPlayerState(
+          gameStatus: GameStatus.inProgress,
+          controllerId: pid,
+          currentTurnPlayerId: '',
+          deck: deck, // modifiable list
+          playingArea: [],
+          p1Hand: [],
+          p2Hand: [],
+          scores: {pid1: 0, pid2: 0},
+          round: Round(
+            id: 0,
+            roundStatus: RoundStatus.readyToDeal,
+            roundScores: const {},
+          ),
+          rummyState: null,
+        );
+
+        final engine = RummyGameEngine();
+        final next = engine.performInGameAction(state, InGameAction.deal, pid);
+
+        expect(next.hands[pid1], hasLength(7));
+        expect(next.hands[pid2], hasLength(7));
+        expect(next.playingArea, hasLength(1));
+
+        expect(next.rummyState, isNotNull);
+        final contract = next.rummyState!.contract;
+        expect(contract.totalCards, equals(7));
+        expect(contract.requirements, hasLength(2));
+
+        expect(next.rummyState!.boxAByPid[pid1], isEmpty);
+        expect(next.rummyState!.boxBByPid[pid1], isEmpty);
+      },
+    );
+
+    test('deal seats 3 and 4 players with a contract box each', () {
+      List<PlayingCardModel> deckOf(int n) => [
+        for (var i = 0; i < n; i++)
+          GameStateFixtures.card(
+            id: 'c$i',
+            rank: '${(i % 9) + 2}',
+            suit: const ['♠', '♥', '♦', '♣'][i % 4],
+          ),
+      ];
+
+      GameState tableFor(List<String> pids) {
+        return GameState(
+          gameStatus: GameStatus.inProgress,
+          gameMode: GameMode.rummy,
+          id: 'rummy_multi',
+          controllerId: pids.first,
+          started: true,
+          currentTurnPlayerId: '',
+          deck: deckOf(pids.length * 7 + 1),
+          scores: {for (final p in pids) p: 0},
+          extraPoints: 0,
+          extraPointsHolderId: '',
+          playingArea: [],
+          playingAreaStacks: const [],
+          hands: {for (final p in pids) p: <PlayingCardModel>[]},
+          playersDeck: {for (final p in pids) p: <PlayingCardModel>[]},
+          lastTookCardId: '',
+          cardMoveEvents: const [],
+          round: Round(
+            id: 0,
+            roundStatus: RoundStatus.readyToDeal,
+            roundScores: const {},
+          ),
+          winnerId: '',
+          playersInfo: {
+            for (final p in pids) p: {'name': p},
+          },
+        );
+      }
 
       final engine = RummyGameEngine();
-      final next = engine.performInGameAction(state, InGameAction.deal, pid);
-
-      expect(next.hands[pid1], hasLength(7));
-      expect(next.hands[pid2], hasLength(7));
-      expect(next.playingArea, hasLength(1));
-
-      expect(next.rummyState, isNotNull);
-      final contract = next.rummyState!.contract;
-      expect(contract.totalCards, equals(7));
-      expect(contract.requirements, hasLength(2));
-
-      expect(next.rummyState!.boxAByPid[pid1], isEmpty);
-      expect(next.rummyState!.boxBByPid[pid1], isEmpty);
+      for (final pids in [
+        const ['p1', 'p2', 'p3'],
+        const ['p1', 'p2', 'p3', 'p4'],
+      ]) {
+        final next = engine.performInGameAction(
+          tableFor(pids),
+          InGameAction.deal,
+          pids.first,
+        );
+        for (final pid in pids) {
+          expect(next.hands[pid], hasLength(7));
+          expect(next.rummyState!.boxAByPid[pid], isEmpty);
+          expect(next.rummyState!.boxBByPid[pid], isEmpty);
+        }
+        expect(next.playingArea, hasLength(1));
+      }
     });
 
     test('validateAction rejects Play when hand size is not 8', () {
@@ -112,7 +174,11 @@ void main() {
     });
 
     test('validateAction rejects Take when hand size is 8', () {
-      final tableCard = GameStateFixtures.card(id: 'table_1', rank: '10', suit: '♦');
+      final tableCard = GameStateFixtures.card(
+        id: 'table_1',
+        rank: '10',
+        suit: '♦',
+      );
 
       final state = GameStateFixtures.rummyTwoPlayerState(
         gameStatus: GameStatus.inProgress,
@@ -152,10 +218,9 @@ void main() {
     });
 
     test('valid boxes + discard => gameOver with winnerId', () {
-      final contract = RummyContract(requirements: [
-        RummyRequirement.run(5),
-        RummyRequirement.set(2),
-      ]);
+      final contract = RummyContract(
+        requirements: [RummyRequirement.run(5), RummyRequirement.set(2)],
+      );
 
       // Hand after discard (7 cards): run of 5 + set of 2.
       final run5 = [
@@ -179,9 +244,7 @@ void main() {
         gameStatus: GameStatus.inProgress,
         controllerId: pid1,
         currentTurnPlayerId: pid1,
-        deck: [
-          GameStateFixtures.card(id: 'dX', rank: 'A', suit: '♠'),
-        ],
+        deck: [GameStateFixtures.card(id: 'dX', rank: 'A', suit: '♠')],
         playingArea: [
           GameStateFixtures.card(id: 'disc1', rank: 'K', suit: '♣'),
         ],
@@ -217,17 +280,20 @@ void main() {
     });
 
     test('wrong boxes do not end the round', () {
-      final contract = RummyContract(requirements: [
-        RummyRequirement.run(5),
-        RummyRequirement.set(2),
-      ]);
+      final contract = RummyContract(
+        requirements: [RummyRequirement.run(5), RummyRequirement.set(2)],
+      );
 
       final run5 = [
         GameStateFixtures.card(id: '2s', rank: '2', suit: '♠'),
         GameStateFixtures.card(id: '3s', rank: '3', suit: '♠'),
         GameStateFixtures.card(id: '4s', rank: '4', suit: '♠'),
         GameStateFixtures.card(id: '5s', rank: '5', suit: '♠'),
-        GameStateFixtures.card(id: '6s', rank: '8', suit: '♠'), // gap => not a run
+        GameStateFixtures.card(
+          id: '6s',
+          rank: '8',
+          suit: '♠',
+        ), // gap => not a run
       ];
       final set2 = [
         GameStateFixtures.card(id: '9h', rank: '9', suit: '♥'),
@@ -272,8 +338,16 @@ void main() {
     });
 
     test('deck empty after take => reshuffle discard into deck', () {
-      final discardCard = GameStateFixtures.card(id: 'discard_1', rank: 'K', suit: '♣');
-      final drawCard = GameStateFixtures.card(id: 'deck_1', rank: 'A', suit: '♠');
+      final discardCard = GameStateFixtures.card(
+        id: 'discard_1',
+        rank: 'K',
+        suit: '♣',
+      );
+      final drawCard = GameStateFixtures.card(
+        id: 'deck_1',
+        rank: 'A',
+        suit: '♠',
+      );
 
       final state = GameStateFixtures.rummyTwoPlayerState(
         gameStatus: GameStatus.inProgress,
@@ -318,4 +392,3 @@ void main() {
     });
   });
 }
-

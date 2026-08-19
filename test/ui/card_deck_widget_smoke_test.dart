@@ -5,12 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('CardDeck renders at least one face card when back=false', (tester) async {
-    final card = GameStateFixtures.card(
-      id: 'smoke_card',
-      rank: '7',
-      suit: '♣',
-    );
+  testWidgets('CardDeck renders at least one face card when back=false', (
+    tester,
+  ) async {
+    final card = GameStateFixtures.card(id: 'smoke_card', rank: '7', suit: '♣');
 
     await tester.pumpWidget(
       MaterialApp(
@@ -34,5 +32,12 @@ void main() {
     expect(find.byType(CardDeck), findsOneWidget);
     expect(find.byType(PlayingCard), findsWidgets);
   });
-}
 
+  test('stackOffsetY lifts each next card above the first', () {
+    expect(CardDeck.stackOffsetY(0), 0);
+    expect(CardDeck.stackOffsetY(1), CardDeck.stackStep);
+    expect(CardDeck.stackOffsetY(3), 3 * CardDeck.stackStep);
+    expect(CardDeck.visualLayers(1), 1);
+    expect(CardDeck.visualLayers(52), 8);
+  });
+}

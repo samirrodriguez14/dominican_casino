@@ -26,7 +26,7 @@ class SimplePlayerArea extends StatefulWidget {
 }
 
 class _SimplePlayerAreaState extends State<SimplePlayerArea> {
-  double _fanGap = 48;
+  HandFanLayout? _fanLayout;
   static const double _cardWidth = 110.0;
   static const double _fanHeight = 168.0;
   static const double _edgeAngle = 0.16;
@@ -66,15 +66,16 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                 count: count,
                 maxWidth: constraints.maxWidth,
                 preferredCardWidth: _cardWidth,
-                minGap: 12.0,
-                maxGap: celebrating ? 64.0 : 56.0,
-                minCardWidth: 56.0,
+                maxGap: celebrating ? 48.0 : 40.0,
                 visualScale: scale,
+                lockCardSize: true,
+                progressiveTighten: true,
               );
+              _fanLayout = layout;
               final cardWidth = layout.cardWidth;
               final gap = layout.gap;
+
               final cardH = layout.cardHeight;
-              _fanGap = gap;
 
               final totalWidth = layout.totalWidth(count);
               final draggingId = vm.draggingSource?.id;
@@ -220,11 +221,11 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
   }
 
   int _indexForGlobalCenter(Offset globalCenter, int count) {
-    final vm = context.read<GeneralGameViewModel>();
-    final box = vm.myHandKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize || count <= 0) return 0;
+    final layout = _fanLayout;
+    final box = context.read<GeneralGameViewModel>().myHandKey.currentContext
+        ?.findRenderObject() as RenderBox?;
+    if (layout == null || box == null || !box.hasSize || count <= 0) return 0;
     final local = box.globalToLocal(globalCenter);
-    if (_fanGap <= 0) return 0;
-    return (local.dx / _fanGap).round().clamp(0, count - 1);
+    return layout.indexAtLocalX(local.dx, count);
   }
 }

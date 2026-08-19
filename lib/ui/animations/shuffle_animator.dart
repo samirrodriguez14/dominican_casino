@@ -12,13 +12,17 @@ import 'package:flutter/cupertino.dart';
 
 /// Cosmetic gather → wash → square in [FlightLayer] space.
 class ShuffleAnimator {
-  static const int maxFlyers = 24;
+  static const int maxFlyers = 16;
   static const Duration flipDuration = Duration(milliseconds: 260);
   static const Duration shrinkDuration = Duration(milliseconds: 200);
   static const Duration gatherDuration = Duration(milliseconds: 380);
   static const Duration washHopDuration = Duration(milliseconds: 367);
   static const int washHops = 3;
   static const Duration squareDuration = Duration(milliseconds: 400);
+
+  /// Wash — cards mix in random directions, still overlapping as a pile.
+  static const double washRadiusX = 58;
+  static const double washRadiusY = 24;
 
   static Future<void> play({
     required FlightLayerController layer,
@@ -134,7 +138,8 @@ class ShuffleAnimator {
       await _runPhase(
         flyers,
         squareDuration,
-        (i, _) => deckTarget + Offset(0, -i * 0.6),
+        (i, _) =>
+            deckTarget + Offset(0, -i * ShuffleRequest.pileBackStep * 0.35),
         (i, _) => 0,
       );
 
@@ -183,13 +188,13 @@ class ShuffleAnimator {
     final t = rng.nextDouble() * math.pi * 2;
     final r = math.sqrt(rng.nextDouble()) * spread;
     return Offset(
-      center.dx + r * 100 * math.cos(t),
-      center.dy + r * 70 * math.sin(t),
+      center.dx + r * washRadiusX * math.cos(t),
+      center.dy + r * washRadiusY * math.sin(t),
     );
   }
 
   static double _randRot(math.Random rng) {
-    return (rng.nextDouble() * 2 - 1) * 0.26;
+    return (rng.nextDouble() * 2 - 1) * 0.18;
   }
 
   static Future<void> _runPhase(

@@ -17,10 +17,10 @@ class RummyBoxLayout {
   }
 
   /// Usable horizontal space inside the dotted border (padding excluded).
-  static const double innerWidth = 164.0;
+  static const double innerWidth = 156.0;
 
   /// Largest card width when the box holds few cards.
-  static const double maxCardWidth = 62.0;
+  static const double maxCardWidth = 58.0;
 
   static const double minCardWidth = 32.0;
   static const double minGap = 4.0;

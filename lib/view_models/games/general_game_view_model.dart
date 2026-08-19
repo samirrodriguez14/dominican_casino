@@ -216,14 +216,9 @@ class GeneralGameViewModel extends ChangeNotifier {
             (e) => e.performedBy == actor && e.to.type == ZoneType.playerDeck,
           );
           final botPlayed = newEvents.any(
-            (e) =>
-                e.performedBy == actor && e.from.type == ZoneType.playerHand,
+            (e) => e.performedBy == actor && e.from.type == ZoneType.playerHand,
           );
-          _maybeBotReact(
-            took: botTook,
-            botPlayed: botPlayed,
-            fromPid: actor,
-          );
+          _maybeBotReact(took: botTook, botPlayed: botPlayed, fromPid: actor);
         }
       } while (_pendingRepoSync);
     } catch (e) {
@@ -616,8 +611,8 @@ class GeneralGameViewModel extends ChangeNotifier {
       case ZoneType.playerHand:
         return e.from.holderId == me
             ? (isRummyBoxed(e.card.id)
-                ? keyForCard(e.card.id, CardSlot.rummyBox)
-                : keyForCard(e.card.id, CardSlot.myHand))
+                  ? keyForCard(e.card.id, CardSlot.rummyBox)
+                  : keyForCard(e.card.id, CardSlot.myHand))
             : keyForCard(e.card.id, CardSlot.oppHand);
       case ZoneType.table:
         // Loose table card, or already inside a stack.
@@ -754,10 +749,13 @@ class GeneralGameViewModel extends ChangeNotifier {
     }) {
       final origin = _centerOf(pileKey);
       if (origin == null || count <= 0) return;
-      for (var i = 0; i < count; i++) {
+      // Match CardDeck's visual thickness instead of one flyer per card.
+      // A full 52-card shoe used to stack ~50 backs 2px apart (~100px tall).
+      final n = ShuffleRequest.pileBackCount(count);
+      for (var i = 0; i < n; i++) {
         sources.add(
           ShuffleCardSource(
-            origin: origin + Offset(0, -i * 2.0),
+            origin: origin + Offset(0, -i * ShuffleRequest.pileBackStep),
             width: width,
             faceUp: false,
             hideId: null,
@@ -771,12 +769,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       final top = gameState.deck.last;
       final topKey = keyForCard(top.id, CardSlot.aux);
       if (topKey.currentContext != null) {
-        addCard(
-          key: topKey,
-          hideId: top.id,
-          width: deckWidth,
-          faceUp: false,
-        );
+        addCard(key: topKey, hideId: top.id, width: deckWidth, faceUp: false);
         if (gameState.deck.length > 1) {
           addPileBacks(
             pileKey: deckKey,
@@ -820,8 +813,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       if (hand.isEmpty) continue;
       final slot = pid == me ? CardSlot.myHand : CardSlot.oppHand;
       final faceUp =
-          pid == me ||
-          gameState.round.roundStatus == RoundStatus.completed;
+          pid == me || gameState.round.roundStatus == RoundStatus.completed;
       for (final card in hand) {
         addCard(
           key: keyForCard(card.id, slot),
@@ -892,10 +884,10 @@ class GeneralGameViewModel extends ChangeNotifier {
       myHandCards.length != _playHandSizeFor(gameState.gameMode);
 
   int _playHandSizeFor(GameMode mode) => switch (mode) {
-        GameMode.tresydos => 6,
-        GameMode.rummy => 8,
-        _ => 0,
-      };
+    GameMode.tresydos => 6,
+    GameMode.rummy => 8,
+    _ => 0,
+  };
 
   Duration get turnTotal => gameState.turnDuration;
 
@@ -916,6 +908,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       !gameState.isLocalBotPid(gameState.currentTurnPlayerId);
 
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
+
   /// Cards shown in the bottom hand fan (excludes Rummy box overlays).
   List<PlayingCardModel> get myHandFanCards => myUnboxedHandCards;
 
@@ -1279,11 +1272,12 @@ class GeneralGameViewModel extends ChangeNotifier {
       if (_boxContains(myHandKey, global)) {
         return const DropTarget.playerHand();
       }
-      final tableBox = tableKey.currentContext?.findRenderObject() as RenderBox?;
+      final tableBox =
+          tableKey.currentContext?.findRenderObject() as RenderBox?;
       if (tableBox != null && tableBox.hasSize) {
-        final tableBottom = tableBox.localToGlobal(
-          Offset(0, tableBox.size.height),
-        ).dy;
+        final tableBottom = tableBox
+            .localToGlobal(Offset(0, tableBox.size.height))
+            .dy;
         if (global.dy >= tableBottom) {
           return const DropTarget.playerHand();
         }
@@ -1292,11 +1286,12 @@ class GeneralGameViewModel extends ChangeNotifier {
       if (_boxContains(myHandKey, global)) {
         return const DropTarget.playerHand();
       }
-      final tableBox = tableKey.currentContext?.findRenderObject() as RenderBox?;
+      final tableBox =
+          tableKey.currentContext?.findRenderObject() as RenderBox?;
       if (tableBox != null && tableBox.hasSize) {
-        final tableBottom = tableBox.localToGlobal(
-          Offset(0, tableBox.size.height),
-        ).dy;
+        final tableBottom = tableBox
+            .localToGlobal(Offset(0, tableBox.size.height))
+            .dy;
         if (global.dy >= tableBottom) {
           return const DropTarget.playerHand();
         }
@@ -1456,9 +1451,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     // an a+b→c badge.
     if (forceMerge || actions.length > 1) {
       return BuildPreview(
-        label: actions.length > 1
-            ? 'Choose'
-            : actionLabel(actions.first),
+        label: actions.length > 1 ? 'Choose' : actionLabel(actions.first),
         total: selection.selectedStacks.isNotEmpty
             ? selection.selectedStacks.first.stackValue
             : (previewCards.isNotEmpty
@@ -1689,9 +1682,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   Future<void> playSelectedToTable() async {
     final card = selectedCard;
     if (card == null || !canDropPlay(card)) return;
-    await performPlayAction(
-      PlayCardAction(usedCard: card, performedById: me),
-    );
+    await performPlayAction(PlayCardAction(usedCard: card, performedById: me));
   }
 
   Future<void> playCardViaDrop(
@@ -1700,7 +1691,8 @@ class GeneralGameViewModel extends ChangeNotifier {
   ) async {
     beginBoardDrag(BoardDragSource.hand(card));
     // Synthesize empty-table drop under finger if over table.
-    final target = hitTestDropTarget(globalCenter) ?? const DropTarget.emptyTable();
+    final target =
+        hitTestDropTarget(globalCenter) ?? const DropTarget.emptyTable();
     draggingSource = BoardDragSource.hand(card);
     if (target.kind != DropTargetKind.emptyTable) {
       await finishBoardDrop(globalCenter);
@@ -1748,7 +1740,8 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (pending?.buildPreview != null) {
       final t = pending!.target;
       if (cardId != null && t.card?.id == cardId) return pending.buildPreview;
-      if (stackId != null && t.stack?.id == stackId) return pending.buildPreview;
+      if (stackId != null && t.stack?.id == stackId)
+        return pending.buildPreview;
     }
     return null;
   }
@@ -2294,7 +2287,9 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   Future<void> resign() async {
-    final remaining = gameState.playersInfo.keys.where((id) => id != me).toList();
+    final remaining = gameState.playersInfo.keys
+        .where((id) => id != me)
+        .toList();
     if (remaining.isEmpty || tutorialMode) {
       await appRepo.deleteGame(gameState.id);
       notifyListeners();
@@ -2538,10 +2533,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (!gameState.isLocalBot && !tutorialMode) return;
     if (gameState.round.roundStatus != RoundStatus.playing) return;
     if (gameState.gameStatus == GameStatus.gameOver) return;
-    final botId =
-        fromPid ??
-        gameState.localBotPid ??
-        opp;
+    final botId = fromPid ?? gameState.localBotPid ?? opp;
     if (botId == null || botId.isEmpty) return;
 
     final now = DateTime.now();

@@ -19,7 +19,7 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
   GeneralGameViewModel get vm => context.watch<GeneralGameViewModel>();
 
   final GlobalKey _fanKey = GlobalKey();
-  double _fanGap = 50;
+  HandFanLayout? _fanLayout;
   static const double _cardWidth = 100.0;
 
   @override
@@ -50,13 +50,13 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
                   count: count,
                   maxWidth: constraints.maxWidth,
                   preferredCardWidth: _cardWidth,
-                  minGap: 12.0,
-                  maxGap: 80.0,
-                  minCardWidth: 56.0,
+                  maxGap: 72.0,
+                  lockCardSize: true,
+                  progressiveTighten: true,
                 );
+                _fanLayout = layout;
                 final gap = layout.gap;
                 final cardWidth = layout.cardWidth;
-                _fanGap = gap;
 
                 final totalWidth = layout.totalWidth(count);
                 final draggingId = vm.draggingSource?.id;
@@ -155,10 +155,10 @@ class GenPlayerAreaState extends State<GenPlayerArea> {
   }
 
   int _indexForGlobalCenter(Offset globalCenter, int count) {
+    final layout = _fanLayout;
     final box = _fanKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize || count <= 0) return 0;
+    if (layout == null || box == null || !box.hasSize || count <= 0) return 0;
     final local = box.globalToLocal(globalCenter);
-    if (_fanGap <= 0) return 0;
-    return (local.dx / _fanGap).round().clamp(0, count - 1);
+    return layout.indexAtLocalX(local.dx, count);
   }
 }

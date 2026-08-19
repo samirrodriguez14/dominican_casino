@@ -61,6 +61,16 @@ class ShuffleCardSource {
 }
 
 class ShuffleRequest {
+  /// Caps how many backs fly off a shoe/collected pile so a full deck
+  /// stays a tight stack instead of a 2px-per-card tower.
+  static const int maxPileBacks = 8;
+  static const double pileBackStep = 2.0;
+
+  static int pileBackCount(int cards) {
+    if (cards <= 0) return 0;
+    return cards < maxPileBacks ? cards : maxPileBacks;
+  }
+
   final List<ShuffleCardSource> cards;
   final Offset center;
   final Offset deckTarget;

@@ -124,6 +124,7 @@ class AppRepo extends ChangeNotifier {
     }
     return sum;
   }
+
   DateTime? _lastDailyClaimAt;
   DateTime? get lastDailyClaimAt => _lastDailyClaimAt;
   DailyChallengeState _dailyChallenges = DailyChallengeState.empty('');
@@ -484,10 +485,7 @@ class AppRepo extends ChangeNotifier {
     return a.isAfter(b) ? a : b;
   }
 
-  static bool _dailyRewardCooldownActive(
-    DateTime? last,
-    DateTime now,
-  ) {
+  static bool _dailyRewardCooldownActive(DateTime? last, DateTime now) {
     if (last == null) return false;
     final a = last.toLocal();
     final b = now.toLocal();
@@ -495,10 +493,7 @@ class AppRepo extends ChangeNotifier {
     return b.isBefore(end);
   }
 
-  static Duration? _dailyRewardCooldownRemaining(
-    DateTime? last,
-    DateTime now,
-  ) {
+  static Duration? _dailyRewardCooldownRemaining(DateTime? last, DateTime now) {
     if (!_dailyRewardCooldownActive(last, now)) return null;
     final a = last!.toLocal();
     final b = now.toLocal();
@@ -507,17 +502,16 @@ class AppRepo extends ChangeNotifier {
   }
 
   bool get isDailyRewardAvailable =>
-      isGoogleLinked && !_dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now());
+      isGoogleLinked &&
+      !_dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now());
 
   bool get hasClaimedDailyRewardToday =>
-      isGoogleLinked && _dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now());
+      isGoogleLinked &&
+      _dailyRewardCooldownActive(_lastDailyClaimAt, DateTime.now());
 
   Duration? get dailyRewardCooldownRemaining {
     if (!isGoogleLinked) return null;
-    return _dailyRewardCooldownRemaining(
-      _lastDailyClaimAt,
-      DateTime.now(),
-    );
+    return _dailyRewardCooldownRemaining(_lastDailyClaimAt, DateTime.now());
   }
 
   Future<DailyRewardClaimResult> claimDailyReward() async {
@@ -1340,11 +1334,7 @@ class AppRepo extends ChangeNotifier {
         }
       }
       final cred = await FirebaseAuth.instance.signInWithCredential(credential);
-      return await _afterGoogleUser(
-        cred.user,
-        googleName,
-        replaceLocal: true,
-      );
+      return await _afterGoogleUser(cred.user, googleName, replaceLocal: true);
     } on FirebaseAuthException catch (e) {
       if (_isGoogleCanceled(e.code)) {
         return const GoogleAuthResult.canceled();
@@ -1569,7 +1559,8 @@ class AppRepo extends ChangeNotifier {
     AppStyle.cardBack = _cardBack;
 
     var mark = CardBackMark.logo;
-    final markName = sp.getString(_cardBackMarkKey) ?? sp.getString('cardFaceMark');
+    final markName =
+        sp.getString(_cardBackMarkKey) ?? sp.getString('cardFaceMark');
     if (markName != null) {
       for (final value in CardBackMark.values) {
         if (value.name == markName) {
@@ -1778,11 +1769,9 @@ class AppRepo extends ChangeNotifier {
     final allowNoBet =
         mode == GameMode.casino ||
         mode == GameMode.casinoSpeed ||
-        mode == GameMode.tresydos;
-    final stake = WalletConfig.isAllowedStake(
-          entryCost,
-          allowNoBet: allowNoBet,
-        )
+        mode == GameMode.tresydos ||
+        mode == GameMode.rummy;
+    final stake = WalletConfig.isAllowedStake(entryCost, allowNoBet: allowNoBet)
         ? entryCost
         : WalletConfig.entryCost;
     if (_wallet.energy < energyCost) {
@@ -1809,8 +1798,8 @@ class AppRepo extends ChangeNotifier {
       gameState.playersInfo[pid] = {'id': pid};
     }
     if (local) {
-      final botCount =
-          (mode == GameMode.tresydos ? playerCount.clamp(2, 4) : 2) - 1;
+      final seats = maxSeatsFor(mode);
+      final botCount = (seats > 2 ? playerCount.clamp(2, seats) : 2) - 1;
       final profiles = LocalBotRoster.pick(
         botCount,
         avoidAvatarId: host?.avatarId,
@@ -1988,10 +1977,7 @@ class AppRepo extends ChangeNotifier {
   /// Permanently delete the signed-in account and all of its cloud data.
   Future<DeleteAccountResult> deleteAccount() async {
     try {
-      await _endAuthSession(
-        keepCloud: false,
-        deleteAuthUser: isGoogleLinked,
-      );
+      await _endAuthSession(keepCloud: false, deleteAuthUser: isGoogleLinked);
       return DeleteAccountResult.success;
     } on StateError catch (e) {
       if (e.message == 'delete-canceled') {
