@@ -100,7 +100,7 @@ class AppShellState extends State<AppShell> {
       } else if (index == 1) {
         _gamesKey.currentState?.toggleGrid();
       } else if (index == 2) {
-        _profileKey.currentState?.goToInitial();
+        _profileKey.currentState?.toggleProfileSettings();
       }
       return;
     }

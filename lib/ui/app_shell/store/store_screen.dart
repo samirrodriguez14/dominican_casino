@@ -1,16 +1,19 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/currency_burst.dart';
 import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_bundle_card.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_catalog.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_theme_card.dart';
+import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
 import 'package:dominican_casino/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 class StoreScreen extends StatefulWidget {
@@ -54,6 +57,7 @@ class StoreScreenState extends State<StoreScreen> {
         const SizedBox(height: 8),
         Text(l10n.noRealMoney, style: theme.body),
         const SizedBox(height: 28),
+        const _DailyRewardSection(),
         Text(l10n.buyEnergyWithCoins, style: theme.title.copyWith(fontSize: 22)),
         const SizedBox(height: 12),
         _BundleGrid(
@@ -109,6 +113,136 @@ class StoreScreenState extends State<StoreScreen> {
       );
     }
   }
+}
+
+class _DailyRewardSection extends StatelessWidget {
+  const _DailyRewardSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = context.watch<AppRepo>();
+    final l10n = AppLocalizations.of(context);
+    final theme = AppStyle.theme;
+    final claimed = repo.hasClaimedDailyRewardToday;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.dailyReward, style: theme.title.copyWith(fontSize: 22)),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const columns = 3;
+            final gap = StoreScreen._gridGap;
+            final cardWidth =
+                (constraints.maxWidth - gap * (columns - 1)) / columns;
+            final cardHeight = cardWidth / StoreScreen._cardAspect;
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: cardWidth,
+                height: cardHeight,
+                child: StoreBundleCard(
+                  bundle: dailyRewardBundle(l10n.free),
+                  overlayLabel: claimed ? l10n.comeBackTomorrow : null,
+                  onLongPress: kDebugMode && claimed
+                      ? () => repo.debugRewindDailyClaim()
+                      : null,
+                  onTap: claimed
+                      ? null
+                      : (origin) => _claimDailyReward(context, origin),
+                ),
+              ),
+            );
+          },
+        ),
+        if (kDebugMode && claimed) ...[
+          const SizedBox(height: 8),
+          Text(
+            l10n.debugResetDailyReward,
+            style: theme.mutedText.copyWith(fontSize: 12),
+          ),
+        ],
+        const SizedBox(height: 28),
+      ],
+    );
+  }
+}
+
+Future<void> _claimDailyReward(BuildContext context, Offset? origin) async {
+  var repo = context.read<AppRepo>();
+  if (!repo.isGoogleLinked) {
+    final linked = await _ensureGoogleForDailyReward(context);
+    if (!linked || !context.mounted) return;
+    repo = context.read<AppRepo>();
+  }
+
+  final result = await repo.claimDailyReward();
+  if (result != DailyRewardClaimResult.claimed || !context.mounted) return;
+
+  final to = CurrencyBar.centerOf(CurrencyBar.coinsChipKey);
+  if (origin != null && to != null) {
+    await CurrencyBurst.play(
+      context: context,
+      from: origin,
+      to: to,
+      icon: coinIcon,
+      color: AppStyle.theme.turnHighlight,
+      count: 8,
+    );
+  }
+}
+
+Future<bool> _ensureGoogleForDailyReward(BuildContext context) async {
+  final repo = context.read<AppRepo>();
+  if (repo.isGoogleLinked) return true;
+  final l10n = AppLocalizations.of(context);
+  final connect = await showCupertinoDialog<bool>(
+    context: context,
+    builder: (ctx) => CupertinoAlertDialog(
+      title: Text(l10n.googleRequiredForDailyTitle),
+      content: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          '${l10n.googleRequiredForDailyBody}\n\n${l10n.connectGoogleWarning}',
+        ),
+      ),
+      actions: [
+        CupertinoDialogAction(
+          onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
+          child: Text(l10n.cancel),
+        ),
+        CupertinoDialogAction(
+          isDefaultAction: true,
+          onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
+          child: Text(l10n.connectGoogle),
+        ),
+      ],
+    ),
+  );
+  if (connect != true || !context.mounted) return false;
+
+  final result = await repo.linkGoogleAccount();
+  if (!context.mounted) return false;
+  if (result.status == GoogleAuthStatus.canceled) return false;
+  if (result.status == GoogleAuthStatus.failed) {
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.google),
+        content: Text(l10n.googleSignInError(result.errorCode)),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
+            child: Text(l10n.back),
+          ),
+        ],
+      ),
+    );
+    return false;
+  }
+  return repo.isGoogleLinked;
 }
 
 class _BundleGrid extends StatelessWidget {

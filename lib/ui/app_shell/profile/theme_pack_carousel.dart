@@ -9,12 +9,10 @@ class ThemePackCarousel extends StatefulWidget {
     super.key,
     this.initialIndex = 0,
     this.grid = false,
-    this.onOpenStackedAt,
   });
 
   final int initialIndex;
   final bool grid;
-  final ValueChanged<int>? onOpenStackedAt;
 
   @override
   State<ThemePackCarousel> createState() => _ThemePackCarouselState();
@@ -29,11 +27,6 @@ class _ThemePackCarouselState extends State<ThemePackCarousel> {
     _frontIndex = widget.initialIndex.clamp(0, themePackCatalog.length - 1);
   }
 
-  void _openStackedAt(int index) {
-    setState(() => _frontIndex = index);
-    widget.onOpenStackedAt?.call(index);
-  }
-
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
@@ -41,10 +34,7 @@ class _ThemePackCarouselState extends State<ThemePackCarousel> {
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       child: widget.grid
-          ? _ThemePackGrid(
-              key: const ValueKey('grid'),
-              onSelect: _openStackedAt,
-            )
+          ? const _ThemePackGrid(key: ValueKey('grid'))
           : StackedCardCarousel(
               key: const ValueKey('stack'),
               itemCount: themePackCatalog.length,
@@ -71,9 +61,7 @@ class _ThemePackCarouselState extends State<ThemePackCarousel> {
 }
 
 class _ThemePackGrid extends StatelessWidget {
-  const _ThemePackGrid({super.key, required this.onSelect});
-
-  final ValueChanged<int> onSelect;
+  const _ThemePackGrid({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -88,10 +76,11 @@ class _ThemePackGrid extends StatelessWidget {
       ),
       itemCount: themePackCatalog.length,
       itemBuilder: (context, index) {
+        final pack = themePackCatalog[index];
         return GestureDetector(
-          onTap: SoundService.wrapTap(() => onSelect(index)),
+          onTap: SoundService.wrapTap(() => handleThemePackTap(context, pack)),
           child: ThemePackCard(
-            pack: themePackCatalog[index],
+            pack: pack,
             compact: true,
             showActions: false,
           ),

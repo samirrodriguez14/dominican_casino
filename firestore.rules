@@ -23,6 +23,12 @@ service cloud.firestore {
           'coins',
           'energy',
           'energyUpdatedAt',
+          'lastDailyClaimAt',
+          'ownedPacks',
+          'appTheme',
+          'cardBack',
+          'cardBackMark',
+          'cardBackTint',
         ]);
       allow delete: if isSelf(uid);
     }

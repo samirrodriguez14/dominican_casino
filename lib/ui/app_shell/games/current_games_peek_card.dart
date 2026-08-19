@@ -65,11 +65,33 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
   bool get _open => _expand.value >= 0.5;
 
   Future<void> _snap({required bool open}) async {
-    if (_expand.isAnimating) return;
+    if (_expand.isAnimating || _flip.isAnimating) return;
+
+    var cued = false;
+    void cue() {
+      if (cued) return;
+      cued = true;
+      SoundService.instance.playLayered(GameSound.softCard);
+      AppHaptics.lightImpact();
+    }
+
+    if (!open && _flip.value > 0) {
+      cue();
+      if (_expand.value < 0.98) {
+        _flip.value = 0;
+      } else {
+        await _flip.animateTo(
+          0,
+          duration: _flipDuration,
+          curve: Curves.easeInOutCubic,
+        );
+        if (!mounted) return;
+      }
+    }
+
     final target = open ? 1.0 : 0.0;
     if ((_expand.value - target).abs() < 0.001) return;
-    SoundService.instance.playLayered(GameSound.softCard);
-    AppHaptics.lightImpact();
+    cue();
     await _expand.animateTo(
       target,
       duration: _expandDuration,
@@ -85,7 +107,7 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
   }
 
   void _close() {
-    if (_expand.isAnimating) return;
+    if (_expand.isAnimating || _flip.isAnimating) return;
     _snap(open: false);
   }
 
@@ -170,8 +192,6 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
           _flip.value.clamp(0.0, 1.0),
         );
         final flipAngle = flipT * math.pi;
-        final shellFace =
-            Color.lerp(currentFace, historyFace, flipT) ?? currentFace;
 
         return Stack(
           clipBehavior: Clip.none,
@@ -197,84 +217,99 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
                 angle: angle,
                 alignment: Alignment.topLeft,
                 filterQuality: FilterQuality.medium,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    _cardShell(
-                      face: shellFace,
-                      theme: theme,
-                      child: Stack(
-                        children: [
-                          Opacity(
-                            opacity: contentOpacity,
-                            child: IgnorePointer(
-                              ignoring:
-                                  _flip.isAnimating ||
-                                  (contentOpacity < 0.35 && !_draggingExpand),
-                              child: Transform(
-                                alignment: Alignment.center,
-                                filterQuality: FilterQuality.medium,
-                                transform: Matrix4.identity()
-                                  ..setEntry(3, 2, 0.0012)
-                                  ..rotateY(flipAngle),
-                                child: showingHistory
-                                    ? Transform(
-                                        alignment: Alignment.center,
-                                        transform: Matrix4.identity()
-                                          ..rotateY(math.pi),
-                                        child: _faceBody(
-                                          l10n: l10n,
-                                          theme: theme,
-                                          title: l10n.gameHistory,
-                                          history: true,
-                                          flipLabel: l10n.currentGames,
-                                          onFlip: _openCurrent,
-                                        ),
-                                      )
-                                    : _faceBody(
-                                        l10n: l10n,
-                                        theme: theme,
-                                        title: l10n.currentGames,
-                                        history: false,
-                                        flipLabel: l10n.gameHistory,
-                                        onFlip: _openHistory,
-                                      ),
-                              ),
+                child: Transform(
+                  alignment: Alignment.center,
+                  filterQuality: FilterQuality.medium,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0012)
+                    ..rotateY(flipAngle),
+                  child: showingHistory
+                      ? Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.identity()..rotateY(math.pi),
+                          child: _cardShell(
+                            face: historyFace,
+                            theme: theme,
+                            child: _cardInterior(
+                              l10n: l10n,
+                              theme: theme,
+                              contentOpacity: contentOpacity,
+                              peekOpacity: peekOpacity,
+                              yourTurnCount: yourTurnCount,
+                              expandT: t,
+                              history: true,
                             ),
                           ),
-                          Positioned(
-                            top: 10,
-                            left: 10,
-                            child: Opacity(
-                              opacity: peekOpacity,
-                              child: _PeekBadge(
-                                count: yourTurnCount,
-                                theme: theme,
-                              ),
-                            ),
+                        )
+                      : _cardShell(
+                          face: currentFace,
+                          theme: theme,
+                          child: _cardInterior(
+                            l10n: l10n,
+                            theme: theme,
+                            contentOpacity: contentOpacity,
+                            peekOpacity: peekOpacity,
+                            yourTurnCount: yourTurnCount,
+                            expandT: t,
+                            history: false,
                           ),
-                          if (t < 0.55 || _draggingExpand)
-                            Positioned.fill(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.translucent,
-                                onTap: t < 0.45 && !_draggingExpand
-                                    ? _toggleFromPeek
-                                    : null,
-                                onVerticalDragStart: _onDragStart,
-                                onVerticalDragUpdate: _onDragUpdate,
-                                onVerticalDragEnd: _onDragEnd,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+                        ),
                 ),
               ),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _cardInterior({
+    required AppLocalizations l10n,
+    required AppTheme theme,
+    required double contentOpacity,
+    required double peekOpacity,
+    required int yourTurnCount,
+    required double expandT,
+    required bool history,
+  }) {
+    return Stack(
+      children: [
+        Opacity(
+          opacity: contentOpacity,
+          child: IgnorePointer(
+            ignoring:
+                _flip.isAnimating ||
+                (contentOpacity < 0.35 && !_draggingExpand),
+            child: _faceBody(
+              l10n: l10n,
+              theme: theme,
+              title: history ? l10n.gameHistory : l10n.currentGames,
+              history: history,
+              flipLabel: history ? l10n.currentGames : l10n.gameHistory,
+              onFlip: history ? _openCurrent : _openHistory,
+            ),
+          ),
+        ),
+        if (!history)
+          Positioned(
+            top: 10,
+            left: 10,
+            child: Opacity(
+              opacity: peekOpacity,
+              child: _PeekBadge(count: yourTurnCount, theme: theme),
+            ),
+          ),
+        if (expandT < 0.55 || _draggingExpand)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: expandT < 0.45 && !_draggingExpand ? _toggleFromPeek : null,
+              onVerticalDragStart: _onDragStart,
+              onVerticalDragUpdate: _onDragUpdate,
+              onVerticalDragEnd: _onDragEnd,
+            ),
+          ),
+      ],
     );
   }
 

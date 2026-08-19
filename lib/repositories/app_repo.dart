@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
@@ -48,6 +47,8 @@ class InsufficientFundsException implements Exception {
 
   final bool energy;
 }
+
+enum DailyRewardClaimResult { claimed, alreadyClaimed, needsGoogle }
 
 class HomeCoinClaim {
   const HomeCoinClaim({required this.gameId, required this.amount});
@@ -100,6 +101,8 @@ class AppRepo extends ChangeNotifier {
   int? get shellTabRequest => _shellTabRequest;
   HomeCoinClaim? _pendingHomeCoinClaim;
   HomeCoinClaim? get pendingHomeCoinClaim => _pendingHomeCoinClaim;
+  DateTime? _lastDailyClaimAt;
+  DateTime? get lastDailyClaimAt => _lastDailyClaimAt;
 
   static const _themeKey = 'appTheme';
   static const _cardBackKey = 'cardBack';
@@ -196,18 +199,17 @@ class AppRepo extends ChangeNotifier {
     AppStyle.cardBack = pack.cardBack;
     _cardBackTintId = coerceTintForTheme(_cardBackTintId, id);
     AppStyle.cardBackTintId = _cardBackTintId;
-    await _persistTheme();
-    await _persistCardBack();
-    await _persistCardFace();
     final current = avatarId ?? player?.avatarId;
     final resolved = (current != null && pack.avatarIds.contains(current))
         ? current
         : pack.avatarIds.first;
-    if (player?.avatarId != resolved) {
-      await updatePlayerAvatar(resolved);
-      return;
+    final avatarChanged = player != null && player!.avatarId != resolved;
+    if (avatarChanged) {
+      player = player!.copyWith(avatarId: resolved);
     }
     notifyListeners();
+    if (avatarChanged) unawaited(_persistPlayerLocal());
+    unawaited(_persistLooks());
   }
 
   Future<bool> buyThemePack(Theme id) async {
@@ -248,6 +250,7 @@ class AppRepo extends ChangeNotifier {
       await _loadTheme();
       player = await _loadPlayer();
       await _loadWallet();
+      await _persistLooksRemote();
       _ensureEnergyTicker();
       gamesInfo = await loadGames();
       await refreshNotificationStatus();
@@ -308,11 +311,12 @@ class AppRepo extends ChangeNotifier {
 
   Duration get timeToNextEnergy => _wallet.timeToNextEnergy();
 
-  Future<void> _loadWallet() async {
+  Future<void> _loadWallet({bool preferRemote = false}) async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? player?.id;
     if (uid == null) {
       _wallet = Wallet.starter();
       _walletUid = null;
+      _lastDailyClaimAt = null;
       return;
     }
 
@@ -329,22 +333,27 @@ class AppRepo extends ChangeNotifier {
         developer.log('AppRepo.loadWallet remote: $e');
       }
 
-      final local = await _loadWalletPrefs(uid);
+      final local = preferRemote ? null : await _loadWalletPrefs(uid);
       Wallet loaded;
       if (Wallet.hasWalletFields(remote)) {
         loaded = Wallet.fromJson(remote!);
         // Prefer a non-starter local cache if cloud looks freshly reset.
-        if (local != null &&
+        if (!preferRemote &&
+            local != null &&
             loaded.coins == WalletConfig.startingCoins &&
             loaded.energy == WalletConfig.startingEnergy &&
             (local.coins != loaded.coins || local.energy != loaded.energy)) {
           loaded = local;
         }
       } else {
-        loaded = local ?? Wallet.starter();
+        loaded = preferRemote ? Wallet.starter() : (local ?? Wallet.starter());
       }
       _wallet = loaded.applyRegen();
       _walletUid = uid;
+      _lastDailyClaimAt = _laterTime(
+        Wallet.tryParseWalletTime(remote?['lastDailyClaimAt']),
+        preferRemote ? null : await _loadDailyClaimPrefs(uid),
+      );
     } finally {
       _walletPersistPaused = false;
     }
@@ -353,6 +362,88 @@ class AppRepo extends ChangeNotifier {
       await _persistWallet();
     }
     await _loadHomeCoinClaim(uid);
+    await _cacheDailyClaimLocal(uid);
+  }
+
+  String _dailyClaimPrefsKey(String uid) => 'daily_claim_$uid';
+
+  Future<DateTime?> _loadDailyClaimPrefs(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getInt(_dailyClaimPrefsKey(uid));
+      if (raw == null) return null;
+      return DateTime.fromMillisecondsSinceEpoch(raw);
+    } catch (e) {
+      developer.log('AppRepo.loadDailyClaim: $e');
+      return null;
+    }
+  }
+
+  Future<void> _cacheDailyClaimLocal(String uid) async {
+    final at = _lastDailyClaimAt;
+    if (at == null) return;
+    try {
+      final sp = await SharedPreferences.getInstance();
+      await sp.setInt(_dailyClaimPrefsKey(uid), at.millisecondsSinceEpoch);
+    } catch (e) {
+      developer.log('AppRepo.cacheDailyClaim: $e');
+    }
+  }
+
+  Future<void> _persistDailyClaim() async {
+    final uid = _walletUid;
+    final at = _lastDailyClaimAt;
+    if (uid == null || at == null) return;
+    try {
+      final sp = await SharedPreferences.getInstance();
+      await sp.setInt(_dailyClaimPrefsKey(uid), at.millisecondsSinceEpoch);
+    } catch (e) {
+      developer.log('AppRepo.persistDailyClaim local: $e');
+    }
+    try {
+      await fs.saveLastDailyClaimAt(uid: uid, at: at);
+    } catch (e) {
+      developer.log('AppRepo.saveLastDailyClaimAt: $e');
+    }
+  }
+
+  static DateTime? _laterTime(DateTime? a, DateTime? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isAfter(b) ? a : b;
+  }
+
+  static bool _claimedOnLocalDay(DateTime? last, DateTime now) {
+    if (last == null) return false;
+    final a = last.toLocal();
+    final b = now.toLocal();
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  bool get isDailyRewardAvailable =>
+      isGoogleLinked && !_claimedOnLocalDay(_lastDailyClaimAt, DateTime.now());
+
+  bool get hasClaimedDailyRewardToday =>
+      isGoogleLinked && _claimedOnLocalDay(_lastDailyClaimAt, DateTime.now());
+
+  Future<DailyRewardClaimResult> claimDailyReward() async {
+    if (!isGoogleLinked) return DailyRewardClaimResult.needsGoogle;
+    if (_claimedOnLocalDay(_lastDailyClaimAt, DateTime.now())) {
+      return DailyRewardClaimResult.alreadyClaimed;
+    }
+    _lastDailyClaimAt = DateTime.now();
+    notifyListeners();
+    await grantCoins(WalletConfig.dailyLoginRewardCoins);
+    await _persistDailyClaim();
+    return DailyRewardClaimResult.claimed;
+  }
+
+  Future<void> debugRewindDailyClaim() async {
+    if (!kDebugMode) return;
+    final last = _lastDailyClaimAt ?? DateTime.now();
+    _lastDailyClaimAt = last.toLocal().subtract(const Duration(days: 1));
+    await _persistDailyClaim();
+    notifyListeners();
   }
 
   String _homeCoinClaimPrefsKey(String uid) => 'home_coin_claim_$uid';
@@ -719,6 +810,7 @@ class AppRepo extends ChangeNotifier {
       ..addScope('profile');
     try {
       late final UserCredential cred;
+      var replaceLocal = false;
       if (current != null && current.isAnonymous) {
         try {
           cred = await current.linkWithPopup(provider);
@@ -726,6 +818,7 @@ class AppRepo extends ChangeNotifier {
           if (e.code == 'credential-already-in-use' ||
               e.code == 'email-already-in-use') {
             cred = await FirebaseAuth.instance.signInWithPopup(provider);
+            replaceLocal = true;
           } else if (e.code == 'provider-already-linked') {
             return GoogleAuthResult.success(
               _displayNameFromGoogle(current) ?? player?.name,
@@ -736,8 +829,13 @@ class AppRepo extends ChangeNotifier {
         }
       } else {
         cred = await FirebaseAuth.instance.signInWithPopup(provider);
+        replaceLocal = current == null || current.uid != cred.user?.uid;
       }
-      return await _afterGoogleUser(cred.user, cred.user?.displayName);
+      return await _afterGoogleUser(
+        cred.user,
+        cred.user?.displayName,
+        replaceLocal: replaceLocal,
+      );
     } on FirebaseAuthException catch (e) {
       if (_isGoogleCanceled(e.code)) {
         return const GoogleAuthResult.canceled();
@@ -756,23 +854,39 @@ class AppRepo extends ChangeNotifier {
           (current.isAnonymous || !_isGoogleLinked(current))) {
         try {
           final cred = await current.linkWithCredential(credential);
-          return await _afterGoogleUser(cred.user, googleName);
+          return await _afterGoogleUser(
+            cred.user,
+            googleName,
+            replaceLocal: false,
+          );
         } on FirebaseAuthException catch (e) {
           if (e.code == 'credential-already-in-use' ||
               e.code == 'email-already-in-use') {
             final cred = await FirebaseAuth.instance.signInWithCredential(
               e.credential ?? credential,
             );
-            return await _afterGoogleUser(cred.user, googleName);
+            return await _afterGoogleUser(
+              cred.user,
+              googleName,
+              replaceLocal: true,
+            );
           }
           if (e.code == 'provider-already-linked') {
-            return await _afterGoogleUser(current, googleName);
+            return await _afterGoogleUser(
+              current,
+              googleName,
+              replaceLocal: false,
+            );
           }
           rethrow;
         }
       }
       final cred = await FirebaseAuth.instance.signInWithCredential(credential);
-      return await _afterGoogleUser(cred.user, googleName);
+      return await _afterGoogleUser(
+        cred.user,
+        googleName,
+        replaceLocal: true,
+      );
     } on FirebaseAuthException catch (e) {
       if (_isGoogleCanceled(e.code)) {
         return const GoogleAuthResult.canceled();
@@ -783,21 +897,97 @@ class AppRepo extends ChangeNotifier {
 
   Future<GoogleAuthResult> _afterGoogleUser(
     User? user,
-    String? googleName,
-  ) async {
+    String? googleName, {
+    required bool replaceLocal,
+  }) async {
     if (user == null) return const GoogleAuthResult.failed('unknown');
     final suggested = _displayNameFromGoogle(user, googleName);
+    final previousUid = player?.id ?? _walletUid;
 
-    if (player == null || player!.id != user.uid) {
+    Map<String, dynamic>? remote;
+    try {
+      remote = await fs.loadUserProfile(user.uid);
+    } catch (e) {
+      developer.log('AppRepo.loadUserProfile: $e');
+    }
+
+    if (replaceLocal && _hasCloudProgress(remote)) {
+      if (previousUid != null && previousUid != user.uid) {
+        await _clearUidLocalCache(previousUid);
+      }
+      try {
+        await fs.clearDeviceGames();
+      } catch (e) {
+        developer.log('AppRepo.clearDeviceGames: $e');
+      }
+      _applyLooksFromRemote(remote, replace: true);
+      player = _mergePlayer(
+        user.uid,
+        local: null,
+        remote: remote,
+        suggestedName: suggested,
+      );
+      await _persistLooksLocal();
+      await _persistPlayerLocal();
+      await _loadWallet(preferRemote: true);
+      notifyListeners();
+      return GoogleAuthResult.success(suggested ?? player?.name);
+    }
+
+    if (player != null && previousUid != null && previousUid != user.uid) {
+      await fs.rebindLocalPlayer(fromPid: previousUid, toPid: user.uid);
+      player = player!.copyWith(id: user.uid);
+      _walletUid = user.uid;
+      await _persistWallet();
+      await _clearUidLocalCache(previousUid);
+    } else if (player == null || player!.id != user.uid) {
       player = await _playerFromRemoteOrLocal(user.uid, suggested);
-    } else if (player!.needsAccountSetup && suggested != null) {
+    }
+
+    if (player!.needsAccountSetup && suggested != null) {
       player = player!.copyWith(name: suggested);
     }
 
     await _persistPlayer();
-    await _loadWallet();
+    await _persistLooks();
+    if (_walletUid != user.uid) {
+      _walletUid = user.uid;
+      await _persistWallet();
+    } else {
+      await _loadWallet();
+    }
     notifyListeners();
     return GoogleAuthResult.success(suggested ?? player?.name);
+  }
+
+  bool _hasCloudProgress(Map<String, dynamic>? remote) {
+    if (remote == null || remote.isEmpty) return false;
+    final name = (remote['name'] ?? remote['displayName']) as String?;
+    final trimmed = name?.trim() ?? '';
+    if (trimmed.isNotEmpty &&
+        !(trimmed.startsWith('p_') && trimmed.length <= 12)) {
+      return true;
+    }
+    if (remote['completedTutorial'] == true) return true;
+    final avatar = remote['avatarId'] as String?;
+    if (avatar != null &&
+        avatar.isNotEmpty &&
+        avatar != Player.defaultAvatarId) {
+      return true;
+    }
+    if (Wallet.hasWalletFields(remote)) {
+      final wallet = Wallet.fromJson(remote);
+      if (wallet.coins != WalletConfig.startingCoins ||
+          wallet.energy != WalletConfig.startingEnergy) {
+        return true;
+      }
+    }
+    final extra = _packsFromNames(remote['ownedPacks']);
+    extra.removeAll(defaultOwnedPacks);
+    for (final pack in themePackCatalog) {
+      if (pack.unlock == ThemeUnlockKind.free) extra.remove(pack.id);
+    }
+    return extra.isNotEmpty;
   }
 
   Future<Player> _playerFromRemoteOrLocal(
@@ -938,28 +1128,146 @@ class AppRepo extends ChangeNotifier {
     AppStyle.cardBackTintId = _cardBackTintId;
   }
 
-  Future<void> _persistTheme() async {
+  Future<void> _persistTheme() => _persistLooks();
+
+  Future<void> _persistCardBack() => _persistLooks();
+
+  Future<void> _persistCardFace() => _persistLooks();
+
+  Future<void> _persistOwnedPacks() => _persistLooks();
+
+  Future<void> _persistLooks() async {
+    await _persistLooksLocal();
+    await _persistLooksRemote();
+  }
+
+  Future<void> _persistLooksLocal() async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_themeKey, _appTheme.name);
-  }
-
-  Future<void> _persistCardBack() async {
-    final sp = await SharedPreferences.getInstance();
     await sp.setString(_cardBackKey, _cardBack.name);
-  }
-
-  Future<void> _persistCardFace() async {
-    final sp = await SharedPreferences.getInstance();
     await sp.setString(_cardBackMarkKey, _cardBackMark.name);
     await sp.setString(_cardBackTintKey, _cardBackTintId);
-  }
-
-  Future<void> _persistOwnedPacks() async {
-    final sp = await SharedPreferences.getInstance();
     await sp.setStringList(
       _ownedPacksKey,
       _ownedPacks.map((pack) => pack.name).toList(),
     );
+  }
+
+  Future<void> _persistLooksRemote() async {
+    await _persistPlayerRemote();
+  }
+
+  void _syncLooksToAppStyle() {
+    AppStyle.theme = selectedTheme;
+    AppStyle.cardBack = _cardBack;
+    AppStyle.cardBackMark = _cardBackMark;
+    AppStyle.cardBackTintId = _cardBackTintId;
+  }
+
+  Set<Theme> _packsFromNames(Iterable<dynamic>? names) {
+    final out = <Theme>{};
+    if (names == null) return out;
+    for (final name in names) {
+      if (name is! String) continue;
+      for (final value in Theme.values) {
+        if (value.name == name) {
+          out.add(value);
+          break;
+        }
+      }
+    }
+    return out;
+  }
+
+  Theme? _themeByName(String? name) {
+    final resolved = switch (name) {
+      'feltWaltnut' => 'sage',
+      final value => value,
+    };
+    if (resolved == null) return null;
+    for (final value in Theme.values) {
+      if (value.name == resolved) return value;
+    }
+    return null;
+  }
+
+  CardBack? _cardBackByName(String? name) {
+    final resolved = switch (name) {
+      'brass' => 'clay',
+      'ink' => 'tide',
+      'walnut' => 'sage',
+      final value => value,
+    };
+    if (resolved == null) return null;
+    for (final value in CardBack.values) {
+      if (value.name == resolved) return value;
+    }
+    return null;
+  }
+
+  void _resetLooksInMemory() {
+    _ownedPacks = {
+      ...defaultOwnedPacks,
+      for (final pack in themePackCatalog)
+        if (pack.unlock == ThemeUnlockKind.free) pack.id,
+    };
+    _appTheme = Theme.sage;
+    _cardBack = defaultCardBackFor(_appTheme);
+    _cardBackMark = CardBackMark.logo;
+    _cardBackTintId = themePack(_appTheme).defaultTintId;
+    _syncLooksToAppStyle();
+  }
+
+  void _applyLooksFromRemote(
+    Map<String, dynamic>? remote, {
+    required bool replace,
+  }) {
+    if (replace) _resetLooksInMemory();
+    if (remote == null) {
+      _syncLooksToAppStyle();
+      return;
+    }
+    _ownedPacks.addAll(_packsFromNames(remote['ownedPacks']));
+    for (final pack in themePackCatalog) {
+      if (pack.unlock == ThemeUnlockKind.free) {
+        _ownedPacks.add(pack.id);
+      }
+    }
+    final remoteTheme = _themeByName(remote['appTheme'] as String?);
+    if (replace || !ownsPack(_appTheme)) {
+      if (remoteTheme != null && ownsPack(remoteTheme)) {
+        _appTheme = remoteTheme;
+      } else if (!ownsPack(_appTheme)) {
+        _appTheme = Theme.sage;
+      }
+    }
+    final remoteBack = _cardBackByName(remote['cardBack'] as String?);
+    if (replace || !ownsCardBack(_cardBack)) {
+      if (remoteBack != null && ownsCardBack(remoteBack)) {
+        _cardBack = remoteBack;
+      } else if (!ownsCardBack(_cardBack)) {
+        _cardBack = defaultCardBackFor(_appTheme);
+      }
+    }
+    if (replace) {
+      final markName = remote['cardBackMark'] as String?;
+      if (markName != null) {
+        for (final value in CardBackMark.values) {
+          if (value.name == markName) {
+            _cardBackMark = value;
+            break;
+          }
+        }
+      }
+      final tintName = remote['cardBackTint'] as String?;
+      _cardBackTintId = coerceTintForTheme(
+        tintName ?? themePack(_appTheme).defaultTintId,
+        _appTheme,
+      );
+    } else {
+      _cardBackTintId = coerceTintForTheme(_cardBackTintId, _appTheme);
+    }
+    _syncLooksToAppStyle();
   }
 
   Future<void> _loadLocale() async {
@@ -1181,25 +1489,36 @@ class AppRepo extends ChangeNotifier {
     }
   }
 
-  /// Sign out of Google on this device. Cloud profile and wallet stay.
+  /// Sign out of Google and wipe this device. Cloud profile stays.
   Future<void> logOut() async {
-    await _endAuthSession(wipeLocalWallet: false);
+    await _endAuthSession(keepCloud: true);
   }
 
   /// Wipe this device's cached profile and sign out.
   /// Guest cloud docs are deleted. Google cloud data stays for next sign-in.
   Future<void> deleteLocalAccount() async {
-    await _endAuthSession(
-      wipeLocalWallet: true,
-      deleteGuestCloudProfile: !isGoogleLinked,
-    );
+    await _endAuthSession(keepCloud: false, deleteAuthUser: false);
   }
 
-  /// Flush the live wallet to the cloud, then drop the local session.
+  /// Permanently delete the signed-in account and all of its cloud data.
+  Future<bool> deleteAccount() async {
+    try {
+      await _endAuthSession(
+        keepCloud: false,
+        deleteAuthUser: isGoogleLinked,
+      );
+      return true;
+    } catch (e, st) {
+      developer.log('AppRepo.deleteAccount: $e', error: e, stackTrace: st);
+      return false;
+    }
+  }
+
+  /// Flush or delete cloud data, then drop the local session.
   /// Never write a starter wallet while the previous user is still signed in.
   Future<void> _endAuthSession({
-    required bool wipeLocalWallet,
-    bool deleteGuestCloudProfile = false,
+    required bool keepCloud,
+    bool deleteAuthUser = false,
   }) async {
     final uid = player?.id ?? FirebaseAuth.instance.currentUser?.uid;
     final walletUid = _walletUid ?? uid;
@@ -1209,7 +1528,16 @@ class AppRepo extends ChangeNotifier {
     _energyTimer?.cancel();
     _energyTimer = null;
 
-    if (!deleteGuestCloudProfile && walletUid != null) {
+    if (deleteAuthUser && isGoogleLinked) {
+      final reauthed = await _reauthenticateGoogle();
+      if (!reauthed) {
+        _walletPersistPaused = false;
+        _ensureEnergyTicker();
+        throw StateError('delete-canceled');
+      }
+    }
+
+    if (keepCloud && walletUid != null) {
       try {
         final sp = await SharedPreferences.getInstance();
         await sp.setString(
@@ -1223,10 +1551,29 @@ class AppRepo extends ChangeNotifier {
       try {
         await _persistPlayerRemote();
       } catch (_) {}
-    } else if (deleteGuestCloudProfile && uid != null) {
+    } else if (!keepCloud && uid != null) {
       try {
-        await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+        await fs.deleteUserProfile(uid);
       } catch (_) {}
+    }
+
+    if (deleteAuthUser) {
+      final user = FirebaseAuth.instance.currentUser;
+      try {
+        await user?.delete();
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'requires-recent-login') {
+          final reauthed = await _reauthenticateGoogle();
+          if (!reauthed) {
+            _walletPersistPaused = false;
+            _ensureEnergyTicker();
+            throw StateError('delete-canceled');
+          }
+          await FirebaseAuth.instance.currentUser?.delete();
+        } else {
+          rethrow;
+        }
+      }
     }
 
     try {
@@ -1238,21 +1585,74 @@ class AppRepo extends ChangeNotifier {
       } catch (_) {}
     }
 
-    await _clearLocalSession(uid, wipeLocalWallet: wipeLocalWallet);
+    await _clearLocalSession();
     _loadFuture = null;
     _walletPersistPaused = false;
     await loadApp();
   }
 
-  Future<void> _clearLocalSession(
-    String? uid, {
-    bool wipeLocalWallet = true,
-  }) async {
+  Future<bool> _reauthenticateGoogle() async {
+    try {
+      final current = FirebaseAuth.instance.currentUser;
+      if (current == null) return false;
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider()
+          ..addScope('email')
+          ..addScope('profile');
+        await current.reauthenticateWithPopup(provider);
+        return true;
+      }
+      await _ensureGoogleSignIn();
+      final account = await GoogleSignIn.instance.authenticate(
+        scopeHint: const ['email', 'profile'],
+      );
+      final idToken = account.authentication.idToken;
+      if (idToken == null) return false;
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+      await current.reauthenticateWithCredential(credential);
+      return true;
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) return false;
+      developer.log('AppRepo.reauthenticateGoogle GoogleSignIn: $e');
+      return false;
+    } on FirebaseAuthException catch (e) {
+      if (_isGoogleCanceled(e.code)) return false;
+      developer.log('AppRepo.reauthenticateGoogle Auth: ${e.code}', error: e);
+      return false;
+    } catch (e, st) {
+      developer.log(
+        'AppRepo.reauthenticateGoogle: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return false;
+    }
+  }
+
+  Future<void> _clearUidLocalCache(String uid) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove(_walletPrefsKey(uid));
+    await sp.remove(_homeCoinClaimPrefsKey(uid));
+    await sp.remove(_dailyClaimPrefsKey(uid));
+  }
+
+  Future<void> _clearLocalSession() async {
     final sp = await SharedPreferences.getInstance();
     await sp.remove('player_id');
-    if (wipeLocalWallet && uid != null) {
-      await sp.remove(_walletPrefsKey(uid));
-      await sp.remove(_homeCoinClaimPrefsKey(uid));
+    await sp.remove(_themeKey);
+    await sp.remove(_cardBackKey);
+    await sp.remove(_cardBackMarkKey);
+    await sp.remove(_cardBackTintKey);
+    await sp.remove(_ownedPacksKey);
+    await sp.remove('cardFaceMark');
+    await sp.remove('cardFaceTint');
+    await sp.remove('cardFaceStyle');
+    for (final key in sp.getKeys().toList()) {
+      if (key.startsWith('wallet_') ||
+          key.startsWith('home_coin_claim_') ||
+          key.startsWith('daily_claim_')) {
+        await sp.remove(key);
+      }
     }
     try {
       await fs.clearDeviceGames();
@@ -1263,6 +1663,8 @@ class AppRepo extends ChangeNotifier {
     _wallet = Wallet.starter();
     _walletUid = null;
     _pendingHomeCoinClaim = null;
+    _lastDailyClaimAt = null;
+    _resetLooksInMemory();
     appStatus = AppStatus.notReady;
   }
 
@@ -1287,6 +1689,11 @@ class AppRepo extends ChangeNotifier {
         name: current.name,
         avatarId: current.avatarId,
         completedTutorial: current.completedTutorial,
+        ownedPacks: _ownedPacks.map((pack) => pack.name).toList(),
+        appTheme: _appTheme.name,
+        cardBack: _cardBack.name,
+        cardBackMark: _cardBackMark.name,
+        cardBackTint: _cardBackTintId,
       );
     } catch (e) {
       developer.log('AppRepo.saveUserProfile: $e');
@@ -1364,6 +1771,8 @@ class AppRepo extends ChangeNotifier {
       }
 
       player = _mergePlayer(uid, local: local, remote: remote);
+      _applyLooksFromRemote(remote, replace: false);
+      await _persistLooksLocal();
       await _persistPlayer();
       return player;
     } catch (e) {

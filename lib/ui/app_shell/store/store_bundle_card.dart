@@ -7,10 +7,18 @@ import 'package:flutter/cupertino.dart';
 /// Playing-card face for an energy or coin pack. Price and icon sit
 /// inline at the top-left, with a smaller copy at the bottom-right.
 class StoreBundleCard extends StatelessWidget {
-  const StoreBundleCard({super.key, required this.bundle, this.onTap});
+  const StoreBundleCard({
+    super.key,
+    required this.bundle,
+    this.onTap,
+    this.onLongPress,
+    this.overlayLabel,
+  });
 
   final StoreBundle bundle;
   final void Function(Offset? origin)? onTap;
+  final VoidCallback? onLongPress;
+  final String? overlayLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -19,20 +27,23 @@ class StoreBundleCard extends StatelessWidget {
     final accent = bundle.kind == StoreBundleKind.energy
         ? theme.warning
         : theme.turnHighlight;
+    final overlay = overlayLabel ??
+        (bundle.comingSoon ? AppLocalizations.of(context).comingSoon : null);
+    final canTap = overlay == null && onTap != null;
 
-    return CupertinoButton(
+    Widget card = CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: bundle.comingSoon
-          ? null
-          : SoundService.wrapTap(() {
+      onPressed: canTap
+          ? SoundService.wrapTap(() {
               final box = context.findRenderObject() as RenderBox?;
               if (box == null || !box.hasSize) {
                 onTap?.call(null);
                 return;
               }
               onTap?.call(box.localToGlobal(box.size.center(Offset.zero)));
-            }),
+            })
+          : null,
       child: AspectRatio(
         aspectRatio: 2.5 / 3.5,
         child: LayoutBuilder(
@@ -99,7 +110,7 @@ class StoreBundleCard extends StatelessWidget {
                       color: theme.textPrimary.withValues(alpha: .78),
                     ),
                   ),
-                  if (bundle.comingSoon)
+                  if (overlay != null)
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -110,7 +121,7 @@ class StoreBundleCard extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 6),
                             child: Text(
-                              AppLocalizations.of(context).comingSoon,
+                              overlay,
                               textAlign: TextAlign.center,
                               style: theme.title.copyWith(
                                 fontSize: (w * 0.12).clamp(9.0, 13.0),
@@ -126,6 +137,16 @@ class StoreBundleCard extends StatelessWidget {
             );
           },
         ),
+      ),
+    );
+
+    if (onLongPress == null) return card;
+    return GestureDetector(
+      onLongPress: onLongPress,
+      behavior: HitTestBehavior.opaque,
+      child: IgnorePointer(
+        ignoring: !canTap,
+        child: card,
       ),
     );
   }

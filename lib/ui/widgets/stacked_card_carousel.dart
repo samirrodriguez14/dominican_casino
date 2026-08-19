@@ -225,6 +225,11 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
     await _restackUnder(toLeft: forward <= backward);
   }
 
+  Future<void> toggleFront() async {
+    if (!_canRestack) return;
+    await goToIndex((_frontIndex + 1) % widget.itemCount);
+  }
+
   int get _front => _frontIndex;
   int get _back => (_frontIndex + 1) % widget.itemCount;
   int get _left => (_frontIndex - 1 + widget.itemCount) % widget.itemCount;

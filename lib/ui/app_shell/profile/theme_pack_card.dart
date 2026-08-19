@@ -117,26 +117,6 @@ class _ThemePackCardState extends State<ThemePackCard> {
                     ),
                   ),
                 ),
-              if (equipped)
-                Positioned(
-                  top: 14,
-                  left: 14,
-                  child: Icon(
-                    CupertinoIcons.check_mark_circled_solid,
-                    color: packTheme.turnHighlight,
-                    size: 22,
-                  ),
-                )
-              else if (!owned && widget.compact)
-                Positioned(
-                  top: 14,
-                  left: 14,
-                  child: Icon(
-                    CupertinoIcons.lock_fill,
-                    color: packTheme.textPrimary.withValues(alpha: .62),
-                    size: 18,
-                  ),
-                ),
               if (!widget.compact)
                 Positioned.fill(
                   child: IgnorePointer(
@@ -248,6 +228,24 @@ class _ThemePackCardState extends State<ThemePackCard> {
                     ),
                   ),
                 ),
+              if (!owned)
+                Positioned.fill(
+                  child: _LockedCover(
+                    coinCost: widget.compact && pack.isCoinLocked
+                        ? pack.coinCost
+                        : null,
+                  ),
+                ),
+              if (equipped)
+                Positioned(
+                  top: 14,
+                  left: 14,
+                  child: Icon(
+                    CupertinoIcons.check_mark_circled_solid,
+                    color: packTheme.turnHighlight,
+                    size: 22,
+                  ),
+                ),
               if (!widget.compact)
                 Positioned(
                   right: 14,
@@ -347,7 +345,7 @@ class _PackActionButton extends StatelessWidget {
       return CupertinoButton(
         padding: EdgeInsets.zero,
         minimumSize: Size.zero,
-        onPressed: SoundService.wrapTap(() => _buy(context)),
+        onPressed: SoundService.wrapTap(() => buyThemePack(context, pack)),
         child: _CircleBadge(
           packTheme: packTheme,
           child: Column(
@@ -409,24 +407,83 @@ class _PackActionButton extends StatelessWidget {
     await vm.equipPack(pack.id, avatarId: previewAvatarId);
     vm.setCardBackTintId(previewTintId);
   }
+}
 
-  Future<void> _buy(BuildContext context) async {
-    final cost = pack.coinCost ?? 0;
-    final l10n = AppLocalizations.of(context);
-    final confirmed = await showConfirmStorePurchase(
-      context,
-      body: l10n.confirmBuyPack(themeLabel(pack.id), cost),
+Future<void> handleThemePackTap(BuildContext context, ThemePack pack) async {
+  final repo = context.read<AppRepo>();
+  if (repo.ownsPack(pack.id)) {
+    context.read<AppThemeViewModel>().equipPack(pack.id);
+    return;
+  }
+  if (pack.isCoinLocked) {
+    await buyThemePack(context, pack);
+  }
+}
+
+Future<void> buyThemePack(BuildContext context, ThemePack pack) async {
+  final cost = pack.coinCost ?? 0;
+  final l10n = AppLocalizations.of(context);
+  final confirmed = await showConfirmStorePurchase(
+    context,
+    body: l10n.confirmBuyPack(themeLabel(pack.id), cost),
+  );
+  if (!confirmed || !context.mounted) return;
+  final repo = context.read<AppRepo>();
+  if (repo.wallet.coins < cost) {
+    await showInsufficientFundsDialog(context, energy: false);
+    return;
+  }
+  final ok = await context.read<AppThemeViewModel>().buyPack(pack.id);
+  if (!ok && context.mounted) {
+    await showInsufficientFundsDialog(context, energy: false);
+  }
+}
+
+class _LockedCover extends StatelessWidget {
+  const _LockedCover({this.coinCost});
+
+  final int? coinCost;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0x6B000000),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              CupertinoIcons.lock_fill,
+              color: Color(0xE6FFFFFF),
+              size: 36,
+            ),
+            if (coinCost != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    coinIcon,
+                    size: 14,
+                    color: Color(0xE6FFFFFF),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$coinCost',
+                    style: const TextStyle(
+                      color: Color(0xE6FFFFFF),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
-    if (!confirmed || !context.mounted) return;
-    final repo = context.read<AppRepo>();
-    if (repo.wallet.coins < cost) {
-      await showInsufficientFundsDialog(context, energy: false);
-      return;
-    }
-    final ok = await context.read<AppThemeViewModel>().buyPack(pack.id);
-    if (!ok && context.mounted) {
-      await showInsufficientFundsDialog(context, energy: false);
-    }
   }
 }
 

@@ -234,14 +234,28 @@ class FirestoreService extends GameService {
     String? name,
     String? avatarId,
     required bool completedTutorial,
+    List<String>? ownedPacks,
+    String? appTheme,
+    String? cardBack,
+    String? cardBackMark,
+    String? cardBackTint,
   }) async {
     await _users.doc(uid).set({
       'name': ?name,
       'displayName': ?name,
       'avatarId': ?avatarId,
       'completedTutorial': completedTutorial,
+      'ownedPacks': ?ownedPacks,
+      'appTheme': ?appTheme,
+      'cardBack': ?cardBack,
+      'cardBackMark': ?cardBackMark,
+      'cardBackTint': ?cardBackTint,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  Future<void> deleteUserProfile(String uid) async {
+    await _users.doc(uid).delete();
   }
 
   Future<Map<String, dynamic>?> loadUserProfile(String uid) async {
@@ -255,6 +269,16 @@ class FirestoreService extends GameService {
   Future<void> saveWallet({required String uid, required Wallet wallet}) async {
     await _users.doc(uid).set({
       ...wallet.toJson(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> saveLastDailyClaimAt({
+    required String uid,
+    required DateTime at,
+  }) async {
+    await _users.doc(uid).set({
+      'lastDailyClaimAt': at.millisecondsSinceEpoch,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

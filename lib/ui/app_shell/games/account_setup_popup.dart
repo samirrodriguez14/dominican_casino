@@ -3,6 +3,7 @@ import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
+import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
@@ -65,6 +66,8 @@ class _AccountSetupCardState extends State<_AccountSetupCard> {
     try {
       final repo = context.read<AppRepo>();
       final l10n = AppLocalizations.of(context);
+      final confirmed = await confirmConnectGoogle(context);
+      if (!confirmed || !mounted) return;
       final result = await repo.linkGoogleAccount();
       if (!mounted) return;
       if (result.status == GoogleAuthStatus.canceled) return;

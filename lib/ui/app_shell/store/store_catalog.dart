@@ -40,6 +40,12 @@ class StoreBundle {
   }
 }
 
+StoreBundle dailyRewardBundle(String freeLabel) => StoreBundle(
+  kind: StoreBundleKind.coins,
+  amount: WalletConfig.dailyLoginRewardCoins,
+  priceLabel: freeLabel,
+);
+
 final energyBundles = <StoreBundle>[
   for (final pack in energyForCoinPacks)
     StoreBundle(

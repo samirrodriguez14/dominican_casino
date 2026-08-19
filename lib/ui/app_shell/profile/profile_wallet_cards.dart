@@ -12,23 +12,18 @@ import 'package:dominican_casino/services/haptics.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-/// Side-by-side energy and coins cards on the profile face.
-class ProfileWalletCards extends StatefulWidget {
-  const ProfileWalletCards({
-    super.key,
-    this.embeddedInCard = false,
-    this.scoreTheme,
-  });
+/// Energy and coins pills on the profile face, with an optional action.
+class ProfileWalletPills extends StatefulWidget {
+  const ProfileWalletPills({super.key, this.scoreTheme, this.trailing});
 
-  /// Flatter chrome when sitting on a playing-card face.
-  final bool embeddedInCard;
   final AvatarScoreTheme? scoreTheme;
+  final Widget? trailing;
 
   @override
-  State<ProfileWalletCards> createState() => _ProfileWalletCardsState();
+  State<ProfileWalletPills> createState() => _ProfileWalletPillsState();
 }
 
-class _ProfileWalletCardsState extends State<ProfileWalletCards> {
+class _ProfileWalletPillsState extends State<ProfileWalletPills> {
   Timer? _timer;
 
   @override
@@ -57,50 +52,52 @@ class _ProfileWalletCardsState extends State<ProfileWalletCards> {
     final theme = AppStyle.theme;
     final recharging = wallet.energy < WalletConfig.energyCap;
     final energySubtitle = recharging
-        ? l10n.nextEnergyIn(CurrencyBar.formatCountdown(wallet.timeToNextEnergy()))
+        ? CurrencyBar.formatCountdown(wallet.timeToNextEnergy())
         : l10n.energyFull;
 
-    return Row(
-      children: [
-        Expanded(
-          child: _WalletCard(
-            icon: CupertinoIcons.bolt_fill,
-            iconColor: theme.warning,
-            label: l10n.energy,
-            value: '${wallet.energy}',
-            subtitle: energySubtitle,
-            embeddedInCard: widget.embeddedInCard,
-            scoreTheme: widget.scoreTheme,
-            onPressed: _openStore,
-          ),
+    return Align(
+      alignment: Alignment.centerRight,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          children: [
+            _WalletPill(
+              icon: CupertinoIcons.bolt_fill,
+              iconColor: theme.warning,
+              label: l10n.energy,
+              value: '${wallet.energy}',
+              subtitle: energySubtitle,
+              scoreTheme: widget.scoreTheme,
+              onPressed: _openStore,
+            ),
+            const SizedBox(width: 8),
+            _WalletPill(
+              icon: coinIcon,
+              iconColor: theme.turnHighlight,
+              label: l10n.coins,
+              value: '${wallet.coins}',
+              scoreTheme: widget.scoreTheme,
+              onPressed: _openStore,
+            ),
+            if (widget.trailing != null) ...[
+              const SizedBox(width: 8),
+              widget.trailing!,
+            ],
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _WalletCard(
-            icon: coinIcon,
-            iconColor: theme.turnHighlight,
-            label: l10n.coins,
-            value: '${wallet.coins}',
-            subtitle: l10n.buyCoins,
-            embeddedInCard: widget.embeddedInCard,
-            scoreTheme: widget.scoreTheme,
-            onPressed: _openStore,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
 
-class _WalletCard extends StatelessWidget {
-  const _WalletCard({
+class _WalletPill extends StatelessWidget {
+  const _WalletPill({
     required this.icon,
     required this.iconColor,
     required this.label,
     required this.value,
-    required this.subtitle,
     required this.onPressed,
-    this.embeddedInCard = false,
+    this.subtitle,
     this.scoreTheme,
   });
 
@@ -108,130 +105,71 @@ class _WalletCard extends StatelessWidget {
   final Color iconColor;
   final String label;
   final String value;
-  final String subtitle;
+  final String? subtitle;
   final VoidCallback onPressed;
-  final bool embeddedInCard;
   final AvatarScoreTheme? scoreTheme;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final score = scoreTheme;
-    final fill = score != null
-        ? score.ink.withValues(alpha: 0.12)
-        : embeddedInCard
-        ? theme.textPrimary.withValues(alpha: .10)
-        : theme.surface.withValues(alpha: .92);
+    final fill = score?.panel ?? theme.surface;
     final stroke = score != null
-        ? score.ink.withValues(alpha: 0.22)
-        : embeddedInCard
-        ? theme.textPrimary.withValues(alpha: .14)
-        : theme.border.withValues(alpha: .55);
-    final labelColor = score?.muted ?? theme.muted;
+        ? score.ink.withValues(alpha: 0.18)
+        : theme.border.withValues(alpha: .6);
     final valueColor = score?.ink ?? theme.textPrimary;
-    final badgeFill = score?.panel ?? theme.surfaceAlt;
-    final badgeBorder = score != null
-        ? score.background
-        : embeddedInCard
-        ? theme.textPrimary.withValues(alpha: .22)
-        : theme.background;
-    final badgeIcon = score?.foreground ?? iconColor;
+    final subtitleColor = score?.muted ?? theme.muted;
 
-    // Extra inset so the corner plus badge doesn't overflow this card.
-    return Padding(
-      padding: const EdgeInsets.only(right: 6, bottom: 6),
+    return Semantics(
+      button: true,
+      label: subtitle == null ? '$label $value' : '$label $value, $subtitle',
       child: CupertinoButton(
         padding: EdgeInsets.zero,
         minimumSize: Size.zero,
         onPressed: onPressed,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(12, 12, 14, 14),
-              decoration: BoxDecoration(
-                color: fill,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: stroke),
-                boxShadow: embeddedInCard
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: CupertinoColors.black.withValues(alpha: .22),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-              ),
-              child: Column(
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 52),
+          padding: const EdgeInsets.fromLTRB(14, 8, 16, 8),
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: stroke),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 26, color: iconColor),
+              const SizedBox(width: 10),
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Icon(icon, size: 16, color: badgeIcon),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.caption.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: labelColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
                   Text(
                     value,
                     style: theme.title.copyWith(
-                      fontSize: 26,
+                      fontSize: 22,
                       fontWeight: FontWeight.w800,
                       height: 1,
                       color: valueColor,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.caption.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: labelColor,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              right: -4,
-              bottom: -4,
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: badgeFill,
-                  border: Border.all(color: badgeBorder, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: CupertinoColors.black.withValues(alpha: .28),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle!,
+                      style: theme.caption.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1,
+                        color: subtitleColor,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ],
-                ),
-                alignment: Alignment.center,
-                child: Icon(CupertinoIcons.plus, size: 16, color: badgeIcon),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

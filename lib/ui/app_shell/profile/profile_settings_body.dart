@@ -7,6 +7,7 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/home/privacy_policy_copy.dart';
+import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
@@ -306,6 +307,8 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                               _connectGoogle(context, appRepo, l10n),
                           onLogOut: () =>
                               _confirmLogOut(context, appRepo, l10n),
+                          onDelete: () =>
+                              _confirmDelete(context, appRepo, l10n),
                         ),
                       ],
                     ),
@@ -315,27 +318,6 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Center(
-                          child: CupertinoButton(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 2,
-                            ),
-                            minimumSize: Size.zero,
-                            onPressed: SoundService.wrapTap(
-                              () => _confirmDelete(context, appRepo, l10n),
-                            ),
-                            child: Text(
-                              l10n.deleteAccount,
-                              style: const TextStyle(
-                                color: CupertinoColors.destructiveRed,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
                         Center(
                           child: CupertinoButton(
                             padding: const EdgeInsets.symmetric(
@@ -400,6 +382,8 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     AppRepo appRepo,
     AppLocalizations l10n,
   ) async {
+    final confirmed = await confirmConnectGoogle(context);
+    if (!confirmed || !context.mounted) return;
     final result = await appRepo.linkGoogleAccount();
     if (!context.mounted) return;
     if (result.status == GoogleAuthStatus.canceled) return;
@@ -434,14 +418,13 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     AppRepo appRepo,
     AppLocalizations l10n,
   ) async {
+    final linked = appRepo.isGoogleLinked;
     final go = await showCupertinoDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: Text(l10n.deleteAccount),
+        title: Text(linked ? l10n.deleteAccount : l10n.deleteLocalData),
         content: Text(
-          appRepo.isGoogleLinked
-              ? l10n.deleteLocalDataGoogleBody
-              : l10n.deleteAccountBody,
+          linked ? l10n.deleteAccountBody : l10n.deleteLocalDataBody,
         ),
         actions: [
           CupertinoDialogAction(
@@ -451,15 +434,37 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
           CupertinoDialogAction(
             isDestructiveAction: true,
             onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
-            child: Text(l10n.deleteAccount),
+            child: Text(linked ? l10n.deleteAccount : l10n.deleteLocalData),
           ),
         ],
       ),
     );
-    if (go == true) {
+    if (go != true) return;
+    var ok = true;
+    if (linked) {
+      ok = await appRepo.deleteAccount();
+    } else {
       await appRepo.deleteLocalAccount();
-      if (context.mounted) context.go('/home');
     }
+    if (!ok) {
+      if (!context.mounted) return;
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: Text(l10n.deleteAccount),
+          content: Text(l10n.deleteAccountFailed),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
+              child: Text(l10n.back),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    if (context.mounted) context.go('/home');
   }
 
   Future<void> _confirmLogOut(
@@ -624,12 +629,14 @@ class _GoogleAccountRow extends StatelessWidget {
     required this.email,
     required this.onConnect,
     required this.onLogOut,
+    required this.onDelete,
   });
 
   final bool linked;
   final String? email;
   final VoidCallback onConnect;
   final VoidCallback onLogOut;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -680,6 +687,18 @@ class _GoogleAccountRow extends StatelessWidget {
               ),
             ),
           ),
+        const SizedBox(width: 2),
+        CupertinoButton(
+          padding: const EdgeInsets.all(6),
+          minimumSize: Size.zero,
+          onPressed: SoundService.wrapTap(onDelete),
+          child: Icon(
+            CupertinoIcons.delete,
+            size: 18,
+            color: CupertinoColors.destructiveRed,
+            semanticLabel: linked ? l10n.deleteAccount : l10n.deleteLocalData,
+          ),
+        ),
       ],
     );
   }

@@ -2,6 +2,9 @@
 class WalletConfig {
   static const int startingCoins = 500;
   static const int startingEnergy = 50;
+
+  /// Free coins for a Google-linked account once per local calendar day.
+  static const int dailyLoginRewardCoins = 50;
   static const int energyCap = 50;
   static const Duration regenInterval = Duration(minutes: 5);
 

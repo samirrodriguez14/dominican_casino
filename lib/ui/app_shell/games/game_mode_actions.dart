@@ -132,7 +132,9 @@ Future<bool> ensureGoogleForOnlinePlay(BuildContext context) async {
       title: Text(l10n.googleRequiredForFriendsTitle),
       content: Padding(
         padding: const EdgeInsets.only(top: 8),
-        child: Text(l10n.googleRequiredForFriendsBody),
+        child: Text(
+          '${l10n.googleRequiredForFriendsBody}\n\n${l10n.connectGoogleWarning}',
+        ),
       ),
       actions: [
         CupertinoDialogAction(

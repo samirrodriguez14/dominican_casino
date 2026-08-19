@@ -8,6 +8,7 @@ import 'package:dominican_casino/ui/home/home_about_card.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/home/home_login_card.dart';
 import 'package:dominican_casino/ui/home/home_privacy_card.dart';
+import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:dominican_casino/view_models/home_view_model.dart';
@@ -104,6 +105,8 @@ class HomeScreenState extends State<HomeScreen> {
 
   Future<void> _onGoogle() async {
     if (_entering) return;
+    final confirmed = await confirmConnectGoogle(context);
+    if (!confirmed || !mounted) return;
     setState(() => _entering = true);
     var needsName = false;
     String? suggested;

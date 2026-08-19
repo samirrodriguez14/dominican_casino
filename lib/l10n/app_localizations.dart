@@ -94,6 +94,18 @@ class AppLocalizations {
   String confirmBuyCoins(int coins, String price) => isEs
       ? '¿Comprar $coins monedas por $price?'
       : 'Buy $coins coins for $price?';
+  String get dailyReward => isEs ? 'Recompensa diaria' : 'Daily reward';
+  String get free => isEs ? 'Gratis' : 'Free';
+  String get comeBackTomorrow =>
+      isEs ? 'Vuelve mañana' : 'Come back tomorrow';
+  String get googleRequiredForDailyTitle =>
+      isEs ? 'Entra con Google' : 'Sign in with Google';
+  String get googleRequiredForDailyBody => isEs
+      ? 'Conecta Google para reclamar 50 monedas cada día.'
+      : 'Connect Google to claim 50 coins each day.';
+  String get debugResetDailyReward => isEs
+      ? 'Mantén pulsado para probar de nuevo (debug).'
+      : 'Long-press to claim again (debug).';
   String get buyEnergyWithCoins =>
       isEs ? 'Energía por monedas' : 'Energy for coins';
   String get howToPlay => isEs ? 'Cómo jugar' : 'How to play';
@@ -195,10 +207,10 @@ class AppLocalizations {
   String get energyFull => isEs ? 'Llena' : 'Full';
   String nextEnergyIn(String time) =>
       isEs ? 'Siguiente en $time' : 'Next in $time';
-  String get scrollForSettings =>
-      isEs ? 'Desliza hacia abajo para ajustes' : 'Scroll down for settings';
-  String get scrollForProfile =>
-      isEs ? 'Desliza hacia arriba para el perfil' : 'Scroll up for profile';
+  String get slideForSettings =>
+      isEs ? 'Desliza para ajustes' : 'Slide for settings';
+  String get slideForProfile =>
+      isEs ? 'Desliza para el perfil' : 'Slide for profile';
   String get currentGames => isEs ? 'Actuales' : 'Current';
   String get previousGames => isEs ? 'Anteriores' : 'Previous';
   String get gameHistory => isEs ? 'Historial' : 'History';
@@ -277,12 +289,21 @@ class AppLocalizations {
   String get enableNotifications =>
       isEs ? 'Activar notificaciones' : 'Enable notifications';
   String get notNow => isEs ? 'Ahora no' : 'Not now';
-  String get deleteAccount =>
-      isEs ? 'Eliminar datos locales' : 'Delete local data';
+  String get deleteAccount => isEs ? 'Eliminar cuenta' : 'Delete account';
   String get deleteAccountBody => isEs
-      ? 'Borra tu perfil en este dispositivo y el token de notificaciones. Las partidas en curso pueden quedar huérfanas.'
-      : 'Clears your profile on this device and notification token. In-progress matches may be orphaned.';
+      ? 'Esto elimina tu cuenta de forma permanente. Si solo quieres borrar los datos de este dispositivo, cierra sesión.'
+      : 'This permanently deletes your account. To only clear this device, log out instead.';
+  String get deleteLocalData => isEs ? 'Eliminar datos' : 'Delete data';
+  String get deleteLocalDataBody => isEs
+      ? 'Se borrarán los datos de este dispositivo y no se podrán recuperar.'
+      : 'Data on this device will be removed and cannot be recovered.';
+  String get deleteAccountFailed => isEs
+      ? 'No se pudo eliminar la cuenta. Inténtalo de nuevo.'
+      : 'Couldn\'t delete the account. Please try again.';
   String get connectGoogle => isEs ? 'Conectar Google' : 'Connect Google';
+  String get connectGoogleWarning => isEs
+      ? 'Si esta cuenta de Google ya tiene progreso, reemplazará lo de este dispositivo. El progreso local se perderá.'
+      : 'If this Google account already has progress, it will replace what\'s on this device. Local progress will be lost.';
   String get googleRequiredForFriendsTitle =>
       isEs ? 'Entra con Google' : 'Sign in with Google';
   String get googleRequiredForFriendsBody => isEs
@@ -293,11 +314,8 @@ class AppLocalizations {
   String get account => isEs ? 'Cuenta' : 'Account';
   String get logOut => isEs ? 'Cerrar sesión' : 'Log out';
   String get logOutBody => isEs
-      ? 'Sales de Google en este dispositivo. Nombre, avatar, tutorial, monedas y energía se restauran al volver a entrar.'
-      : 'Signs out of Google on this device. Your name, avatar, tutorial, coins, and energy restore when you sign in again.';
-  String get deleteLocalDataGoogleBody => isEs
-      ? 'Borra el caché de este dispositivo y cierra sesión. Tu cuenta de Google, nombre, avatar, tutorial, monedas y energía se quedan en la nube.'
-      : 'Clears this device\'s cache and signs you out. Your Google account, name, avatar, tutorial, coins, and energy stay in the cloud.';
+      ? 'Sales de Google y se borra el progreso de este dispositivo. Nombre, temas, monedas y energía se restauran al volver a entrar.'
+      : 'Signs out of Google and clears progress on this device. Your name, themes, coins, and energy restore when you sign in again.';
 
   String googleSignInError(String? code) {
     switch (code) {

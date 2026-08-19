@@ -76,6 +76,11 @@ class Wallet {
   }
 
   static DateTime parseWalletTime(dynamic raw) {
+    return tryParseWalletTime(raw) ?? DateTime.now();
+  }
+
+  static DateTime? tryParseWalletTime(dynamic raw) {
+    if (raw == null) return null;
     if (raw is Timestamp) return raw.toDate();
     if (raw is DateTime) return raw;
     if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
@@ -85,9 +90,9 @@ class Wallet {
     if (raw is String) {
       final millis = int.tryParse(raw);
       if (millis != null) return DateTime.fromMillisecondsSinceEpoch(millis);
-      return DateTime.tryParse(raw) ?? DateTime.now();
+      return DateTime.tryParse(raw);
     }
-    return DateTime.now();
+    return null;
   }
 
   static bool hasWalletFields(Map<String, dynamic>? data) {

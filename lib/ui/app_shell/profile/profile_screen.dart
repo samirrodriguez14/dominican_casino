@@ -24,8 +24,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   bool _looksMode = false;
   bool _looksGrid = false;
   int _looksIndex = 0;
+  int _frontIndex = 0;
 
-  void goToInitial() {
+  void toggleProfileSettings() {
     if (_looksMode) {
       setState(() {
         _looksMode = false;
@@ -33,7 +34,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       });
       return;
     }
-    _carouselKey.currentState?.goToIndex(0);
+    _carouselKey.currentState?.toggleFront();
   }
 
   void _toggleLooks() {
@@ -65,19 +66,13 @@ class ProfileScreenState extends State<ProfileScreen> {
             12,
             shellTopBarHeight(context),
             12,
-            _looksMode ? 0 : 140,
+            _looksMode ? 0 : 108,
           ),
           child: _looksMode
               ? ThemePackCarousel(
                   key: ValueKey(_looksIndex),
                   initialIndex: _looksIndex,
                   grid: _looksGrid,
-                  onOpenStackedAt: (index) {
-                    setState(() {
-                      _looksIndex = index;
-                      _looksGrid = false;
-                    });
-                  },
                 )
               : StackedCardCarousel(
                   key: _carouselKey,
@@ -89,55 +84,118 @@ class ProfileScreenState extends State<ProfileScreen> {
                   fitToHeight: true,
                   itemBuilder: (context, index) {
                     return index == 0
-                        ? const ProfileCard()
+                        ? ProfileCard(onToggleLooks: _toggleLooks)
                         : const ProfileSettingsBody();
+                  },
+                  onIndexChanged: (index) {
+                    if (_frontIndex == index) return;
+                    setState(() => _frontIndex = index);
                   },
                 ),
         ),
         Positioned(
           left: 0,
           right: 0,
-          bottom: 140,
+          bottom: 108,
           child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_looksMode) ...[
-                  CupertinoButton(
-                    padding: const EdgeInsets.all(8),
-                    minimumSize: Size.zero,
-                    onPressed: SoundService.wrapTap(() {
-                      setState(() => _looksGrid = !_looksGrid);
-                    }),
-                    child: Icon(
-                      _looksGrid
-                          ? CupertinoIcons.rectangle_stack
-                          : CupertinoIcons.square_grid_2x2,
-                      size: 22,
-                      color: theme.textPrimary,
-                      semanticLabel: _looksGrid ? 'Stacked view' : 'Grid view',
-                    ),
+            child: _looksMode
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CupertinoButton(
+                        padding: const EdgeInsets.all(8),
+                        minimumSize: Size.zero,
+                        onPressed: SoundService.wrapTap(() {
+                          setState(() => _looksGrid = !_looksGrid);
+                        }),
+                        child: Icon(
+                          _looksGrid
+                              ? CupertinoIcons.rectangle_stack
+                              : CupertinoIcons.square_grid_2x2,
+                          size: 22,
+                          color: theme.textPrimary,
+                          semanticLabel: _looksGrid
+                              ? 'Stacked view'
+                              : 'Grid view',
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      CupertinoButton(
+                        padding: const EdgeInsets.all(8),
+                        minimumSize: Size.zero,
+                        onPressed: SoundService.wrapTap(_toggleLooks),
+                        child: Icon(
+                          CupertinoIcons.check_mark,
+                          size: 22,
+                          color: theme.textPrimary,
+                          semanticLabel: l10n.done,
+                        ),
+                      ),
+                    ],
+                  )
+                : _SlideHint(
+                    text: _frontIndex == 0
+                        ? l10n.slideForSettings
+                        : l10n.slideForProfile,
                   ),
-                  const SizedBox(width: 20),
-                ],
-                CupertinoButton(
-                  padding: const EdgeInsets.all(8),
-                  minimumSize: Size.zero,
-                  onPressed: SoundService.wrapTap(_toggleLooks),
-                  child: Icon(
-                    _looksMode
-                        ? CupertinoIcons.check_mark
-                        : CupertinoIcons.paintbrush,
-                    size: 22,
-                    color: theme.textPrimary,
-                    semanticLabel: _looksMode ? l10n.done : l10n.themes,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SlideHint extends StatefulWidget {
+  const _SlideHint({required this.text});
+
+  final String text;
+
+  @override
+  State<_SlideHint> createState() => _SlideHintState();
+}
+
+class _SlideHintState extends State<_SlideHint>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, child) {
+        return Opacity(opacity: 0.35 + 0.65 * _pulse.value, child: child);
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          child: Text(
+            widget.text,
+            key: ValueKey(widget.text),
+            textAlign: TextAlign.center,
+            style: theme.mutedText.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

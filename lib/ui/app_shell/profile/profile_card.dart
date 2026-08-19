@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
@@ -18,7 +16,9 @@ import 'package:provider/provider.dart';
 /// Playing-card identity face, tinted from the player's avatar like the
 /// in-game status scoreboards. The card itself is the winning-card look.
 class ProfileCard extends StatefulWidget {
-  const ProfileCard({super.key});
+  const ProfileCard({super.key, this.onToggleLooks});
+
+  final VoidCallback? onToggleLooks;
 
   @override
   State<ProfileCard> createState() => _ProfileCardState();
@@ -68,17 +68,10 @@ class _ProfileCardState extends State<ProfileCard> {
                 avatarId: avatarId,
                 name: name,
                 score: score,
-                inverted: false,
-              ),
-              _CornerPip(
-                avatarId: avatarId,
-                name: name,
-                score: score,
-                inverted: true,
               ),
               if (!_editingCard)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 56),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
                   child: Column(
                     children: [
                       Expanded(
@@ -110,9 +103,14 @@ class _ProfileCardState extends State<ProfileCard> {
                           },
                         ),
                       ),
-                      ProfileWalletCards(
-                        embeddedInCard: true,
+                      ProfileWalletPills(
                         scoreTheme: score,
+                        trailing: widget.onToggleLooks == null
+                            ? null
+                            : _LooksActionButton(
+                                score: score,
+                                onPressed: widget.onToggleLooks!,
+                              ),
                       ),
                     ],
                   ),
@@ -138,45 +136,73 @@ class _CornerPip extends StatelessWidget {
     required this.avatarId,
     required this.name,
     required this.score,
-    required this.inverted,
   });
 
   final String? avatarId;
   final String name;
   final AvatarScoreTheme score;
-  final bool inverted;
 
   @override
   Widget build(BuildContext context) {
     final letter = name.trim().isEmpty
         ? null
         : String.fromCharCode(name.trim().runes.first).toUpperCase();
-    final pip = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        PlayerAvatarView(avatarId: avatarId, size: 26, showBorder: false),
-        if (letter != null) ...[
-          const SizedBox(height: 3),
-          Text(
-            letter,
-            style: TextStyle(
-              color: score.ink,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              height: 1,
-            ),
-          ),
-        ],
-      ],
-    );
 
     return Positioned(
-      top: inverted ? null : 12,
-      left: inverted ? null : 12,
-      bottom: inverted ? 12 : null,
-      right: inverted ? 12 : null,
+      top: 10,
+      left: 10,
       child: IgnorePointer(
-        child: inverted ? Transform.rotate(angle: math.pi, child: pip) : pip,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PlayerAvatarView(avatarId: avatarId, size: 40, showBorder: false),
+            if (letter != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                letter,
+                style: TextStyle(
+                  color: score.ink,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LooksActionButton extends StatelessWidget {
+  const _LooksActionButton({required this.score, required this.onPressed});
+
+  final AvatarScoreTheme score;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: SoundService.wrapTap(onPressed),
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: score.panel,
+          shape: BoxShape.circle,
+          border: Border.all(color: score.ink.withValues(alpha: 0.18)),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          CupertinoIcons.paintbrush,
+          size: 22,
+          color: score.ink,
+          semanticLabel: l10n.themes,
+        ),
       ),
     );
   }
