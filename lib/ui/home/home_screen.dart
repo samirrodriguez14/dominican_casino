@@ -7,7 +7,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_about_card.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/home/home_login_card.dart';
-import 'package:dominican_casino/ui/home/home_privacy_card.dart';
+import 'package:dominican_casino/ui/home/home_settings_card.dart';
 import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
@@ -265,7 +265,7 @@ class HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (context, index) {
                   switch (index) {
                     case 0:
-                      return const HomePrivacyCard();
+                      return const HomeSettingsCard();
                     case 1:
                       return HomeLoginCard(
                         busy: _entering,

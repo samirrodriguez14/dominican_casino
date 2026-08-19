@@ -169,9 +169,6 @@ class AppLocalizations {
   String get aboutFeatureGames => isEs
       ? 'Único Casino Dominicano, Tres y Dos y más'
       : 'Unique Dominican Casino, Tres y Dos, and more';
-  String get aboutFeatureClassics => isEs
-      ? 'O los más conocidos: Solitario, Go Fish y más'
-      : 'Or your most known Solitaire, Go Fish, and more';
   String get aboutFeaturePlay => isEs
       ? 'Juega contra amigos o nuestros bots'
       : 'Play against friends or our AI bots';

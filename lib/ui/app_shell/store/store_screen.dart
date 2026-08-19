@@ -65,10 +65,6 @@ class StoreScreenState extends State<StoreScreen> {
           bundles: energyBundles,
           onBundleTap: (bundle, origin) => _buyEnergy(context, bundle, origin),
         ),
-        const SizedBox(height: 28),
-        Text(l10n.buyCoins, style: theme.title.copyWith(fontSize: 22)),
-        const SizedBox(height: 12),
-        _BundleGrid(bundles: coinBundles),
         const _ThemePackSection(),
       ],
     );

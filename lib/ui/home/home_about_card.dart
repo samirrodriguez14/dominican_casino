@@ -3,7 +3,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
-/// One-page pitch: headline on top, three open lines underneath.
+/// One-page pitch: headline on top, two feature lines underneath.
 class HomeAboutCard extends StatelessWidget {
   const HomeAboutCard({super.key});
 
@@ -54,10 +54,6 @@ class HomeAboutCard extends StatelessWidget {
                         label: l10n.aboutFeatureGames,
                       ),
                       _FeatureLine(
-                        icon: CupertinoIcons.square_stack_3d_up_fill,
-                        label: l10n.aboutFeatureClassics,
-                      ),
-                      _FeatureLine(
                         icon: CupertinoIcons.person_2_fill,
                         label: l10n.aboutFeaturePlay,
                       ),
@@ -87,13 +83,13 @@ class _FeatureLine extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 22, color: cream.withValues(alpha: .92)),
-        const SizedBox(width: 12),
+        Icon(icon, size: 30, color: cream.withValues(alpha: .92)),
+        const SizedBox(width: 14),
         Expanded(
           child: Text(
             label,
             style: theme.body.copyWith(
-              fontSize: 14,
+              fontSize: 17,
               height: 1.3,
               fontWeight: FontWeight.w600,
               color: cream.withValues(alpha: .94),

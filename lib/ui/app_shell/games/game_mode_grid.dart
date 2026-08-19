@@ -1,22 +1,10 @@
-import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Playable carousel games first, then locked / coming-soon slots for a 3×3.
-List<GameMode?> gameGridItems({int minCount = 9}) {
-  final playable = gameModeCarouselModes;
-  final locked = GameMode.values
-      .where((mode) => !playable.contains(mode))
-      .toList();
-  final items = <GameMode?>[...playable, ...locked];
-  while (items.length < minCount) {
-    items.add(null);
-  }
-  return items;
-}
+/// Playable carousel modes only (Robaito and other enum values stay hidden).
+List<GameMode> gameGridItems() => List.unmodifiable(gameModeCarouselModes);
 
 const gameGridGap = 10.0;
 const gameGridPadH = 4.0;
@@ -72,29 +60,24 @@ class GameModeGrid extends StatelessWidget {
         final t = ((progress - delay) / (1 - delay)).clamp(0.0, 1.0);
         final eased = Curves.easeOutCubic.transform(t);
         final mode = items[index];
-        final hidden = mode != null && hideModes.contains(mode);
+        final hidden = hideModes.contains(mode);
 
-        Widget slot;
-        if (mode == null) {
-          slot = _ComingSoonCard(tintIndex: index);
-        } else if (hidden) {
-          slot = const SizedBox.expand();
-        } else {
-          slot = GameModeCard(
-            key: cardKeys[mode],
-            mode: mode,
-            compact: true,
-            onHowToPlay: onHowToPlay == null
-                ? null
-                : () {
-                    final ctx = cardKeys[mode]?.currentContext ?? context;
-                    final box = ctx.findRenderObject() as RenderBox?;
-                    if (box == null || !box.hasSize) return;
-                    final rect = box.localToGlobal(Offset.zero) & box.size;
-                    onHowToPlay!(mode, rect);
-                  },
-          );
-        }
+        final slot = hidden
+            ? const SizedBox.expand()
+            : GameModeCard(
+                key: cardKeys[mode],
+                mode: mode,
+                compact: true,
+                onHowToPlay: onHowToPlay == null
+                    ? null
+                    : () {
+                        final ctx = cardKeys[mode]?.currentContext ?? context;
+                        final box = ctx.findRenderObject() as RenderBox?;
+                        if (box == null || !box.hasSize) return;
+                        final rect = box.localToGlobal(Offset.zero) & box.size;
+                        onHowToPlay!(mode, rect);
+                      },
+              );
 
         return Opacity(
           opacity: hidden ? 0 : eased,
@@ -104,65 +87,6 @@ class GameModeGrid extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _ComingSoonCard extends StatelessWidget {
-  const _ComingSoonCard({required this.tintIndex});
-
-  final int tintIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = AppStyle.theme;
-    final l10n = AppLocalizations.of(context);
-    final faces = [theme.pickerFace, theme.pickerFaceEdge, theme.pickerFaceAlt];
-    final face = faces[tintIndex % faces.length];
-    return AspectRatio(
-      aspectRatio: 2.5 / 3.5,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: face.withValues(alpha: .72),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: theme.textPrimary.withValues(alpha: .12),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.black.withValues(alpha: .22),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.lock_fill,
-              size: 22,
-              color: theme.textPrimary.withValues(alpha: .62),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                l10n.comingSoon,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.mutedText.copyWith(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  height: 1.15,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

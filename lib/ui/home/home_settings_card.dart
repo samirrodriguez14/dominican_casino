@@ -1,12 +1,14 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/ui/home/privacy_policy_copy.dart';
+import 'package:dominican_casino/ui/settings/legal_links.dart';
+import 'package:dominican_casino/ui/settings/settings_controls.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Slate face for the home Privacy pane.
-class HomePrivacyCard extends StatelessWidget {
-  const HomePrivacyCard({super.key});
+/// Slate face for the home Settings pane (language, sound, haptics).
+class HomeSettingsCard extends StatelessWidget {
+  const HomeSettingsCard({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +23,7 @@ class HomePrivacyCard extends StatelessWidget {
             top: 14,
             left: 14,
             child: Icon(
-              CupertinoIcons.lock_fill,
+              CupertinoIcons.gear_alt_fill,
               size: 18,
               color: theme.textPrimary.withValues(alpha: .78),
             ),
@@ -31,10 +33,10 @@ class HomePrivacyCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(child: HomeCardEyebrow(l10n.privacy.toUpperCase())),
+                Center(child: HomeCardEyebrow(l10n.settings.toUpperCase())),
                 const SizedBox(height: 10),
                 Text(
-                  l10n.privacyPolicy,
+                  l10n.settings,
                   style: theme.title.copyWith(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -45,7 +47,28 @@ class HomePrivacyCard extends StatelessWidget {
                 const Expanded(
                   child: SingleChildScrollView(
                     physics: BouncingScrollPhysics(),
-                    child: PrivacyPolicyCopy(compact: true),
+                    child: AppPreferencesSection(),
+                  ),
+                ),
+                Center(
+                  child: CupertinoButton(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 2,
+                    ),
+                    minimumSize: Size.zero,
+                    onPressed: SoundService.wrapTap(
+                      () => openPrivacyPolicy(context),
+                    ),
+                    child: Text(
+                      l10n.privacyPolicy,
+                      style: theme.mutedText.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        decoration: TextDecoration.underline,
+                        decorationColor: theme.muted.withValues(alpha: .45),
+                      ),
+                    ),
                   ),
                 ),
               ],

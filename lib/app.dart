@@ -13,7 +13,6 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/general_game/general_game_screen.dart';
 import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
-import 'package:dominican_casino/ui/home/privacy_policy_screen.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_screen.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model_base.dart';
@@ -60,10 +59,6 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
         GoRoute(
           path: '/instructions',
           builder: (context, state) => const InstructionsScreen(),
-        ),
-        GoRoute(
-          path: '/privacy',
-          builder: (context, state) => const PrivacyPolicyScreen(),
         ),
         GoRoute(
           path: '/tutorial',
