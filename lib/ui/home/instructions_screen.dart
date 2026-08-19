@@ -3,8 +3,7 @@ import 'dart:convert';
 import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/ui/cards/playing_card.dart';
+import 'package:dominican_casino/ui/home/home_instruction_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -94,24 +93,11 @@ class _InstructionPage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          for (final paragraph in section.body) ...[
-            Text(
-              paragraph,
-              style: AppStyle.theme.body.copyWith(fontSize: 20, height: 1.35),
-            ),
-            const SizedBox(height: 14),
-          ],
-
-          if (section.specialCards.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: section.specialCards.map((special) {
-                return _SpecialInstructionCard(special: special);
-              }).toList(),
-            ),
-          ],
+          InstructionSectionContent(
+            section: section,
+            bodyFontSize: 20,
+            cardWidth: 64,
+          ),
 
           const SizedBox(height: 24),
 
@@ -120,50 +106,6 @@ class _InstructionPage extends StatelessWidget {
               "$pageNumber / $totalPages",
               style: AppStyle.theme.body,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SpecialInstructionCard extends StatelessWidget {
-  final InstructionSpecialCard special;
-
-  const _SpecialInstructionCard({required this.special});
-
-  @override
-  Widget build(BuildContext context) {
-    final card = PlayingCardModel(
-      id: 'instruction-${special.rank}-${special.suit}',
-      rank: special.rank,
-      suit: special.suit,
-    );
-
-    return Container(
-      width: 120,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppStyle.theme.background,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 110,
-            child: PlayingCard(playingCardModel: card, isSelected: false),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            special.label,
-            textAlign: TextAlign.center,
-            style: AppStyle.theme.body,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            special.points,
-            textAlign: TextAlign.center,
-            style: AppStyle.theme.title,
           ),
         ],
       ),

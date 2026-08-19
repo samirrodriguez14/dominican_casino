@@ -1,4 +1,5 @@
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
+import 'package:dominican_casino/game_control/game_engine/rummy/rummy_state.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
@@ -66,6 +67,28 @@ class GameStateFixtures {
         pid: pid,
         selectedCard: usedCard,
         selectedCards: const [],
+        selectedStacks: const [],
+      );
+
+  static CurrentCardSelection rummyPlaySelection({
+    required String pid,
+    required PlayingCardModel usedCard,
+  }) =>
+      CurrentCardSelection(
+        pid: pid,
+        selectedCard: usedCard,
+        selectedCards: const [],
+        selectedStacks: const [],
+      );
+
+  static CurrentCardSelection rummyTakeSelection({
+    required String pid,
+    required PlayingCardModel usedCard,
+  }) =>
+      CurrentCardSelection(
+        pid: pid,
+        selectedCard: null,
+        selectedCards: [usedCard],
         selectedStacks: const [],
       );
 
@@ -171,6 +194,58 @@ class GameStateFixtures {
       round: initialRound,
       winnerId: '',
       playersInfo: twoPlayerInfo(p1: p1, p2: p2),
+    );
+  }
+
+  /// Minimal 2-player Rummy state.
+  static GameState rummyTwoPlayerState({
+    required GameStatus gameStatus,
+    required String controllerId,
+    required String currentTurnPlayerId,
+    required List<PlayingCardModel> deck,
+    required List<PlayingCardModel> playingArea,
+    required List<PlayingCardModel> p1Hand,
+    required List<PlayingCardModel> p2Hand,
+    required Map<String, dynamic> scores,
+    Round? round,
+    RummyState? rummyState,
+  }) {
+    final p1 = pid1;
+    final p2 = pid2;
+    final initialRound = round ??
+        Round(
+          id: 0,
+          roundStatus: RoundStatus.playing,
+          roundScores: const {},
+        );
+
+    return GameState(
+      gameStatus: gameStatus,
+      gameMode: GameMode.rummy,
+      id: "game_test_rummy",
+      controllerId: controllerId,
+      started: true,
+      currentTurnPlayerId: currentTurnPlayerId,
+      deck: deck,
+      scores: scores,
+      extraPoints: 0,
+      extraPointsHolderId: '',
+      playingArea: playingArea,
+      playingAreaStacks: const [],
+      hands: {
+        p1: p1Hand,
+        p2: p2Hand,
+      },
+      playersDeck: {
+        p1: [],
+        p2: [],
+      },
+      lastTookCardId: '',
+      cardMoveEvents: const [],
+      round: initialRound,
+      winnerId: '',
+      playersInfo: twoPlayerInfo(p1: p1, p2: p2),
+      rummyState: rummyState,
     );
   }
 }

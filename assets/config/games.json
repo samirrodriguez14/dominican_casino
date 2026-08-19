@@ -64,6 +64,27 @@
       ]
     },
     {
+      "id": "rummy",
+      "title": "Rummy",
+      "subtitle": "Romir: contract boxes + go-out",
+      "description": "Form the deal-time contract by dragging the right groups into two boxes. First go-out wins the match. About 5–7 minutes · 2–4 players.",
+      "players": {
+        "min": 2,
+        "max": 4,
+        "label": "2–4 Players"
+      },
+      "icon": "square_stack_3d_up",
+      "aiSupported": true,
+      "enabled": true,
+      "themeColor": "#8B5CF6",
+      "rules": [
+        "Two dotted boxes per player",
+        "Deal creates a random contract",
+        "Drag cards to fulfill the contract",
+        "First to go-out wins the match"
+      ]
+    },
+    {
       "id": "robaito",
       "title": "Robaito",
       "subtitle": "Steal stacks and dominate the table",

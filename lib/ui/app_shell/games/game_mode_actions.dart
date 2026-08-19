@@ -21,7 +21,8 @@ import 'package:provider/provider.dart';
 bool _allowsNoBet(GameMode mode) =>
     mode == GameMode.casino ||
     mode == GameMode.casinoSpeed ||
-    mode == GameMode.tresydos;
+    mode == GameMode.tresydos ||
+    mode == GameMode.rummy;
 
 void showJoinGameDialog(BuildContext context, String mode) {
   final TextEditingController controller = TextEditingController();
@@ -204,6 +205,7 @@ String _modeTitle(GamesViewModel vm, GameMode mode) {
     GameMode.casino => 'Casino',
     GameMode.casinoSpeed => 'Casino Speed',
     GameMode.tresydos => 'Tres y Dos',
+    GameMode.rummy => 'Rummy',
     GameMode.robaito => 'Robaito',
   };
 }
@@ -652,7 +654,8 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
 
   void _start() {
     final playerCount =
-        widget.mode == GameMode.tresydos && _path == _PlayPath.puli
+        (widget.mode == GameMode.tresydos || widget.mode == GameMode.rummy) &&
+                _path == _PlayPath.puli
         ? _playerCount
         : 2;
     final turnDurationSeconds = widget.mode == GameMode.casinoSpeed
@@ -684,7 +687,8 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
     final energy = WalletConfig.energyCostFor(mode.name);
     final joining = _path == _PlayPath.join;
     final showPlayerCount =
-        mode == GameMode.tresydos && _path == _PlayPath.puli;
+        (mode == GameMode.tresydos || mode == GameMode.rummy) &&
+            _path == _PlayPath.puli;
     final showTurnClock = mode == GameMode.casinoSpeed && !joining;
 
     return Center(
@@ -722,10 +726,10 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
                 _PathPicker(
                   selected: _path,
                   onChanged: (path) => setState(() => _path = path),
-                  friendIcon: mode == GameMode.tresydos
+                  friendIcon: mode == GameMode.tresydos || mode == GameMode.rummy
                       ? CupertinoIcons.group_solid
                       : CupertinoIcons.person_2_fill,
-                  friendTitle: mode == GameMode.tresydos
+                  friendTitle: mode == GameMode.tresydos || mode == GameMode.rummy
                       ? l10n.playFriendsChip
                       : l10n.playFriendChip,
                 ),
@@ -878,6 +882,7 @@ Future<void> gameEnter(
 Future<InstructionsData> loadInstructions(GameMode mode) async {
   final path = switch (mode) {
     GameMode.tresydos => 'assets/config/tresydos_instructions.json',
+    GameMode.rummy => 'assets/config/rummy_instructions.json',
     GameMode.robaito => 'assets/config/robaito_instructions.json',
     GameMode.casino => 'assets/config/casino_instructions.json',
     GameMode.casinoSpeed => 'assets/config/casino_speed_instructions.json',

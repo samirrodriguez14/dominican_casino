@@ -57,6 +57,7 @@ Unknown `gameMode` string:
 |----|--------|---------------------|------------|
 | casino | yes | 2 | 2 |
 | tresydos | yes | 4 | 2 (hard-coded) |
+| rummy | yes | 4 | 4 |
 | robaito | no | 4 | — |
 
 **Contract:** `games.json` `players.max` must match the engine. Tres y Dos JSON says 4; code is 2. Fix one side before advertising 4-player.

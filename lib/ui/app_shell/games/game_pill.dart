@@ -306,6 +306,7 @@ class _ModeBadge extends StatelessWidget {
       GameMode.casino => 'Casino',
       GameMode.casinoSpeed => 'Casino Speed',
       GameMode.tresydos => 'Tres y Dos',
+      GameMode.rummy => 'Rummy',
       GameMode.robaito => 'Robaito',
     };
     return Container(

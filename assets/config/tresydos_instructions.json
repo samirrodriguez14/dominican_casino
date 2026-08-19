@@ -3,39 +3,37 @@
     "sections": [
         {
             "title": "General Info",
-            "body": [
-                "Tres y Dos is a fast-paced matching card game.",
-                "Estimated time: about 5–7 minutes.",
-                "Players: 2–4.",
-                "Win by: winning 3 rounds.",
-                "The goal is to form one set of 3 matching cards and one set of 2 matching cards.",
-                "The first player to complete a valid hand and claim it wins the round."
-            ]
-        },
-        {
-            "title": "Cards",
-            "body": [
-                "The game uses a standard deck of cards.",
-                "Cards match by rank only, not suit.",
-                "For example, any three 7s make a valid set of 3, regardless of suit."
+            "description": "A fast matching game. First to make 3 + 2 wins the round.",
+            "facts": [
+                {"label": "Time", "value": "5–7 min"},
+                {"label": "Players", "value": "2–4"},
+                {"label": "Card deck", "value": "Standard"},
+                {"label": "Match by", "value": "Rank, not suit"},
+                {"label": "Win", "value": "First to 3 rounds"}
             ]
         },
         {
             "title": "Game Rules",
             "body": [
-                "Players draw and discard cards during their turn.",
-                "The objective is to collect matching ranks.",
-                "A winning hand must contain one set of 3 matching cards and one set of 2 matching cards.",
-                "The set of 3 and the set of 2 must be different ranks.",
-                "Example: 7♠ + 7♥ + 7♦ and K♣ + K♠ is a valid hand."
-            ]
-        },
-        {
-            "title": "Claiming a Win",
-            "body": [
-                "As soon as a player forms a valid Tres y Dos hand, they can claim the round.",
-                "Only the first player to claim a valid hand wins.",
-                "If multiple players have a valid hand, the fastest claim takes priority."
+                "Draw and discard on your turn.",
+                "Win a round with one set of 3 and one set of 2, of different ranks."
+            ],
+            "cardGroups": [
+                {
+                    "label": "Set of 3",
+                    "cards": [
+                        {"rank": "7", "suit": "♠"},
+                        {"rank": "7", "suit": "♥"},
+                        {"rank": "7", "suit": "♦"}
+                    ]
+                },
+                {
+                    "label": "Set of 2",
+                    "cards": [
+                        {"rank": "K", "suit": "♣"},
+                        {"rank": "K", "suit": "♠"}
+                    ]
+                }
             ]
         },
         {

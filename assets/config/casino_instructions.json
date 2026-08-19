@@ -3,25 +3,45 @@
     "sections": [
         {
             "title": "General Info",
-            "body": [
-                "Dominican Casino is a capture card game.",
-                "Estimated time: about 10–12 minutes.",
-                "Players: 2.",
-                "Win by: reaching 21 points first.",
-                "Players use cards from their hand to capture cards from the table.",
-                "The goal is to collect scoring cards and reach the winning score."
+            "description": "A capture card game where luck and strategy blend.",
+            "facts": [
+                {"label": "Time", "value": "10 min"},
+                {"label": "Players", "value": "2"},
+                {"label": "Win condition", "value": "Reach 21 points first"}
             ]
         },
         {
             "title": "Cards",
+            "showCardsFirst": true,
             "body": [
-                "Kings have a capture value of 13.",
-                "Queens have a capture value of 12.",
-                "Jacks have a capture value of 11.",
-                "Number cards use their numerical value.",
-                "Aces count as either 1 or 14, depending on the play.",
-                "An Ace can capture another Ace, or any group of cards that adds up to 14.",
-                "Example: an Ace can capture 8 + 5 + A because 8 + 5 + 1 = 14."
+                "Number cards use their face value.",
+                "An Ace can capture another Ace, or any group that adds to 14."
+            ],
+            "specialCards": [
+                {
+                    "rank": "K",
+                    "suit": "♠",
+                    "label": "King",
+                    "points": "K = 13"
+                },
+                {
+                    "rank": "Q",
+                    "suit": "♥",
+                    "label": "Queen",
+                    "points": "Q = 12"
+                },
+                {
+                    "rank": "J",
+                    "suit": "♣",
+                    "label": "Jack",
+                    "points": "J = 11"
+                },
+                {
+                    "rank": "A",
+                    "suit": "♦",
+                    "label": "Ace",
+                    "points": "A = 1 or 14"
+                }
             ]
         },
         {
@@ -35,13 +55,13 @@
         },
         {
             "title": "Scoring",
-            "body": [
-                "Most captured cards gives carta: +3 points.",
-                "Most spades gives pi: +1 point.",
-                "Each Ace gives +1 point.",
-                "The 2♠ gives +1 point.",
-                "The 10♦ gives +2 points.",
-                "Virao points are added separately."
+            "facts": [
+                {"label": "Most cards", "value": "+3 carta"},
+                {"label": "Most spades", "value": "+1 pi"},
+                {"label": "Each Ace", "value": "+1"},
+                {"label": "2♠", "value": "+1"},
+                {"label": "10♦", "value": "+2"},
+                {"label": "Viraos", "value": "Added separately"}
             ],
             "specialCards": [
                 {
@@ -66,13 +86,10 @@
         },
         {
             "title": "Coins",
-            "body": [
-                "Coins are earned during Casino play and added to your wallet after the match.",
-                "A take awards coins when you capture 6 or more cards.",
-                "Those coins equal the number of cards in that take.",
-                "Special cards pay as soon as you capture them: 10♦ adds 2 coins, 2♠ adds 1, and each Ace adds 1.",
-                "Look for the bouncing coin markers on special cards and on big stacks that are ready to pay.",
-                "At the end of a round, only viraos add extra coins, equal to the virao points."
+            "facts": [
+                {"label": "Take 6+", "value": "Coins = cards taken"},
+                {"label": "Specials", "value": "Pay on capture"},
+                {"label": "Viraos", "value": "Extra coins at round end"}
             ],
             "specialCards": [
                 {

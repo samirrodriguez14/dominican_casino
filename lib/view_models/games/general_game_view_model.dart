@@ -6,6 +6,7 @@ import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_rules_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tres_dos_game_state_handler.dart';
+import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/models/game_reaction.dart';
 import 'package:dominican_casino/game_control/interfaces/card_event.dart';
@@ -874,8 +875,14 @@ class GeneralGameViewModel extends ChangeNotifier {
   bool get needsTakeHint =>
       canPlayTurn &&
       isLiveTurn &&
-      gameState.gameMode == GameMode.tresydos &&
-      myHandCards.length != 6;
+      GameRegistry.isDrawDiscardFamily(gameState.gameMode) &&
+      myHandCards.length != _playHandSizeFor(gameState.gameMode);
+
+  int _playHandSizeFor(GameMode mode) => switch (mode) {
+        GameMode.tresydos => 6,
+        GameMode.rummy => 8,
+        _ => 0,
+      };
 
   Duration get turnTotal => gameState.turnDuration;
 
@@ -896,6 +903,23 @@ class GeneralGameViewModel extends ChangeNotifier {
       !gameState.isLocalBotPid(gameState.currentTurnPlayerId);
 
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
+  /// Rummy: cards that are currently *not* assigned to dotted boxes.
+  ///
+  /// We keep [myHandCards] as the full hand (engine hand-size rules depend
+  /// on it). UI only shows [myUnboxedHandCards] so discarding happens via
+  /// unboxed cards.
+  List<PlayingCardModel> get myUnboxedHandCards {
+    if (gameState.gameMode != GameMode.rummy) return myHandCards;
+    final rummy = gameState.rummyState;
+    if (rummy == null) return myHandCards;
+
+    final boxed = <String>{};
+    boxed.addAll(rummy.boxAByPid[me] ?? const []);
+    boxed.addAll(rummy.boxBByPid[me] ?? const []);
+    if (boxed.isEmpty) return myHandCards;
+
+    return myHandCards.where((c) => !boxed.contains(c.id)).toList();
+  }
   List<PlayingCardModel> get myCollectedCards =>
       gameState.playersDeck[me] ?? [];
   List<PlayingCardModel> get myLastTake => lastTakeFor(me);
@@ -1079,6 +1103,15 @@ class GeneralGameViewModel extends ChangeNotifier {
     final ignoreTableSlots =
         !isCasinoFamily && src?.kind == BoardDragKind.handCard;
 
+    if (gameState.gameMode == GameMode.rummy) {
+      if (_boxContains(rummyBoxAKey, global)) {
+        return const DropTarget.rummyBoxA();
+      }
+      if (_boxContains(rummyBoxBKey, global)) {
+        return const DropTarget.rummyBoxB();
+      }
+    }
+
     if (!ignoreTableSlots) {
       for (final card in gameState.playingArea) {
         if (card.id == skipId) continue;
@@ -1098,6 +1131,19 @@ class GeneralGameViewModel extends ChangeNotifier {
     }
     // Tres y Dos: drag a pile card onto/toward the hand to take it.
     // Skip when the source is already a hand card so fan-reorder still works.
+    if (gameState.gameMode == GameMode.rummy &&
+        !isCasinoFamily &&
+        src?.kind == BoardDragKind.handCard &&
+        skipId != null) {
+      final rummy = gameState.rummyState;
+      final boxedA = rummy?.boxAByPid[me]?.contains(skipId) ?? false;
+      final boxedB = rummy?.boxBByPid[me]?.contains(skipId) ?? false;
+      final boxed = boxedA || boxedB;
+      if (boxed && _boxContains(myHandKey, global)) {
+        // Rummy: dropping a boxed card onto the hand unboxes it.
+        return const DropTarget.playerHand();
+      }
+    }
     if (!isCasinoFamily && src?.kind != BoardDragKind.handCard) {
       if (_boxContains(myHandKey, global)) {
         return const DropTarget.playerHand();
@@ -1136,6 +1182,8 @@ class GeneralGameViewModel extends ChangeNotifier {
     switch (target.kind) {
       case DropTargetKind.emptyTable:
       case DropTargetKind.playerHand:
+      case DropTargetKind.rummyBoxA:
+      case DropTargetKind.rummyBoxB:
         break;
       case DropTargetKind.tableCard:
         if (!tableCards.any((c) => c.id == target.card!.id)) {
@@ -1326,6 +1374,56 @@ class GeneralGameViewModel extends ChangeNotifier {
       dragHandoff = null;
       notifyListeners();
       return false;
+    }
+
+    // Rummy: dotted boxes are grouping UI, not engine actions.
+    if (gameState.gameMode == GameMode.rummy &&
+        gameState.rummyState != null &&
+        source.kind == BoardDragKind.handCard &&
+        source.card != null) {
+      final pid = me;
+      final rummy = gameState.rummyState!;
+      final cardId = source.card!.id;
+
+      final boxedA = rummy.boxAByPid[pid]?.contains(cardId) ?? false;
+      final boxedB = rummy.boxBByPid[pid]?.contains(cardId) ?? false;
+      final isBoxed = boxedA || boxedB;
+
+      if (target.kind == DropTargetKind.rummyBoxA ||
+          target.kind == DropTargetKind.rummyBoxB) {
+        final targetMap = target.kind == DropTargetKind.rummyBoxA
+            ? rummy.boxAByPid
+            : rummy.boxBByPid;
+        final alreadyInTarget = targetMap[pid]?.contains(cardId) ?? false;
+
+        // If the card is already in this box, do NOT remove+append it.
+        // That would overwrite the reorder done via onHandReorder while
+        // dragging inside the same dotted box.
+        if (!alreadyInTarget) {
+          rummy.boxAByPid[pid]?.removeWhere((id) => id == cardId);
+          rummy.boxBByPid[pid]?.removeWhere((id) => id == cardId);
+
+          targetMap.putIfAbsent(pid, () => []);
+          if (!targetMap[pid]!.contains(cardId)) {
+            targetMap[pid]!.add(cardId);
+          }
+        }
+
+        dropHover = null;
+        dragHandoff = null;
+        notifyListeners();
+        return true;
+      }
+
+      // Unbox only when the card is already boxed.
+      if (target.kind == DropTargetKind.playerHand && isBoxed) {
+        rummy.boxAByPid[pid]?.removeWhere((id) => id == cardId);
+        rummy.boxBByPid[pid]?.removeWhere((id) => id == cardId);
+        dropHover = null;
+        dragHandoff = null;
+        notifyListeners();
+        return true;
+      }
     }
 
     final actions = actionsForDrop(source, target);
@@ -2368,6 +2466,8 @@ class GeneralGameViewModel extends ChangeNotifier {
   final GlobalKey oppDeckKey = GlobalKey();
   final GlobalKey myHandKey = GlobalKey();
   final GlobalKey oppHandKey = GlobalKey();
+  final GlobalKey rummyBoxAKey = GlobalKey();
+  final GlobalKey rummyBoxBKey = GlobalKey();
   final GlobalKey playButtonKey = GlobalKey();
   final GlobalKey addButtonKey = GlobalKey();
   final GlobalKey takeStackButtonKey = GlobalKey();

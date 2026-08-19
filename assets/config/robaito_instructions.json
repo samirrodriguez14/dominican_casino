@@ -1,56 +1,55 @@
 {
-  "title": "How to Play",
-  "sections": [
-    {
-      "title": "General Info",
-      "body": [
-        "Robaito is a capture and stealing card game.",
-        "Players capture cards from the table and steal stacks from opponents.",
-        "The goal is to finish the round with the most captured cards."
-      ]
-    },
-    {
-      "title": "Cards",
-      "body": [
-        "Cards are captured by matching ranks.",
-        "Number cards use their numerical value.",
-        "Face cards match only their own rank.",
-        "Stacks belong to players and can be stolen."
-      ]
-    },
-    {
-      "title": "Game Rules",
-      "body": [
-        "On your turn, play one card from your hand.",
-        "If your card matches a card on the table, you capture it.",
-        "If your card matches another player's stack value, you steal that stack.",
-        "If no capture or steal is possible, the card stays on the table.",
-        "Players continue taking turns until all cards are played."
-      ]
-    },
-    {
-      "title": "Stealing Stacks",
-      "body": [
-        "Player stacks remain vulnerable to stealing.",
-        "A matching card can take ownership of an opponent’s stack.",
-        "Large stacks are valuable but can attract attention."
-      ]
-    },
-    {
-      "title": "Winning the Round",
-      "body": [
-        "When the round ends, players count their captured cards.",
-        "The player with the most cards wins the round.",
-        "Winning multiple steals can make the difference."
-      ]
-    },
-    {
-      "title": "Strategy Tips",
-      "body": [
-        "Pay attention to cards already played.",
-        "Protect valuable stacks when possible.",
-        "Sometimes saving a card for a steal is better than capturing immediately."
-      ]
-    }
-  ]
+    "title": "How to Play",
+    "sections": [
+        {
+            "title": "General Info",
+            "description": "Capture cards and steal stacks. Finish with the most cards.",
+            "facts": [
+                {"label": "Players", "value": "2"},
+                {"label": "Win condition", "value": "Most captured cards"}
+            ]
+        },
+        {
+            "title": "Cards",
+            "body": [
+                "Capture by matching rank.",
+                "Face cards match only their own rank.",
+                "Stacks belong to players and can be stolen."
+            ]
+        },
+        {
+            "title": "Game Rules",
+            "body": [
+                "On your turn, play one card from your hand.",
+                "If your card matches a card on the table, you capture it.",
+                "If your card matches another player's stack value, you steal that stack.",
+                "If no capture or steal is possible, the card stays on the table.",
+                "Players continue taking turns until all cards are played."
+            ]
+        },
+        {
+            "title": "Stealing Stacks",
+            "body": [
+                "Player stacks remain vulnerable to stealing.",
+                "A matching card can take ownership of an opponent’s stack.",
+                "Large stacks are valuable but can attract attention."
+            ]
+        },
+        {
+            "title": "Winning the Round",
+            "body": [
+                "When the round ends, players count their captured cards.",
+                "The player with the most cards wins the round.",
+                "Winning multiple steals can make the difference."
+            ]
+        },
+        {
+            "title": "Strategy Tips",
+            "body": [
+                "Pay attention to cards already played.",
+                "Protect valuable stacks when possible.",
+                "Sometimes saving a card for a steal is better than capturing immediately."
+            ]
+        }
+    ]
 }

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
@@ -39,13 +40,14 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
           height: _fanHeight,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final cards = vm.myHandCards;
+              final cards = vm.myUnboxedHandCards;
               if (cards.isEmpty) return const SizedBox.shrink();
               final celebrating = vm.isCelebratingHand(vm.me);
               final count = cards.length;
+              final isRummy = vm.gameState.gameMode == GameMode.rummy;
               // Prefer tightening the gap first (cards closer), and only
               // shrink cards if we can't keep the minimum gap.
-              const minGap = 12.0;
+              final minGap = isRummy ? 6.0 : 12.0;
               const minCardWidth = 56.0;
 
               double cardWidth;
@@ -56,9 +58,11 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
               } else {
                 final gapForFullCards =
                     (constraints.maxWidth - _cardWidth) / (count - 1);
-                if (gapForFullCards >= minGap) {
+                final targetGap = isRummy ? gapForFullCards * 0.65 : gapForFullCards;
+                final maxGap = isRummy ? 44.0 : (celebrating ? 64.0 : 56.0);
+                if (targetGap >= minGap) {
                   cardWidth = _cardWidth;
-                  gap = gapForFullCards.clamp(0.0, celebrating ? 64.0 : 56.0);
+                  gap = targetGap.clamp(minGap, maxGap);
                 } else {
                   // Keep a tighter gap, reduce card width to fit.
                   gap = minGap;
@@ -163,10 +167,11 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
           tableFeedbackWidth: 72,
           onTap: () => vm.selectCard(card),
           onHandReorder: (global) {
+            if (vm.gameState.gameMode == GameMode.rummy) return;
             if (vm.hitTestDropTarget(global) != null) return;
             final id = vm.draggingSource?.id;
             if (id == null) return;
-            final live = vm.myHandCards;
+            final live = vm.myUnboxedHandCards;
             final liveFrom = live.indexWhere((c) => c.id == id);
             if (liveFrom < 0) return;
             final to = _indexForGlobalCenter(global, live.length);

@@ -9,6 +9,7 @@ const gameModeCarouselModes = <GameMode>[
   GameMode.casino,
   GameMode.casinoSpeed,
   GameMode.tresydos,
+  GameMode.rummy,
 ];
 
 class PickerCardPose {

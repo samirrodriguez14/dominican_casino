@@ -27,6 +27,7 @@ class GameModeCard extends StatelessWidget {
       GameMode.casino => theme.pickerFace,
       GameMode.casinoSpeed => theme.pickerFaceEdge,
       GameMode.tresydos => theme.pickerFaceAlt,
+      GameMode.rummy => theme.pickerFaceAlt,
       GameMode.robaito => theme.pickerFaceEdge,
     };
   }
@@ -170,7 +171,8 @@ class GameModeCard extends StatelessWidget {
       GameMode.tresydos => theme.suitRed,
       GameMode.casino ||
       GameMode.casinoSpeed ||
-      GameMode.robaito => theme.textPrimary,
+      GameMode.robaito ||
+      GameMode.rummy => theme.textPrimary,
     };
   }
 }
@@ -188,6 +190,7 @@ class _ModeMark extends StatelessWidget {
       GameMode.casino => '♠',
       GameMode.casinoSpeed => '♠',
       GameMode.tresydos => '♦',
+      GameMode.rummy => '♥',
       GameMode.robaito => '♣',
     };
     return Text(

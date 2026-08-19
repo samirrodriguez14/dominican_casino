@@ -1,5 +1,6 @@
 import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
+import 'package:dominican_casino/game_control/game_engine/rummy/rummy_game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
 import 'package:dominican_casino/models/game_state.dart';
 
@@ -11,6 +12,7 @@ class GameRegistry {
     GameMode.casino,
     GameMode.casinoSpeed,
     GameMode.tresydos,
+    GameMode.rummy,
   };
 
   static bool isPlayable(GameMode mode) => playableModes.contains(mode);
@@ -18,6 +20,10 @@ class GameRegistry {
   /// Classic Casino and Casino Speed share capture rules / UI / coins.
   static bool isCasinoFamily(GameMode mode) =>
       mode == GameMode.casino || mode == GameMode.casinoSpeed;
+
+  /// Games that share the draw/discard turn loop.
+  static bool isDrawDiscardFamily(GameMode mode) =>
+      mode == GameMode.tresydos || mode == GameMode.rummy;
 
   /// In-match label (top of board / status popup).
   static String displayTitle(GameMode mode) {
@@ -28,6 +34,8 @@ class GameRegistry {
         return 'Casino: Speed Mode';
       case GameMode.tresydos:
         return 'Tres y Dos';
+      case GameMode.rummy:
+        return 'Rummy (Romir)';
       case GameMode.robaito:
         return 'Robaito';
     }
@@ -42,6 +50,8 @@ class GameRegistry {
         return 'making the most points in a single round';
       case GameMode.tresydos:
         return 'winning 3 rounds';
+      case GameMode.rummy:
+        return 'go-out on the contract in 1 round';
       case GameMode.robaito:
         return 'collecting the most cards';
     }
@@ -58,6 +68,8 @@ class GameRegistry {
         return GameMode.casinoSpeed;
       case 'tresydos':
         return GameMode.tresydos;
+      case 'rummy':
+        return GameMode.rummy;
       case 'robaito':
         return GameMode.robaito;
       default:
@@ -72,6 +84,8 @@ class GameRegistry {
         return CasinoGameEngine();
       case GameMode.tresydos:
         return TresDosGameEngine();
+      case GameMode.rummy:
+        return RummyGameEngine();
       case GameMode.robaito:
         return null;
     }
@@ -91,6 +105,8 @@ class GameRegistry {
         return (4, 4, 4, 0);
       case GameMode.tresydos:
         return (5, 1, 0, 1);
+      case GameMode.rummy:
+        return (7, 1, 0, 1);
       case GameMode.robaito:
         return (0, 0, 0, 0);
     }

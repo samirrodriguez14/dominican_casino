@@ -7,6 +7,7 @@ import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
 import 'package:dominican_casino/local_player/tresdos_player.dart';
+import 'package:dominican_casino/local_player/rummy_player.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
@@ -171,6 +172,8 @@ class LocalPlayer extends ChangeNotifier {
         switch (state.gameMode) {
           case GameMode.tresydos:
             bestAction = await TresdosPlayer.tresdosBestAction(pid, state);
+          case GameMode.rummy:
+            bestAction = await RummyPlayer.rummyBestAction(pid, state);
           default:
             bestAction = await CasinoPlayer.casinoBestAction(pid, state);
         }

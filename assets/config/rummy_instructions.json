@@ -1,0 +1,39 @@
+{
+  "title": "How to Play",
+  "sections": [
+    {
+      "title": "General Info",
+      "facts": [
+        { "label": "Time", "value": "5–7 min" },
+        { "label": "Players", "value": "2–4" },
+        { "label": "Win condition", "value": "Go-out on the contract in 1 round" }
+      ]
+    },
+    {
+      "title": "The Contract (Boxes A & B)",
+      "body": [
+        "When the match starts, a random 7-card contract is dealt to you.",
+        "Your goal is to drag cards into the two dotted boxes so the groups match the contract requirements.",
+        "To win, the boxed cards must match the contract and cover all 7 cards (extra leftover cards do not count)."
+      ]
+    },
+    {
+      "title": "Your Turn (Draw → Boxes → Discard)",
+      "body": [
+        "Take one card (from the deck or the discard).",
+        "With 8 cards in your hand, drag any cards into Box A and Box B.",
+        "Discard down to 7 cards.",
+        "If Box A + Box B now satisfy the contract (using all 7 cards), you win immediately."
+      ]
+    },
+    {
+      "title": "Strategy Tips",
+      "body": [
+        "Try to build the groups the moment you draw cards that fit the contract.",
+        "If a go-out looks possible, focus on completing exactly the required groups.",
+        "Avoid boxing cards that block you from forming a complete contract."
+      ]
+    }
+  ]
+}
+
