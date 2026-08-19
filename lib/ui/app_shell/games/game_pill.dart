@@ -29,7 +29,7 @@ class GamePill extends StatelessWidget {
   final VoidCallback? onPlay;
   final VoidCallback? onInfo;
   final VoidCallback? onDelete;
-  final VoidCallback? onShare;
+  final void Function(BuildContext buttonContext)? onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -61,14 +61,16 @@ class GamePill extends StatelessWidget {
           onPressed: onInfo,
         ),
       if (waiting && onShare != null)
-        _PillIconButton(
-          icon: CupertinoIcons.share_up,
-          color: theme.textPrimary,
-          background: embeddedInCard
-              ? theme.textPrimary.withValues(alpha: .14)
-              : theme.surfaceAlt.withValues(alpha: .85),
-          embeddedInCard: embeddedInCard,
-          onPressed: onShare,
+        Builder(
+          builder: (buttonContext) => _PillIconButton(
+            icon: CupertinoIcons.share_up,
+            color: theme.textPrimary,
+            background: embeddedInCard
+                ? theme.textPrimary.withValues(alpha: .14)
+                : theme.surfaceAlt.withValues(alpha: .85),
+            embeddedInCard: embeddedInCard,
+            onPressed: () => onShare!(buttonContext),
+          ),
         ),
       if (onDelete != null)
         _PillIconButton(

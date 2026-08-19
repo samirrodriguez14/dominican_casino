@@ -1,7 +1,7 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/routing/game_routes.dart';
+import 'package:dominican_casino/services/share_invite.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
@@ -11,7 +11,6 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 /// Current or history games as [GamePill] rows.
 class CurrentGamesList extends StatelessWidget {
@@ -121,18 +120,11 @@ class _CurrentGamePill extends StatelessWidget {
         await vm.deleteGame(game.id);
       },
       onShare: !history && waiting
-          ? () async {
-              final link = GameRoutes.inviteUrl(
-                gameId: game.id,
-                gameMode: game.gameMode.name,
-              );
-              final message =
-                  '''
-                Join my Dominican ${gameModeTo(game.gameMode)} game!
-                $link
-                ''';
-              await SharePlus.instance.share(ShareParams(text: message));
-            }
+          ? (buttonContext) => shareGameInvite(
+              context: buttonContext,
+              gameId: game.id,
+              gameMode: game.gameMode.name,
+            )
           : null,
     );
   }

@@ -3,9 +3,11 @@ import 'dart:developer' as developer;
 
 import 'package:app_links/app_links.dart';
 import 'package:dominican_casino/game_control/game_registry.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
+import 'package:dominican_casino/services/notifications_service.dart';
 import 'package:dominican_casino/ui/app_shell/app_shell.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/general_game/general_game_screen.dart';
@@ -17,6 +19,7 @@ import 'package:dominican_casino/view_models/games/general_game_view_model.dart'
 import 'package:dominican_casino/view_models/tutorial_view_model_base.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/services/sound_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -33,6 +36,7 @@ class App extends StatefulWidget {
 class _MyAppState extends State<App> with WidgetsBindingObserver {
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSub;
+  StreamSubscription<RemoteMessage>? _fcmOpenedSub;
   late final GoRouter _router;
 
   bool _handledInitialLink = false;
@@ -121,6 +125,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
     });
 
     _initDeepLinks();
+    _initNotificationTaps();
   }
 
   /// Turn pushes are skipped while this device is looking at that match.
@@ -173,6 +178,40 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> _initNotificationTaps() async {
+    _fcmOpenedSub = NotificationsService.instance.opened.listen(
+      _openFromNotification,
+    );
+    await NotificationsService.instance.configure();
+    if (!mounted) return;
+    NotificationsService.instance.flushLaunchMessage();
+  }
+
+  Future<void> _openFromNotification(RemoteMessage message) async {
+    final invite = GameRoutes.parseNotificationData(message.data);
+    if (invite == null) return;
+
+    final appRepo = context.read<AppRepo>();
+    await appRepo.loadApp();
+    if (!mounted) return;
+
+    var gameMode = invite.gameMode;
+    if (GameRegistry.modeFromRoute(gameMode) == null) {
+      try {
+        final game = await appRepo.fs.loadGame(invite.gameId);
+        gameMode = gameModeTo(game.gameMode);
+      } catch (e, st) {
+        developer.log(
+          'FCM: Failed to load game ${invite.gameId}',
+          error: e,
+          stackTrace: st,
+        );
+        return;
+      }
+    }
+    await _openGame(gameId: invite.gameId, gameMode: gameMode);
+  }
+
   void _handleIncomingUri(Uri uri) {
     developer.log('DeepLink: path segments: ${uri.pathSegments}');
     final invite = GameRoutes.parseInvite(uri);
@@ -180,14 +219,26 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
       _router.go('/home');
       return;
     }
-    final mode = GameRegistry.modeFromRoute(invite.gameMode);
+    unawaited(_openGame(gameId: invite.gameId, gameMode: invite.gameMode));
+  }
+
+  Future<void> _openGame({
+    required String gameId,
+    required String gameMode,
+  }) async {
+    final appRepo = context.read<AppRepo>();
+    await appRepo.loadApp();
+    if (!mounted) return;
+    final mode = GameRegistry.modeFromRoute(gameMode);
     if (mode == null || !GameRegistry.isPlayable(mode)) {
       _router.go('/home');
       return;
     }
-    _router.go(
-      GameRoutes.join(gameId: invite.gameId, gameMode: invite.gameMode),
-    );
+    if (appRepo.player == null) {
+      _router.go('/home');
+      return;
+    }
+    _router.go(GameRoutes.join(gameId: gameId, gameMode: gameMode));
   }
 
   @override
@@ -195,6 +246,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
     _router.routerDelegate.removeListener(_syncActiveGamePresence);
     WidgetsBinding.instance.removeObserver(this);
     _linkSub?.cancel();
+    _fcmOpenedSub?.cancel();
     _router.dispose();
     super.dispose();
   }

@@ -30,6 +30,18 @@ class GameRoutes {
   }) =>
       'https://$inviteHost${join(gameId: gameId, gameMode: gameMode)}';
 
+  /// FCM tap payload from `onTurnChange`. `gameMode` may be empty on
+  /// older pushes — caller should load the match if mode is unknown.
+  static ({String gameId, String gameMode})? parseNotificationData(
+    Map<String, dynamic> data,
+  ) {
+    if (data['type']?.toString() == 'energy_full') return null;
+    final gid = (data['gid'] ?? data['gameId'])?.toString();
+    if (gid == null || !isValidGameId(gid)) return null;
+    final raw = (data['gameMode'] ?? data['mode'])?.toString() ?? '';
+    return (gameId: gid, gameMode: _normalizeMode(raw));
+  }
+
   /// Parse /join/{id}/{mode} or /game/{id}/{mode}/... from a universal
   /// link or custom-scheme URL (`dominicancasino://join/{id}/{mode}`).
   static ({String gameId, String gameMode})? parseInvite(Uri uri) {

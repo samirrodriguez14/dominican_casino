@@ -1,16 +1,12 @@
-import 'dart:developer' as developer;
-
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/routing/game_routes.dart';
-import 'package:dominican_casino/services/haptics.dart';
+import 'package:dominican_casino/services/share_invite.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 class GenGameControl extends StatefulWidget {
   const GenGameControl({super.key});
@@ -134,15 +130,23 @@ class _GenGameControlState extends State<GenGameControl> {
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: SoundService.wrapTap(actionAction(inGameAction, vm)),
+      onPressed: SoundService.wrapTap(actionAction(inGameAction, vm, ctx)),
       child: content,
     );
   }
 
-  Function() actionAction(InGameAction action, GeneralGameViewModel vm) {
+  Function() actionAction(
+    InGameAction action,
+    GeneralGameViewModel vm,
+    BuildContext buttonContext,
+  ) {
     switch (action) {
       case InGameAction.share:
-        return () => _shareAction(vm.gid, vm.gameState.gameMode.name);
+        return () => shareGameInvite(
+          context: buttonContext,
+          gameId: vm.gid,
+          gameMode: vm.gameState.gameMode.name,
+        );
       case InGameAction.exit:
         return () async {
           await vm.queueHomeCoinClaim();
@@ -199,16 +203,5 @@ class _GenGameControlState extends State<GenGameControl> {
       case InGameAction.exit:
         return CupertinoIcons.square_arrow_left;
     }
-  }
-
-  static Future<void> _shareAction(String? gid, String gameMode) async {
-    if (gid == null) return;
-    developer.log("sharing");
-    AppHaptics.mediumImpact();
-    final link = GameRoutes.inviteUrl(gameId: gid, gameMode: gameMode);
-    final message = '''Join my Dominican $gameMode game!
-           $link''';
-
-    await SharePlus.instance.share(ShareParams(text: message));
   }
 }

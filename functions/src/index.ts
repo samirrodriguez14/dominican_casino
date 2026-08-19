@@ -29,8 +29,14 @@ export const onTurnChange = onDocumentUpdated("games/{gid}", async (event) => {
     return;
   }
 
+  const gameMode =
+    typeof after.gameMode === "string" ? after.gameMode : "";
   const copy = _turnCopy();
-  await _sendToUser(nextPid, copy, {gid: event.params.gid});
+  await _sendToUser(nextPid, copy, {
+    type: "turn",
+    gid: event.params.gid,
+    gameMode,
+  });
 });
 
 /**
