@@ -1,6 +1,7 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
@@ -121,8 +122,10 @@ class _CurrentGamePill extends StatelessWidget {
       },
       onShare: !history && waiting
           ? () async {
-              final link =
-                  'https://dominican-casino.web.app/join/${game.id}/${game.gameMode}';
+              final link = GameRoutes.inviteUrl(
+                gameId: game.id,
+                gameMode: game.gameMode.name,
+              );
               final message =
                   '''
                 Join my Dominican ${gameModeTo(game.gameMode)} game!

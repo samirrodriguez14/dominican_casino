@@ -115,7 +115,31 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
       ],
     );
 
+    _router.routerDelegate.addListener(_syncActiveGamePresence);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncActiveGamePresence();
+    });
+
     _initDeepLinks();
+  }
+
+  /// Turn pushes are skipped while this device is looking at that match.
+  /// Leaving, switching games, or backgrounding clears it so FCM still fires.
+  void _syncActiveGamePresence() {
+    if (!mounted) return;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    final visible = lifecycle == null ||
+        lifecycle == AppLifecycleState.resumed ||
+        lifecycle == AppLifecycleState.inactive;
+    final segments = _router.state.uri.pathSegments;
+    String? gid;
+    if (visible &&
+        segments.length >= 2 &&
+        segments.first == 'game' &&
+        GameRoutes.isValidGameId(segments[1])) {
+      gid = segments[1];
+    }
+    context.read<AppRepo>().setActiveGameId(gid);
   }
 
   Future<void> _initDeepLinks() async {
@@ -168,6 +192,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _router.routerDelegate.removeListener(_syncActiveGamePresence);
     WidgetsBinding.instance.removeObserver(this);
     _linkSub?.cancel();
     _router.dispose();
@@ -188,6 +213,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
         sounds.pauseMusic();
         break;
     }
+    _syncActiveGamePresence();
   }
 
   @override

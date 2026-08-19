@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -204,7 +205,7 @@ class _GenGameControlState extends State<GenGameControl> {
     if (gid == null) return;
     developer.log("sharing");
     AppHaptics.mediumImpact();
-    final link = "https://dominican-casino.web.app/join/$gid/$gameMode";
+    final link = GameRoutes.inviteUrl(gameId: gid, gameMode: gameMode);
     final message = '''Join my Dominican $gameMode game!
            $link''';
 

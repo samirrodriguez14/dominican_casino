@@ -1,7 +1,11 @@
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
+
+/** Must match WalletConfig.energyCap on the client. */
+const ENERGY_CAP = 50;
 
 admin.initializeApp();
 
@@ -46,28 +50,31 @@ export const onEnergyFull = onSchedule(
       .limit(100)
       .get();
 
+    logger.info("Energy full due", {count: due.size});
+
     for (const doc of due.docs) {
-      const data = doc.data();
-      const energy = (data.energy as number | undefined) ?? 0;
-      const token = data.fcmToken as string | undefined;
-      if (energy >= 50 || !token) {
-        await doc.ref.update({
-          energyFullAt: admin.firestore.FieldValue.delete(),
-        });
-        continue;
-      }
-      const locale = data.locale as string | undefined;
-      const copy = _energyCopy(locale);
-      const sent = await _sendToUser(doc.id, copy, {
-        type: "energy_full",
-      });
-      if (!sent) continue;
+      const result = await _notifyEnergyFull(doc.id);
+      if (result === "skip") continue;
       await doc.ref.update({
         energyFullAt: admin.firestore.FieldValue.delete(),
       });
     }
   },
 );
+
+/**
+ * Send the energy-full push to the signed-in caller. Use this to test
+ * FCM without waiting for regen; does not change energyFullAt.
+ * @return {{result: string}} sent | skip | clear
+ */
+export const testEnergyFull = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Sign in first");
+  }
+  const result = await _notifyEnergyFull(uid, {force: true});
+  return {result};
+});
 
 /**
  * Local/AI seats are not real FCM recipients.
@@ -114,6 +121,49 @@ function _energyCopy(
 }
 
 /**
+ * Push energy-full, or explain why not.
+ * @param {string} uid Auth uid / users doc id.
+ * @param {object=} opts Optional flags.
+ * @param {boolean=} opts.force Skip in-game / cap checks for testing.
+ * @return {Promise<string>} sent, skip (retry later), or clear timestamp.
+ */
+async function _notifyEnergyFull(
+  uid: string,
+  opts?: {force?: boolean},
+): Promise<"sent" | "skip" | "clear"> {
+  const force = opts?.force === true;
+  const userSnap = await admin.firestore()
+    .collection("users").doc(uid).get();
+  const user = userSnap.data();
+  if (!user) {
+    logger.info("No user doc", {uid});
+    return "clear";
+  }
+
+  const energy = (user.energy as number | undefined) ?? 0;
+  if (!force && energy >= ENERGY_CAP) {
+    logger.info("Energy already full in doc", {uid, energy});
+    return "clear";
+  }
+
+  const viewing = user.activeGameId as string | undefined;
+  if (!force && viewing) {
+    logger.info("Skip energy, user in game", {uid, viewing});
+    return "skip";
+  }
+
+  const token = user.fcmToken as string | undefined;
+  if (!token) {
+    logger.info("No FCM token", {uid});
+    return "clear";
+  }
+
+  const copy = _energyCopy(user.locale as string | undefined);
+  const sent = await _sendToUser(uid, copy, {type: "energy_full"});
+  return sent ? "sent" : "skip";
+}
+
+/**
  * Send an alert to users/{uid}.fcmToken.
  * @param {string} uid Auth uid / users doc id.
  * @param {{title: string, body: string}} copy Notification text.
@@ -127,7 +177,14 @@ async function _sendToUser(
 ): Promise<boolean> {
   const userSnap = await admin.firestore()
     .collection("users").doc(uid).get();
-  const token = userSnap.data()?.fcmToken as string | undefined;
+  const user = userSnap.data();
+  const viewingGid = user?.activeGameId as string | undefined;
+  const targetGid = data.gid;
+  if (targetGid && viewingGid === targetGid) {
+    logger.info("Skip, user viewing game", {uid, gid: targetGid});
+    return false;
+  }
+  const token = user?.fcmToken as string | undefined;
   if (!token) {
     logger.info("No FCM token", {uid});
     return false;
@@ -145,7 +202,7 @@ async function _sendToUser(
         priority: "high",
         notification: {
           sound: "default",
-          channelId: "turns",
+          channelId: data.type === "energy_full" ? "energy" : "turns",
         },
       },
       apns: {

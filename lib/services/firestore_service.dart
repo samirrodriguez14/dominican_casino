@@ -215,6 +215,15 @@ class FirestoreService extends GameService {
     return false;
   }
 
+  /// Which match this device is looking at. Cleared when the user leaves
+  /// or backgrounds the app so turn pushes can skip an on-screen player.
+  Future<void> saveActiveGameId(String uid, String? gameId) async {
+    await _users.doc(uid).set({
+      'activeGameId': gameId ?? FieldValue.delete(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
   /// Store FCM token on the user profile — never on game documents.
   Future<void> saveUserToken(
     String uid,

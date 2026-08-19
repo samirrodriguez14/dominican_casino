@@ -14,6 +14,7 @@ import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/services/notifications_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
@@ -118,6 +119,8 @@ class AppRepo extends ChangeNotifier {
   DailyChallengeState get dailyChallengesState => _dailyChallenges;
   StreamSubscription<String>? _fcmTokenSub;
   String? _savedFcmToken;
+  String? _activeGameId;
+  Future<void> _activeGameWrite = Future.value();
 
   static const _themeKey = 'appTheme';
   static const _cardBackKey = 'cardBack';
@@ -272,6 +275,7 @@ class AppRepo extends ChangeNotifier {
       await NotificationsService.instance.configure();
       _listenForFcmTokenRefresh();
       await refreshNotificationStatus();
+      unawaited(_persistActiveGameId());
       if (player != null) appStatus = AppStatus.appReady;
     } catch (e, st) {
       developer.log("AppRepo.loadApp Error: $e", error: e, stackTrace: st);
@@ -900,6 +904,29 @@ class AppRepo extends ChangeNotifier {
       unawaited(_syncFcmToken());
     }
     notifyListeners();
+  }
+
+  /// Record the match currently on screen, or `null` when the user is
+  /// elsewhere / the app is backgrounded. Cloud Functions skip turn
+  /// pushes when this matches `games/{gid}`.
+  void setActiveGameId(String? gid) {
+    if (_activeGameId == gid) return;
+    _activeGameId = gid;
+    unawaited(_persistActiveGameId());
+  }
+
+  Future<void> _persistActiveGameId() {
+    _activeGameWrite = _activeGameWrite.catchError((_) {}).then((_) async {
+      final gid = _activeGameId;
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null || player?.id != uid) return;
+      try {
+        await fs.saveActiveGameId(uid, gid);
+      } catch (e) {
+        developer.log('AppRepo.saveActiveGameId: $e');
+      }
+    });
+    return _activeGameWrite;
   }
 
   void _listenForFcmTokenRefresh() {
@@ -1699,6 +1726,22 @@ class AppRepo extends ChangeNotifier {
     await _syncFcmToken();
     notifyListeners();
     return true;
+  }
+
+  /// Debug helper: fire the energy-full push now, without waiting for regen.
+  Future<bool> testEnergyFullNotification() async {
+    try {
+      final fn = FirebaseFunctions.instanceFor(region: 'us-central1');
+      final result = await fn.httpsCallable('testEnergyFull').call();
+      developer.log(
+        'testEnergyFull: ${result.data}',
+        name: 'notifications',
+      );
+      return true;
+    } catch (e) {
+      developer.log('testEnergyFull: $e', name: 'notifications');
+      return false;
+    }
   }
 
   static Future<List<GameInfo>> loadGames() async {

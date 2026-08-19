@@ -8,6 +8,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/currency_delta_label.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 /// Compact coins + energy chips for the top of shell screens.
@@ -164,17 +165,25 @@ class _CurrencyBarState extends State<CurrencyBar>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _Chip(
-          key: CurrencyBar.energyChipKey,
-          icon: CupertinoIcons.bolt_fill,
-          value: _shownEnergy,
-          color: theme.warning,
-          padH: padH,
-          padV: padV,
-          iconSize: iconSize,
-          fontSize: fontSize,
-          pulse: _energyPulse,
-          suffix: showTimer ? CurrencyBar.formatCountdown(remaining) : null,
+        GestureDetector(
+          onLongPress: kDebugMode
+              ? () async {
+                  AppHaptics.mediumImpact();
+                  await context.read<AppRepo>().testEnergyFullNotification();
+                }
+              : null,
+          child: _Chip(
+            key: CurrencyBar.energyChipKey,
+            icon: CupertinoIcons.bolt_fill,
+            value: _shownEnergy,
+            color: theme.warning,
+            padH: padH,
+            padV: padV,
+            iconSize: iconSize,
+            fontSize: fontSize,
+            pulse: _energyPulse,
+            suffix: showTimer ? CurrencyBar.formatCountdown(remaining) : null,
+          ),
         ),
         const SizedBox(width: 8),
         Stack(

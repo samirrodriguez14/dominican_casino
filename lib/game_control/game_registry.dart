@@ -49,7 +49,9 @@ class GameRegistry {
 
   static GameMode? modeFromRoute(String? raw) {
     if (raw == null || raw.isEmpty) return null;
-    switch (raw) {
+    const prefix = 'GameMode.';
+    final key = raw.startsWith(prefix) ? raw.substring(prefix.length) : raw;
+    switch (key) {
       case 'casino':
         return GameMode.casino;
       case 'casinoSpeed':

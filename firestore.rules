@@ -32,6 +32,7 @@ service cloud.firestore {
           'cardBack',
           'cardBackMark',
           'cardBackTint',
+          'activeGameId',
         ]);
       allow delete: if isSelf(uid);
     }
