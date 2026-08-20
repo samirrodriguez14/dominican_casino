@@ -64,8 +64,16 @@ class AppLocalizations {
   String get buy => isEs ? 'Comprar' : 'Buy';
   String get coinsThisGame =>
       isEs ? 'Monedas de la partida' : 'Coins this game';
+  String get awardsThisGame =>
+      isEs ? 'Premios de la partida' : 'Awards this game';
   String get coinBonuses => isEs ? 'Bonos' : 'Bonuses';
   String get coinWinPot => isEs ? 'Premio' : 'Win pot';
+  String get xpEarned => isEs ? 'Experiencia' : 'Experience';
+  String winXpHint(int n) =>
+      isEs ? 'Ganar otorga $n Exp' : 'Winning awards $n XP';
+  String finishXpHint(int win, int loss) => isEs
+      ? 'Ganar $win Exp · Perder $loss Exp'
+      : 'Win $win XP · Lose $loss XP';
   String coinPayoutPlace(int place) {
     if (place == 1) return isEs ? '1.er lugar' : '1st place';
     if (place == 2) return isEs ? '2.º lugar' : '2nd place';

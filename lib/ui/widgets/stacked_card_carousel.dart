@@ -11,6 +11,13 @@ enum CardPeekStyle {
   fan,
 }
 
+enum _FanPeekReveal {
+  none,
+  left,
+  right,
+  both,
+}
+
 /// Soft stack: front card plus a tilted peek of the next one, or a 3-card fan.
 class StackedCardCarousel extends StatefulWidget {
   const StackedCardCarousel({
@@ -27,6 +34,9 @@ class StackedCardCarousel extends StatefulWidget {
     this.peekStyle = CardPeekStyle.stack,
     this.alignment = Alignment.center,
     this.frontAnchorKey,
+    this.wrap = true,
+    this.onBlockedAdvance,
+    this.maxFrontIndex,
   });
 
   final int itemCount;
@@ -54,6 +64,17 @@ class StackedCardCarousel extends StatefulWidget {
 
   /// Placed on the front card when it is on top, for overlay anchors.
   final GlobalKey? frontAnchorKey;
+
+  /// When false, swiping past the first/last card springs back instead of wrapping.
+  final bool wrap;
+
+  /// Called when [wrap] is false and the user tries to advance past the last
+  /// allowed front card ([maxFrontIndex] or end of list).
+  final ValueChanged<int>? onBlockedAdvance;
+
+  /// Highest index that may become the front card. Later items still peek
+  /// (e.g. a locked next page) but cannot be brought forward.
+  final int? maxFrontIndex;
 
   @override
   StackedCardCarouselState createState() => StackedCardCarouselState();
@@ -102,6 +123,7 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
   bool _restacking = false;
   bool _dismissToLeft = true;
   double _cardWidth = 0;
+  _FanPeekReveal _fanPeekReveal = _FanPeekReveal.none;
 
   late final AnimationController _anim;
   late final AnimationController _reveal;
@@ -126,8 +148,14 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
     _frontIndex = widget.itemCount == 0
         ? 0
         : widget.initialIndex.clamp(0, widget.itemCount - 1);
+    final maxFront = widget.maxFrontIndex;
+    if (maxFront != null && _frontIndex > maxFront) {
+      _frontIndex = maxFront.clamp(0, widget.itemCount - 1);
+    }
     _anim = AnimationController.unbounded(vsync: this);
     final startCollapsed = widget.startBackCollapsed || widget.animateBackIn;
+    _fanPeekReveal =
+        startCollapsed ? _FanPeekReveal.both : _FanPeekReveal.none;
     _reveal =
         AnimationController(
           vsync: this,
@@ -171,6 +199,14 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
 
   bool get _canRestack => widget.itemCount > 1;
 
+  int get _maxFront {
+    final cap = widget.maxFrontIndex;
+    if (cap == null) return widget.itemCount - 1;
+    return cap.clamp(0, widget.itemCount - 1);
+  }
+
+  bool get _atMaxFront => _frontIndex >= _maxFront;
+
   bool get _usesFan =>
       widget.peekStyle == CardPeekStyle.fan && widget.itemCount >= 3;
 
@@ -191,6 +227,18 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
 
   _CardPose _revealedSide(_CardPose rest) =>
       _CardPose.lerp(_frontRest, rest, _reveal.value);
+
+  /// Fan peeks: newly appearing side tilts out from under the front card.
+  _CardPose _fanRevealedSide(_CardPose rest, {required bool left}) {
+    final animate = switch (_fanPeekReveal) {
+      _FanPeekReveal.both => true,
+      _FanPeekReveal.left => left,
+      _FanPeekReveal.right => !left,
+      _FanPeekReveal.none => false,
+    };
+    if (!animate) return rest;
+    return _CardPose.lerp(_frontRest, rest, _reveal.value);
+  }
 
   Future<void> revealBack({bool playSound = true}) async {
     if (!_canRestack || _reveal.value >= 0.99) return;
@@ -216,9 +264,21 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
 
   Future<void> goToIndex(int index) async {
     if (!_canRestack || widget.itemCount == 0) return;
-    final target = index.clamp(0, widget.itemCount - 1);
+    final target = index.clamp(0, _maxFront);
     if (target == _frontIndex) return;
     if (_anim.isAnimating || _restacking || _reveal.isAnimating) return;
+    if (!widget.wrap) {
+      final toLeft = target > _frontIndex;
+      while (mounted && _frontIndex != target) {
+        if (_anim.isAnimating || _restacking) return;
+        final nextLeft = target > _frontIndex;
+        if (nextLeft != toLeft && _frontIndex != target) break;
+        if (nextLeft && _atMaxFront) return;
+        if (!nextLeft && _frontIndex <= 0) return;
+        await _restackUnder(toLeft: nextLeft);
+      }
+      return;
+    }
     final n = widget.itemCount;
     final forward = (target - _frontIndex + n) % n;
     final backward = (_frontIndex - target + n) % n;
@@ -227,13 +287,37 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
 
   Future<void> toggleFront() async {
     if (!_canRestack) return;
+    if (!widget.wrap && _atMaxFront) {
+      widget.onBlockedAdvance?.call(_frontIndex);
+      return;
+    }
     await goToIndex((_frontIndex + 1) % widget.itemCount);
   }
 
   int get _front => _frontIndex;
-  int get _back => (_frontIndex + 1) % widget.itemCount;
-  int get _left => (_frontIndex - 1 + widget.itemCount) % widget.itemCount;
-  int get _right => (_frontIndex + 1) % widget.itemCount;
+
+  int get _back {
+    if (widget.wrap) return (_frontIndex + 1) % widget.itemCount;
+    return (_frontIndex + 1).clamp(0, widget.itemCount - 1);
+  }
+
+  int? get _leftIndex {
+    if (widget.itemCount <= 0) return null;
+    if (widget.wrap) {
+      return (_frontIndex - 1 + widget.itemCount) % widget.itemCount;
+    }
+    if (_frontIndex <= 0) return null;
+    return _frontIndex - 1;
+  }
+
+  int? get _rightIndex {
+    if (widget.itemCount <= 0) return null;
+    if (widget.wrap) {
+      return (_frontIndex + 1) % widget.itemCount;
+    }
+    if (_frontIndex >= widget.itemCount - 1) return null;
+    return _frontIndex + 1;
+  }
 
   void _onDragStart(DragStartDetails _) {
     if (!_canRestack ||
@@ -259,8 +343,17 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
     final shouldDismissRight = _dragDx > _dismissThreshold || vx > 800;
 
     if (shouldDismissLeft) {
+      if (!widget.wrap && _atMaxFront) {
+        widget.onBlockedAdvance?.call(_frontIndex);
+        await _springBack();
+        return;
+      }
       await _restackUnder(toLeft: true);
     } else if (shouldDismissRight) {
+      if (!widget.wrap && _frontIndex <= 0) {
+        await _springBack();
+        return;
+      }
       await _restackUnder(toLeft: false);
     } else {
       await _springBack();
@@ -283,6 +376,18 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
   }
 
   Future<void> _restackUnder({required bool toLeft}) async {
+    if (!widget.wrap) {
+      if (toLeft && _atMaxFront) {
+        widget.onBlockedAdvance?.call(_frontIndex);
+        await _springBack();
+        return;
+      }
+      if (!toLeft && _frontIndex <= 0) {
+        await _springBack();
+        return;
+      }
+    }
+
     SoundService.instance.playLayered(GameSound.softCard);
     _dismissToLeft = toLeft;
     _restacking = true;
@@ -304,16 +409,33 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
 
     setState(() {
       if (toLeft) {
-        _frontIndex = (_frontIndex + 1) % widget.itemCount;
+        final next = widget.wrap
+            ? (_frontIndex + 1) % widget.itemCount
+            : (_frontIndex + 1).clamp(0, _maxFront);
+        _frontIndex = next;
       } else {
-        _frontIndex = (_frontIndex - 1 + widget.itemCount) % widget.itemCount;
+        _frontIndex = widget.wrap
+            ? (_frontIndex - 1 + widget.itemCount) % widget.itemCount
+            : (_frontIndex - 1).clamp(0, widget.itemCount - 1);
       }
       _dragDx = 0;
       _restacking = false;
       _anim.value = 0;
-      _reveal.value = 1;
+      if (_usesFan) {
+        // New far-side peek tilts in instead of popping at full angle.
+        _fanPeekReveal =
+            toLeft ? _FanPeekReveal.right : _FanPeekReveal.left;
+        _reveal.value = 0;
+      } else {
+        _reveal.value = 1;
+      }
     });
     widget.onIndexChanged?.call(_frontIndex);
+    if (_usesFan) {
+      await revealBack(playSound: false);
+      if (!mounted) return;
+      setState(() => _fanPeekReveal = _FanPeekReveal.none);
+    }
   }
 
   _CardPose _frontPoseWhileDragging() {
@@ -383,15 +505,6 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
     );
   }
 
-  _CardPose _enterStart(_CardPose rest) {
-    return _CardPose(
-      offset: rest.offset * 0.25,
-      scale: 0.82,
-      angle: rest.angle * 0.35,
-      opacity: 0,
-    );
-  }
-
   _CardPose _withOpacity(_CardPose pose, double opacity) {
     return _CardPose(
       offset: pose.offset,
@@ -406,7 +519,6 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
     _CardPose front,
     _CardPose right,
     _CardPose exit,
-    _CardPose enter,
     bool dismissedUnder,
   })
   _fanRestackPoses(double cardWidth) {
@@ -415,10 +527,6 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
     final start = _frontPoseWhileDragging();
     final leftRest = _leftRest(cardWidth);
     final rightRest = _rightRest(cardWidth);
-    final enterIn = Curves.easeOutCubic.transform(
-      ((t - (_dismissToLeft ? 0.18 : 0.10)) / (_dismissToLeft ? 0.82 : 0.78))
-          .clamp(0.0, 1.0),
-    );
     // Dragging the front to the right covers the right peek — hide it fast
     // so the left card reads as the one directly behind center.
     final exitOut = Curves.easeInCubic.transform(
@@ -440,7 +548,6 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
           _exitEnd(leftRest, cardWidth, left: true),
           exitOut,
         ),
-        enter: _CardPose.lerp(_enterStart(rightRest), rightRest, enterIn),
         dismissedUnder: t > 0.48,
       );
     }
@@ -459,7 +566,6 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
         _exitEnd(rightRest, cardWidth, left: false),
         exitOut,
       ),
-      enter: _CardPose.lerp(_enterStart(leftRest), leftRest, enterIn),
       dismissedUnder: t > 0.48,
     );
   }
@@ -595,31 +701,44 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
       dismissedUnder = false;
     }
 
+    final int? underIndex = widget.wrap
+        ? (widget.itemCount > 1 ? _back : null)
+        : _rightIndex;
+
     final showUnder =
-        _canRestack &&
+        underIndex != null &&
         (_restacking ||
             _dragging ||
             _dragDx.abs() > 0.5 ||
             _reveal.value > 0.001);
 
-    final frontOnTop = !(_canRestack && dismissedUnder);
+    final frontOnTop = !(showUnder && dismissedUnder);
+    final under = underIndex;
     return [
-      if (showUnder)
+      if (showUnder && under != null)
         _posedCard(
-          index: dismissedUnder ? _front : _back,
+          index: dismissedUnder ? _front : under,
           pose: dismissedUnder ? frontPose : backPose,
           cardWidth: cardWidth,
           interactive: false,
-          onPeekTap: _canRestack && !_restacking
-              ? () => _restackUnder(toLeft: true)
+          onPeekTap: !_restacking
+              ? () {
+                  if (under > _maxFront) {
+                    widget.onBlockedAdvance?.call(_frontIndex);
+                  } else {
+                    _restackUnder(toLeft: true);
+                  }
+                }
               : null,
         ),
       _posedCard(
-        index: frontOnTop ? _front : _back,
-        pose: frontOnTop ? frontPose : backPose,
+        index: frontOnTop || under == null ? _front : under,
+        pose: frontOnTop || under == null ? frontPose : backPose,
         cardWidth: cardWidth,
-        interactive: !_restacking && frontOnTop,
-        anchorKey: frontOnTop && !_restacking ? widget.frontAnchorKey : null,
+        interactive: !_restacking && (frontOnTop || under == null),
+        anchorKey: (frontOnTop || under == null) && !_restacking
+            ? widget.frontAnchorKey
+            : null,
       ),
     ];
   }
@@ -631,8 +750,7 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
 
     if (_restacking) {
       final poses = _fanRestackPoses(cardWidth);
-      final wrapIndex = _dismissToLeft ? _left : _right;
-      final incomingIndex = _dismissToLeft ? _right : _left;
+      final incomingIndex = _dismissToLeft ? _rightIndex : _leftIndex;
       final incomingPose = _dismissToLeft ? poses.right : poses.left;
 
       final movingFront = _posedCard(
@@ -641,33 +759,34 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
         cardWidth: cardWidth,
         interactive: false,
       );
-      final incoming = _posedCard(
-        index: incomingIndex,
-        pose: incomingPose,
-        cardWidth: cardWidth,
-        interactive: false,
-        anchorKey: poses.dismissedUnder ? widget.frontAnchorKey : null,
-      );
 
-      final enterCard = _posedCard(
-        key: ValueKey('enter-$wrapIndex'),
-        index: wrapIndex,
-        pose: poses.enter,
-        cardWidth: cardWidth,
-        interactive: false,
-      );
-      final exitCard = _posedCard(
-        key: ValueKey('exit-$wrapIndex'),
-        index: wrapIndex,
-        pose: poses.exit,
-        cardWidth: cardWidth,
-        interactive: false,
-      );
-
+      // Only animate front ↔ neighbor. The far-side peek tilts in after
+      // restack via [_fanPeekReveal] — don't preview enter here (with 4+
+      // items that used to flash the exiting wrap card as the "next" peek).
+      final incoming = incomingIndex == null
+          ? null
+          : _posedCard(
+              index: incomingIndex,
+              pose: incomingPose,
+              cardWidth: cardWidth,
+              interactive: false,
+              anchorKey:
+                  poses.dismissedUnder ? widget.frontAnchorKey : null,
+            );
+      final fadeIdx = _dismissToLeft ? _leftIndex : _rightIndex;
+      final fadeCard = fadeIdx == null
+          ? null
+          : _posedCard(
+              key: ValueKey('fade-$fadeIdx'),
+              index: fadeIdx,
+              pose: poses.exit,
+              cardWidth: cardWidth,
+              interactive: false,
+            );
       if (poses.dismissedUnder) {
-        return [exitCard, enterCard, movingFront, incoming];
+        return [?fadeCard, movingFront, ?incoming];
       }
-      return [exitCard, enterCard, incoming, movingFront];
+      return [?fadeCard, ?incoming, movingFront];
     }
 
     late final _CardPose leftPose;
@@ -687,24 +806,39 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
       }
     } else {
       frontPose = _frontRest;
-      leftPose = _revealedSide(leftRest);
-      rightPose = _revealedSide(rightRest);
+      leftPose = _fanRevealedSide(leftRest, left: true);
+      rightPose = _fanRevealedSide(rightRest, left: false);
     }
 
-    final leftCard = _posedCard(
-      index: _left,
-      pose: leftPose,
-      cardWidth: cardWidth,
-      interactive: false,
-      onPeekTap: peekTap ? () => _restackUnder(toLeft: false) : null,
-    );
-    final rightCard = _posedCard(
-      index: _right,
-      pose: rightPose,
-      cardWidth: cardWidth,
-      interactive: false,
-      onPeekTap: peekTap ? () => _restackUnder(toLeft: true) : null,
-    );
+    final leftIdx = _leftIndex;
+    final rightIdx = _rightIndex;
+
+    final leftCard = leftIdx == null
+        ? null
+        : _posedCard(
+            index: leftIdx,
+            pose: leftPose,
+            cardWidth: cardWidth,
+            interactive: false,
+            onPeekTap: peekTap ? () => _restackUnder(toLeft: false) : null,
+          );
+    final rightCard = rightIdx == null
+        ? null
+        : _posedCard(
+            index: rightIdx,
+            pose: rightPose,
+            cardWidth: cardWidth,
+            interactive: false,
+            onPeekTap: peekTap
+                ? () {
+                    if (rightIdx > _maxFront) {
+                      widget.onBlockedAdvance?.call(_frontIndex);
+                    } else {
+                      _restackUnder(toLeft: true);
+                    }
+                  }
+                : null,
+          );
     final frontCard = _posedCard(
       index: _front,
       pose: frontPose,
@@ -715,8 +849,16 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
 
     // While dragging right, keep the left peek above the (fading) right peek.
     if (_dragDx > 0) {
-      return [rightCard, leftCard, frontCard];
+      return [
+        ?rightCard,
+        ?leftCard,
+        frontCard,
+      ];
     }
-    return [leftCard, rightCard, frontCard];
+    return [
+      ?leftCard,
+      ?rightCard,
+      frontCard,
+    ];
   }
 }

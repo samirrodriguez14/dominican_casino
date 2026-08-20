@@ -3,6 +3,7 @@ class Player {
 
   String id;
   bool completedTutorial;
+  bool completedJourneyTutorial;
   String? name;
   String? token;
   String? avatarId;
@@ -13,6 +14,7 @@ class Player {
     this.token,
     this.avatarId = defaultAvatarId,
     this.completedTutorial = false,
+    this.completedJourneyTutorial = false,
     this.xp = 0,
   });
   factory Player.fromDto(Map<String, dynamic> playerDto) {
@@ -22,6 +24,8 @@ class Player {
       token: playerDto['token'],
       avatarId: playerDto['avatarId'] as String? ?? defaultAvatarId,
       completedTutorial: playerDto['completedTutorial'] ?? false,
+      completedJourneyTutorial:
+          playerDto['completedJourneyTutorial'] ?? false,
       xp: (playerDto['xp'] as num?)?.toInt() ?? 0,
     );
   }
@@ -31,6 +35,7 @@ class Player {
     'token': token,
     'avatarId': avatarId,
     'completedTutorial': completedTutorial,
+    'completedJourneyTutorial': completedJourneyTutorial,
     'xp': xp,
   };
 
@@ -45,6 +50,7 @@ class Player {
   Player copyWith({
     String? id,
     bool? completedTutorial,
+    bool? completedJourneyTutorial,
     String? name,
     String? token,
     String? avatarId,
@@ -56,6 +62,8 @@ class Player {
       token: token ?? this.token,
       avatarId: avatarId ?? this.avatarId,
       completedTutorial: completedTutorial ?? this.completedTutorial,
+      completedJourneyTutorial:
+          completedJourneyTutorial ?? this.completedJourneyTutorial,
       xp: xp ?? this.xp,
     );
   }

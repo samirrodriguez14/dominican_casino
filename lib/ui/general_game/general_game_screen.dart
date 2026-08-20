@@ -7,6 +7,7 @@ import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
+import 'package:dominican_casino/models/experience.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
 import 'package:dominican_casino/local_player/tresdos_player.dart';
@@ -33,6 +34,7 @@ import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
 import 'package:dominican_casino/ui/widgets/coin_hint_ticker.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
+import 'package:dominican_casino/ui/widgets/exp_icon.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
 import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
@@ -761,6 +763,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                                       ? null
                                       : vm.gameState.entryCost,
                                   seats: vm.gameState.seatedPlayerCount,
+                                  showWinXp: !vm.tutorialMode,
                                 ),
                               ),
                             ),
@@ -1089,11 +1092,13 @@ class _GameModeChip extends StatelessWidget {
     required this.label,
     this.stake,
     this.seats = 2,
+    this.showWinXp = false,
   });
 
   final String label;
   final int? stake;
   final int seats;
+  final bool showWinXp;
 
   @override
   Widget build(BuildContext context) {
@@ -1101,6 +1106,8 @@ class _GameModeChip extends StatelessWidget {
     final showStake = stake != null && stake! > 0;
     final tableSeats = seats.clamp(2, 4);
     final jackpot = showStake ? WalletConfig.potTotal(stake!, tableSeats) : 0;
+    final winXp = ExperienceConfig.winXp;
+    final showExtras = showStake || showWinXp;
     final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
@@ -1148,11 +1155,33 @@ class _GameModeChip extends StatelessWidget {
               ),
             ),
           ],
+          if (showWinXp) ...[
+            Container(
+              width: 1,
+              height: 12,
+              margin: EdgeInsets.symmetric(horizontal: showStake ? 8 : 8),
+              color: theme.border.withValues(alpha: .7),
+            ),
+            Icon(
+              expIcon,
+              size: 12,
+              color: theme.xp,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '$winXp',
+              style: theme.caption.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+                color: theme.xp,
+              ),
+            ),
+          ],
         ],
       ),
     );
 
-    if (!showStake) return chip;
+    if (!showExtras) return chip;
 
     return CupertinoButton(
       padding: EdgeInsets.zero,
@@ -1160,7 +1189,13 @@ class _GameModeChip extends StatelessWidget {
       pressedOpacity: 0.72,
       onPressed: SoundService.wrapTap(() {
         AppHaptics.lightImpact();
-        _showPotInfo(context, title: label, stake: stake!, seats: seats);
+        _showPotInfo(
+          context,
+          title: label,
+          stake: stake ?? 0,
+          seats: seats,
+          showWinXp: showWinXp,
+        );
       }),
       child: chip,
     );
@@ -1172,11 +1207,13 @@ void _showPotInfo(
   required String title,
   required int stake,
   required int seats,
+  bool showWinXp = false,
 }) {
   final theme = AppStyle.theme;
   final l10n = AppLocalizations.of(context);
   final tableSeats = seats.clamp(2, 4);
   final pot = WalletConfig.potTotal(stake, tableSeats);
+  final hasStake = stake > 0;
 
   showGeneralDialog<void>(
     context: context,
@@ -1216,38 +1253,68 @@ void _showPotInfo(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.eachPlayerBets(stake),
-                    textAlign: TextAlign.center,
-                    style: theme.mutedText.copyWith(fontSize: 13),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(coinIcon, size: 14, color: theme.turnHighlight),
-                      const SizedBox(width: 4),
-                      Text(
-                        l10n.potTotal(pot),
-                        style: theme.title.copyWith(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: theme.turnHighlight,
+                  if (hasStake) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.eachPlayerBets(stake),
+                      textAlign: TextAlign.center,
+                      style: theme.mutedText.copyWith(fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(coinIcon, size: 14, color: theme.turnHighlight),
+                        const SizedBox(width: 4),
+                        Text(
+                          l10n.potTotal(pot),
+                          style: theme.title.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: theme.turnHighlight,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    for (var place = 1; place <= tableSeats; place++) ...[
+                      if (place > 1) const SizedBox(height: 6),
+                      _PotPlaceRow(
+                        label: l10n.coinPayoutPlace(place),
+                        amount: WalletConfig.potShareForRank(
+                          stake,
+                          tableSeats,
+                          place,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  for (var place = 1; place <= tableSeats; place++) ...[
-                    if (place > 1) const SizedBox(height: 6),
-                    _PotPlaceRow(
-                      label: l10n.coinPayoutPlace(place),
-                      amount: WalletConfig.potShareForRank(
-                        stake,
-                        tableSeats,
-                        place,
+                  ],
+                  if (showWinXp) ...[
+                    if (hasStake) const SizedBox(height: 14),
+                    if (!hasStake) const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(expIcon, size: 14, color: theme.xp),
+                        const SizedBox(width: 4),
+                        Text(
+                          l10n.winXpHint(ExperienceConfig.winXp),
+                          style: theme.title.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: theme.xp,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      l10n.finishXpHint(
+                        ExperienceConfig.winXp,
+                        ExperienceConfig.lossXp,
                       ),
+                      textAlign: TextAlign.center,
+                      style: theme.mutedText.copyWith(fontSize: 12),
                     ),
                   ],
                   CupertinoButton(

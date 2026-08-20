@@ -1,13 +1,16 @@
 import 'dart:math' as math;
 
 import 'package:dominican_casino/models/journey.dart';
+import 'package:dominican_casino/models/journey_instruction.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_active_stage.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_coach.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_defeated_row.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_instruction_deck.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_world_piles.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
@@ -96,6 +99,17 @@ class JourneyBoardState extends State<JourneyBoard>
   bool _draggingFromDefeated = false;
   Offset? _dragPos;
 
+  final GlobalKey _pilesKey = GlobalKey();
+  final GlobalKey _centerKey = GlobalKey();
+  final GlobalKey _defeatedKey = GlobalKey();
+  final GlobalKey _instructionDeckKey = GlobalKey();
+  late final JourneyCoachController _coach;
+
+  bool _guideExpanded = false;
+  int? _guideOpenPage;
+  bool _coachScheduled = false;
+  bool _sessionTutorialDone = false;
+
   @override
   void initState() {
     super.initState();
@@ -113,6 +127,18 @@ class JourneyBoardState extends State<JourneyBoard>
       duration: _defeatFlyDuration,
     );
     _revealAnim = AnimationController(vsync: this, duration: _revealDuration);
+    _coach = JourneyCoachController(
+      pilesKey: _pilesKey,
+      centerKey: _centerKey,
+      defeatedKey: _defeatedKey,
+      deckKey: _instructionDeckKey,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final done =
+          context.read<AppRepo>().player?.completedJourneyTutorial ?? false;
+      setState(() => _sessionTutorialDone = done);
+    });
   }
 
   @override
@@ -120,7 +146,67 @@ class JourneyBoardState extends State<JourneyBoard>
     _selectAnim.dispose();
     _defeatFlyAnim.dispose();
     _revealAnim.dispose();
+    _coach.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant JourneyBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _maybeStartCoach();
+  }
+
+  void _maybeStartCoach() {
+    if (_coachScheduled || _coach.isActive || _coach.isFinished) return;
+    final open = widget.openProgress;
+    final settled = open.pileDeal > 0.95 &&
+        open.defeatedDeal > 0.95 &&
+        open.cardGather < 0.02;
+    if (!settled) return;
+    final alreadyDone =
+        context.read<AppRepo>().player?.completedJourneyTutorial ?? false;
+    if (alreadyDone) {
+      if (!_sessionTutorialDone) {
+        setState(() => _sessionTutorialDone = true);
+      }
+      return;
+    }
+    _coachScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _coach.start();
+      setState(() {});
+    });
+  }
+
+  bool get _tutorialDoneForUnlocks =>
+      _sessionTutorialDone || _coach.isFinished;
+
+  int get _unlockedThrough => journeyUnlockedThrough(
+        snapshot: _snapshot,
+        tutorialDone: _tutorialDoneForUnlocks,
+      );
+
+  void _openGuide({int? page}) {
+    setState(() {
+      _guideExpanded = true;
+      _guideOpenPage = page ?? (_unlockedThrough - 1).clamp(0, 100);
+    });
+  }
+
+  void _closeGuide() {
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+    });
+  }
+
+  void _onCoachCompleted() {
+    setState(() {
+      _sessionTutorialDone = true;
+      _guideExpanded = true;
+      _guideOpenPage = (_unlockedThrough - 1).clamp(0, 100);
+    });
   }
 
   JourneyWorld get activeWorld => _activeWorld;
@@ -323,6 +409,7 @@ class JourneyBoardState extends State<JourneyBoard>
   Future<void> _resolveDefeat(JourneyCardDef card) async {
     SoundService.instance.playLayered(GameSound.softCard);
     AppHaptics.heavyImpact();
+    final before = _unlockedThrough;
     // One object: leave center straight to Defeated — never return to the
     // challenger pile first.
     setState(() {
@@ -343,6 +430,11 @@ class JourneyBoardState extends State<JourneyBoard>
       if (!mounted) return;
     }
     await _playRevealIfNeeded();
+    if (!mounted) return;
+    final after = _unlockedThrough;
+    if (after > before) {
+      _openGuide(page: after - 1);
+    }
   }
 
   Future<void> _onChallenge() async {
@@ -413,6 +505,8 @@ class JourneyBoardState extends State<JourneyBoard>
 
   @override
   Widget build(BuildContext context) {
+    _maybeStartCoach();
+
     final worldDef = _snapshot.worldOf(_activeWorld);
     final hasAvailable = worldDef.nextSelectable != null;
     final open = widget.openProgress;
@@ -425,6 +519,8 @@ class JourneyBoardState extends State<JourneyBoard>
 
     final centerReveal = journeySlotExpand(open.sectionExpand, 1, count: 3);
     final plan = dealPlan;
+    final unlockedThrough = _unlockedThrough;
+    final boardInteractive = !_coach.isActive && !_guideExpanded;
 
     // Only hide the centered selection from piles — keep the dragging card in
     // the pile tree (ghosted) so the pan GestureDetector stays alive.
@@ -448,7 +544,8 @@ class JourneyBoardState extends State<JourneyBoard>
         final centerTarget = Offset(w * 0.5, h * 0.48);
         final centerSize = (w * 0.52).clamp(150.0, 280.0);
 
-        final interactive = open.pileDeal > 0.95 &&
+        final interactive = boardInteractive &&
+            open.pileDeal > 0.95 &&
             open.defeatedDeal > 0.95 &&
             open.cardGather < 0.02 &&
             _defeatFlying == null;
@@ -458,6 +555,7 @@ class JourneyBoardState extends State<JourneyBoard>
             _defeatFlyAnim,
             _selectAnim,
             _revealAnim,
+            _coach,
           ]),
           builder: (context, _) {
             final selectProgress = _selectAnim.value;
@@ -482,37 +580,48 @@ class JourneyBoardState extends State<JourneyBoard>
                     children: [
                       Expanded(
                         flex: 22,
-                        child: JourneyWorldPiles(
-                          snapshot: _snapshot,
-                          dealPlan: plan,
-                          activeWorld: _activeWorld,
-                          selectedCard: hideChallenger,
-                          ghostCard: ghostChallenger,
-                          revealCard: _revealCard,
-                          revealProgress: revealProgress,
-                          sectionExpand: open.sectionExpand,
-                          pileDeal: open.cardGather > 0.02 ? 0 : open.pileDeal,
-                          onWorldTap: interactive ? _onWorldTap : null,
-                          onTopCardTap: interactive ? _onTopCardTap : null,
-                          onTopCardPanStart: interactive
-                              ? (card, details) => _onCardDragStart(
-                                    card,
-                                    fromDefeated: false,
-                                    localPos: _toLocal(details.globalPosition),
-                                  )
-                              : null,
-                          onTopCardPanUpdate: interactive
-                              ? (details) => _onCardDragUpdate(
-                                    _toLocal(details.globalPosition),
-                                  )
-                              : null,
-                          onTopCardPanEnd: interactive
-                              ? (_) => _onCardDragEnd(
-                                    centerTarget: centerTarget,
-                                    boardHeight: h,
-                                    boardWidth: w,
-                                  )
-                              : null,
+                        child: JourneyCoachPulse(
+                          controller: _coach,
+                          targetKey: _pilesKey,
+                          child: KeyedSubtree(
+                            key: _pilesKey,
+                            child: JourneyWorldPiles(
+                              snapshot: _snapshot,
+                              dealPlan: plan,
+                              activeWorld: _activeWorld,
+                              selectedCard: hideChallenger,
+                              ghostCard: ghostChallenger,
+                              revealCard: _revealCard,
+                              revealProgress: revealProgress,
+                              sectionExpand: open.sectionExpand,
+                              pileDeal:
+                                  open.cardGather > 0.02 ? 0 : open.pileDeal,
+                              onWorldTap: interactive ? _onWorldTap : null,
+                              onTopCardTap:
+                                  interactive ? _onTopCardTap : null,
+                              onTopCardPanStart: interactive
+                                  ? (card, details) => _onCardDragStart(
+                                        card,
+                                        fromDefeated: false,
+                                        localPos: _toLocal(
+                                          details.globalPosition,
+                                        ),
+                                      )
+                                  : null,
+                              onTopCardPanUpdate: interactive
+                                  ? (details) => _onCardDragUpdate(
+                                        _toLocal(details.globalPosition),
+                                      )
+                                  : null,
+                              onTopCardPanEnd: interactive
+                                  ? (_) => _onCardDragEnd(
+                                        centerTarget: centerTarget,
+                                        boardHeight: h,
+                                        boardWidth: w,
+                                      )
+                                  : null,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -522,12 +631,20 @@ class JourneyBoardState extends State<JourneyBoard>
                           opacity: centerReveal,
                           child: Transform.scale(
                             scale: 0.92 + 0.08 * centerReveal,
-                            child: JourneyActiveStage(
-                              hasAvailableChallenger: hasAvailable,
-                              visible: selected == null &&
-                                  selectProgress < 0.05 &&
-                                  _defeatFlying == null &&
-                                  _dragging == null,
+                            child: JourneyCoachPulse(
+                              controller: _coach,
+                              targetKey: _centerKey,
+                              child: KeyedSubtree(
+                                key: _centerKey,
+                                child: JourneyActiveStage(
+                                  hasAvailableChallenger: hasAvailable,
+                                  visible: selected == null &&
+                                      selectProgress < 0.05 &&
+                                      _defeatFlying == null &&
+                                      _dragging == null &&
+                                      !_guideExpanded,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -535,39 +652,90 @@ class JourneyBoardState extends State<JourneyBoard>
                       const SizedBox(height: 10),
                       Expanded(
                         flex: 26,
-                        child: JourneyDefeatedRow(
-                          snapshot: _snapshot,
-                          dealPlan: plan,
-                          sectionExpand: open.sectionExpand,
-                          defeatedDeal:
-                              open.cardGather > 0.02 ? 0 : open.defeatedDeal,
-                          hidingCard: hideDefeated,
-                          ghostCard: ghostDefeated,
-                          onDefeatedTap: interactive ? _onDefeatedTap : null,
-                          onDefeatedPanStart: interactive
-                              ? (card, details) => _onCardDragStart(
-                                    card,
-                                    fromDefeated: true,
-                                    localPos: _toLocal(details.globalPosition),
-                                  )
-                              : null,
-                          onDefeatedPanUpdate: interactive
-                              ? (details) => _onCardDragUpdate(
-                                    _toLocal(details.globalPosition),
-                                  )
-                              : null,
-                          onDefeatedPanEnd: interactive
-                              ? (_) => _onCardDragEnd(
-                                    centerTarget: centerTarget,
-                                    boardHeight: h,
-                                    boardWidth: w,
-                                  )
-                              : null,
+                        child: JourneyCoachPulse(
+                          controller: _coach,
+                          targetKey: _defeatedKey,
+                          child: KeyedSubtree(
+                            key: _defeatedKey,
+                            child: JourneyDefeatedRow(
+                              snapshot: _snapshot,
+                              dealPlan: plan,
+                              sectionExpand: open.sectionExpand,
+                              defeatedDeal: open.cardGather > 0.02
+                                  ? 0
+                                  : open.defeatedDeal,
+                              hidingCard: hideDefeated,
+                              ghostCard: ghostDefeated,
+                              onDefeatedTap:
+                                  interactive ? _onDefeatedTap : null,
+                              onDefeatedPanStart: interactive
+                                  ? (card, details) => _onCardDragStart(
+                                        card,
+                                        fromDefeated: true,
+                                        localPos: _toLocal(
+                                          details.globalPosition,
+                                        ),
+                                      )
+                                  : null,
+                              onDefeatedPanUpdate: interactive
+                                  ? (details) => _onCardDragUpdate(
+                                        _toLocal(details.globalPosition),
+                                      )
+                                  : null,
+                              onDefeatedPanEnd: interactive
+                                  ? (_) => _onCardDragEnd(
+                                        centerTarget: centerTarget,
+                                        boardHeight: h,
+                                        boardWidth: w,
+                                      )
+                                  : null,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
+
+                // Left instruction deck (collapsed) + expand overlay.
+                if (centerReveal > 0.5) ...[
+                  Positioned(
+                    left: 0,
+                    top: h * 0.22,
+                    bottom: h * 0.28,
+                    width: 72,
+                    child: IgnorePointer(
+                      ignoring: _coach.isActive || _guideExpanded,
+                      child: Opacity(
+                        opacity: centerReveal,
+                        child: JourneyCoachPulse(
+                          controller: _coach,
+                          targetKey: _instructionDeckKey,
+                          bounce: false,
+                          child: JourneyInstructionDeck(
+                            unlockedThrough: unlockedThrough,
+                            expanded: false,
+                            deckKey: _instructionDeckKey,
+                            world: _activeWorld,
+                            onExpand: _openGuide,
+                            onCollapse: _closeGuide,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_guideExpanded)
+                    Positioned.fill(
+                      child: JourneyInstructionDeck(
+                        unlockedThrough: unlockedThrough,
+                        expanded: true,
+                        initialPage: _guideOpenPage,
+                        world: _activeWorld,
+                        onExpand: _openGuide,
+                        onCollapse: _closeGuide,
+                      ),
+                    ),
+                ],
 
                 // Dragging card under the finger.
                 if (_dragging != null && _dragPos != null)
@@ -586,7 +754,8 @@ class JourneyBoardState extends State<JourneyBoard>
                 // Focus from the card's real home (challenger or defeated).
                 if (selected != null &&
                     _defeatFlying == null &&
-                    selectProgress > 0.01)
+                    selectProgress > 0.01 &&
+                    !_guideExpanded)
                   JourneyChallengerFocus(
                     key: ValueKey(
                       '${selected.world.name}_${selected.rank.name}',
@@ -613,6 +782,11 @@ class JourneyBoardState extends State<JourneyBoard>
                         JourneyWorld.values.indexOf(_defeatFlying!.world)],
                     size: centerSize * 0.85,
                   ),
+
+                JourneyCoachOverlay(
+                  controller: _coach,
+                  onCompleted: _onCoachCompleted,
+                ),
               ],
             );
           },

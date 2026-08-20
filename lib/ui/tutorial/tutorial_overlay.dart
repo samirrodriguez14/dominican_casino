@@ -22,6 +22,8 @@ class TutorialOverlay extends StatefulWidget {
   final bool canGoNext;
   final bool isLastScreen;
   final GlobalKey? tableAnchorKey;
+  /// When [isLastScreen] and [onExit] is null, label for the single primary button.
+  final String? lastPrimaryLabel;
 
   const TutorialOverlay({
     super.key,
@@ -35,6 +37,7 @@ class TutorialOverlay extends StatefulWidget {
     this.onPlay,
     this.onExit,
     this.tableAnchorKey,
+    this.lastPrimaryLabel,
   });
 
   @override
@@ -121,12 +124,17 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     if (target is! RenderBox || !target.hasSize || target.size.isEmpty) {
       return null;
     }
-    final rect = MatrixUtils.transformRect(
-      target.getTransformTo(overlay),
-      Offset.zero & target.size,
-    );
-    if (!rect.isFinite || rect.isEmpty) return null;
-    return rect;
+    try {
+      final rect = MatrixUtils.transformRect(
+        target.getTransformTo(overlay),
+        Offset.zero & target.size,
+      );
+      if (!rect.isFinite || rect.isEmpty) return null;
+      return rect;
+    } catch (_) {
+      // Ancestors may still be laying out (e.g. Transform under LayoutBuilder).
+      return null;
+    }
   }
 
   /// Axis-aligned bounds of highlight targets, in overlay-local space.
@@ -155,7 +163,13 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     }
 
     final rect = _targetRect();
-    if (rect == null) return _buildFloatingTooltip(context);
+    if (rect == null) {
+      // Target may still be laying out; retry next frame instead of staying floating.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return _buildFloatingTooltip(context);
+    }
 
     final overlay = _overlayKey.currentContext?.findRenderObject();
     final overlaySize = overlay is RenderBox && overlay.hasSize
@@ -381,6 +395,27 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     final canPressNext = widget.canGoNext || widget.step.onShow != null;
 
     if (isLastStep) {
+      final primary = widget.onPlay ?? widget.onNext;
+      // Single CTA when there is no exit/home action (e.g. Journey coach).
+      if (widget.onExit == null) {
+        return SizedBox(
+          width: double.infinity,
+          child: CupertinoButton(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: theme.turnHighlight,
+            borderRadius: BorderRadius.circular(14),
+            onPressed: SoundService.wrapTap(primary),
+            child: Text(
+              widget.lastPrimaryLabel ?? l10n.tutorialGotIt,
+              style: theme.body.copyWith(
+                color: theme.background,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        );
+      }
       return Row(
         children: [
           Expanded(

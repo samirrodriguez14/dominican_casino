@@ -2181,6 +2181,13 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> completeJourneyTutorial() async {
+    if (player == null || player!.completedJourneyTutorial) return;
+    player = player!.copyWith(completedJourneyTutorial: true);
+    await _persistPlayer();
+    notifyListeners();
+  }
+
   Future<bool> updatePlayer(String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return false;
@@ -2539,6 +2546,7 @@ class AppRepo extends ChangeNotifier {
         name: current.name,
         avatarId: current.avatarId,
         completedTutorial: current.completedTutorial,
+        completedJourneyTutorial: current.completedJourneyTutorial,
         xp: current.xp,
         ownedPacks: _ownedPacks.map((pack) => pack.name).toList(),
         appTheme: _appTheme.name,
@@ -2565,6 +2573,8 @@ class AppRepo extends ChangeNotifier {
         'name': remote['name'] ?? remote['displayName'] ?? '',
         'avatarId': remote['avatarId'],
         'completedTutorial': remote['completedTutorial'] ?? false,
+        'completedJourneyTutorial':
+            remote['completedJourneyTutorial'] ?? false,
         'xp': remote['xp'],
       });
     }
@@ -2590,6 +2600,9 @@ class AppRepo extends ChangeNotifier {
       completedTutorial:
           (cloud?.completedTutorial ?? false) ||
           (local?.completedTutorial ?? false),
+      completedJourneyTutorial:
+          (cloud?.completedJourneyTutorial ?? false) ||
+          (local?.completedJourneyTutorial ?? false),
       xp: _maxInt(cloud?.xp ?? 0, local?.xp ?? 0),
       token: local?.token,
     );
