@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
@@ -8,13 +6,14 @@ import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_board.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_deck.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
 enum TableDeck { games, journey }
 
-/// Swaps Games ↔ Journey. The Journey deck is one live object (peek → deal).
+/// Swaps Games ↔ Journey. Orchestrates controllers; motion math lives in
+/// [JourneyTimeline] / [JourneyTableLayout].
 class JourneyStage extends StatefulWidget {
   const JourneyStage({
     super.key,
@@ -38,12 +37,12 @@ class JourneyStage extends StatefulWidget {
 }
 
 class JourneyStageState extends State<JourneyStage>
-    with SingleTickerProviderStateMixin {
-  static const _swapDuration = Duration(milliseconds: 3200);
-
+    with TickerProviderStateMixin {
   late final AnimationController _swapAnim;
+  late final AnimationController _peekFan;
   final GlobalKey<JourneyBoardState> _boardKey = GlobalKey();
   final GlobalKey _stageKey = GlobalKey();
+
   TableDeck _tableDeck = TableDeck.games;
   bool _busy = false;
   int _lastDealSoundIndex = -1;
@@ -53,93 +52,90 @@ class JourneyStageState extends State<JourneyStage>
   @override
   void initState() {
     super.initState();
-    _swapAnim = AnimationController(vsync: this, duration: _swapDuration)
-      ..addListener(_onSwapTick);
+    _swapAnim = AnimationController(
+      vsync: this,
+      duration: JourneyTimeline.openDuration,
+    )..addListener(_onSwapTick);
+    _peekFan = AnimationController(
+      vsync: this,
+      duration: JourneyTimeline.peekFanDuration,
+    );
   }
 
   @override
   void dispose() {
     _swapAnim.removeListener(_onSwapTick);
     _swapAnim.dispose();
+    _peekFan.dispose();
     super.dispose();
   }
 
   TableDeck get tableDeck => _tableDeck;
 
-  double get _t => _swapAnim.value;
+  bool get _closing => _swapAnim.status == AnimationStatus.reverse;
 
-  double get _gameEat {
-    return const Interval(0.0, 0.22, curve: Curves.easeInCubic).transform(_t);
-  }
-
-  double get _deckArrive {
-    return const Interval(0.08, 0.34, curve: Curves.easeInOutCubic)
-        .transform(_t);
-  }
-
-  double get _sectionExpand {
-    return const Interval(0.10, 0.36, curve: Curves.easeOutCubic)
-        .transform(_t);
-  }
-
-  double get _pileDeal {
-    return const Interval(0.34, 0.72, curve: Curves.linear).transform(_t);
-  }
-
-  double get _defeatedDeal {
-    return const Interval(0.70, 1.0, curve: Curves.linear).transform(_t);
-  }
-
-  JourneyOpenProgress get _openProgress => JourneyOpenProgress(
-        deckArrive: _deckArrive,
-        sectionExpand: _sectionExpand,
-        pileDeal: _pileDeal,
-        defeatedDeal: _defeatedDeal,
+  JourneyOpenProgress get _open => JourneyTimeline.openProgress(
+        t: _swapAnim.value,
+        peekFan: _peekFan.value,
+        closing: _closing,
       );
+
+  double get _gameEat =>
+      JourneyTimeline.gameEat(t: _swapAnim.value, closing: _closing);
 
   List<JourneyDealSlot> get _dealPlan =>
       _boardKey.currentState?.dealPlan ??
-      JourneyBoard.dealPlanFor(journeyBoardSnapshot);
+      JourneyDealPlan.forSnapshot(journeyBoardSnapshot);
+
+  bool get _peekInteractive {
+    final eat = _gameEat;
+    final open = _open;
+    return (1 - eat) > 0.55 && open.deckArrive < 0.05;
+  }
+
+  void _startPeekFan() {
+    if (_peekFan.value < 0.01) _peekFan.forward(from: 0);
+  }
 
   void _onSwapTick() {
     final eat = _gameEat;
-    final reversing = _swapAnim.status == AnimationStatus.reverse;
-
-    if (!reversing) {
-      if (!_pulsedEatIn && eat >= 0.72) {
+    if (!_closing) {
+      if (!_pulsedEatIn && eat >= 0.88) {
         _pulsedEatIn = true;
         widget.onGamesNavEat?.call();
         AppHaptics.mediumImpact();
       }
-    } else {
-      if (!_pulsedSpitOut && eat < 0.98 && eat > 0.15) {
-        _pulsedSpitOut = true;
-        widget.onGamesNavEat?.call();
-        AppHaptics.mediumImpact();
-      }
+    } else if (!_pulsedSpitOut && eat < 0.88) {
+      _pulsedSpitOut = true;
+      widget.onGamesNavEat?.call();
+      AppHaptics.mediumImpact();
     }
 
     if (eat <= 0.02) _pulsedEatIn = false;
     if (eat >= 0.99) _pulsedSpitOut = false;
+    if (_closing) return;
 
+    _tickDealSounds();
+  }
+
+  void _tickDealSounds() {
+    final open = _open;
     final plan = _dealPlan;
-    final challengerN = JourneyBoard.challengerCount(plan);
-    final defeatedN = JourneyBoard.defeatedCount(plan);
-    final total = plan.isEmpty ? JourneyBoard.dealCardCount : plan.length;
+    final challengerN = JourneyDealPlan.challengerCount(plan);
+    final defeatedN = JourneyDealPlan.defeatedCount(plan);
+    final total = plan.isEmpty ? JourneyDealPlan.dealCardCount : plan.length;
 
-    final pileDeal = _pileDeal;
-    final defeatedDeal = _defeatedDeal;
     var step = -1;
-    if (pileDeal > 0.02 && challengerN > 0) {
-      step = (pileDeal * challengerN).floor().clamp(0, challengerN - 1);
+    if (open.pileDeal > 0.02 && challengerN > 0) {
+      step = (open.pileDeal * challengerN).floor().clamp(0, challengerN - 1);
     }
-    if (defeatedDeal > 0.02 && defeatedN > 0) {
+    if (open.defeatedDeal > 0.02 && defeatedN > 0) {
       final dStep =
-          (defeatedDeal * defeatedN).floor().clamp(0, defeatedN - 1);
+          (open.defeatedDeal * defeatedN).floor().clamp(0, defeatedN - 1);
       step = challengerN + dStep;
     }
     if (step < 0) {
-      if (pileDeal <= 0.02) _lastDealSoundIndex = -1;
+      if (open.pileDeal <= 0.02) _lastDealSoundIndex = -1;
       return;
     }
     if (step > _lastDealSoundIndex) {
@@ -173,10 +169,12 @@ class JourneyStageState extends State<JourneyStage>
     if (widget.carouselKey.currentState?.isBusy == true) return;
 
     _busy = true;
+    _startPeekFan();
     SoundService.instance.playLayered(GameSound.softCard);
     AppHaptics.lightImpact();
     _lastDealSoundIndex = -1;
     _pulsedEatIn = false;
+    _swapAnim.duration = JourneyTimeline.openDuration;
 
     setState(() => _tableDeck = TableDeck.journey);
     widget.onTableDeckChanged?.call(TableDeck.journey);
@@ -207,8 +205,9 @@ class JourneyStageState extends State<JourneyStage>
     _busy = true;
     SoundService.instance.playLayered(GameSound.softCard);
     AppHaptics.lightImpact();
-    _lastDealSoundIndex = JourneyBoard.dealCardCount;
+    _lastDealSoundIndex = JourneyDealPlan.dealCardCount;
     _pulsedSpitOut = false;
+    _swapAnim.duration = JourneyTimeline.closeDuration;
 
     await _boardKey.currentState?.dismissSelectedIfNeeded();
     if (!mounted) {
@@ -221,6 +220,9 @@ class JourneyStageState extends State<JourneyStage>
       _busy = false;
       return;
     }
+
+    _swapAnim.duration = JourneyTimeline.openDuration;
+    _peekFan.value = 0;
 
     await widget.carouselKey.currentState?.revealPeeks();
     if (!mounted) {
@@ -245,52 +247,42 @@ class JourneyStageState extends State<JourneyStage>
     if (mounted) setState(() {});
   }
 
+  bool _showLiveDeck(JourneyOpenProgress open, double gamesOnTable) {
+    if (widget.showingGrid) return false;
+    final gathering = open.cardGather > 0.01;
+    final dealing = open.pileDeal < 0.995 ||
+        (JourneyDealPlan.defeatedCount(_dealPlan) > 0 &&
+            open.defeatedDeal < 0.995);
+    final peeking = open.deckArrive < 0.08 && open.pileDeal < 0.02;
+    return (gathering || gamesOnTable > 0.4 || open.deckArrive > 0.01) &&
+        (gathering || dealing || peeking);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _swapAnim,
+      animation: Listenable.merge([_swapAnim, _peekFan]),
       builder: (context, _) {
-        final open = _openProgress;
+        final open = _open;
         final eat = _gameEat;
-        final gamesOnTable = 1 - _t;
-
-        final hideGamesMain = widget.showingGrid || eat > 0.98;
-        final hideJourneyMain =
-            open.deckArrive < 0.02 && open.sectionExpand < 0.02;
-        final dealPlan = _dealPlan;
-        final showLiveDeck = !widget.showingGrid &&
-            (gamesOnTable > 0.4 || open.deckArrive > 0.01) &&
-            (open.pileDeal < 0.995 ||
-                (JourneyBoard.defeatedCount(dealPlan) > 0 &&
-                    open.defeatedDeal < 0.995));
+        final gamesOnTable = 1 - eat;
+        final gathering = open.cardGather > 0.01;
+        final hideGames = widget.showingGrid || eat > 0.995;
+        final hideJourney = open.cardGather > 0.58 ||
+            (open.deckArrive < 0.02 && open.sectionExpand < 0.02);
+        final peekLive = _peekInteractive;
 
         return LayoutBuilder(
           builder: (context, constraints) {
             final stage = Size(constraints.maxWidth, constraints.maxHeight);
-            final originCenter = Offset(stage.width / 2, stage.height / 2);
             final tabCenter = _gamesTabCenterInStage(stage);
-
-            final gameDelta = Offset.lerp(
-              Offset.zero,
-              tabCenter - originCenter,
-              eat,
-            )!;
-            final gameScale = math.max(0.02, 1.0 - eat * 0.98);
-            final gameOpacity =
-                (1.0 - Curves.easeIn.transform(eat)).clamp(0.0, 1.0);
-
-            final pileW = (stage.width - 30) / 4;
-            final pileH = pileW / homeCardAspect;
-            final pileTargets = <Offset>[
-              for (var i = 0; i < 4; i++)
-                Offset(15 + pileW * (i + 0.5), 8 + pileH * 0.42),
-            ];
-            final defeatedY = stage.height * 0.88;
-            final defeatedTargets = <Offset>[
-              for (var i = 0; i < 4; i++)
-                Offset(15 + pileW * (i + 0.5), defeatedY),
-            ];
-            final pileCardSize = pileW * 0.88;
+            final gameDelta = JourneyTableLayout.gameCarouselDelta(
+              eat: eat,
+              stage: stage,
+              tabCenter: tabCenter,
+            );
+            final gameScale =
+                JourneyTimeline.gameScale(eat: eat, closing: _closing);
 
             return Stack(
               key: _stageKey,
@@ -298,24 +290,21 @@ class JourneyStageState extends State<JourneyStage>
               clipBehavior: Clip.none,
               children: [
                 IgnorePointer(
-                  ignoring: hideGamesMain || _tableDeck == TableDeck.journey,
-                  child: Opacity(
-                    opacity: gameOpacity,
-                    child: Transform.translate(
-                      offset: gameDelta,
-                      child: Transform.scale(
-                        scale: gameScale,
-                        alignment: Alignment.center,
-                        child: GameModeCarousel(key: widget.carouselKey),
-                      ),
+                  ignoring: hideGames || _tableDeck == TableDeck.journey,
+                  child: Transform.translate(
+                    offset: gameDelta,
+                    child: Transform.scale(
+                      scale: gameScale,
+                      alignment: Alignment.center,
+                      child: GameModeCarousel(key: widget.carouselKey),
                     ),
                   ),
                 ),
                 IgnorePointer(
-                  ignoring: hideJourneyMain ||
-                      (_busy && open.defeatedDeal < 0.9),
+                  ignoring: hideJourney ||
+                      (_busy && !gathering && open.defeatedDeal < 0.9),
                   child: Opacity(
-                    opacity: hideJourneyMain ? 0 : 1,
+                    opacity: hideJourney ? 0 : 1,
                     child: JourneyBoard(
                       key: _boardKey,
                       openProgress: open,
@@ -323,23 +312,21 @@ class JourneyStageState extends State<JourneyStage>
                     ),
                   ),
                 ),
-
-                // One continuous deck object (peek arrangement → deal).
-                if (showLiveDeck)
+                if (_showLiveDeck(open, gamesOnTable))
                   JourneyLiveDeck(
-                    dealPlan: dealPlan,
+                    dealPlan: _dealPlan,
                     deckArrive: open.deckArrive,
+                    deckFan: open.deckFan,
                     pileDeal: open.pileDeal,
                     defeatedDeal: open.defeatedDeal,
+                    cardGather: open.cardGather,
                     stageSize: stage,
-                    pileTargets: pileTargets,
-                    defeatedTargets: defeatedTargets,
-                    pileCardSize: pileCardSize,
-                    onTap: gamesOnTable > 0.55 && open.deckArrive < 0.05
-                        ? showJourney
-                        : null,
-                    showLabel:
-                        gamesOnTable > 0.55 && open.deckArrive < 0.05,
+                    pileTargets: JourneyTableLayout.pileTargets(stage),
+                    defeatedTargets: JourneyTableLayout.defeatedTargets(stage),
+                    pileCardSize: JourneyTableLayout.pileCardSize(stage.width),
+                    onTap: peekLive ? showJourney : null,
+                    onPressStart: peekLive ? _startPeekFan : null,
+                    showLabel: peekLive,
                   ),
               ],
             );

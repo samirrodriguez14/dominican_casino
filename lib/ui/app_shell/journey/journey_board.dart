@@ -8,53 +8,14 @@ import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_active_stage.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_defeated_row.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_world_piles.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-/// Progress channels for opening / closing the Journey table.
-class JourneyOpenProgress {
-  const JourneyOpenProgress({
-    this.deckArrive = 1,
-    this.sectionExpand = 1,
-    this.pileDeal = 1,
-    this.defeatedDeal = 1,
-    this.cardGather = 0,
-  });
-
-  /// Peek → center for the real card stack.
-  final double deckArrive;
-
-  /// Top + defeated shells expand L→R while the deck moves to center.
-  final double sectionExpand;
-
-  /// Challenger cards fly from the deck into top piles.
-  final double pileDeal;
-
-  /// Defeated cards fly from the deck into defeated piles (after challengers).
-  final double defeatedDeal;
-
-  /// Close-only: all table cards fly home to the peek (0 on table → 1 at peek).
-  final double cardGather;
-
-  static const settled = JourneyOpenProgress();
-}
-
-/// One card in the open-deal sequence (challengers first, defeated last / bottom).
-class JourneyDealSlot {
-  const JourneyDealSlot({
-    required this.world,
-    required this.toDefeated,
-    this.card,
-    this.depthInPile = 0,
-  });
-
-  final JourneyWorld world;
-  final bool toDefeated;
-  final JourneyCardDef? card;
-  final int depthInPile;
-}
+export 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart'
+    show JourneyDealPlan, JourneyDealSlot, JourneyOpenProgress;
 
 /// Three-band Journey board: piles / active stage / defeated.
 class JourneyBoard extends StatefulWidget {
@@ -64,121 +25,49 @@ class JourneyBoard extends StatefulWidget {
     this.onWorldThemeEquipped,
   });
 
-  static const worldCount = 4;
-  static const cardsPerPile = 4;
+  static const worldCount = JourneyDealPlan.worldCount;
+  static const cardsPerPile = JourneyDealPlan.cardsPerPile;
+  static const dealCardCount = JourneyDealPlan.dealCardCount;
 
   final JourneyOpenProgress openProgress;
   final ValueChanged<JourneyWorld>? onWorldThemeEquipped;
 
-  /// Challengers first (deck top), defeated last (deck bottom → dealt after).
-  static List<JourneyDealSlot> dealPlanFor(JourneyDisplaySnapshot snap) {
-    final challenger = <JourneyDealSlot>[];
-    final defeated = <JourneyDealSlot>[];
-    for (final world in JourneyWorld.values) {
-      final def = snap.worldOf(world);
-      if (!def.unlocked) {
-        for (var d = 0; d < cardsPerPile; d++) {
-          challenger.add(
-            JourneyDealSlot(world: world, toDefeated: false, depthInPile: d),
-          );
-        }
-      } else {
-        final pile = def.pileCards;
-        for (var d = 0; d < pile.length; d++) {
-          challenger.add(
-            JourneyDealSlot(
-              world: world,
-              toDefeated: false,
-              card: pile[d],
-              depthInPile: d,
-            ),
-          );
-        }
-        final fallen = def.defeatedCards;
-        for (var d = 0; d < fallen.length; d++) {
-          defeated.add(
-            JourneyDealSlot(
-              world: world,
-              toDefeated: true,
-              card: fallen[d],
-              depthInPile: d,
-            ),
-          );
-        }
-      }
-    }
-    return [...challenger, ...defeated];
-  }
+  static List<JourneyDealSlot> dealPlanFor(JourneyDisplaySnapshot snap) =>
+      JourneyDealPlan.forSnapshot(snap);
 
   static int challengerCount(List<JourneyDealSlot> plan) =>
-      plan.where((s) => !s.toDefeated).length;
+      JourneyDealPlan.challengerCount(plan);
 
   static int defeatedCount(List<JourneyDealSlot> plan) =>
-      plan.where((s) => s.toDefeated).length;
-
-  static double _phaseFlight(double phase, int index, int count) {
-    if (count <= 0) return 1;
-    const active = 0.72;
-    final slot = 1.0 / count;
-    final start = index * slot;
-    final end = start + slot * active;
-    if (phase <= start) return 0;
-    if (phase >= end) return 1;
-    return ((phase - start) / (end - start)).clamp(0.0, 1.0);
-  }
+      JourneyDealPlan.defeatedCount(plan);
 
   static double challengerFlight(
     List<JourneyDealSlot> plan,
     double pileDeal,
     int challengerIndex,
   ) =>
-      _phaseFlight(pileDeal, challengerIndex, challengerCount(plan));
+      JourneyDealPlan.challengerFlight(plan, pileDeal, challengerIndex);
 
   static double defeatedFlight(
     List<JourneyDealSlot> plan,
     double defeatedDeal,
     int defeatedIndex,
   ) =>
-      _phaseFlight(defeatedDeal, defeatedIndex, defeatedCount(plan));
+      JourneyDealPlan.defeatedFlight(plan, defeatedDeal, defeatedIndex);
 
   static int challengerLandedDepth(
     List<JourneyDealSlot> plan,
     double pileDeal,
     JourneyWorld world,
-  ) {
-    var n = 0;
-    var ci = 0;
-    for (final slot in plan) {
-      if (slot.toDefeated) continue;
-      if (slot.world == world &&
-          challengerFlight(plan, pileDeal, ci) >= 0.98) {
-        n++;
-      }
-      ci++;
-    }
-    return n;
-  }
+  ) =>
+      JourneyDealPlan.challengerLandedDepth(plan, pileDeal, world);
 
   static int defeatedLandedCount(
     List<JourneyDealSlot> plan,
     double defeatedDeal,
     JourneyWorld world,
-  ) {
-    var n = 0;
-    var di = 0;
-    for (final slot in plan) {
-      if (!slot.toDefeated) continue;
-      if (slot.world == world &&
-          defeatedFlight(plan, defeatedDeal, di) >= 0.98) {
-        n++;
-      }
-      di++;
-    }
-    return n;
-  }
-
-  /// Fallback count used by sound timing when plan isn't ready yet.
-  static const dealCardCount = worldCount * cardsPerPile;
+  ) =>
+      JourneyDealPlan.defeatedLandedCount(plan, defeatedDeal, world);
 
   @override
   State<JourneyBoard> createState() => JourneyBoardState();
@@ -527,21 +416,12 @@ class JourneyBoardState extends State<JourneyBoard>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final h = constraints.maxHeight;
-
-        final pileW = (w - 30) / 4;
-        final pileCardSize = pileW * 0.88;
-
-        final defeatedY = h * 0.88;
-        final defeatedTargets = <Offset>[
-          for (var i = 0; i < 4; i++)
-            Offset(15 + pileW * (i + 0.5), defeatedY),
-        ];
-        final pileTargets = <Offset>[
-          for (var i = 0; i < 4; i++)
-            Offset(15 + pileW * (i + 0.5), 8 + (pileW / homeCardAspect) * 0.42),
-        ];
+        final stage = Size(constraints.maxWidth, constraints.maxHeight);
+        final w = stage.width;
+        final h = stage.height;
+        final pileCardSize = JourneyTableLayout.pileCardSize(w);
+        final pileTargets = JourneyTableLayout.pileTargets(stage);
+        final defeatedTargets = JourneyTableLayout.defeatedTargets(stage);
         final centerTarget = Offset(w * 0.5, h * 0.48);
         final centerSize = (w * 0.42).clamp(120.0, 220.0);
 
@@ -734,7 +614,7 @@ class _DefeatedTransferCard extends StatelessWidget {
       (from.dx + to.dx) / 2,
       (from.dy < to.dy ? from.dy : to.dy) - 40,
     );
-    final pos = _quad(from, mid, to, t);
+    final pos = JourneyTableLayout.quad(from, mid, to, t);
     final height = size / homeCardAspect;
 
     return Positioned(
@@ -747,10 +627,5 @@ class _DefeatedTransferCard extends StatelessWidget {
         world: card.world,
       ),
     );
-  }
-
-  static Offset _quad(Offset a, Offset b, Offset c, double t) {
-    final u = 1 - t;
-    return a * (u * u) + b * (2 * u * t) + c * (t * t);
   }
 }
