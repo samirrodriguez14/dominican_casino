@@ -273,26 +273,24 @@ class _ChallengeFace extends StatelessWidget {
                               fontSize: 13,
                             ),
                           ),
-                          if (!isAce) ...[
-                            const SizedBox(height: 10),
-                            CupertinoButton(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              borderRadius: BorderRadius.circular(12),
-                              color: palette.accent.withValues(alpha: .95),
-                              minimumSize: Size.zero,
-                              onPressed: onChallenge == null
-                                  ? null
-                                  : SoundService.wrapTap(onChallenge),
-                              child: Text(
-                                'Challenge',
-                                style: TextStyle(
-                                  color: palette.background,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                          const SizedBox(height: 10),
+                          CupertinoButton(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            borderRadius: BorderRadius.circular(12),
+                            color: palette.accent.withValues(alpha: .95),
+                            minimumSize: Size.zero,
+                            onPressed: onChallenge == null
+                                ? null
+                                : SoundService.wrapTap(onChallenge),
+                            child: Text(
+                              isAce ? 'Claim' : 'Challenge',
+                              style: TextStyle(
+                                color: palette.background,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ],
+                          ),
                         ],
                       ),
                     ),

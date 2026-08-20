@@ -15,6 +15,8 @@ class JourneyWorldPiles extends StatelessWidget {
     required this.activeWorld,
     required this.selectedCard,
     this.ghostCard,
+    this.revealCard,
+    this.revealProgress = 1,
     this.sectionExpand = 1,
     this.pileDeal = 1,
     this.onWorldTap,
@@ -30,6 +32,9 @@ class JourneyWorldPiles extends StatelessWidget {
   final JourneyCardDef? selectedCard;
   /// Card being dragged — stays in the pile tree (invisible) so pan continues.
   final JourneyCardDef? ghostCard;
+  /// Newly unlocked top card flipping face-up after a defeat.
+  final JourneyCardDef? revealCard;
+  final double revealProgress;
   final double sectionExpand;
   final double pileDeal;
   final ValueChanged<JourneyWorld>? onWorldTap;
@@ -53,6 +58,8 @@ class JourneyWorldPiles extends StatelessWidget {
                 active: JourneyWorld.values[i] == activeWorld,
                 selectedCard: selectedCard,
                 ghostCard: ghostCard,
+                revealCard: revealCard,
+                revealProgress: revealProgress,
                 landedDepth: JourneyBoard.challengerLandedDepth(
                   dealPlan,
                   pileDeal,
@@ -99,6 +106,8 @@ class _WorldPile extends StatelessWidget {
     required this.selectedCard,
     required this.landedDepth,
     this.ghostCard,
+    this.revealCard,
+    this.revealProgress = 1,
     this.onWorldTap,
     this.onTopCardTap,
     this.onTopCardPanStart,
@@ -110,6 +119,8 @@ class _WorldPile extends StatelessWidget {
   final bool active;
   final JourneyCardDef? selectedCard;
   final JourneyCardDef? ghostCard;
+  final JourneyCardDef? revealCard;
+  final double revealProgress;
   final int landedDepth;
   final ValueChanged<JourneyWorld>? onWorldTap;
   final ValueChanged<JourneyCardDef>? onTopCardTap;
@@ -128,18 +139,32 @@ class _WorldPile extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = journeyPaletteFor(worldDef.world);
     final theme = AppStyle.theme;
-    final pile = [
+    final remaining = [
       for (final card in worldDef.pileCards)
         if (!_same(card, selectedCard)) card,
     ];
     final maxDepth = worldDef.unlocked
-        ? pile.length.clamp(0, JourneyBoard.cardsPerPile)
+        ? remaining.length.clamp(0, JourneyBoard.cardsPerPile)
         : JourneyBoard.cardsPerPile;
     final showDepth = landedDepth.clamp(0, maxDepth);
+    // Deal order for landing; available moved to visual top when present.
+    final visible = remaining.take(showDepth).toList();
+    final lockedVisible = [
+      for (final card in visible)
+        if (card.state != JourneyCardState.available) card,
+    ];
+    final availableVisible = [
+      for (final card in visible)
+        if (card.state == JourneyCardState.available) card,
+    ];
+    final pile = [...lockedVisible, ...availableVisible];
     final top = worldDef.unlocked ? worldDef.nextSelectable : null;
     final canPickTop =
         top != null && top.isSelectable && selectedCard == null;
     final draggingThis = _same(ghostCard, top);
+    final revealingThis = _same(revealCard, top);
+    final topAvailableOnPile =
+        availableVisible.isNotEmpty && !draggingThis;
     final cardVisible = showDepth > 0;
     final panActive = canPickTop || draggingThis;
 
@@ -207,24 +232,35 @@ class _WorldPile extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (showDepth > 0) ...[
-                            for (var i = 0; i < showDepth; i++)
+                          if (pile.isNotEmpty) ...[
+                            for (var i = 0; i < pile.length; i++)
                               Positioned(
                                 left: i * 2.2,
                                 top: i * 1.8,
-                                right: (showDepth - 1 - i) * 2.2,
-                                bottom: (showDepth - 1 - i) * 1.8,
-                                child: JourneyFaceDownCard(
-                                  world: worldDef.world,
-                                  dimmed: !worldDef.unlocked,
-                                  highlighted: active &&
-                                      worldDef.unlocked &&
-                                      i == showDepth - 1 &&
-                                      selectedCard == null &&
-                                      !draggingThis,
-                                  showSuit: i == showDepth - 1,
-                                  shadow: i == showDepth - 1,
-                                ),
+                                right: (pile.length - 1 - i) * 2.2,
+                                bottom: (pile.length - 1 - i) * 1.8,
+                                child: i == pile.length - 1 &&
+                                        topAvailableOnPile
+                                    ? _PileTopFace(
+                                        card: availableVisible.last,
+                                        world: worldDef.world,
+                                        active: active,
+                                        faceAmount: revealingThis
+                                            ? revealProgress.clamp(0.0, 1.0)
+                                            : 1.0,
+                                      )
+                                    : JourneyFaceDownCard(
+                                        world: worldDef.world,
+                                        dimmed: !worldDef.unlocked,
+                                        highlighted: active &&
+                                            worldDef.unlocked &&
+                                            i == pile.length - 1 &&
+                                            selectedCard == null &&
+                                            !draggingThis &&
+                                            !topAvailableOnPile,
+                                        showSuit: i == pile.length - 1,
+                                        shadow: i == pile.length - 1,
+                                      ),
                               ),
                             if (!worldDef.unlocked)
                               const Center(
@@ -257,6 +293,53 @@ class _WorldPile extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 fontSize: 11,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Face-up (or flipping) top challenger on an unlocked pile.
+class _PileTopFace extends StatelessWidget {
+  const _PileTopFace({
+    required this.card,
+    required this.world,
+    required this.active,
+    required this.faceAmount,
+  });
+
+  final JourneyCardDef card;
+  final JourneyWorld world;
+  final bool active;
+  final double faceAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    final face = faceAmount.clamp(0.0, 1.0);
+    return Transform(
+      alignment: Alignment.center,
+      transform: Matrix4.identity()
+        ..setEntry(3, 2, 0.0014)
+        ..rotateY((1 - face) * 1.55),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Opacity(
+            opacity: (1.0 - face).clamp(0.0, 1.0),
+            child: JourneyFaceDownCard(
+              world: world,
+              highlighted: active,
+              showSuit: true,
+              shadow: true,
+            ),
+          ),
+          Opacity(
+            opacity: face.clamp(0.0, 1.0),
+            child: JourneyFaceUpCard(
+              assetPath: card.assetPath,
+              world: world,
             ),
           ),
         ],

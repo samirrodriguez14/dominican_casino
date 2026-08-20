@@ -13,6 +13,14 @@ enum JourneyRank {
     JourneyRank.king => 'King',
     JourneyRank.ace => 'Ace',
   };
+
+  /// Next royal rank in Journey order, or null after Ace.
+  JourneyRank? get next => switch (this) {
+    JourneyRank.jack => JourneyRank.queen,
+    JourneyRank.queen => JourneyRank.king,
+    JourneyRank.king => JourneyRank.ace,
+    JourneyRank.ace => null,
+  };
 }
 
 /// Visual / progression state for a Journey character card.
@@ -98,6 +106,35 @@ class JourneyWorldDef {
     return null;
   }
 
+  JourneyCardDef? cardOf(JourneyRank rank) {
+    for (final card in cards) {
+      if (card.rank == rank) return card;
+    }
+    return null;
+  }
+
+  JourneyCardDef? cardAfter(JourneyRank rank) {
+    final next = rank.next;
+    if (next == null) return null;
+    return cardOf(next);
+  }
+
+  /// Mark [rank] defeated and promote the next card to available (if any).
+  JourneyWorldDef withDefeat(JourneyRank rank) {
+    final promote = rank.next;
+    return copyWith(
+      cards: [
+        for (final c in cards)
+          if (c.rank == rank)
+            c.copyWith(state: JourneyCardState.defeated)
+          else if (promote != null && c.rank == promote)
+            c.copyWith(state: JourneyCardState.available)
+          else
+            c,
+      ],
+    );
+  }
+
   JourneyWorldDef copyWith({
     JourneyWorld? world,
     bool? unlocked,
@@ -111,6 +148,19 @@ class JourneyWorldDef {
   }
 }
 
+/// Result of applying a defeat: updated worlds plus the card that should flip.
+class JourneyDefeatResult {
+  const JourneyDefeatResult({
+    required this.worlds,
+    this.revealedCard,
+    this.unlockedWorld,
+  });
+
+  final List<JourneyWorldDef> worlds;
+  final JourneyCardDef? revealedCard;
+  final JourneyWorld? unlockedWorld;
+}
+
 /// Hardcoded interactive snapshot for layout + theme picking.
 class JourneyDisplaySnapshot {
   const JourneyDisplaySnapshot({required this.worlds});
@@ -119,6 +169,53 @@ class JourneyDisplaySnapshot {
 
   JourneyWorldDef worldOf(JourneyWorld world) {
     return worlds.firstWhere((entry) => entry.world == world);
+  }
+
+  /// Defeat [rank] in [world]; Ace also unlocks the next world + its Jack.
+  JourneyDefeatResult withDefeat(JourneyWorld world, JourneyRank rank) {
+    var nextWorlds = [
+      for (final w in worlds)
+        if (w.world == world) w.withDefeat(rank) else w,
+    ];
+
+    JourneyCardDef? revealed;
+    JourneyWorld? unlockedWorld;
+
+    if (rank == JourneyRank.ace) {
+      final idx = JourneyWorld.values.indexOf(world);
+      if (idx >= 0 && idx + 1 < JourneyWorld.values.length) {
+        unlockedWorld = JourneyWorld.values[idx + 1];
+        nextWorlds = [
+          for (final w in nextWorlds)
+            if (w.world != unlockedWorld)
+              w
+            else
+              w.copyWith(
+                unlocked: true,
+                cards: [
+                  for (final c in w.cards)
+                    if (c.rank == JourneyRank.jack)
+                      c.copyWith(state: JourneyCardState.available)
+                    else
+                      c,
+                ],
+              ),
+        ];
+        revealed = nextWorlds
+            .firstWhere((w) => w.world == unlockedWorld)
+            .cardOf(JourneyRank.jack);
+      }
+    } else {
+      revealed = nextWorlds
+          .firstWhere((w) => w.world == world)
+          .cardOf(rank.next!);
+    }
+
+    return JourneyDefeatResult(
+      worlds: nextWorlds,
+      revealedCard: revealed,
+      unlockedWorld: unlockedWorld,
+    );
   }
 }
 

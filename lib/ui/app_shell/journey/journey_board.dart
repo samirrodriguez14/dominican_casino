@@ -77,6 +77,7 @@ class JourneyBoardState extends State<JourneyBoard>
     with TickerProviderStateMixin {
   static const _flipDuration = Duration(milliseconds: 720);
   static const _defeatFlyDuration = Duration(milliseconds: 520);
+  static const _revealDuration = Duration(milliseconds: 420);
 
   late List<JourneyWorldDef> _worlds;
   JourneyWorld _activeWorld = JourneyWorld.diamonds;
@@ -86,7 +87,9 @@ class JourneyBoardState extends State<JourneyBoard>
   Offset? _selectFromOverride;
   late final AnimationController _selectAnim;
   late final AnimationController _defeatFlyAnim;
+  late final AnimationController _revealAnim;
   JourneyCardDef? _defeatFlying;
+  JourneyCardDef? _revealCard;
 
   /// Live drag of a pile card toward the center.
   JourneyCardDef? _dragging;
@@ -109,12 +112,14 @@ class JourneyBoardState extends State<JourneyBoard>
       vsync: this,
       duration: _defeatFlyDuration,
     );
+    _revealAnim = AnimationController(vsync: this, duration: _revealDuration);
   }
 
   @override
   void dispose() {
     _selectAnim.dispose();
     _defeatFlyAnim.dispose();
+    _revealAnim.dispose();
     super.dispose();
   }
 
@@ -147,29 +152,31 @@ class JourneyBoardState extends State<JourneyBoard>
     widget.onWorldThemeEquipped?.call(world);
   }
 
-  void _setCardState(
-    JourneyWorld world,
-    JourneyRank rank,
-    JourneyCardState state,
-  ) {
+  void _applyDefeat(JourneyWorld world, JourneyRank rank) {
+    final result = _snapshot.withDefeat(world, rank);
     setState(() {
-      _worlds = [
-        for (final w in _worlds)
-          if (w.world != world)
-            w
-          else
-            w.copyWith(
-              cards: [
-                for (final c in w.cards)
-                  if (c.rank == rank) c.copyWith(state: state) else c,
-              ],
-            ),
-      ];
+      _worlds = result.worlds;
       if (_selected?.world == world && _selected?.rank == rank) {
         _selected = null;
         _selectAnim.value = 0;
       }
+      if (result.unlockedWorld != null) {
+        _activeWorld = result.unlockedWorld!;
+      }
+      _revealCard = result.revealedCard;
     });
+    _revealAnim.value = result.revealedCard == null ? 1 : 0;
+  }
+
+  Future<void> _playRevealIfNeeded() async {
+    final card = _revealCard;
+    if (card == null) return;
+    SoundService.instance.playLayered(GameSound.softCard);
+    AppHaptics.lightImpact();
+    await _revealAnim.forward(from: 0);
+    if (!mounted) return;
+    setState(() => _revealCard = null);
+    _revealAnim.value = 1;
   }
 
   Future<void> _selectCard(
@@ -313,6 +320,31 @@ class JourneyBoardState extends State<JourneyBoard>
     _cancelDrag();
   }
 
+  Future<void> _resolveDefeat(JourneyCardDef card) async {
+    SoundService.instance.playLayered(GameSound.softCard);
+    AppHaptics.heavyImpact();
+    // One object: leave center straight to Defeated — never return to the
+    // challenger pile first.
+    setState(() {
+      _defeatFlying = card;
+      _selected = null;
+      _selectFromOverride = null;
+    });
+    _selectAnim.value = 0;
+    _applyDefeat(card.world, card.rank);
+    await _defeatFlyAnim.forward(from: 0);
+    if (!mounted) return;
+    setState(() => _defeatFlying = null);
+    _defeatFlyAnim.value = 0;
+    if (card.rank == JourneyRank.ace &&
+        _revealCard != null &&
+        _revealCard!.world != card.world) {
+      await _equipWorld(_revealCard!.world);
+      if (!mounted) return;
+    }
+    await _playRevealIfNeeded();
+  }
+
   Future<void> _onChallenge() async {
     final card = _selected;
     if (card == null) return;
@@ -320,22 +352,26 @@ class JourneyBoardState extends State<JourneyBoard>
     SoundService.instance.playLayered(GameSound.softCard);
     AppHaptics.mediumImpact();
 
+    final isAce = card.rank == JourneyRank.ace;
     final outcome = await showCupertinoDialog<String>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: Text('Challenge: ${card.title}'),
-        content: const Text(
-          'Test match outcome (placeholder until real matches wire up).',
+        title: Text(isAce ? 'Claim: ${card.title}' : 'Challenge: ${card.title}'),
+        content: Text(
+          isAce
+              ? 'Collect this Ace and unlock the next world.'
+              : 'Test match outcome (placeholder until real matches wire up).',
         ),
         actions: [
           CupertinoDialogAction(
             onPressed: () => Navigator.of(ctx).pop('defeat'),
-            child: const Text('Defeat'),
+            child: Text(isAce ? 'Claim' : 'Defeat'),
           ),
-          CupertinoDialogAction(
-            onPressed: () => Navigator.of(ctx).pop('lose'),
-            child: const Text('Lose'),
-          ),
+          if (!isAce)
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(ctx).pop('lose'),
+              child: const Text('Lose'),
+            ),
           CupertinoDialogAction(
             isDestructiveAction: true,
             onPressed: () => Navigator.of(ctx).pop(),
@@ -348,20 +384,7 @@ class JourneyBoardState extends State<JourneyBoard>
     if (!mounted || outcome == null) return;
 
     if (outcome == 'defeat') {
-      SoundService.instance.playLayered(GameSound.softCard);
-      AppHaptics.heavyImpact();
-      // One object: leave center straight to Defeated — never return to the
-      // challenger pile first.
-      setState(() {
-        _defeatFlying = card;
-        _selected = null;
-      });
-      _selectAnim.value = 0;
-      _setCardState(card.world, card.rank, JourneyCardState.defeated);
-      await _defeatFlyAnim.forward(from: 0);
-      if (!mounted) return;
-      setState(() => _defeatFlying = null);
-      _defeatFlyAnim.value = 0;
+      await _resolveDefeat(card);
       return;
     }
 
@@ -431,9 +454,16 @@ class JourneyBoardState extends State<JourneyBoard>
             _defeatFlying == null;
 
         return AnimatedBuilder(
-          animation: Listenable.merge([_defeatFlyAnim, _selectAnim]),
+          animation: Listenable.merge([
+            _defeatFlyAnim,
+            _selectAnim,
+            _revealAnim,
+          ]),
           builder: (context, _) {
             final selectProgress = _selectAnim.value;
+            final revealProgress = _revealCard == null
+                ? 1.0
+                : Curves.easeOut.transform(_revealAnim.value);
             final homeFrom = selected == null
                 ? Offset.zero
                 : (_selectFromOverride ??
@@ -458,6 +488,8 @@ class JourneyBoardState extends State<JourneyBoard>
                           activeWorld: _activeWorld,
                           selectedCard: hideChallenger,
                           ghostCard: ghostChallenger,
+                          revealCard: _revealCard,
+                          revealProgress: revealProgress,
                           sectionExpand: open.sectionExpand,
                           pileDeal: open.cardGather > 0.02 ? 0 : open.pileDeal,
                           onWorldTap: interactive ? _onWorldTap : null,
@@ -545,12 +577,10 @@ class JourneyBoardState extends State<JourneyBoard>
                         (pileCardSize * 0.9 / homeCardAspect) * 0.5,
                     width: pileCardSize * 0.9,
                     height: pileCardSize * 0.9 / homeCardAspect,
-                    child: _draggingFromDefeated
-                        ? JourneyFaceUpCard(
-                            assetPath: _dragging!.assetPath,
-                            world: _dragging!.world,
-                          )
-                        : JourneyFaceDownCard(world: _dragging!.world),
+                    child: JourneyFaceUpCard(
+                      assetPath: _dragging!.assetPath,
+                      world: _dragging!.world,
+                    ),
                   ),
 
                 // Focus from the card's real home (challenger or defeated).
@@ -564,8 +594,8 @@ class JourneyBoardState extends State<JourneyBoard>
                     to: centerTarget,
                     fromSize: pileCardSize,
                     toSize: centerSize,
-                    startsFaceUp: _selectedFromDefeated ||
-                        _selectFromOverride != null,
+                    // Pile available + defeated are already face-up.
+                    startsFaceUp: true,
                     onChallenge: _onChallenge,
                     onDismiss: _onDismissSelected,
                   ),
