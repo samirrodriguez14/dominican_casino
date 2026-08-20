@@ -674,6 +674,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   Future<void> _leaveToHome() async {
     await vm.queueHomeCoinClaim();
     await vm.queueHomeDailyChallengeEnergyClaims();
+    await vm.queueHomeXpClaim();
     if (mounted) context.go('/landing');
   }
 

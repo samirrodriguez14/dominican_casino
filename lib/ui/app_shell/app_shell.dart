@@ -13,7 +13,9 @@ import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/models/daily_challenge.dart';
 import 'package:dominican_casino/ui/widgets/home_coin_celebration.dart';
 import 'package:dominican_casino/ui/widgets/home_energy_celebration.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:dominican_casino/ui/widgets/xp_player_avatar.dart';
+import 'package:dominican_casino/ui/animations/currency_burst.dart';
+import 'package:dominican_casino/ui/widgets/exp_icon.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
@@ -40,6 +42,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   HomeCoinClaim? _activeCoinCelebration;
   List<DailyChallengeId>? _activeEnergyCelebrationChallengeIds;
   int? _activeEnergyAmount;
+  bool _xpBurstRunning = false;
   String? _listeningPid;
 
   @override
@@ -73,8 +76,10 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final repo = context.read<AppRepo>();
     if (repo.pendingHomeCoinClaim != null ||
         repo.pendingHomeDailyChallengeEnergy.isNotEmpty ||
+        repo.pendingHomeXpClaim != null ||
         _activeCoinCelebration != null ||
-        _activeEnergyAmount != null) {
+        _activeEnergyAmount != null ||
+        _xpBurstRunning) {
       return;
     }
     final player = repo.player;
@@ -91,12 +96,17 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _maybeStartHomeCoinCelebration(AppRepo repo) {
     final pending = repo.pendingHomeCoinClaim;
-    if (pending == null || _activeCoinCelebration != null || _activeEnergyAmount != null) {
+    if (pending == null ||
+        _activeCoinCelebration != null ||
+        _activeEnergyAmount != null ||
+        _xpBurstRunning) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_activeCoinCelebration != null || _activeEnergyAmount != null) {
+      if (_activeCoinCelebration != null ||
+          _activeEnergyAmount != null ||
+          _xpBurstRunning) {
         return;
       }
       final claim = context.read<AppRepo>().pendingHomeCoinClaim;
@@ -109,7 +119,11 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final pending = repo.pendingHomeDailyChallengeEnergy;
     if (pending.isEmpty) return;
     if (repo.pendingHomeCoinClaim != null) return; // coin overlay has priority
-    if (_activeCoinCelebration != null || _activeEnergyAmount != null) return;
+    if (_activeCoinCelebration != null ||
+        _activeEnergyAmount != null ||
+        _xpBurstRunning) {
+      return;
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -128,6 +142,56 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
             context.read<AppRepo>().pendingHomeDailyChallengeEnergyAmount;
       });
     });
+  }
+
+  void _maybeStartHomeXpBurst(AppRepo repo) {
+    final pending = repo.pendingHomeXpClaim;
+    if (pending == null || _xpBurstRunning) return;
+    if (repo.pendingHomeCoinClaim != null ||
+        repo.pendingHomeDailyChallengeEnergy.isNotEmpty ||
+        _activeCoinCelebration != null ||
+        _activeEnergyAmount != null) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _xpBurstRunning) return;
+      final claim = context.read<AppRepo>().pendingHomeXpClaim;
+      if (claim == null) return;
+      if (context.read<AppRepo>().pendingHomeCoinClaim != null) return;
+      if (context.read<AppRepo>().pendingHomeDailyChallengeEnergy.isNotEmpty) {
+        return;
+      }
+      _playHomeXpBurst(claim);
+    });
+  }
+
+  Future<void> _playHomeXpBurst(HomeXpClaim claim) async {
+    if (!mounted || _xpBurstRunning) return;
+    setState(() => _xpBurstRunning = true);
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    if (!mounted) return;
+
+    final size = MediaQuery.sizeOf(context);
+    final from = Offset(size.width * 0.5, size.height * 0.42);
+    final to = XpPlayerAvatar.center;
+    if (to != null) {
+      await CurrencyBurst.play(
+        context: context,
+        from: from,
+        to: to,
+        icon: expIcon,
+        color: AppStyle.theme.xp,
+        count: claim.amount.clamp(4, 10),
+        jump: true,
+      );
+    }
+    if (!mounted) return;
+    await context.read<AppRepo>().completeHomeXpClaim();
+    if (!mounted) return;
+    setState(() => _xpBurstRunning = false);
+    _offeredTutorial = false;
+    _maybeOfferFirstRun();
   }
 
   @override
@@ -198,6 +262,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
     _maybeStartHomeCoinCelebration(appRepo);
     _maybeStartHomeEnergyCelebration(appRepo);
+    _maybeStartHomeXpBurst(appRepo);
     if (player?.id != _listeningPid) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _syncGameListener();
@@ -310,6 +375,8 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   setState(() => _activeCoinCelebration = null);
                   _offeredTutorial = false;
                   _maybeOfferFirstRun();
+                  _maybeStartHomeEnergyCelebration(context.read<AppRepo>());
+                  _maybeStartHomeXpBurst(context.read<AppRepo>());
                 },
               ),
             ),
@@ -335,6 +402,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   });
                   _offeredTutorial = false;
                   _maybeOfferFirstRun();
+                  _maybeStartHomeXpBurst(context.read<AppRepo>());
                 },
               ),
             ),
@@ -377,7 +445,7 @@ class _ShellIdentity extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          PlayerAvatarView(avatarId: avatarId, size: 36, showBorder: false),
+          XpPlayerAvatar(avatarId: avatarId, size: 36),
         ],
       ),
     );

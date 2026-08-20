@@ -47,6 +47,9 @@ class SageTheme extends AppTheme {
   @override
   Color get success => const Color(0xFF6F9E86);
 
+  @override
+  Color get xp => const Color(0xFFB48AE0);
+
   // Playing cards
   @override
   Color get cardBackground => const Color(0xFFF7F5F0);

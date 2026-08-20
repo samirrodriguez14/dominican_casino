@@ -46,6 +46,9 @@ class FigTheme extends AppTheme {
   Color get success => const Color(0xFF913E4E);
 
   @override
+  Color get xp => const Color(0xFFB48AE0);
+
+  @override
   Color get cardBackground => const Color(0xFFF7F0EC);
 
   @override

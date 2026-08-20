@@ -42,6 +42,7 @@ abstract class AppTheme {
   Color get danger; // delete / errors
   Color get warning; // warnings / “confirm”
   Color get success; // success states (can equal turnHighlight)
+  Color get xp; // experience / level accent (lilac family)
 
   // Cards (optional but super useful across themes)
   Color get cardBackground;

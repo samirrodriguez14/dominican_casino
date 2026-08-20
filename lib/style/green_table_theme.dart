@@ -44,6 +44,9 @@ class GreenTableTheme extends AppTheme {
   @override
   Color get success => const Color(0xFF2F9E66);
 
+  @override
+  Color get xp => const Color(0xFFB48AE0);
+
   // ---- Card colors ----
   @override
   Color get cardBackground => const Color(0xFFFFFFFF);

@@ -265,6 +265,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                       Navigator.of(context).pop();
                       await vm.queueHomeCoinClaim();
                       await vm.queueHomeDailyChallengeEnergyClaims();
+                      await vm.queueHomeXpClaim();
                       if (!context.mounted) return;
                       context.go('/landing');
                     },
@@ -369,6 +370,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     if (!context.mounted) return;
     await vm.queueHomeCoinClaim();
     await vm.queueHomeDailyChallengeEnergyClaims();
+    await vm.queueHomeXpClaim();
     if (!context.mounted) return;
     Navigator.of(context).pop();
     context.go('/landing');

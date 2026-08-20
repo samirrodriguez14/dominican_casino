@@ -227,6 +227,7 @@ class AppLocalizations {
   String get buyCoins => isEs ? 'Comprar monedas' : 'Buy coins';
   String get energy => isEs ? 'Energía' : 'Energy';
   String get coins => isEs ? 'Monedas' : 'Coins';
+  String get xp => isEs ? 'Exp' : 'Exp';
   String get energyFull => isEs ? 'Llena' : 'Full';
   String nextEnergyIn(String time) =>
       isEs ? 'Siguiente en $time' : 'Next in $time';

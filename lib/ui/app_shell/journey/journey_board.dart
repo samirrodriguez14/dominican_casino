@@ -446,7 +446,7 @@ class JourneyBoardState extends State<JourneyBoard>
         final pileTargets = JourneyTableLayout.pileTargets(stage);
         final defeatedTargets = JourneyTableLayout.defeatedTargets(stage);
         final centerTarget = Offset(w * 0.5, h * 0.48);
-        final centerSize = (w * 0.42).clamp(120.0, 220.0);
+        final centerSize = (w * 0.52).clamp(150.0, 280.0);
 
         final interactive = open.pileDeal > 0.95 &&
             open.defeatedDeal > 0.95 &&
@@ -588,6 +588,9 @@ class JourneyBoardState extends State<JourneyBoard>
                     _defeatFlying == null &&
                     selectProgress > 0.01)
                   JourneyChallengerFocus(
+                    key: ValueKey(
+                      '${selected.world.name}_${selected.rank.name}',
+                    ),
                     card: selected,
                     progress: selectProgress,
                     from: homeFrom,

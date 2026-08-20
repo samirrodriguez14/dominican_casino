@@ -2566,6 +2566,11 @@ class GeneralGameViewModel extends ChangeNotifier {
     await appRepo.queueHomeDailyChallengeEnergyClaims(gameState);
   }
 
+  Future<void> queueHomeXpClaim() async {
+    if (tutorialMode) return;
+    await appRepo.queueHomeXpClaim(gameState, me);
+  }
+
   /// Occasional local-bot emoji after a play/take. Never writes game state.
   void _maybeBotReact({
     required bool took,

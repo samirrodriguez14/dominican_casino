@@ -105,6 +105,7 @@ class _GenGameControlState extends State<GenGameControl> {
         return () async {
           await vm.queueHomeCoinClaim();
           await vm.queueHomeDailyChallengeEnergyClaims();
+          await vm.queueHomeXpClaim();
           if (!mounted) return;
           context.go('/landing');
         };

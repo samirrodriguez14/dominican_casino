@@ -4,6 +4,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Empty center hint when no challenger is focused.
@@ -57,7 +58,7 @@ class JourneyActiveStage extends StatelessWidget {
   }
 }
 
-/// One continuous card object: pile → flip → grow → rewards peel to the right.
+/// Pile → center flight, then the same stack-swipe carousel as Profile settings.
 class JourneyChallengerFocus extends StatelessWidget {
   const JourneyChallengerFocus({
     super.key,
@@ -85,15 +86,11 @@ class JourneyChallengerFocus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 0–0.52: travel + flip + size up
-    // 0.52–0.68: hold at final size
-    // 0.68–1.0: rewards card peels out to the right
+    // 0–0.72: travel + flip + size up; then hand off to stack carousel.
     final travel = Curves.easeInOutCubic.transform(
-      (progress / 0.52).clamp(0.0, 1.0),
+      (progress / 0.72).clamp(0.0, 1.0),
     );
-    final peel = Curves.easeOutCubic.transform(
-      ((progress - 0.68) / 0.32).clamp(0.0, 1.0),
-    );
+    final settled = progress > 0.92;
     final mid = Offset(
       (from.dx + to.dx) / 2,
       (from.dy < to.dy ? from.dy : to.dy) - 36,
@@ -106,66 +103,66 @@ class JourneyChallengerFocus extends StatelessWidget {
         : Curves.easeOut.transform(
             ((travel - 0.32) / 0.28).clamp(0.0, 1.0),
           );
-    final interactive = progress > 0.92;
+
+    if (settled) {
+      final stageW = toSize + 48;
+      final stageH = toSize / homeCardAspect + 36;
+      return Positioned(
+        left: to.dx - stageW / 2,
+        top: to.dy - stageH / 2,
+        width: stageW,
+        height: stageH,
+        child: StackedCardCarousel(
+          key: ValueKey('journey-focus-${card.world.name}-${card.rank.name}'),
+          itemCount: 2,
+          peekStyle: CardPeekStyle.stack,
+          animateBackIn: true,
+          widthFactor: 1,
+          maxCardWidth: toSize,
+          fitToHeight: true,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return _ChallengeFace(
+                card: card,
+                showChrome: true,
+                onChallenge: onChallenge,
+                onDismiss: onDismiss,
+              );
+            }
+            return _RewardsFace(card: card);
+          },
+        ),
+      );
+    }
 
     return Positioned(
       left: pos.dx - size / 2,
       top: pos.dy - height / 2,
-      width: size + 28 * peel,
-      height: height + 20 * peel,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Rewards peels from under the challenger toward the right.
-          if (peel > 0.01)
-            Positioned(
-              left: 10 * peel,
-              top: 10 * peel,
-              width: size,
-              height: height,
-              child: Transform.rotate(
-                angle: 0.14 * peel,
-                child: Opacity(
-                  opacity: peel,
-                  child: Transform.scale(
-                    scale: 0.94 + 0.02 * peel,
-                    child: _RewardsFace(card: card),
-                  ),
-                ),
+      width: size,
+      height: height,
+      child: Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()
+          ..setEntry(3, 2, 0.0014)
+          ..rotateY((1 - faceAmount) * 1.55),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Opacity(
+              opacity: (1.0 - faceAmount).clamp(0.0, 1.0),
+              child: JourneyFaceDownCard(world: card.world, radius: 14),
+            ),
+            Opacity(
+              opacity: faceAmount.clamp(0.0, 1.0),
+              child: _ChallengeFace(
+                card: card,
+                showChrome: travel > 0.78,
+                onChallenge: null,
+                onDismiss: null,
               ),
             ),
-          // Front challenger — same object for the whole motion.
-          Positioned(
-            left: 0,
-            top: 0,
-            width: size,
-            height: height,
-            child: Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.0014)
-                ..rotateY((1 - faceAmount) * 1.55),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Opacity(
-                    opacity: (1.0 - faceAmount).clamp(0.0, 1.0),
-                    child: JourneyFaceDownCard(world: card.world, radius: 14),
-                  ),
-                  Opacity(
-                    opacity: faceAmount.clamp(0.0, 1.0),
-                    child: _ChallengeFace(
-                      card: card,
-                      showChrome: travel > 0.78,
-                      onChallenge: interactive ? onChallenge : null,
-                      onDismiss: interactive ? onDismiss : null,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -241,7 +238,7 @@ class _ChallengeFace extends StatelessWidget {
                       ),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 28, 12, 12),
+                      padding: const EdgeInsets.fromLTRB(14, 32, 14, 14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         mainAxisSize: MainAxisSize.min,
@@ -249,7 +246,7 @@ class _ChallengeFace extends StatelessWidget {
                           Text(
                             card.title,
                             style: theme.title.copyWith(
-                              fontSize: 18,
+                              fontSize: 20,
                               color: palette.text,
                             ),
                           ),
@@ -275,7 +272,7 @@ class _ChallengeFace extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           CupertinoButton(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
                             borderRadius: BorderRadius.circular(12),
                             color: palette.accent.withValues(alpha: .95),
                             minimumSize: Size.zero,
@@ -328,14 +325,14 @@ class _RewardsFace extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'On defeat',
               style: theme.title.copyWith(
-                fontSize: 16,
+                fontSize: 17,
                 color: palette.accent,
               ),
             ),
@@ -348,19 +345,19 @@ class _RewardsFace extends StatelessWidget {
                 color: palette.text.withValues(alpha: .7),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             _RewardRow(
               icon: CupertinoIcons.person_crop_circle,
               label: 'Avatar unlock',
               palette: palette,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             _RewardRow(
               icon: CupertinoIcons.paintbrush,
               label: '${card.world.label} theme',
               palette: palette,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             _RewardRow(
               icon: CupertinoIcons.star,
               label: card.rank == JourneyRank.ace
@@ -397,7 +394,7 @@ class _RewardRow extends StatelessWidget {
             label,
             style: TextStyle(
               color: palette.text.withValues(alpha: .92),
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),

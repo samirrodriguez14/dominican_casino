@@ -6,12 +6,14 @@ class Player {
   String? name;
   String? token;
   String? avatarId;
+  int xp;
   Player({
     required this.id,
     this.name,
     this.token,
     this.avatarId = defaultAvatarId,
     this.completedTutorial = false,
+    this.xp = 0,
   });
   factory Player.fromDto(Map<String, dynamic> playerDto) {
     return Player(
@@ -20,6 +22,7 @@ class Player {
       token: playerDto['token'],
       avatarId: playerDto['avatarId'] as String? ?? defaultAvatarId,
       completedTutorial: playerDto['completedTutorial'] ?? false,
+      xp: (playerDto['xp'] as num?)?.toInt() ?? 0,
     );
   }
   Map<String, dynamic> toJson() => {
@@ -28,6 +31,7 @@ class Player {
     'token': token,
     'avatarId': avatarId,
     'completedTutorial': completedTutorial,
+    'xp': xp,
   };
 
   /// Seat snapshot stored on a game document (no auth/token fields).
@@ -44,6 +48,7 @@ class Player {
     String? name,
     String? token,
     String? avatarId,
+    int? xp,
   }) {
     return Player(
       id: id ?? this.id,
@@ -51,6 +56,7 @@ class Player {
       token: token ?? this.token,
       avatarId: avatarId ?? this.avatarId,
       completedTutorial: completedTutorial ?? this.completedTutorial,
+      xp: xp ?? this.xp,
     );
   }
 

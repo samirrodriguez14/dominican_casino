@@ -46,6 +46,9 @@ class TideTheme extends AppTheme {
   Color get success => const Color(0xFF4D606A);
 
   @override
+  Color get xp => const Color(0xFFB48AE0);
+
+  @override
   Color get cardBackground => const Color(0xFFF2F4F2);
 
   @override

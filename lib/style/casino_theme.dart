@@ -46,6 +46,9 @@ class ClayTheme extends AppTheme {
   Color get success => const Color(0xFF9A7A86);
 
   @override
+  Color get xp => const Color(0xFFB48AE0);
+
+  @override
   Color get cardBackground => const Color(0xFFF7F2EC);
 
   @override

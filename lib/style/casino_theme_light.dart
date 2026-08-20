@@ -44,6 +44,9 @@ class LightCasinoTheme extends AppTheme {
   @override
   Color get success => const Color(0xFF3FAE6A);
 
+  @override
+  Color get xp => const Color(0xFFA878D4);
+
   // ---- Card colors ----
   @override
   Color get cardBackground => const Color(0xFFFFFDF8);

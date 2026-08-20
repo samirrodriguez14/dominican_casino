@@ -46,6 +46,9 @@ class DuneTheme extends AppTheme {
   Color get success => const Color(0xFF6F8B72);
 
   @override
+  Color get xp => const Color(0xFFB48AE0);
+
+  @override
   Color get cardBackground => const Color(0xFFF4F2EA);
 
   @override

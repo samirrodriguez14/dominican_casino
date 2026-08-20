@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/models/daily_challenge.dart';
+import 'package:dominican_casino/models/experience.dart';
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
@@ -83,6 +84,25 @@ class HomeCoinClaim {
   }
 }
 
+class HomeXpClaim {
+  const HomeXpClaim({required this.gameId, required this.amount});
+
+  final String gameId;
+  final int amount;
+
+  Map<String, dynamic> toJson() => {'gameId': gameId, 'amount': amount};
+
+  static HomeXpClaim? fromJson(Map<String, dynamic>? json) {
+    if (json == null) return null;
+    final gameId = json['gameId'] as String?;
+    final amount = (json['amount'] as num?)?.toInt();
+    if (gameId == null || gameId.isEmpty || amount == null || amount <= 0) {
+      return null;
+    }
+    return HomeXpClaim(gameId: gameId, amount: amount);
+  }
+}
+
 class AppRepo extends ChangeNotifier {
   Theme _appTheme = Theme.sage;
   Theme get appTheme => _appTheme;
@@ -115,6 +135,9 @@ class AppRepo extends ChangeNotifier {
   int? get shellTabRequest => _shellTabRequest;
   HomeCoinClaim? _pendingHomeCoinClaim;
   HomeCoinClaim? get pendingHomeCoinClaim => _pendingHomeCoinClaim;
+  HomeXpClaim? _pendingHomeXpClaim;
+  HomeXpClaim? get pendingHomeXpClaim => _pendingHomeXpClaim;
+  final Set<String> _claimedXpGameIds = {};
   Set<DailyChallengeId> _pendingHomeDailyChallengeEnergy = {};
   Set<DailyChallengeId> get pendingHomeDailyChallengeEnergy =>
       Set.unmodifiable(_pendingHomeDailyChallengeEnergy);
@@ -466,6 +489,7 @@ class AppRepo extends ChangeNotifier {
       await _persistWallet();
     }
     await _loadHomeCoinClaim(uid);
+    await _loadHomeXpClaim(uid);
     await _loadHomeDailyChallengeEnergyClaim(uid);
     await _cacheDailyClaimLocal(uid);
     await _cacheDailyChallengesLocal(uid);
@@ -801,6 +825,66 @@ class AppRepo extends ChangeNotifier {
     }
   }
 
+  String _homeXpClaimPrefsKey(String uid) => 'home_xp_claim_$uid';
+  String _claimedXpGamesPrefsKey(String uid) => 'claimed_xp_games_$uid';
+
+  Future<void> _loadHomeXpClaim(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_homeXpClaimPrefsKey(uid));
+      if (raw == null) {
+        _pendingHomeXpClaim = null;
+      } else {
+        _pendingHomeXpClaim = HomeXpClaim.fromJson(
+          jsonDecode(raw) as Map<String, dynamic>,
+        );
+      }
+      _claimedXpGameIds
+        ..clear()
+        ..addAll(_loadClaimedXpGameIds(sp.getString(_claimedXpGamesPrefsKey(uid))));
+    } catch (e) {
+      developer.log('AppRepo.loadHomeXpClaim: $e');
+      _pendingHomeXpClaim = null;
+    }
+  }
+
+  static Set<String> _loadClaimedXpGameIds(String? raw) {
+    if (raw == null) return {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return {};
+      return {
+        for (final e in decoded)
+          if (e is String && e.isNotEmpty) e,
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _persistHomeXpClaim() async {
+    final uid = _walletUid;
+    if (uid == null) return;
+    final sp = await SharedPreferences.getInstance();
+    final key = _homeXpClaimPrefsKey(uid);
+    final pending = _pendingHomeXpClaim;
+    if (pending == null) {
+      await sp.remove(key);
+    } else {
+      await sp.setString(key, jsonEncode(pending.toJson()));
+    }
+  }
+
+  Future<void> _persistClaimedXpGames() async {
+    final uid = _walletUid;
+    if (uid == null) return;
+    final sp = await SharedPreferences.getInstance();
+    final ids = _claimedXpGameIds.toList(growable: false);
+    // Keep the prefs payload bounded.
+    final trimmed = ids.length <= 80 ? ids : ids.sublist(ids.length - 80);
+    await sp.setString(_claimedXpGamesPrefsKey(uid), jsonEncode(trimmed));
+  }
+
   String _homeDailyChallengeEnergyPrefsKey(String uid) =>
       'home_daily_challenge_energy_$uid';
 
@@ -923,6 +1007,41 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Stash match XP to celebrate on home. Does not grant until
+  /// [completeHomeXpClaim]. Idempotent per [game.id].
+  Future<void> queueHomeXpClaim(GameState game, String me) async {
+    if (game.gameStatus != GameStatus.gameOver) return;
+    if (me.isEmpty) return;
+    if (_walletUid == null) return;
+    if (_claimedXpGameIds.contains(game.id)) return;
+    if (_pendingHomeXpClaim?.gameId == game.id) return;
+
+    final winner = game.winnerId;
+    final won = winner != null && winner.isNotEmpty && winner == me;
+    final amount = ExperienceConfig.xpForMatch(won: won);
+    if (amount <= 0) return;
+
+    _pendingHomeXpClaim = HomeXpClaim(gameId: game.id, amount: amount);
+    await _persistHomeXpClaim();
+    notifyListeners();
+  }
+
+  Future<void> completeHomeXpClaim() async {
+    final pending = _pendingHomeXpClaim;
+    if (pending == null) return;
+    if (_claimedXpGameIds.contains(pending.gameId)) {
+      _pendingHomeXpClaim = null;
+      await _persistHomeXpClaim();
+      notifyListeners();
+      return;
+    }
+    _claimedXpGameIds.add(pending.gameId);
+    _pendingHomeXpClaim = null;
+    await _persistClaimedXpGames();
+    await _persistHomeXpClaim();
+    await grantXp(pending.amount);
+  }
+
   Future<Wallet?> _loadWalletPrefs(String uid) async {
     final sp = await SharedPreferences.getInstance();
     final raw = sp.getString(_walletPrefsKey(uid));
@@ -990,6 +1109,18 @@ class AppRepo extends ChangeNotifier {
     await _persistWallet();
     notifyListeners();
   }
+
+  Future<void> grantXp(int amount) async {
+    if (amount <= 0) return;
+    final current = player;
+    if (current == null) return;
+    player = current.copyWith(xp: current.xp + amount);
+    await _persistPlayer();
+    notifyListeners();
+  }
+
+  ExperienceProgress get experienceProgress =>
+      ExperienceProgress.fromTotal(player?.xp ?? 0);
 
   Future<bool> buyEnergyWithCoins({
     required int energy,
@@ -1534,6 +1665,8 @@ class AppRepo extends ChangeNotifier {
         return true;
       }
     }
+    final xp = (remote['xp'] as num?)?.toInt() ?? 0;
+    if (xp > 0) return true;
     final extra = _packsFromNames(remote['ownedPacks']);
     extra.removeAll(defaultOwnedPacks);
     for (final pack in themePackCatalog) {
@@ -2339,6 +2472,8 @@ class AppRepo extends ChangeNotifier {
     final sp = await SharedPreferences.getInstance();
     await sp.remove(_walletPrefsKey(uid));
     await sp.remove(_homeCoinClaimPrefsKey(uid));
+    await sp.remove(_homeXpClaimPrefsKey(uid));
+    await sp.remove(_claimedXpGamesPrefsKey(uid));
     await sp.remove(_homeDailyChallengeEnergyPrefsKey(uid));
     await sp.remove(_dailyClaimPrefsKey(uid));
     await sp.remove(_dailyChallengesPrefsKey(uid));
@@ -2358,6 +2493,8 @@ class AppRepo extends ChangeNotifier {
     for (final key in sp.getKeys().toList()) {
       if (key.startsWith('wallet_') ||
           key.startsWith('home_coin_claim_') ||
+          key.startsWith('home_xp_claim_') ||
+          key.startsWith('claimed_xp_games_') ||
           key.startsWith('daily_claim_') ||
           key.startsWith('daily_challenges_')) {
         await sp.remove(key);
@@ -2372,6 +2509,8 @@ class AppRepo extends ChangeNotifier {
     _wallet = Wallet.starter();
     _walletUid = null;
     _pendingHomeCoinClaim = null;
+    _pendingHomeXpClaim = null;
+    _claimedXpGameIds.clear();
     _pendingHomeDailyChallengeEnergy = {};
     _lastDailyClaimAt = null;
     _dailyChallenges = DailyChallengeState.empty(_localDayKey());
@@ -2400,6 +2539,7 @@ class AppRepo extends ChangeNotifier {
         name: current.name,
         avatarId: current.avatarId,
         completedTutorial: current.completedTutorial,
+        xp: current.xp,
         ownedPacks: _ownedPacks.map((pack) => pack.name).toList(),
         appTheme: _appTheme.name,
         cardBack: _cardBack.name,
@@ -2425,6 +2565,7 @@ class AppRepo extends ChangeNotifier {
         'name': remote['name'] ?? remote['displayName'] ?? '',
         'avatarId': remote['avatarId'],
         'completedTutorial': remote['completedTutorial'] ?? false,
+        'xp': remote['xp'],
       });
     }
 
@@ -2449,9 +2590,12 @@ class AppRepo extends ChangeNotifier {
       completedTutorial:
           (cloud?.completedTutorial ?? false) ||
           (local?.completedTutorial ?? false),
+      xp: _maxInt(cloud?.xp ?? 0, local?.xp ?? 0),
       token: local?.token,
     );
   }
+
+  static int _maxInt(int a, int b) => a >= b ? a : b;
 
   Future<Player?> _loadPlayer() async {
     final SharedPreferences sp = await SharedPreferences.getInstance();
