@@ -50,6 +50,24 @@ class JourneyCardDef {
 
   bool get isChallenge =>
       rank != JourneyRank.ace && state == JourneyCardState.available;
+
+  JourneyCardDef copyWith({
+    JourneyWorld? world,
+    JourneyRank? rank,
+    JourneyCardState? state,
+    int? requiredLevel,
+    String? preferredGame,
+    String? blurb,
+  }) {
+    return JourneyCardDef(
+      world: world ?? this.world,
+      rank: rank ?? this.rank,
+      state: state ?? this.state,
+      requiredLevel: requiredLevel ?? this.requiredLevel,
+      preferredGame: preferredGame ?? this.preferredGame,
+      blurb: blurb ?? this.blurb,
+    );
+  }
 }
 
 class JourneyWorldDef {
@@ -78,6 +96,18 @@ class JourneyWorldDef {
       if (card.state == JourneyCardState.available) return card;
     }
     return null;
+  }
+
+  JourneyWorldDef copyWith({
+    JourneyWorld? world,
+    bool? unlocked,
+    List<JourneyCardDef>? cards,
+  }) {
+    return JourneyWorldDef(
+      world: world ?? this.world,
+      unlocked: unlocked ?? this.unlocked,
+      cards: cards ?? this.cards,
+    );
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_grid.dart';
@@ -11,7 +12,15 @@ import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 
 class GamesScreen extends StatefulWidget {
-  const GamesScreen({super.key});
+  const GamesScreen({
+    super.key,
+    this.gamesTabKey,
+    this.onGamesNavEat,
+  });
+
+  /// Anchor for shrinking the Games deck into the shell tab.
+  final GlobalKey? gamesTabKey;
+  final VoidCallback? onGamesNavEat;
 
   @override
   State<GamesScreen> createState() => GamesScreenState();
@@ -51,6 +60,7 @@ class GamesScreenState extends State<GamesScreen>
   late final AnimationController _gridAnim;
   List<_Flight> _flights = const [];
   GameMode? _howToMode;
+  TableDeck _tableDeck = TableDeck.games;
 
   static const _gridDuration = Duration(milliseconds: 520);
 
@@ -67,6 +77,44 @@ class GamesScreenState extends State<GamesScreen>
   }
 
   bool get showingGrid => _gridAnim.value > 0.5;
+
+  bool get _showGridToggle =>
+      _tableDeck == TableDeck.games && _howToMode == null;
+
+  /// Games tab re-tap: switch between Games and Journey decks.
+  Future<void> toggleTableDeck() async {
+    if (_gridAnim.isAnimating) return;
+    if (_howToMode != null) return;
+
+    // Leave grid before swapping decks.
+    if (showingGrid || _gridAnim.value > 0.02) {
+      await toggleGrid();
+      if (!mounted) return;
+      if (showingGrid) return;
+    }
+
+    await _journeyKey.currentState?.toggleTableDeck();
+  }
+
+  Future<void> toggleGrid() async {
+    if (_gridAnim.isAnimating) return;
+    if (_carouselKey.currentState?.isBusy == true) return;
+    if (_howToMode != null) return;
+    if (_journeyKey.currentState?.tableDeck == TableDeck.journey) return;
+
+    AppHaptics.selectionClick();
+    SoundService.instance.playLayered(GameSound.softCard);
+
+    final flights = _captureFlights();
+    final goingToGrid = _gridAnim.value < 0.5;
+    setState(() => _flights = flights);
+    if (goingToGrid) {
+      await _gridAnim.forward();
+    } else {
+      await _gridAnim.reverse();
+    }
+    if (mounted) setState(() => _flights = const []);
+  }
 
   Rect? _toStage(Rect global) {
     final box = _stageKey.currentContext?.findRenderObject() as RenderBox?;
@@ -169,26 +217,6 @@ class GamesScreenState extends State<GamesScreen>
     return gameGridCellRect(stage, index);
   }
 
-  Future<void> toggleGrid() async {
-    if (_gridAnim.isAnimating) return;
-    if (_carouselKey.currentState?.isBusy == true) return;
-    if (_howToMode != null) return;
-    if (_journeyKey.currentState?.tableDeck == TableDeck.journey) return;
-
-    AppHaptics.selectionClick();
-    SoundService.instance.playLayered(GameSound.softCard);
-
-    final flights = _captureFlights();
-    final goingToGrid = _gridAnim.value < 0.5;
-    setState(() => _flights = flights);
-    if (goingToGrid) {
-      await _gridAnim.forward();
-    } else {
-      await _gridAnim.reverse();
-    }
-    if (mounted) setState(() => _flights = const []);
-  }
-
   Future<void> _openHowToFromGrid(GameMode mode, Rect globalRect) async {
     if (_howToMode != null) return;
     setState(() => _howToMode = mode);
@@ -208,6 +236,7 @@ class GamesScreenState extends State<GamesScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
     return Padding(
       padding: EdgeInsets.fromLTRB(12, shellTopBarHeight(context), 12, 108),
       child: AnimatedBuilder(
@@ -222,6 +251,7 @@ class GamesScreenState extends State<GamesScreen>
               for (final flight in _flights) flight.mode,
             ?_howToMode,
           };
+          final gridOn = t > 0.5;
 
           return Stack(
             key: _stageKey,
@@ -237,6 +267,12 @@ class GamesScreenState extends State<GamesScreen>
                     carouselKey: _carouselKey,
                     showingGrid: t > 0.02,
                     gridProgress: t,
+                    gamesTabKey: widget.gamesTabKey,
+                    onGamesNavEat: widget.onGamesNavEat,
+                    onTableDeckChanged: (deck) {
+                      if (!mounted) return;
+                      setState(() => _tableDeck = deck);
+                    },
                   ),
                 ),
               ),
@@ -250,6 +286,27 @@ class GamesScreenState extends State<GamesScreen>
                 ),
               ),
               if (inFlight) ..._flightWidgets(t),
+              if (_showGridToggle)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 8,
+                  child: Center(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.all(8),
+                      minimumSize: Size.zero,
+                      onPressed: SoundService.wrapTap(toggleGrid),
+                      child: Icon(
+                        gridOn
+                            ? CupertinoIcons.rectangle_stack
+                            : CupertinoIcons.square_grid_2x2,
+                        size: 22,
+                        color: theme.textPrimary,
+                        semanticLabel: gridOn ? 'Stacked view' : 'Grid view',
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },

@@ -29,7 +29,7 @@ class GamesPeekDeck extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Transform.scale(
         scale: scale,
-        alignment: Alignment.topLeft,
+        alignment: Alignment.bottomLeft,
         child: AspectRatio(
           aspectRatio: homeCardAspect,
           child: Stack(

@@ -28,12 +28,14 @@ class AppShell extends StatefulWidget {
   State<StatefulWidget> createState() => AppShellState();
 }
 
-class AppShellState extends State<AppShell> {
+class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   int currentIndex = 1;
   late final PageController _pageController;
   final _storeKey = GlobalKey<StoreScreenState>();
   final _gamesKey = GlobalKey<GamesScreenState>();
   final _profileKey = GlobalKey<ProfileScreenState>();
+  final _gamesTabKey = GlobalKey(debugLabel: 'gamesTab');
+  late final AnimationController _gamesTabEat;
   bool _offeredTutorial = false;
   HomeCoinClaim? _activeCoinCelebration;
   List<DailyChallengeId>? _activeEnergyCelebrationChallengeIds;
@@ -44,6 +46,10 @@ class AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: currentIndex);
+    _gamesTabEat = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await context.read<AppRepo>().ensurePlayableUid();
@@ -126,8 +132,28 @@ class AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    _gamesTabEat.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void pulseGamesTabEat() {
+    _gamesTabEat.forward(from: 0);
+  }
+
+  double get _gamesTabEatScale {
+    final t = _gamesTabEat.value;
+    if (t <= 0) return 1;
+    if (t < 0.32) {
+      return 1.0 + Curves.easeOut.transform(t / 0.32) * 0.24;
+    }
+    if (t < 0.52) {
+      return 1.24 - Curves.easeIn.transform((t - 0.32) / 0.20) * 0.34;
+    }
+    if (t < 0.78) {
+      return 0.90 + Curves.easeOut.transform((t - 0.52) / 0.26) * 0.18;
+    }
+    return 1.08 - Curves.easeIn.transform((t - 0.78) / 0.22) * 0.08;
   }
 
   void _onTabTap(int index) {
@@ -135,7 +161,7 @@ class AppShellState extends State<AppShell> {
       if (index == 0) {
         _storeKey.currentState?.scrollToTop();
       } else if (index == 1) {
-        _gamesKey.currentState?.toggleGrid();
+        _gamesKey.currentState?.toggleTableDeck();
       } else if (index == 2) {
         _profileKey.currentState?.toggleProfileSettings();
       }
@@ -187,7 +213,13 @@ class AppShellState extends State<AppShell> {
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 _KeepAlivePage(child: StoreScreen(key: _storeKey)),
-                _KeepAlivePage(child: GamesScreen(key: _gamesKey)),
+                _KeepAlivePage(
+                  child: GamesScreen(
+                    key: _gamesKey,
+                    gamesTabKey: _gamesTabKey,
+                    onGamesNavEat: pulseGamesTabEat,
+                  ),
+                ),
                 _KeepAlivePage(child: ProfileScreen(key: _profileKey)),
               ],
             ),
@@ -197,22 +229,29 @@ class AppShellState extends State<AppShell> {
             right: 0,
             bottom: 10 + bottomInset,
             child: Center(
-              child: _FloatingTabBar(
-                currentIndex: currentIndex,
-                onTap: _onTabTap,
-                items: [
-                  _FloatingTabItem(icon: CupertinoIcons.bag, label: l10n.store),
-                  _FloatingTabItem(
-                    icon: CupertinoIcons.game_controller,
-                    label: l10n.games,
-                  ),
-                  _FloatingTabItem(
-                    icon: CupertinoIcons.profile_circled,
-                    label: l10n.profile,
-                  ),
-                ],
-                theme: theme,
-              ),
+              child: AnimatedBuilder(
+              animation: _gamesTabEat,
+              builder: (context, _) {
+                return _FloatingTabBar(
+                  currentIndex: currentIndex,
+                  onTap: _onTabTap,
+                  gamesTabKey: _gamesTabKey,
+                  gamesTabScale: _gamesTabEatScale,
+                  items: [
+                    _FloatingTabItem(icon: CupertinoIcons.bag, label: l10n.store),
+                    _FloatingTabItem(
+                      icon: CupertinoIcons.game_controller,
+                      label: l10n.games,
+                    ),
+                    _FloatingTabItem(
+                      icon: CupertinoIcons.profile_circled,
+                      label: l10n.profile,
+                    ),
+                  ],
+                  theme: theme,
+                );
+              },
+            ),
             ),
           ),
           Positioned(
@@ -379,12 +418,16 @@ class _FloatingTabBar extends StatelessWidget {
     required this.onTap,
     required this.items,
     required this.theme,
+    this.gamesTabKey,
+    this.gamesTabScale = 1,
   });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<_FloatingTabItem> items;
   final AppTheme theme;
+  final GlobalKey? gamesTabKey;
+  final double gamesTabScale;
 
   @override
   Widget build(BuildContext context) {
@@ -412,8 +455,10 @@ class _FloatingTabBar extends StatelessWidget {
               for (var i = 0; i < items.length; i++) ...[
                 if (i > 0) const SizedBox(width: 4),
                 _FloatingTabButton(
+                  key: i == 1 ? gamesTabKey : null,
                   item: items[i],
                   selected: currentIndex == i,
+                  scale: i == 1 ? gamesTabScale : 1,
                   onTap: () => onTap(i),
                   theme: theme,
                 ),
@@ -428,50 +473,56 @@ class _FloatingTabBar extends StatelessWidget {
 
 class _FloatingTabButton extends StatelessWidget {
   const _FloatingTabButton({
+    super.key,
     required this.item,
     required this.selected,
     required this.onTap,
     required this.theme,
+    this.scale = 1,
   });
 
   final _FloatingTabItem item;
   final bool selected;
   final VoidCallback onTap;
   final AppTheme theme;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
     final fg = selected ? theme.textPrimary : theme.muted;
 
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      minimumSize: Size.zero,
-      onPressed: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? theme.surfaceAlt.withValues(alpha: .45)
-              : CupertinoColors.transparent,
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(item.icon, size: 24, color: fg),
-            const SizedBox(height: 2),
-            Text(
-              item.label,
-              style: TextStyle(
-                color: fg,
-                fontSize: 11,
-                height: 1.1,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+    return Transform.scale(
+      scale: scale,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        onPressed: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? theme.surfaceAlt.withValues(alpha: .45)
+                : CupertinoColors.transparent,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(item.icon, size: 24, color: fg),
+              const SizedBox(height: 2),
+              Text(
+                item.label,
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 11,
+                  height: 1.1,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
