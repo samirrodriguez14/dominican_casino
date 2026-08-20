@@ -131,6 +131,21 @@ CardBackStyle cardBackStyle(CardBack id) {
   return cardBackCatalog.firstWhere((item) => item.id == id);
 }
 
+String themeLabel(Theme themeType) {
+  switch (themeType) {
+    case Theme.sage:
+      return 'Base';
+    case Theme.casino:
+      return 'Diamonds';
+    case Theme.midnight:
+      return 'Spades';
+    case Theme.fig:
+      return 'Hearts';
+    case Theme.dune:
+      return 'Clubs';
+  }
+}
+
 String cardBackLabel(CardBack id) {
   return switch (id) {
     CardBack.sage => 'Sage',
@@ -138,26 +153,11 @@ String cardBackLabel(CardBack id) {
     CardBack.ink => 'Ink',
     CardBack.ivory => 'Ivory',
     CardBack.brass => 'Copper',
-    CardBack.clay => 'Clay',
-    CardBack.tide => 'Tide',
-    CardBack.fig => 'Fig',
-    CardBack.dune => 'Dune',
+    CardBack.clay => 'Diamonds',
+    CardBack.tide => 'Spades',
+    CardBack.fig => 'Hearts',
+    CardBack.dune => 'Clubs',
   };
-}
-
-String themeLabel(Theme themeType) {
-  switch (themeType) {
-    case Theme.sage:
-      return 'Sage';
-    case Theme.casino:
-      return 'Clay';
-    case Theme.midnight:
-      return 'Tide';
-    case Theme.fig:
-      return 'Fig';
-    case Theme.dune:
-      return 'Dune';
-  }
 }
 
 AppTheme themeFromEnum(Theme theme) {

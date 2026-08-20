@@ -3,10 +3,16 @@ import 'package:flutter/cupertino.dart';
 
 /// Dim overlay with a centered lock. Used on locked theme cards.
 class ThemeLockCover extends StatelessWidget {
-  const ThemeLockCover({super.key, this.coinCost, this.lockSize = 36});
+  const ThemeLockCover({
+    super.key,
+    this.coinCost,
+    this.lockSize = 36,
+    this.caption,
+  });
 
   final int? coinCost;
   final double lockSize;
+  final String? caption;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +48,16 @@ class ThemeLockCover extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ] else if (caption != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                caption!,
+                style: const TextStyle(
+                  color: Color(0xE6FFFFFF),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ],

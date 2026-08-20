@@ -4,67 +4,67 @@ import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 
-/// Muted khaki / dune felt — same quiet steps as Sage, shifted toward sand.
+/// Clubs world — freedom / escape. Forest + warm cream.
 class DuneTheme extends AppTheme {
   @override
   double get radius => 14;
 
   @override
-  Color get background => const Color(0xFF1C1A16);
+  Color get background => const Color(0xFF111D19);
 
   @override
-  Color get surface => const Color(0xFF28241E);
+  Color get surface => const Color(0xFF3E5A4E);
 
   @override
-  Color get surfaceRaised => const Color(0xFF342E26);
+  Color get surfaceRaised => const Color(0xFF4A6A5A);
 
   @override
-  Color get surfaceAlt => const Color(0xFF4A4236);
+  Color get surfaceAlt => const Color(0xFF6F8B72);
 
   @override
-  Color get textPrimary => const Color(0xFFF4F0E6);
+  Color get textPrimary => const Color(0xFFF1EFE5);
 
   @override
-  Color get muted => const Color(0xFFB8B09C);
+  Color get muted => const Color(0xFFB0C0B4);
 
   @override
-  Color get border => const Color(0xFF5E5648);
+  Color get border => const Color(0xFF6F8B72);
 
   @override
-  Color get turnHighlight => const Color(0xFFC4B496);
+  Color get turnHighlight => const Color(0xFFD4C59A);
 
   @override
-  Color get opponentHighlight => const Color(0xFFA8A090);
+  Color get opponentHighlight => const Color(0xFFA8B898);
 
   @override
   Color get danger => const Color(0xFFC45C55);
 
   @override
-  Color get warning => const Color(0xFFD4B96A);
+  Color get warning => const Color(0xFFD4C59A);
 
   @override
-  Color get success => const Color(0xFF9A8E72);
+  Color get success => const Color(0xFF6F8B72);
 
   @override
-  Color get cardBackground => const Color(0xFFF6F3EA);
+  Color get cardBackground => const Color(0xFFF4F2EA);
 
   @override
-  Color get cardBorder => const Color(0xFFD0C8B8);
+  Color get cardBorder => const Color(0xFFC8D0C4);
 
   @override
   Color get suitRed => const Color(0xFFC45C55);
 
   @override
-  Color get suitBlack => const Color(0xFF1C1A16);
+  Color get suitBlack => const Color(0xFF111D19);
 
   @override
-  Color get pickerFace => const Color(0xFF6A5A40);
+  Color get pickerFace => const Color(0xFF3E5A4E);
 
   @override
-  Color get pickerFaceAlt => const Color(0xFF5A5040);
+  Color get pickerFaceAlt => const Color(0xFF2A4038);
 
   @override
-  Color get pickerFaceEdge => const Color(0xFF7A6A50);
+  Color get pickerFaceEdge => const Color(0xFF6F8B72);
 
   @override
   BoxDecoration surfaceBox({Color? color}) => BoxDecoration(
@@ -92,7 +92,7 @@ class DuneTheme extends AppTheme {
     gradient: RadialGradient(
       center: Alignment(0, -0.12),
       radius: 1.25,
-      colors: [Color(0xFF3A3428), Color(0xFF1C1A16)],
+      colors: [Color(0xFF2A4038), Color(0xFF111D19)],
     ),
   );
 

@@ -24,45 +24,42 @@ class ThemePack {
   bool get isPlayLocked => unlock == ThemeUnlockKind.play;
 }
 
+/// Base (Sage) + four Journey worlds. Worlds unlock via play, not coins.
 const themePackCatalog = <ThemePack>[
   ThemePack(
     id: Theme.sage,
     cardBack: CardBack.sage,
-    avatarIds: ['palm', 'leaf', 'club', 'star'],
+    avatarIds: ['palm', 'leaf', 'star'],
     unlock: ThemeUnlockKind.free,
     defaultTintId: 'sage',
   ),
   ThemePack(
     id: Theme.casino,
     cardBack: CardBack.clay,
-    avatarIds: ['acorn', 'diamond'],
-    unlock: ThemeUnlockKind.coins,
-    coinCost: 400,
-    defaultTintId: 'clay',
+    avatarIds: ['diamond', 'acorn'],
+    unlock: ThemeUnlockKind.play,
+    defaultTintId: 'diamonds',
   ),
   ThemePack(
-    id: Theme.midnight,
-    cardBack: CardBack.tide,
-    avatarIds: ['moon', 'spade'],
-    unlock: ThemeUnlockKind.coins,
-    coinCost: 600,
-    defaultTintId: 'tide',
+    id: Theme.dune,
+    cardBack: CardBack.dune,
+    avatarIds: ['club', 'leaf'],
+    unlock: ThemeUnlockKind.play,
+    defaultTintId: 'clubs',
   ),
   ThemePack(
     id: Theme.fig,
     cardBack: CardBack.fig,
     avatarIds: ['heart'],
-    unlock: ThemeUnlockKind.coins,
-    coinCost: 500,
-    defaultTintId: 'fig',
+    unlock: ThemeUnlockKind.play,
+    defaultTintId: 'hearts',
   ),
   ThemePack(
-    id: Theme.dune,
-    cardBack: CardBack.dune,
-    avatarIds: ['sun'],
-    unlock: ThemeUnlockKind.coins,
-    coinCost: 500,
-    defaultTintId: 'dune',
+    id: Theme.midnight,
+    cardBack: CardBack.tide,
+    avatarIds: ['spade', 'moon'],
+    unlock: ThemeUnlockKind.play,
+    defaultTintId: 'spades',
   ),
 ];
 
@@ -83,10 +80,13 @@ CardBack defaultCardBackFor(Theme theme) => themePack(theme).cardBack;
 
 List<String> avatarsForPack(Theme id) => themePack(id).avatarIds;
 
-List<ThemePack> coinPacksForSale(Set<Theme> owned) {
+/// Coin theme sales retired — worlds unlock through Journey.
+List<ThemePack> coinPacksForSale(Set<Theme> owned) => const [];
+
+List<ThemePack> playLockedPacks(Set<Theme> owned) {
   return [
     for (final pack in themePackCatalog)
-      if (pack.isCoinLocked && !owned.contains(pack.id)) pack,
+      if (pack.isPlayLocked && !owned.contains(pack.id)) pack,
   ];
 }
 
@@ -105,26 +105,45 @@ const cardBackTintCatalog = <CardBackTint>[
   CardBackTint(id: 'forest', color: Color(0xFF2C4A3D), themes: {Theme.sage}),
   CardBackTint(id: 'sageDeep', color: Color(0xFF24382E), themes: {Theme.sage}),
   CardBackTint(id: 'moss', color: Color(0xFF3E4A38), themes: {Theme.sage}),
-  CardBackTint(id: 'clay', color: Color(0xFF6B4336), themes: {Theme.casino}),
   CardBackTint(
-    id: 'terracotta',
-    color: Color(0xFF5A342C),
+    id: 'diamonds',
+    color: Color(0xFF4B3046),
     themes: {Theme.casino},
   ),
-  CardBackTint(id: 'copper', color: Color(0xFF7A4E3A), themes: {Theme.casino}),
-  CardBackTint(id: 'tide', color: Color(0xFF3A5558), themes: {Theme.midnight}),
-  CardBackTint(id: 'reef', color: Color(0xFF2C4448), themes: {Theme.midnight}),
+  CardBackTint(id: 'violet', color: Color(0xFF3A2438), themes: {Theme.casino}),
+  CardBackTint(id: 'gold', color: Color(0xFF76556F), themes: {Theme.casino}),
+  // Legacy Clay aliases → Diamonds
+  CardBackTint(id: 'clay', color: Color(0xFF4B3046), themes: {Theme.casino}),
+  CardBackTint(
+    id: 'terracotta',
+    color: Color(0xFF3A2438),
+    themes: {Theme.casino},
+  ),
+  CardBackTint(id: 'copper', color: Color(0xFF76556F), themes: {Theme.casino}),
+  CardBackTint(id: 'clubs', color: Color(0xFF3E5A4E), themes: {Theme.dune}),
+  CardBackTint(id: 'mossClub', color: Color(0xFF2A4038), themes: {Theme.dune}),
+  CardBackTint(id: 'cream', color: Color(0xFF6F8B72), themes: {Theme.dune}),
+  CardBackTint(id: 'dune', color: Color(0xFF3E5A4E), themes: {Theme.dune}),
+  CardBackTint(id: 'khaki', color: Color(0xFF2A4038), themes: {Theme.dune}),
+  CardBackTint(
+    id: 'sandstone',
+    color: Color(0xFF6F8B72),
+    themes: {Theme.dune},
+  ),
+  CardBackTint(id: 'hearts', color: Color(0xFF68404F), themes: {Theme.fig}),
+  CardBackTint(id: 'mulberry', color: Color(0xFF4A2834), themes: {Theme.fig}),
+  CardBackTint(id: 'wine', color: Color(0xFF913E4E), themes: {Theme.fig}),
+  CardBackTint(id: 'fig', color: Color(0xFF68404F), themes: {Theme.fig}),
+  CardBackTint(id: 'spades', color: Color(0xFF293943), themes: {Theme.midnight}),
+  CardBackTint(id: 'slate', color: Color(0xFF1A282E), themes: {Theme.midnight}),
+  CardBackTint(id: 'steel', color: Color(0xFF4D606A), themes: {Theme.midnight}),
+  CardBackTint(id: 'tide', color: Color(0xFF293943), themes: {Theme.midnight}),
+  CardBackTint(id: 'reef', color: Color(0xFF1A282E), themes: {Theme.midnight}),
   CardBackTint(
     id: 'tideDeep',
-    color: Color(0xFF1A282C),
+    color: Color(0xFF4D606A),
     themes: {Theme.midnight},
   ),
-  CardBackTint(id: 'fig', color: Color(0xFF5A3A48), themes: {Theme.fig}),
-  CardBackTint(id: 'mulberry', color: Color(0xFF4A2E3A), themes: {Theme.fig}),
-  CardBackTint(id: 'wine', color: Color(0xFF3A242C), themes: {Theme.fig}),
-  CardBackTint(id: 'dune', color: Color(0xFF6A5A40), themes: {Theme.dune}),
-  CardBackTint(id: 'khaki', color: Color(0xFF5A4C34), themes: {Theme.dune}),
-  CardBackTint(id: 'sandstone', color: Color(0xFF4A4030), themes: {Theme.dune}),
 ];
 
 const _legacyTintIds = {
@@ -134,21 +153,20 @@ const _legacyTintIds = {
   'sand': 'moss',
   'mossPaper': 'forest',
   'sageMist': 'sageDeep',
-  'walnut': 'clay',
-  'walnutDeep': 'terracotta',
-  'walnutPaper': 'terracotta',
-  'umber': 'clay',
-  'coolWhite': 'tideDeep',
-  'slatePaper': 'reef',
-  'casinoGold': 'copper',
-  'brass': 'copper',
-  'ink': 'tideDeep',
+  'walnut': 'diamonds',
+  'walnutDeep': 'violet',
+  'walnutPaper': 'violet',
+  'umber': 'diamonds',
+  'coolWhite': 'slate',
+  'slatePaper': 'slate',
+  'casinoGold': 'gold',
+  'brass': 'gold',
+  'ink': 'slate',
   'ivory': 'sage',
-  'navy': 'tide',
-  'slate': 'reef',
-  'emerald': 'terracotta',
-  'midnightNavy': 'tideDeep',
-  'midnightIce': 'tideDeep',
+  'navy': 'spades',
+  'emerald': 'clubs',
+  'midnightNavy': 'slate',
+  'midnightIce': 'slate',
 };
 
 CardBackTint cardBackTintById(String id) {

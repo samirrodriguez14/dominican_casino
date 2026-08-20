@@ -264,6 +264,21 @@ class AppRepo extends ChangeNotifier {
     unawaited(_persistLooks());
   }
 
+  /// Unlock a play-gated pack if needed, then equip it (Journey world select).
+  Future<bool> unlockAndEquipPack(Theme id) async {
+    final pack = themePack(id);
+    if (pack.isCoinLocked) return false;
+    if (!ownsPack(id)) {
+      if (!pack.isPlayLocked && pack.unlock != ThemeUnlockKind.free) {
+        return false;
+      }
+      _ownedPacks.add(id);
+      await _persistOwnedPacks();
+    }
+    await equipPack(id);
+    return true;
+  }
+
   Future<bool> buyThemePack(Theme id) async {
     final pack = themePack(id);
     if (!pack.isCoinLocked) return false;

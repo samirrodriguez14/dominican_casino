@@ -4,67 +4,67 @@ import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 
-/// Cool tide / slate-teal felt — same quiet steps as Sage, shifted toward water.
+/// Spades world — strength / domination. Blue charcoal + steel.
 class TideTheme extends AppTheme {
   @override
   double get radius => 14;
 
   @override
-  Color get background => const Color(0xFF141C1E);
+  Color get background => const Color(0xFF10171C);
 
   @override
-  Color get surface => const Color(0xFF1C272A);
+  Color get surface => const Color(0xFF293943);
 
   @override
-  Color get surfaceRaised => const Color(0xFF253235);
+  Color get surfaceRaised => const Color(0xFF344850);
 
   @override
-  Color get surfaceAlt => const Color(0xFF334448);
+  Color get surfaceAlt => const Color(0xFF4D606A);
 
   @override
-  Color get textPrimary => const Color(0xFFEEF3F2);
+  Color get textPrimary => const Color(0xFFEEF0EE);
 
   @override
-  Color get muted => const Color(0xFF9AADA8);
+  Color get muted => const Color(0xFFA8B0B4);
 
   @override
-  Color get border => const Color(0xFF4A5E62);
+  Color get border => const Color(0xFF4D606A);
 
   @override
-  Color get turnHighlight => const Color(0xFFC4B896);
+  Color get turnHighlight => const Color(0xFFAEB9BD);
 
   @override
-  Color get opponentHighlight => const Color(0xFF8FA8B0);
+  Color get opponentHighlight => const Color(0xFF8898A0);
 
   @override
   Color get danger => const Color(0xFFC45C55);
 
   @override
-  Color get warning => const Color(0xFFD4B96A);
+  Color get warning => const Color(0xFFAEB9BD);
 
   @override
-  Color get success => const Color(0xFF6F9E96);
+  Color get success => const Color(0xFF4D606A);
 
   @override
-  Color get cardBackground => const Color(0xFFF5F6F2);
+  Color get cardBackground => const Color(0xFFF2F4F2);
 
   @override
-  Color get cardBorder => const Color(0xFFC8D0CC);
+  Color get cardBorder => const Color(0xFFC4CCD0);
 
   @override
   Color get suitRed => const Color(0xFFC45C55);
 
   @override
-  Color get suitBlack => const Color(0xFF161C1D);
+  Color get suitBlack => const Color(0xFF10171C);
 
   @override
-  Color get pickerFace => const Color(0xFF3A5558);
+  Color get pickerFace => const Color(0xFF293943);
 
   @override
-  Color get pickerFaceAlt => const Color(0xFF3D4F58);
+  Color get pickerFaceAlt => const Color(0xFF1A282E);
 
   @override
-  Color get pickerFaceEdge => const Color(0xFF4A686C);
+  Color get pickerFaceEdge => const Color(0xFF4D606A);
 
   @override
   BoxDecoration surfaceBox({Color? color}) => BoxDecoration(
@@ -92,7 +92,7 @@ class TideTheme extends AppTheme {
     gradient: RadialGradient(
       center: Alignment(0, -0.12),
       radius: 1.25,
-      colors: [Color(0xFF243638), Color(0xFF141C1E)],
+      colors: [Color(0xFF1A282E), Color(0xFF10171C)],
     ),
   );
 

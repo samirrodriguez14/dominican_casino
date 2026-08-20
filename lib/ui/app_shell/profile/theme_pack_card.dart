@@ -235,6 +235,7 @@ class _ThemePackCardState extends State<ThemePackCard> {
                     coinCost: widget.compact && pack.isCoinLocked
                         ? pack.coinCost
                         : null,
+                    caption: pack.isPlayLocked ? 'Journey' : null,
                   ),
                 ),
               if (equipped)

@@ -4,67 +4,67 @@ import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 
-/// Muted plum / fig felt — same quiet steps as Sage, shifted toward wine.
+/// Hearts world — love / obsession. Fig + dusty rose.
 class FigTheme extends AppTheme {
   @override
   double get radius => 14;
 
   @override
-  Color get background => const Color(0xFF1C1418);
+  Color get background => const Color(0xFF211417);
 
   @override
-  Color get surface => const Color(0xFF281C22);
+  Color get surface => const Color(0xFF68404F);
 
   @override
-  Color get surfaceRaised => const Color(0xFF34262C);
+  Color get surfaceRaised => const Color(0xFF7A4E5C);
 
   @override
-  Color get surfaceAlt => const Color(0xFF4A3540);
+  Color get surfaceAlt => const Color(0xFF913E4E);
 
   @override
-  Color get textPrimary => const Color(0xFFF4ECEC);
+  Color get textPrimary => const Color(0xFFF5ECE8);
 
   @override
-  Color get muted => const Color(0xFFB8A4A8);
+  Color get muted => const Color(0xFFC4A8A8);
 
   @override
-  Color get border => const Color(0xFF5E4850);
+  Color get border => const Color(0xFF913E4E);
 
   @override
-  Color get turnHighlight => const Color(0xFFC4A090);
+  Color get turnHighlight => const Color(0xFFD7A19E);
 
   @override
-  Color get opponentHighlight => const Color(0xFFA89098);
+  Color get opponentHighlight => const Color(0xFFB89098);
 
   @override
   Color get danger => const Color(0xFFC45C55);
 
   @override
-  Color get warning => const Color(0xFFD4B96A);
+  Color get warning => const Color(0xFFD7A19E);
 
   @override
-  Color get success => const Color(0xFF9A7A86);
+  Color get success => const Color(0xFF913E4E);
 
   @override
-  Color get cardBackground => const Color(0xFFF7F2F0);
+  Color get cardBackground => const Color(0xFFF7F0EC);
 
   @override
-  Color get cardBorder => const Color(0xFFD4C4C8);
+  Color get cardBorder => const Color(0xFFD4C0C4);
 
   @override
   Color get suitRed => const Color(0xFFC45C55);
 
   @override
-  Color get suitBlack => const Color(0xFF1C1418);
+  Color get suitBlack => const Color(0xFF211417);
 
   @override
-  Color get pickerFace => const Color(0xFF5A3A48);
+  Color get pickerFace => const Color(0xFF68404F);
 
   @override
-  Color get pickerFaceAlt => const Color(0xFF4A3844);
+  Color get pickerFaceAlt => const Color(0xFF4A2834);
 
   @override
-  Color get pickerFaceEdge => const Color(0xFF6A4A56);
+  Color get pickerFaceEdge => const Color(0xFF913E4E);
 
   @override
   BoxDecoration surfaceBox({Color? color}) => BoxDecoration(
@@ -92,7 +92,7 @@ class FigTheme extends AppTheme {
     gradient: RadialGradient(
       center: Alignment(0, -0.12),
       radius: 1.25,
-      colors: [Color(0xFF3A242C), Color(0xFF1C1418)],
+      colors: [Color(0xFF4A2834), Color(0xFF211417)],
     ),
   );
 

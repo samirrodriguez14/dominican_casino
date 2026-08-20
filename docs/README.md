@@ -11,6 +11,7 @@ If a PR contradicts a contract, update the contract in the same PR or reject the
 | [SECURITY.md](SECURITY.md) | Auth, rules, cheating, coins |
 | [IOS_RELEASE.md](IOS_RELEASE.md) | App Store packaging |
 | [UX.md](UX.md) | Navigation, tutorial, sound, animation |
+| [DOMINION_JOURNEY.md](DOMINION_JOURNEY.md) | Journey progression, worlds, characters, canon |
 
 **Current product facts:**
 

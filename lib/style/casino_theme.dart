@@ -4,67 +4,67 @@ import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 
-/// Warm clay / terracotta felt — same quiet steps as Sage, shifted toward earth.
+/// Diamonds world — ambition / greed. Plum + champagne gold.
 class ClayTheme extends AppTheme {
   @override
   double get radius => 14;
 
   @override
-  Color get background => const Color(0xFF1F1612);
+  Color get background => const Color(0xFF1D141D);
 
   @override
-  Color get surface => const Color(0xFF2B201C);
+  Color get surface => const Color(0xFF4B3046);
 
   @override
-  Color get surfaceRaised => const Color(0xFF382823);
+  Color get surfaceRaised => const Color(0xFF5A3A52);
 
   @override
-  Color get surfaceAlt => const Color(0xFF4E3830);
+  Color get surfaceAlt => const Color(0xFF76556F);
 
   @override
-  Color get textPrimary => const Color(0xFFF6EEE6);
+  Color get textPrimary => const Color(0xFFF4EEE5);
 
   @override
-  Color get muted => const Color(0xFFB8A498);
+  Color get muted => const Color(0xFFC4B0B8);
 
   @override
-  Color get border => const Color(0xFF6A5348);
+  Color get border => const Color(0xFF76556F);
 
   @override
-  Color get turnHighlight => const Color(0xFFD4A07A);
+  Color get turnHighlight => const Color(0xFFC9A568);
 
   @override
-  Color get opponentHighlight => const Color(0xFFB89880);
+  Color get opponentHighlight => const Color(0xFFB898A8);
 
   @override
   Color get danger => const Color(0xFFC45C55);
 
   @override
-  Color get warning => const Color(0xFFD4B96A);
+  Color get warning => const Color(0xFFC9A568);
 
   @override
-  Color get success => const Color(0xFF9A7A62);
+  Color get success => const Color(0xFF9A7A86);
 
   @override
-  Color get cardBackground => const Color(0xFFF8F3EA);
+  Color get cardBackground => const Color(0xFFF7F2EC);
 
   @override
-  Color get cardBorder => const Color(0xFFD4C4B4);
+  Color get cardBorder => const Color(0xFFD4C4C0);
 
   @override
   Color get suitRed => const Color(0xFFC45C55);
 
   @override
-  Color get suitBlack => const Color(0xFF1C1612);
+  Color get suitBlack => const Color(0xFF1D141D);
 
   @override
-  Color get pickerFace => const Color(0xFF6B4336);
+  Color get pickerFace => const Color(0xFF4B3046);
 
   @override
-  Color get pickerFaceAlt => const Color(0xFF5A3F3A);
+  Color get pickerFaceAlt => const Color(0xFF3A2438);
 
   @override
-  Color get pickerFaceEdge => const Color(0xFF7A5648);
+  Color get pickerFaceEdge => const Color(0xFF76556F);
 
   @override
   BoxDecoration surfaceBox({Color? color}) => BoxDecoration(
@@ -92,7 +92,7 @@ class ClayTheme extends AppTheme {
     gradient: RadialGradient(
       center: Alignment(0, -0.12),
       radius: 1.25,
-      colors: [Color(0xFF3A2822), Color(0xFF1F1612)],
+      colors: [Color(0xFF3A2438), Color(0xFF1D141D)],
     ),
   );
 

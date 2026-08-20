@@ -5,6 +5,7 @@ import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_grid.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_stage.dart';
 import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
@@ -41,6 +42,7 @@ class _Flight {
 class GamesScreenState extends State<GamesScreen>
     with SingleTickerProviderStateMixin {
   final GlobalKey<GameModeCarouselState> _carouselKey = GlobalKey();
+  final GlobalKey<JourneyStageState> _journeyKey = GlobalKey();
   final GlobalKey _stageKey = GlobalKey();
   final Map<GameMode, GlobalKey> _gridKeys = {
     for (final mode in gameModeCarouselModes) mode: GlobalKey(),
@@ -171,6 +173,7 @@ class GamesScreenState extends State<GamesScreen>
     if (_gridAnim.isAnimating) return;
     if (_carouselKey.currentState?.isBusy == true) return;
     if (_howToMode != null) return;
+    if (_journeyKey.currentState?.tableDeck == TableDeck.journey) return;
 
     AppHaptics.selectionClick();
     SoundService.instance.playLayered(GameSound.softCard);
@@ -229,7 +232,12 @@ class GamesScreenState extends State<GamesScreen>
                 ignoring: t > 0.02,
                 child: Opacity(
                   opacity: t == 0 ? 1 : 0,
-                  child: GameModeCarousel(key: _carouselKey),
+                  child: JourneyStage(
+                    key: _journeyKey,
+                    carouselKey: _carouselKey,
+                    showingGrid: t > 0.02,
+                    gridProgress: t,
+                  ),
                 ),
               ),
               IgnorePointer(
