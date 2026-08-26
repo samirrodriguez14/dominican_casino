@@ -6,6 +6,7 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:dominican_casino/ui/general_game/leave_match_to_home.dart';
 import 'package:dominican_casino/ui/general_game/match_coin_payout.dart';
@@ -199,6 +200,8 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                     name: 'Waiting',
                     avatarId: null,
                     avatarAsset: null,
+                    defeatedAces: {},
+                    wearJourneyAccessories: true,
                     score: 0,
                     pendingCoins: 0,
                     roundCoins: 0,
@@ -214,8 +217,11 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                     _BoardSpec(
                       id: pid,
                       name: _playerLabel(pid),
-                      avatarId: _playerAvatarId(pid),
-                      avatarAsset: _playerAvatarAsset(pid),
+                      avatarId: _playerSeatLook(pid).avatarId,
+                      avatarAsset: _playerSeatLook(pid).avatarAsset,
+                      defeatedAces: _playerSeatLook(pid).defeatedAces,
+                      wearJourneyAccessories:
+                          _playerSeatLook(pid).wearJourneyAccessories,
                       score: totalScores[pid] ?? 0,
                       pendingCoins: gameOver
                           ? gameState.winPotCoins(pid) +
@@ -328,16 +334,14 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     );
   }
 
-  String? _playerAvatarId(String pid) {
+  GameSeatLook _playerSeatLook(String pid) {
+    final vm = widget.vm;
+    if (vm != null) return vm.seatLook(pid);
     final raw = gameState.playersInfo[pid];
-    if (raw is! Map) return null;
-    return Map<String, dynamic>.from(raw)['avatarId'] as String?;
-  }
-
-  String? _playerAvatarAsset(String pid) {
-    final raw = gameState.playersInfo[pid];
-    if (raw is! Map) return null;
-    return Map<String, dynamic>.from(raw)['avatarAsset'] as String?;
+    if (raw is Map) {
+      return GameSeatLook.fromMap(Map<String, dynamic>.from(raw));
+    }
+    return const GameSeatLook();
   }
 
   String _playerLabel(String pid) {
@@ -443,6 +447,8 @@ class _BoardSpec {
     required this.name,
     required this.avatarId,
     required this.avatarAsset,
+    required this.defeatedAces,
+    required this.wearJourneyAccessories,
     required this.score,
     required this.pendingCoins,
     required this.roundCoins,
@@ -460,6 +466,8 @@ class _BoardSpec {
   final String name;
   final String? avatarId;
   final String? avatarAsset;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wearJourneyAccessories;
   final dynamic score;
   final int pendingCoins;
   final int roundCoins;
@@ -835,6 +843,8 @@ class _AvatarFlipBoardState extends State<_AvatarFlipBoard>
                         theme: theme,
                         avatarId: spec.avatarId,
                         avatarAsset: spec.avatarAsset,
+                        defeatedAces: spec.defeatedAces,
+                        wearJourneyAccessories: spec.wearJourneyAccessories,
                         isCasino: spec.isCasino,
                         scoreMap: spec.scoreMap,
                         matchCoins: spec.pendingCoins,
@@ -851,6 +861,8 @@ class _AvatarFlipBoardState extends State<_AvatarFlipBoard>
                       name: spec.name,
                       avatarId: spec.avatarId,
                       avatarAsset: spec.avatarAsset,
+                      defeatedAces: spec.defeatedAces,
+                      wearJourneyAccessories: spec.wearJourneyAccessories,
                       score: spec.score,
                       pendingCoins: spec.pendingCoins,
                       roundCoins: spec.roundCoins,
@@ -1146,6 +1158,8 @@ class _ScoreBoardFront extends StatelessWidget {
     required this.name,
     required this.avatarId,
     required this.avatarAsset,
+    required this.defeatedAces,
+    required this.wearJourneyAccessories,
     required this.score,
     required this.pendingCoins,
     required this.roundCoins,
@@ -1162,6 +1176,8 @@ class _ScoreBoardFront extends StatelessWidget {
   final String name;
   final String? avatarId;
   final String? avatarAsset;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wearJourneyAccessories;
   final dynamic score;
   final int pendingCoins;
   final int roundCoins;
@@ -1201,6 +1217,8 @@ class _ScoreBoardFront extends StatelessWidget {
                 child: PlayerScoreAvatar(
                   avatarId: avatarId,
                   avatarAsset: avatarAsset,
+                  defeatedAces: defeatedAces,
+                  wearJourneyAccessories: wearJourneyAccessories,
                   score: score,
                   pendingCoins: 0,
                   size: avatarSize,
@@ -1377,6 +1395,8 @@ class _ScoreBoardBack extends StatefulWidget {
     required this.theme,
     required this.avatarId,
     required this.avatarAsset,
+    required this.defeatedAces,
+    required this.wearJourneyAccessories,
     required this.isCasino,
     required this.scoreMap,
     required this.matchCoins,
@@ -1391,6 +1411,8 @@ class _ScoreBoardBack extends StatefulWidget {
   final AvatarScoreTheme theme;
   final String? avatarId;
   final String? avatarAsset;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wearJourneyAccessories;
   final bool isCasino;
   final Map<String, dynamic> scoreMap;
   final int matchCoins;
@@ -1506,6 +1528,9 @@ class _ScoreBoardBackState extends State<_ScoreBoardBack> {
                   avatarAsset: widget.avatarAsset,
                   size: 26,
                   showBorder: false,
+                  showJourneyAces: widget.defeatedAces.isNotEmpty,
+                  defeatedAces: widget.defeatedAces,
+                  wearJourneyAccessories: widget.wearJourneyAccessories,
                 ),
                 const SizedBox(width: 8),
                 _TallyText(

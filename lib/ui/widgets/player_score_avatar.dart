@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/widgets/coin_gain_badge.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
@@ -22,6 +23,8 @@ class PlayerScoreAvatar extends StatelessWidget {
     this.isOpen = false,
     this.turnDeadline,
     this.turnTotal,
+    this.defeatedAces = const {},
+    this.wearJourneyAccessories = true,
   });
 
   final String? avatarId;
@@ -37,6 +40,8 @@ class PlayerScoreAvatar extends StatelessWidget {
   /// Remaining time is drawn as a ring around this seat.
   final DateTime? turnDeadline;
   final Duration? turnTotal;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wearJourneyAccessories;
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +227,9 @@ class PlayerScoreAvatar extends StatelessWidget {
         avatarAsset: avatarAsset,
         size: s,
         showBorder: false,
+        showJourneyAces: defeatedAces.isNotEmpty,
+        defeatedAces: defeatedAces,
+        wearJourneyAccessories: wearJourneyAccessories,
       ),
     );
   }

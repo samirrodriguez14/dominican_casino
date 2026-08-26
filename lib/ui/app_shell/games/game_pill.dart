@@ -369,6 +369,9 @@ class _PlayerRow extends StatelessWidget {
             avatarAsset: seat.avatarAsset,
             size: 22,
             showBorder: false,
+            showJourneyAces: seat.defeatedAces.isNotEmpty,
+            defeatedAces: seat.defeatedAces,
+            wearJourneyAccessories: seat.wearJourneyAccessories,
           ),
         const SizedBox(width: 8),
         Flexible(

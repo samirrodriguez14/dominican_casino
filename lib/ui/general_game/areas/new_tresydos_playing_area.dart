@@ -11,6 +11,7 @@ import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/general_game/hand_fan_layout.dart';
 import 'package:dominican_casino/ui/general_game/simple/simple_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
 import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
 import 'package:dominican_casino/ui/widgets/take_hint_bounce.dart';
@@ -308,18 +309,17 @@ class _CompactSideSeat extends StatelessWidget {
     final cards = waiting
         ? const <PlayingCardModel>[]
         : (vm.gameState.hands[oppId] ?? []);
-    final info = waiting
-        ? <String, dynamic>{}
-        : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
+    final seat = waiting ? const GameSeatLook() : vm.seatLook(oppId);
     final celebrating = !waiting && vm.isCelebratingHand(oppId);
     final preferredCardWidth = celebrating
         ? _CompactSideSeat.winCardWidth
         : _CompactSideSeat.cardWidth;
-    final avatarId = info['avatarId'] as String?;
-    final avatarAsset = info['avatarAsset'] as String?;
     final name = waiting
         ? AppLocalizations.of(context).openSeat
-        : ((info['name'] as String?) ?? 'Rival');
+        : ((vm.gameState.playersInfo[oppId] is Map
+                ? (vm.gameState.playersInfo[oppId] as Map)['name'] as String?
+                : null) ??
+            'Rival');
     final score = waiting ? 0 : (vm.gameState.scores[oppId] ?? 0);
     final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
         ? vm.incomingReaction
@@ -335,8 +335,10 @@ class _CompactSideSeat extends StatelessWidget {
           children: [
             PlayerScoreAvatar(
               key: waiting ? null : vm.celebrationAvatarKeyForPid(oppId),
-              avatarId: avatarId,
-              avatarAsset: avatarAsset,
+              avatarId: seat.avatarId,
+              avatarAsset: seat.avatarAsset,
+              defeatedAces: seat.defeatedAces,
+              wearJourneyAccessories: seat.wearJourneyAccessories,
               name: name,
               score: score,
               pendingCoins: waiting ? 0 : vm.revealedPendingFor(oppId),

@@ -16,6 +16,7 @@ import 'package:dominican_casino/local_player/local_player.dart';
 import 'package:dominican_casino/models/daily_challenge.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
+import 'package:dominican_casino/models/avatar_catalog.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/playing_area_stack_model.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
@@ -28,6 +29,7 @@ import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/hand_order.dart';
 import 'package:dominican_casino/view_models/games/rummy_box_layout.dart';
@@ -881,6 +883,21 @@ class GeneralGameViewModel extends ChangeNotifier {
       gameState.playingAreaStacks;
 
   String get me => player.id;
+
+  /// Avatar + Journey accessories for a seated player (live for [me]).
+  GameSeatLook seatLook(String pid) {
+    final info = Map<String, dynamic>.from(gameState.playersInfo[pid] ?? {});
+    if (pid == me) {
+      final look = AvatarLook.fromId(player.avatarId);
+      return GameSeatLook(
+        avatarId: player.avatarId ?? info['avatarId'] as String?,
+        avatarAsset: look.resolvedAssetPath ?? info['avatarAsset'] as String?,
+        defeatedAces: appRepo.journeyProgress.defeatedAceWorlds,
+        wearJourneyAccessories: appRepo.wearJourneyAccessories,
+      );
+    }
+    return GameSeatLook.fromMap(info);
+  }
 
   int get myExtraPoints =>
       (gameState.extraPointsHolderId == player.id) ? gameState.extraPoints : 0;
@@ -2322,7 +2339,7 @@ class GeneralGameViewModel extends ChangeNotifier {
         gameState.entryPaidBy.add(player.id);
       }
 
-      gameState.playersInfo[player.id] = player.toGameSeat();
+      gameState.playersInfo[player.id] = appRepo.buildGameSeat(player);
       if (gameEngine.shouldMarkReadyToStart(gameState) &&
           gameState.gameStatus == GameStatus.waitingForPlayers) {
         gameState.gameStatus = GameStatus.readyToStart;

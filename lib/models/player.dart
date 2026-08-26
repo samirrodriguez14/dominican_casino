@@ -46,6 +46,7 @@ class Player {
 
   /// Seat snapshot stored on a game document (no auth/token fields).
   /// Omit nulls — Firestore rejects them on `set()`.
+  /// Prefer [AppRepo.buildGameSeat] so avatar art and Journey accessories sync.
   Map<String, dynamic> toGameSeat() => {
     'id': id,
     'name': ?name,

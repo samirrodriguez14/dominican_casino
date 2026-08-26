@@ -139,6 +139,45 @@ class AvatarScoreTheme {
   final bool isLight;
 }
 
+/// Journey ace accessories and avatar art stored on a multiplayer game seat.
+class GameSeatLook {
+  const GameSeatLook({
+    this.avatarId,
+    this.avatarAsset,
+    this.defeatedAces = const {},
+    this.wearJourneyAccessories = true,
+  });
+
+  factory GameSeatLook.fromMap(Map<String, dynamic> info) {
+    final aces = <JourneyWorld>{};
+    final acesRaw = info['defeatedAces'];
+    if (acesRaw is List) {
+      for (final entry in acesRaw) {
+        if (entry is! String) continue;
+        for (final world in JourneyWorld.values) {
+          if (world.name == entry) {
+            aces.add(world);
+            break;
+          }
+        }
+      }
+    }
+    return GameSeatLook(
+      avatarId: info['avatarId'] as String?,
+      avatarAsset: info['avatarAsset'] as String?,
+      defeatedAces: aces,
+      wearJourneyAccessories: info['wearJourneyAccessories'] as bool? ?? true,
+    );
+  }
+
+  final String? avatarId;
+  final String? avatarAsset;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wearJourneyAccessories;
+
+  bool get showJourneyAces => defeatedAces.isNotEmpty;
+}
+
 /// Pure avatar disc — no Provider / AppRepo. Looks up [AvatarCatalog].
 class PlayerAvatarView extends StatelessWidget {
   const PlayerAvatarView({

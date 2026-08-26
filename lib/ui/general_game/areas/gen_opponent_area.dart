@@ -126,12 +126,11 @@ class OpponentIdentityChip extends StatelessWidget {
     final vm = context.watch<GeneralGameViewModel>();
     final theme = AppStyle.theme;
     final waiting = oppId.isEmpty;
-    final info = waiting
-        ? <String, dynamic>{}
-        : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
-    final name = waiting ? 'Waiting...' : ((info['name'] as String?) ?? 'Rival');
-    final avatarId = info['avatarId'] as String?;
-    final avatarAsset = info['avatarAsset'] as String?;
+    final seat = waiting ? const GameSeatLook() : vm.seatLook(oppId);
+    final name = waiting ? 'Waiting...' : ((vm.gameState.playersInfo[oppId] is Map
+            ? (vm.gameState.playersInfo[oppId] as Map)['name'] as String?
+            : null) ??
+        'Rival');
     final score = waiting ? 0 : (vm.gameState.scores[oppId] ?? 0);
     final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
         ? vm.incomingReaction
@@ -159,10 +158,13 @@ class OpponentIdentityChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               PlayerAvatarView(
-                avatarId: avatarId,
-                avatarAsset: avatarAsset,
+                avatarId: seat.avatarId,
+                avatarAsset: seat.avatarAsset,
                 size: 28,
                 showBorder: false,
+                showJourneyAces: seat.showJourneyAces,
+                defeatedAces: seat.defeatedAces,
+                wearJourneyAccessories: seat.wearJourneyAccessories,
               ),
               const SizedBox(width: 6),
               ConstrainedBox(

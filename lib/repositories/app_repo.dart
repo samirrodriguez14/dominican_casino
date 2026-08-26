@@ -187,6 +187,26 @@ class AppRepo extends ChangeNotifier {
   /// When false, Ace ornaments are hidden everywhere except the trophies popup.
   bool get wearJourneyAccessories => _wearJourneyAccessories;
 
+  /// Public seat snapshot for multiplayer games (avatar art + Journey trophies).
+  Map<String, dynamic> buildGameSeat(Player player) {
+    final look = AvatarLook.fromId(player.avatarId);
+    final seat = <String, dynamic>{
+      'id': player.id,
+      if (player.name != null) 'name': player.name,
+      if (player.avatarId != null) 'avatarId': player.avatarId,
+    };
+    final asset = look.resolvedAssetPath;
+    if (asset != null && asset.isNotEmpty) {
+      seat['avatarAsset'] = asset;
+    }
+    final aces = _journeyProgress.defeatedAceWorlds;
+    if (aces.isNotEmpty) {
+      seat['defeatedAces'] = aces.map((world) => world.name).toList();
+    }
+    seat['wearJourneyAccessories'] = _wearJourneyAccessories;
+    return seat;
+  }
+
   static const _appleProviderId = 'apple.com';
 
   bool get isGoogleLinked {
@@ -2905,7 +2925,7 @@ class AppRepo extends ChangeNotifier {
     }
     final host = player;
     if (host != null) {
-      gameState.playersInfo[pid] = host.toGameSeat();
+      gameState.playersInfo[pid] = buildGameSeat(host);
     } else {
       gameState.playersInfo[pid] = {'id': pid};
     }

@@ -16,6 +16,7 @@ import 'package:dominican_casino/ui/general_game/simple/simple_casino_playing_ar
 import 'package:dominican_casino/ui/general_game/widgets/table_play_drop_zone.dart';
 import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
 import 'package:dominican_casino/ui/widgets/take_hint_bounce.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
 import 'package:dominican_casino/ui/widgets/popup_circle_button.dart';
 import 'package:dominican_casino/ui/widgets/winning_hand_wave.dart';
@@ -766,14 +767,13 @@ class _RummyOpponentAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
     final waiting = oppId.isEmpty;
-    final info = waiting
-        ? const <String, dynamic>{}
-        : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
-    final avatarId = info['avatarId'] as String?;
-    final avatarAsset = info['avatarAsset'] as String?;
+    final seat = waiting ? const GameSeatLook() : vm.seatLook(oppId);
     final name = waiting
         ? AppLocalizations.of(context).openSeat
-        : ((info['name'] as String?) ?? 'Rival');
+        : ((vm.gameState.playersInfo[oppId] is Map
+                ? (vm.gameState.playersInfo[oppId] as Map)['name'] as String?
+                : null) ??
+            'Rival');
     final score = waiting ? 0 : (vm.gameState.scores[oppId] ?? 0);
     final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
         ? vm.incomingReaction
@@ -785,8 +785,10 @@ class _RummyOpponentAvatar extends StatelessWidget {
       children: [
         PlayerScoreAvatar(
           key: waiting ? null : vm.celebrationAvatarKeyForPid(oppId),
-          avatarId: avatarId,
-          avatarAsset: avatarAsset,
+          avatarId: seat.avatarId,
+          avatarAsset: seat.avatarAsset,
+          defeatedAces: seat.defeatedAces,
+          wearJourneyAccessories: seat.wearJourneyAccessories,
           name: name,
           score: score,
           pendingCoins: waiting ? 0 : vm.revealedPendingFor(oppId),

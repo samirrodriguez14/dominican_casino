@@ -1,18 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 
 class GamePillSeat {
   final String id;
   final String name;
   final String? avatarId;
   final String? avatarAsset;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wearJourneyAccessories;
 
   const GamePillSeat({
     required this.id,
     required this.name,
     this.avatarId,
     this.avatarAsset,
+    this.defeatedAces = const {},
+    this.wearJourneyAccessories = true,
   });
 
   bool get isOpen =>
@@ -101,11 +107,14 @@ class GamePillData {
       final map = raw is Map
           ? Map<String, dynamic>.from(raw)
           : <String, dynamic>{};
+      final look = GameSeatLook.fromMap(map);
       return GamePillSeat(
         id: entry.key,
         name: (map['name'] as String?) ?? 'Unknown',
-        avatarId: map['avatarId'] as String?,
-        avatarAsset: map['avatarAsset'] as String?,
+        avatarId: look.avatarId,
+        avatarAsset: look.avatarAsset,
+        defeatedAces: look.defeatedAces,
+        wearJourneyAccessories: look.wearJourneyAccessories,
       );
     }).toList();
     if (gameStatus != GameStatus.gameOver) return all;

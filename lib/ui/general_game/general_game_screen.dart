@@ -735,6 +735,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
               animation: tutorialVm,
               builder: (context, _) {
                 final bottomInset = MediaQuery.paddingOf(context).bottom;
+                final mySeat = vm.seatLook(vm.me);
                 return FlightLayer(
                   controller: _flightLayer,
                   child: Stack(
@@ -829,7 +830,11 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                               const SizedBox(height: 10),
                               PlayerScoreAvatar(
                                 key: vm.scoreKey,
-                                avatarId: vm.player.avatarId,
+                                avatarId: mySeat.avatarId,
+                                avatarAsset: mySeat.avatarAsset,
+                                defeatedAces: mySeat.defeatedAces,
+                                wearJourneyAccessories:
+                                    mySeat.wearJourneyAccessories,
                                 name: vm.player.name,
                                 score: vm.gameState.scores[vm.me] ?? 0,
                                 pendingCoins: vm.revealedPendingFor(vm.me),
@@ -949,6 +954,7 @@ class _SimpleControlBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
     final tutorial = context.watch<TutorialViewModel>();
+    final mySeat = vm.seatLook(vm.me);
     final scoreHint =
         tutorial.active && tutorial.pulsesTarget(key: vm.scoreKey);
     return Center(
@@ -973,7 +979,10 @@ class _SimpleControlBar extends StatelessWidget {
           const SizedBox(width: 14),
           PlayerScoreAvatar(
             key: vm.scoreKey,
-            avatarId: vm.player.avatarId,
+            avatarId: mySeat.avatarId,
+            avatarAsset: mySeat.avatarAsset,
+            defeatedAces: mySeat.defeatedAces,
+            wearJourneyAccessories: mySeat.wearJourneyAccessories,
             name: vm.player.name,
             score: vm.gameState.scores[vm.me] ?? 0,
             pendingCoins: vm.revealedPendingFor(vm.me),
