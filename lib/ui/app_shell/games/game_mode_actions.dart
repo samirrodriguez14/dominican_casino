@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:dominican_casino/l10n/app_localizations.dart';
@@ -817,7 +818,7 @@ Future<void> gameEnter(
       botOverrides: botOverrides,
     );
     if (gid != null) {
-      if (onCreated != null) await onCreated(gid);
+      if (onCreated != null) unawaited(onCreated(gid));
       router.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
     }
   } on InsufficientFundsException catch (e) {

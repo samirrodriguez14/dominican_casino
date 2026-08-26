@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,6 +47,8 @@ class SoundService extends ChangeNotifier {
     GameSound.coin: 'sounds/coin.wav',
     GameSound.button: 'sounds/button_soft.wav',
   };
+
+  bool get shouldPlaySfx => sfxEnabled && sfxVolume > 0;
 
   /// Soft UI thud for taps that have no other SFX.
   static VoidCallback? wrapTap(VoidCallback? onPressed) {
@@ -159,7 +163,7 @@ class SoundService extends ChangeNotifier {
   }
 
   Future<void> play(GameSound sound) async {
-    if (!sfxEnabled) return;
+    if (!shouldPlaySfx) return;
     final path = _assets[sound];
     if (path == null) return;
     try {
@@ -171,14 +175,21 @@ class SoundService extends ChangeNotifier {
   }
 
   /// Overlapping one-shot (card ticks). Does not cut the previous tick.
-  Future<void> playLayered(GameSound sound, {double volume = 1}) async {
-    if (!sfxEnabled) return;
+  void playLayered(GameSound sound, {double volume = 1}) {
+    if (!shouldPlaySfx) return;
     final path = _assets[sound];
     if (path == null) return;
     final player = _layers[_layer % _layers.length];
     _layer++;
+    unawaited(_playLayered(player, path, volume));
+  }
+
+  Future<void> _playLayered(
+    AudioPlayer player,
+    String path,
+    double volume,
+  ) async {
     try {
-      // Direct play — seek/resume was adding multi-hundred-ms latency on iOS.
       await player.setVolume((volume * sfxVolume).clamp(0, 1));
       await player.play(AssetSource(path));
     } catch (e) {

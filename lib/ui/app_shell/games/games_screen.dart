@@ -262,8 +262,10 @@ class GamesScreenState extends State<GamesScreen>
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
-    final repo = context.watch<AppRepo>();
-    if (repo.openJourneyRequest) {
+    final openJourney = context.select<AppRepo, bool>(
+      (repo) => repo.openJourneyRequest,
+    );
+    if (openJourney) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (!context.read<AppRepo>().takeOpenJourneyRequest()) return;

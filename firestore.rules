@@ -35,6 +35,14 @@ service cloud.firestore {
           'activeGameId',
         ]);
       allow delete: if isSelf(uid);
+
+      // Lightweight lobby rows — not full match state.
+      match /activeGames/{gid} {
+        allow read, write: if isSelf(uid);
+      }
+      match /archivedGames/{gid} {
+        allow read, write: if isSelf(uid);
+      }
     }
 
     // Match documents. Authenticated clients may still write full state

@@ -210,80 +210,74 @@ class _NewTresydosPlayingAreaState extends State<NewTresydosPlayingArea> {
     final selected =
         currentCard != null && vm.selectedCards.contains(currentCard);
     final hidden = currentCard != null && vm.isDragHidden(currentCard.id);
+    final highlighted =
+        vm.dropHover?.target.card?.id == currentCard?.id ||
+        vm.dropPending?.target.card?.id == currentCard?.id;
 
-    return ValueListenableBuilder<DropHover?>(
-      valueListenable: vm.dropHoverListenable,
-      builder: (context, hover, _) {
-        final highlighted =
-            hover?.target.card?.id == currentCard?.id ||
-            vm.dropPending?.target.card?.id == currentCard?.id;
-
-        final pile = Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            IgnorePointer(
-              child: CardDeck(
-                title: '',
-                back: false,
-                showLabel: false,
-                cards: buried,
-                cardWidth: _cardWidth,
-                extraPoints: 0,
-                onTap: () {},
-              ),
-            ),
-            if (currentCard != null)
-              TakeHintBounce(
-                active: vm.needsTakeHint,
-                slot: 1,
-                child: AnimatedContainer(
-                  duration: vm.motion.hasFlights
-                      ? Duration.zero
-                      : const Duration(milliseconds: 150),
-                  transform: selected || highlighted
-                      ? Matrix4.translationValues(0, -12, 0)
-                      : Matrix4.translationValues(0, -4, 0),
-                  child: Opacity(
-                    opacity: hidden ? 0 : 1,
-                    child: FlightAwareCard(
-                      key: vm.keyForCard(currentCard.id, CardSlot.table),
-                      motion: vm.motion,
-                      cardId: currentCard.id,
+    final pile = Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        IgnorePointer(
+          child: CardDeck(
+            title: '',
+            back: false,
+            showLabel: false,
+            cards: buried,
+            cardWidth: _cardWidth,
+            extraPoints: 0,
+            onTap: () {},
+          ),
+        ),
+        if (currentCard != null)
+          TakeHintBounce(
+            active: vm.needsTakeHint,
+            slot: 1,
+            child: AnimatedContainer(
+              duration: vm.motion.hasFlights
+                  ? Duration.zero
+                  : const Duration(milliseconds: 150),
+              transform: selected || highlighted
+                  ? Matrix4.translationValues(0, -12, 0)
+                  : Matrix4.translationValues(0, -4, 0),
+              child: Opacity(
+                opacity: hidden ? 0 : 1,
+                child: FlightAwareCard(
+                  key: vm.keyForCard(currentCard.id, CardSlot.table),
+                  motion: vm.motion,
+                  cardId: currentCard.id,
+                  width: _cardWidth,
+                  child: AnimatedScale(
+                    scale: selected || highlighted ? 1.06 : 1.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: PlayingCard(
+                      playingCardModel: currentCard,
+                      isSelected: selected || highlighted,
                       width: _cardWidth,
-                      child: AnimatedScale(
-                        scale: selected || highlighted ? 1.06 : 1.0,
-                        duration: const Duration(milliseconds: 150),
-                        child: PlayingCard(
-                          playingCardModel: currentCard,
-                          isSelected: selected || highlighted,
-                          width: _cardWidth,
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
-          ],
-        );
+            ),
+          ),
+      ],
+    );
 
-        if (currentCard == null) return pile;
-        return BoardDragHandle(
-          source: BoardDragSource.tableCard(currentCard),
-          enabled: vm.canPlayTurn && !vm.hasDropPending,
-          feedbackWidth: _cardWidth,
-          tableFeedbackWidth: _cardWidth,
-          onTap: () {
-            final card = vm.selectedCard;
-            if (card != null && vm.canDropPlay(card)) {
-              vm.playSelectedToTable();
-              return;
-            }
-            vm.selectCardToTake(currentCard);
-          },
-          child: pile,
-        );
+    if (currentCard == null) return pile;
+    return BoardDragHandle(
+      source: BoardDragSource.tableCard(currentCard),
+      enabled: vm.canPlayTurn && !vm.hasDropPending,
+      feedbackWidth: _cardWidth,
+      tableFeedbackWidth: _cardWidth,
+      onTap: () {
+        final card = vm.selectedCard;
+        if (card != null && vm.canDropPlay(card)) {
+          vm.playSelectedToTable();
+          return;
+        }
+        vm.selectCardToTake(currentCard);
       },
+      child: pile,
     );
   }
 }

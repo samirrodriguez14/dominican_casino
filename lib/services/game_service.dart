@@ -2,8 +2,16 @@ import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
 
 abstract class GameService {
-  //STREAM GAMES
-  Stream<List<GamePillData>> listenGames(String pid);
+  /// Lightweight lobby rows for in-progress matches only.
+  Stream<List<GamePillData>> listenActiveGames(String pid);
+
+  /// One-shot paginated history — not a live listener.
+  Future<List<GamePillData>> fetchArchivedGames(
+    String pid, {
+    int limit = 20,
+    DateTime? startAfterUpdatedAt,
+  });
+
   Stream<GameState?> streamGame(String gid);
 
   //FIND AND LOAD GAME

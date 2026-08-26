@@ -43,6 +43,8 @@ class JourneyStageState extends State<JourneyStage>
 
   TableDeck _tableDeck = TableDeck.games;
   bool _busy = false;
+  /// Journey table is heavy — only mount after the player opens Journey once.
+  bool _journeyBoardMounted = false;
   int _lastDealSoundIndex = -1;
   bool _pulsedEatIn = false;
   bool _pulsedSpitOut = false;
@@ -180,15 +182,17 @@ class JourneyStageState extends State<JourneyStage>
     _pulsedEatIn = false;
     _swapAnim.duration = JourneyTimeline.openDuration;
 
-    setState(() => _tableDeck = TableDeck.journey);
+    setState(() {
+      _journeyBoardMounted = true;
+      _tableDeck = TableDeck.journey;
+    });
     widget.onTableDeckChanged?.call(TableDeck.journey);
-    _boardKey.currentState?.reloadFromProgress();
-
-    // Keep Base (Sage) until the player confirms entering a kingdom.
+    await WidgetsBinding.instance.endOfFrame;
     if (!mounted) {
       _busy = false;
       return;
     }
+    await _boardKey.currentState?.reloadFromProgress();
 
     await widget.carouselKey.currentState?.collapsePeeks();
     if (!mounted) {
@@ -212,12 +216,20 @@ class JourneyStageState extends State<JourneyStage>
     _peekFan.value = 1;
     _lastDealSoundIndex = JourneyDealPlan.dealCardCount;
     _pulsedEatIn = true;
-    setState(() => _tableDeck = TableDeck.journey);
+    setState(() {
+      _journeyBoardMounted = true;
+      _tableDeck = TableDeck.journey;
+    });
     widget.onTableDeckChanged?.call(TableDeck.journey);
 
     await widget.carouselKey.currentState?.collapsePeeks(
       duration: Duration.zero,
     );
+    if (!mounted) {
+      _busy = false;
+      return;
+    }
+    await WidgetsBinding.instance.endOfFrame;
     if (!mounted) {
       _busy = false;
       return;
@@ -346,11 +358,13 @@ class JourneyStageState extends State<JourneyStage>
                       (_busy && !gathering && open.defeatedDeal < 0.9),
                   child: Opacity(
                     opacity: hideJourney ? 0 : 1,
-                    child: JourneyBoard(
-                      key: _boardKey,
-                      openProgress: open,
-                      onWorldThemeEquipped: _onWorldThemeEquipped,
-                    ),
+                    child: _journeyBoardMounted
+                        ? JourneyBoard(
+                            key: _boardKey,
+                            openProgress: open,
+                            onWorldThemeEquipped: _onWorldThemeEquipped,
+                          )
+                        : const SizedBox.shrink(),
                   ),
                 ),
                 if (_showLiveDeck(open, gamesOnTable))

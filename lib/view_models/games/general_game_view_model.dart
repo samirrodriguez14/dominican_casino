@@ -29,6 +29,7 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
+import 'package:dominican_casino/view_models/games/hand_order.dart';
 import 'package:dominican_casino/view_models/games/rummy_box_layout.dart';
 import 'package:flutter/cupertino.dart' hide Action;
 import 'package:uuid/uuid.dart';
@@ -103,6 +104,9 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   /// Destination slots stay laid out but invisible until flights land.
   final CardMotionController motion = CardMotionController();
+
+  /// Local fan order for [me]. Survives remote state replaces after flights.
+  List<String> _myHandOrderIds = [];
 
   ActionGuard? actionGuard;
 
@@ -192,7 +196,7 @@ class GeneralGameViewModel extends ChangeNotifier {
             },
           );
         } else if (newEvents.isEmpty && newSettlement.isEmpty) {
-          gameState = nextState;
+          _adoptIncomingState(nextState);
         } else {
           await _commitStateWithMotion(
             nextState,
@@ -390,8 +394,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     selectedStacks = [];
 
     if (events.isEmpty && settlementEvents.isEmpty) {
-      _preserveMyHandOrder(next);
-      gameState = next;
+      _adoptIncomingState(next);
       return;
     }
 
@@ -522,8 +525,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       motion.markInFlight(events.map((e) => e.card.id));
     }
 
-    _preserveMyHandOrder(commit);
-    gameState = commit;
+    _adoptIncomingState(commit);
     if (_disposed) return;
     notifyListeners();
 
@@ -1062,6 +1064,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     } else {
       hand.sort((a, b) => b.valueHigh.compareTo(a.valueHigh));
     }
+    _rememberMyHandOrder();
     notifyListeners();
   }
 
@@ -1073,39 +1076,21 @@ class GeneralGameViewModel extends ChangeNotifier {
     return true;
   }
 
-  /// Re-apply this player's fan order onto [incoming].
-  ///
-  /// Hand order is local-only and is not written during the opponent's turn,
-  /// so a remote state replace would otherwise snap the fan back.
-  void _preserveMyHandOrder(GameState incoming) {
-    final previous = gameState.hands[me];
-    final incomingHand = incoming.hands[me];
-    if (previous == null || incomingHand == null) return;
-    if (previous.isEmpty || incomingHand.isEmpty) return;
-
-    final byId = <String, PlayingCardModel>{
-      for (final c in incomingHand) c.id: c,
-    };
-    final ordered = <PlayingCardModel>[];
-    for (final card in previous) {
-      final next = byId.remove(card.id);
-      if (next != null) ordered.add(next);
-    }
-    // Brand-new hand (deal) — keep the incoming sequence.
-    if (ordered.isEmpty) return;
-    ordered.addAll(byId.values);
-    if (_sameHandIds(incomingHand, ordered)) return;
-    incomingHand
-      ..clear()
-      ..addAll(ordered);
+  void _rememberMyHandOrder() {
+    _myHandOrderIds = handOrderIds(gameState.hands[me] ?? const []);
   }
 
-  bool _sameHandIds(List<PlayingCardModel> a, List<PlayingCardModel> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i].id != b[i].id) return false;
-    }
-    return true;
+  void _adoptIncomingState(GameState incoming) {
+    _preserveMyHandOrder(incoming);
+    gameState = incoming;
+    _rememberMyHandOrder();
+  }
+
+  /// Re-apply this player's fan order onto [incoming].
+  void _preserveMyHandOrder(GameState incoming) {
+    final incomingHand = incoming.hands[me];
+    if (incomingHand == null) return;
+    applyPreferredHandOrder(incomingHand, _myHandOrderIds);
   }
 
   /// Local-only fan order (same persistence rules as [sortHandCards]).
@@ -1118,6 +1103,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (insert > from) insert -= 1;
     insert = insert.clamp(0, hand.length);
     hand.insert(insert, card);
+    _rememberMyHandOrder();
     notifyListeners();
   }
 
@@ -1129,6 +1115,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (from == target) return;
     final card = hand.removeAt(from);
     hand.insert(target, card);
+    _rememberMyHandOrder();
     notifyListeners();
   }
 
@@ -2252,6 +2239,7 @@ class GeneralGameViewModel extends ChangeNotifier {
         gameState = await gameRepo.fs.loadGame(gid);
         gameState.ensureBotMetadata();
       }
+      _rememberMyHandOrder();
       _syncRevealedPending();
       _syncWinCelebration();
       _syncTurnClock();
@@ -2564,6 +2552,11 @@ class GeneralGameViewModel extends ChangeNotifier {
   Future<void> queueHomeDailyChallengeEnergyClaims() async {
     if (tutorialMode) return;
     await appRepo.queueHomeDailyChallengeEnergyClaims(gameState);
+  }
+
+  Future<void> queueHomeXpClaim() async {
+    if (tutorialMode) return;
+    await appRepo.queueHomeXpClaim(gameState, me);
   }
 
   /// Occasional local-bot emoji after a play/take. Never writes game state.

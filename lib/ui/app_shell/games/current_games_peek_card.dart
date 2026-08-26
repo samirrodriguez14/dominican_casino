@@ -232,6 +232,7 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
     if (!_open || _flip.isAnimating || _expand.isAnimating) return;
     SoundService.instance.playLayered(GameSound.softCard);
     AppHaptics.selectionClick();
+    unawaited(context.read<GamesViewModel>().ensureArchivedLoaded());
     _flip.forward();
   }
 

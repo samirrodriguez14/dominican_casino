@@ -25,11 +25,13 @@ class GamesViewModel extends ChangeNotifier {
     final switchingUser = _listenPid != null;
     _listenPid = uid;
     if (!switchingUser) return;
-    _sub?.cancel();
-    _sub = null;
+    _stopActiveSubscription();
     currentGames = const [];
     previousGames = const [];
     _historyVisible = historyPageSize;
+    _archivedHasMore = true;
+    _archivedCursor = null;
+    _archivedLoaded = false;
     loading = uid != null;
     error = null;
     notifyListeners();
@@ -76,6 +78,11 @@ class GamesViewModel extends ChangeNotifier {
   }
 
   StreamSubscription<List<GamePillData>>? _sub;
+  bool _paused = false;
+  bool _archivedLoaded = false;
+  bool _archivedLoading = false;
+  bool _archivedHasMore = true;
+  DateTime? _archivedCursor;
 
   List<GamePillData> currentGames = const [];
   List<GamePillData> previousGames = const [];
@@ -90,6 +97,7 @@ class GamesViewModel extends ChangeNotifier {
   String? get myAvatarId => _appRepo.player?.avatarId;
 
   bool loading = true;
+  bool get archivedLoading => _archivedLoading;
   String? error;
 
   List<GamePillData> get myCurrentGames {
@@ -110,12 +118,71 @@ class GamesViewModel extends ChangeNotifier {
     return all.take(_historyVisible).toList();
   }
 
-  bool get hasMoreHistory => myPreviousGames.length > _historyVisible;
+  bool get hasMoreHistory =>
+      myPreviousGames.length > _historyVisible || _archivedHasMore;
 
-  void loadMoreHistory() {
-    if (!hasMoreHistory) return;
-    _historyVisible += historyPageSize;
+  Future<void> ensureArchivedLoaded() async {
+    if (_archivedLoaded || _archivedLoading) return;
+    final pid = userId;
+    if (pid == null) return;
+
+    _archivedLoading = true;
     notifyListeners();
+    try {
+      final page = await _appRepo.fs.fetchArchivedGames(
+        pid,
+        limit: historyPageSize,
+      );
+      previousGames = page..sort(_byUpdatedAtDesc);
+      _archivedLoaded = true;
+      _archivedHasMore = page.length >= historyPageSize;
+      _archivedCursor = previousGames.isEmpty ? null : previousGames.last.updatedAt;
+      _historyVisible = historyPageSize;
+    } catch (e, st) {
+      developer.log('GamesViewModel.ensureArchivedLoaded: $e', stackTrace: st);
+    } finally {
+      _archivedLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMoreHistory() async {
+    if (_historyVisible < myPreviousGames.length) {
+      _historyVisible += historyPageSize;
+      notifyListeners();
+      return;
+    }
+    if (_archivedLoading || !_archivedHasMore) return;
+
+    final pid = userId;
+    if (pid == null) return;
+
+    _archivedLoading = true;
+    notifyListeners();
+    try {
+      final page = await _appRepo.fs.fetchArchivedGames(
+        pid,
+        limit: historyPageSize,
+        startAfterUpdatedAt: _archivedCursor,
+      );
+      if (page.isEmpty) {
+        _archivedHasMore = false;
+        return;
+      }
+      final byId = {for (final g in previousGames) g.id: g};
+      for (final g in page) {
+        byId[g.id] = g;
+      }
+      previousGames = byId.values.toList()..sort(_byUpdatedAtDesc);
+      _archivedHasMore = page.length >= historyPageSize;
+      _archivedCursor = previousGames.last.updatedAt;
+      _historyVisible += historyPageSize;
+    } catch (e, st) {
+      developer.log('GamesViewModel.loadMoreHistory: $e', stackTrace: st);
+    } finally {
+      _archivedLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Current games where it is this player's turn (for the peek-card badge).
@@ -140,52 +207,66 @@ class GamesViewModel extends ChangeNotifier {
 
   void startListening(String pid, {bool retried = false}) {
     _listenPid = pid;
-    _sub?.cancel();
+    _paused = false;
+    _stopActiveSubscription();
     currentGames = const [];
-    previousGames = const [];
-    _historyVisible = historyPageSize;
     loading = true;
     error = null;
     notifyListeners();
 
-    _sub = _appRepo.fs
-        .listenGames(pid)
-        .listen(
-          (list) {
-            currentGames =
-                list.where((g) => g.gameStatus != GameStatus.gameOver).toList()
-                  ..sort(_byUpdatedAtDesc);
-            previousGames =
-                list.where((g) => g.gameStatus == GameStatus.gameOver).toList()
-                  ..sort(_byUpdatedAtDesc);
-            loading = false;
-            error = null;
-            notifyListeners();
-          },
-          onError: (e, st) async {
-            developer.log(
-              "GamesViewModel.listenGames Error: $e",
-              stackTrace: st,
-            );
-            if (!retried &&
-                e is FirebaseException &&
-                e.code == 'permission-denied') {
-              try {
-                final uid = await _appRepo.ensurePlayableUid();
-                startListening(uid, retried: true);
-                return;
-              } catch (retryError) {
-                developer.log('GamesViewModel.listenGames retry: $retryError');
-              }
-            }
-            loading = false;
-            final code = e is FirebaseException ? e.code : '';
-            error = code == 'permission-denied'
-                ? 'permission-denied'
-                : e.toString();
-            notifyListeners();
-          },
+    _sub = _appRepo.fs.listenActiveGames(pid).listen(
+      (list) {
+        currentGames = list..sort(_byUpdatedAtDesc);
+        loading = false;
+        error = null;
+        notifyListeners();
+      },
+      onError: (e, st) async {
+        developer.log(
+          'GamesViewModel.listenActiveGames Error: $e',
+          stackTrace: st,
         );
+        if (!retried &&
+            e is FirebaseException &&
+            e.code == 'permission-denied') {
+          try {
+            final uid = await _appRepo.ensurePlayableUid();
+            startListening(uid, retried: true);
+            return;
+          } catch (retryError) {
+            developer.log(
+              'GamesViewModel.listenActiveGames retry: $retryError',
+            );
+          }
+        }
+        loading = false;
+        final code = e is FirebaseException ? e.code : '';
+        error = code == 'permission-denied'
+            ? 'permission-denied'
+            : e.toString();
+        notifyListeners();
+      },
+    );
+  }
+
+  /// Drop the lobby listener while a match is on screen — no cloud churn.
+  void pauseListening() {
+    if (_paused) return;
+    _paused = true;
+    _stopActiveSubscription();
+  }
+
+  /// Resume the active-games listener when back on the shell.
+  void resumeListening() {
+    if (!_paused) return;
+    _paused = false;
+    final pid = _listenPid ?? _appRepo.player?.id;
+    if (pid != null) startListening(pid);
+  }
+
+  void _stopActiveSubscription() {
+    _sub?.cancel();
+    _sub = null;
   }
 
   Future<void> onDelete(BuildContext context, String gid) async {
@@ -193,24 +274,24 @@ class GamesViewModel extends ChangeNotifier {
       final ok = await confirmDelete(context, gid);
       if (!ok) return;
       await deleteGame(gid);
-    };
+    }();
   }
 
   Future<bool> confirmDelete(BuildContext context, String gameId) async {
     final res = await showCupertinoDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: const Text("Delete game?"),
-        content: Text("Game: $gameId"),
+        title: const Text('Delete game?'),
+        content: Text('Game: $gameId'),
         actions: [
           CupertinoDialogAction(
             onPressed: SoundService.wrapTap(() => Navigator.of(ctx).pop(false)),
-            child: const Text("Cancel"),
+            child: const Text('Cancel'),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
             onPressed: SoundService.wrapTap(() => Navigator.of(ctx).pop(true)),
-            child: const Text("Delete"),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -221,7 +302,7 @@ class GamesViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _appRepo.removeListener(_onRepo);
-    _sub?.cancel();
+    _stopActiveSubscription();
     super.dispose();
   }
 }

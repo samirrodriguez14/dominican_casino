@@ -15,6 +15,7 @@ import 'package:dominican_casino/ui/home/home_screen.dart';
 import 'package:dominican_casino/ui/home/instructions_screen.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_screen.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model_base.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -140,6 +141,12 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
       gid = segments[1];
     }
     context.read<AppRepo>().setActiveGameId(gid);
+    final gamesVm = context.read<GamesViewModel>();
+    if (gid != null) {
+      gamesVm.pauseListening();
+    } else {
+      gamesVm.resumeListening();
+    }
   }
 
   Future<void> _initDeepLinks() async {

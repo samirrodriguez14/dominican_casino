@@ -218,31 +218,25 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
     final tableH = tableCardWidth * 1.4;
     final slots = vm.gameState.tableSlots;
 
-    // Hover highlights listen here — not via full VM notifyListeners.
-    return ValueListenableBuilder<DropHover?>(
-      valueListenable: vm.dropHoverListenable,
-      builder: (context, hover, _) {
-        return SlidingCardLayout(
-          itemHeight: tableH,
-          spacing: 10,
-          runSpacing: 10,
-          slots: [
-            for (final slot in slots)
-              switch (slot) {
-                TableCardSlot(:final card) => SlidingSlot(
-                  key: ValueKey(slot.layoutAnchor),
-                  width: tableCardWidth,
-                  child: _looseCard(vm, card, hover: hover),
-                ),
-                TableStackSlot(:final stack) => SlidingSlot(
-                  key: ValueKey(slot.layoutAnchor),
-                  width: _slotWidthForStack(vm, stack),
-                  child: _stackSlot(vm, stack, hover: hover),
-                ),
-              },
-          ],
-        );
-      },
+    return SlidingCardLayout(
+      itemHeight: tableH,
+      spacing: 10,
+      runSpacing: 10,
+      slots: [
+        for (final slot in slots)
+          switch (slot) {
+            TableCardSlot(:final card) => SlidingSlot(
+              key: ValueKey(slot.layoutAnchor),
+              width: tableCardWidth,
+              child: _looseCard(vm, card),
+            ),
+            TableStackSlot(:final stack) => SlidingSlot(
+              key: ValueKey(slot.layoutAnchor),
+              width: _slotWidthForStack(vm, stack),
+              child: _stackSlot(vm, stack),
+            ),
+          },
+      ],
     );
   }
 
@@ -258,16 +252,12 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
     return tableCardWidth + (n - 1) * (tableCardWidth - _stackOverlap);
   }
 
-  Widget _looseCard(
-    GeneralGameViewModel vm,
-    PlayingCardModel card, {
-    DropHover? hover,
-  }) {
+  Widget _looseCard(GeneralGameViewModel vm, PlayingCardModel card) {
     final isSelected = vm.selectedCards.contains(card);
     final preview = vm.previewForTarget(cardId: card.id);
     final hidden = vm.isDragHidden(card.id);
     final highlighted =
-        hover?.target.card?.id == card.id ||
+        vm.dropHover?.target.card?.id == card.id ||
         vm.dropPending?.target.card?.id == card.id;
 
     final Widget face;
@@ -333,16 +323,12 @@ class _SimpleCasinoPlayingAreaState extends State<SimpleCasinoPlayingArea> {
     );
   }
 
-  Widget _stackSlot(
-    GeneralGameViewModel vm,
-    PlayingAreaStackModel stack, {
-    DropHover? hover,
-  }) {
+  Widget _stackSlot(GeneralGameViewModel vm, PlayingAreaStackModel stack) {
     final isSelected = vm.selectedStacks.contains(stack);
     final preview = vm.previewForTarget(stackId: stack.id);
     final hidden = vm.isDragHidden(stack.id);
     final highlighted =
-        hover?.target.stack?.id == stack.id ||
+        vm.dropHover?.target.stack?.id == stack.id ||
         vm.dropPending?.target.stack?.id == stack.id;
 
     return BoardDragHandle(

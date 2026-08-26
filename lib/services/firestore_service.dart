@@ -7,7 +7,6 @@ import 'package:dominican_casino/models/game_reaction.dart';
 import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/services/game_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/game_state.dart';
@@ -201,9 +200,13 @@ class FirestoreService extends GameService {
     unawaited(_persistLocalGames());
   }
 
-  List<GamePillData> _localPillsFor(String pid) {
+  List<GamePillData> _localActivePillsFor(String pid) {
     return _localOnly.values
-        .where((g) => _localGameBelongsTo(g, pid))
+        .where(
+          (g) =>
+              _localGameBelongsTo(g, pid) &&
+              g.gameStatus != GameStatus.gameOver,
+        )
         .map((g) {
           final json = Map<String, dynamic>.from(g.toJson());
           json['updatedAt'] = _localUpdatedAt[g.id]?.toIso8601String();
@@ -211,6 +214,230 @@ class FirestoreService extends GameService {
         })
         .toList();
   }
+
+  List<GamePillData> _localArchivedPillsFor(String pid) {
+    return _localOnly.values
+        .where(
+          (g) =>
+              _localGameBelongsTo(g, pid) &&
+              g.gameStatus == GameStatus.gameOver,
+        )
+        .map((g) {
+          final json = Map<String, dynamic>.from(g.toJson());
+          json['updatedAt'] = _localUpdatedAt[g.id]?.toIso8601String();
+          return GamePillData.fromDoc(g.id, json);
+        })
+        .toList();
+  }
+
+  CollectionReference<Map<String, dynamic>> _activeGames(String uid) {
+    return _users.doc(uid).collection('activeGames');
+  }
+
+  CollectionReference<Map<String, dynamic>> _archivedGames(String uid) {
+    return _users.doc(uid).collection('archivedGames');
+  }
+
+  Map<String, dynamic> _pillPayload(String gid, Map<String, dynamic> data) {
+    final pill = GamePillData.fromDoc(gid, data);
+    return {
+      ...pill.toJson(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  Map<String, dynamic> _pillPayloadFromState(GameState state) {
+    final json = Map<String, dynamic>.from(state.toJson());
+    json.remove('cardMoveEvents');
+    json.remove('settlementEvents');
+    json.remove('hands');
+    json.remove('playingAreaStacks');
+    json.remove('playersDeck');
+    json.remove('lastTakes');
+    json.remove('round');
+    return _pillPayload(state.id, json);
+  }
+
+  Iterable<String> _humanPlayerIds(GameState state) {
+    return state.playersInfo.keys.where((id) => !state.isLocalBotPid(id));
+  }
+
+  Future<void> _syncPlayerGamePills(GameState state) async {
+    if (_localOnly.containsKey(state.id)) return;
+    final payload = _pillPayloadFromState(state);
+    final players = _humanPlayerIds(state).toList();
+    if (players.isEmpty) return;
+
+    if (state.gameStatus == GameStatus.gameOver) {
+      for (final pid in players) {
+        try {
+          final batch = FirebaseFirestore.instance.batch();
+          batch.set(_archivedGames(pid).doc(state.id), payload, SetOptions(merge: true));
+          batch.delete(_activeGames(pid).doc(state.id));
+          await batch.commit();
+        } catch (e) {
+          debugPrint('archive game pill $pid/${state.id}: $e');
+        }
+      }
+      return;
+    }
+
+    for (final pid in players) {
+      try {
+        await _activeGames(pid).doc(state.id).set(payload, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('sync active game pill $pid/${state.id}: $e');
+      }
+    }
+  }
+
+  Future<void> _removePlayerGamePills(String gid, Iterable<String> playerIds) async {
+    for (final pid in playerIds) {
+      try {
+        final batch = FirebaseFirestore.instance.batch();
+        batch.delete(_activeGames(pid).doc(gid));
+        batch.delete(_archivedGames(pid).doc(gid));
+        await batch.commit();
+      } catch (e) {
+        debugPrint('remove game pill $pid/$gid: $e');
+      }
+    }
+  }
+
+  /// One-time import for accounts that still only have full `games/{gid}` docs.
+  Future<void> _backfillLegacyActiveGames(String pid) async {
+    try {
+      final existing = await _activeGames(pid).limit(1).get();
+      if (existing.docs.isNotEmpty) return;
+
+      final legacy = await _games
+          .where('playerIds', arrayContains: pid)
+          .where(
+            'gameStatus',
+            whereIn: [
+              GameStatus.waitingForPlayers.name,
+              GameStatus.readyToStart.name,
+              GameStatus.inProgress.name,
+              GameStatus.error.name,
+            ],
+          )
+          .limit(25)
+          .get();
+      for (final doc in legacy.docs) {
+        final data = Map<String, dynamic>.from(doc.data() as Map);
+        await _activeGames(
+          pid,
+        ).doc(doc.id).set(_pillPayload(doc.id, data), SetOptions(merge: true));
+      }
+    } catch (e) {
+      debugPrint('backfill legacy active games: $e');
+    }
+  }
+
+  @override
+  Stream<List<GamePillData>> listenActiveGames(String pid) {
+    final out = StreamController<List<GamePillData>>();
+    var cloud = <GamePillData>[];
+
+    List<GamePillData> merged() {
+      final byId = {for (final g in cloud) g.id: g};
+      for (final g in _localActivePillsFor(pid)) {
+        byId[g.id] = g;
+      }
+      return byId.values.toList();
+    }
+
+    void emit() {
+      if (!out.isClosed) out.add(merged());
+    }
+
+    late final StreamSubscription<QuerySnapshot<Map<String, dynamic>>> cloudSub;
+    late final StreamSubscription<void> localSub;
+
+    cloudSub = _activeGames(pid).orderBy('updatedAt', descending: true).snapshots().listen(
+      (snapshot) {
+        cloud = snapshot.docs
+            .map((d) => GamePillData.fromDoc(d.id, d.data()))
+            .toList();
+        emit();
+      },
+      onError: (e, st) {
+        final msg = e.toString();
+        if (!msg.contains('permission-denied')) {
+          debugPrint('listenActiveGames cloud: $e');
+        }
+        cloud = [];
+        emit();
+      },
+    );
+    localSub = _localListChanged.stream.listen((_) => emit());
+    out.onCancel = () {
+      cloudSub.cancel();
+      localSub.cancel();
+    };
+    _ensureLocalLoaded().then((_) {
+      if (!out.isClosed) emit();
+    });
+    unawaited(_backfillLegacyActiveGames(pid));
+    return out.stream;
+  }
+
+  @override
+  Future<List<GamePillData>> fetchArchivedGames(
+    String pid, {
+    int limit = 20,
+    DateTime? startAfterUpdatedAt,
+  }) async {
+    await _ensureLocalLoaded();
+    var query = _archivedGames(
+      pid,
+    ).orderBy('updatedAt', descending: true).limit(limit);
+    if (startAfterUpdatedAt != null) {
+      query = query.startAfter([
+        Timestamp.fromDate(startAfterUpdatedAt),
+      ]);
+    }
+
+    final cloud = <GamePillData>[];
+    try {
+      final snap = await query.get();
+      cloud.addAll(
+        snap.docs.map((d) => GamePillData.fromDoc(d.id, d.data())),
+      );
+    } catch (e) {
+      debugPrint('fetchArchivedGames cloud: $e');
+    }
+
+    final byId = {for (final g in cloud) g.id: g};
+    for (final g in _localArchivedPillsFor(pid)) {
+      byId[g.id] = g;
+    }
+    final merged = byId.values.toList()..sort(_pillUpdatedAtDesc);
+    if (startAfterUpdatedAt == null) {
+      return merged.take(limit).toList();
+    }
+    return merged
+        .where(
+          (g) =>
+              g.updatedAt != null &&
+              g.updatedAt!.isBefore(startAfterUpdatedAt),
+        )
+        .take(limit)
+        .toList();
+  }
+
+  static int _pillUpdatedAtDesc(GamePillData a, GamePillData b) {
+    final at = a.updatedAt;
+    final bt = b.updatedAt;
+    if (at == null && bt == null) return 0;
+    if (at == null) return 1;
+    if (bt == null) return -1;
+    return bt.compareTo(at);
+  }
+
+  /// @deprecated Use [listenActiveGames]. Kept briefly for call-site migration.
+  @Deprecated('Use listenActiveGames')
+  Stream<List<GamePillData>> listenGames(String pid) => listenActiveGames(pid);
 
   bool _localGameBelongsTo(GameState game, String pid) {
     if (game.controllerId == pid || game.playersInfo.containsKey(pid)) {
@@ -335,57 +562,6 @@ class FirestoreService extends GameService {
     }, SetOptions(merge: true));
   }
 
-  @override
-  Stream<List<GamePillData>> listenGames(String pid) {
-    final out = StreamController<List<GamePillData>>();
-    var cloud = <GamePillData>[];
-
-    List<GamePillData> merged() {
-      final byId = {for (final g in cloud) g.id: g};
-      for (final g in _localPillsFor(pid)) {
-        byId[g.id] = g;
-      }
-      return byId.values.toList();
-    }
-
-    void emit() {
-      if (!out.isClosed) out.add(merged());
-    }
-
-    late final StreamSubscription<QuerySnapshot> cloudSub;
-    late final StreamSubscription<void> localSub;
-
-    cloudSub = _games
-        .where('playersInfo.$pid.id', isEqualTo: pid)
-        .snapshots()
-        .listen(
-          (snapshot) {
-            cloud = snapshot.docs.map((d) {
-              final data = d.data() as Map<String, dynamic>;
-              return GamePillData.fromDoc(d.id, data);
-            }).toList();
-            emit();
-          },
-          onError: (e, st) {
-            // Common when signed out / rules block list — local pills still emit.
-            final msg = e.toString();
-            if (!msg.contains('permission-denied')) {
-              debugPrint('listenGames cloud: $e');
-            }
-            cloud = [];
-            emit();
-          },
-        );
-    localSub = _localListChanged.stream.listen((_) => emit());
-    out.onCancel = () {
-      cloudSub.cancel();
-      localSub.cancel();
-    };
-    _ensureLocalLoaded().then((_) {
-      if (!out.isClosed) emit();
-    });
-    return out.stream;
-  }
 
   @override
   Stream<GameState?> streamGame(String gameId) {
@@ -476,9 +652,8 @@ class FirestoreService extends GameService {
   @override
   Future<String> newCreateGame(GameState gState) async {
     await _ensureLocalLoaded();
-    final signedIn = FirebaseAuth.instance.currentUser != null;
-    if (gState.isLocalBot && !signedIn) {
-      debugPrint('newCreateGame: local bot without auth, keeping on device');
+    if (gState.isLocalBot) {
+      debugPrint('newCreateGame: local bot, keeping on device');
       _putLocal(gState);
       await _persistLocalGames();
       return gState.id;
@@ -487,13 +662,11 @@ class FirestoreService extends GameService {
     final payload = _gamePayload(gState);
     try {
       await doc.set(payload);
+      unawaited(_syncPlayerGamePills(gState));
       return gState.id;
     } catch (e) {
       debugPrint('newCreateGame cloud: $e');
-      if (!gState.isLocalBot) rethrow;
-      _putLocal(gState);
-      await _persistLocalGames();
-      return gState.id;
+      rethrow;
     }
   }
 
@@ -506,8 +679,8 @@ class FirestoreService extends GameService {
     }
     try {
       await _games.doc(gState.id).set(_gamePayload(gState));
-      final snap = await _games.doc(gState.id).get();
-      return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
+      unawaited(_syncPlayerGamePills(gState));
+      return gState;
     } catch (e) {
       debugPrint('updateGame cloud: $e');
       if (!gState.isLocalBot) rethrow;
@@ -525,6 +698,25 @@ class FirestoreService extends GameService {
     if (c != null && !c.isClosed) await c.close();
     if (!_localListChanged.isClosed) _localListChanged.add(null);
     await _persistLocalGames();
+
+    GameState? cloudState;
+    try {
+      final snap = await _games.doc(gameId).get();
+      if (snap.exists) {
+        cloudState = GameState.fromMap(
+          Map<String, dynamic>.from(snap.data() as Map),
+        );
+      }
+    } catch (e) {
+      debugPrint('deleteGame load: $e');
+    }
+
+    if (cloudState != null) {
+      unawaited(
+        _removePlayerGamePills(gameId, _humanPlayerIds(cloudState)),
+      );
+    }
+
     try {
       await _games.doc(gameId).delete();
     } catch (e) {
