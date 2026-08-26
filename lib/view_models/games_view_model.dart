@@ -44,6 +44,7 @@ class GamesViewModel extends ChangeNotifier {
     int entryCost = WalletConfig.entryCost,
     int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
     LocalBotProfile? botOverride,
+    List<LocalBotProfile>? botOverrides,
   }) async {
     try {
       final gid = await _appRepo.createNewGame(
@@ -54,6 +55,7 @@ class GamesViewModel extends ChangeNotifier {
         entryCost: entryCost,
         turnDurationSeconds: turnDurationSeconds,
         botOverride: botOverride,
+        botOverrides: botOverrides,
       );
       debugPrint('newGame $gid local=$local');
       return gid;

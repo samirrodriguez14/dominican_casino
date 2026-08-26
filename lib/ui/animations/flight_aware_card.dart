@@ -26,7 +26,9 @@ class FlightAwareCard extends StatelessWidget {
     // Pass [child] through ListenableBuilder so card faces are not rebuilt
     // on every markInFlight / clearInFlight — only visibility toggles.
     return ListenableBuilder(
-      listenable: motion,
+      listenable: motion.flightTick,
+      // Rebuild card faces when the parent supplies a new [child]; only the
+      // visibility wrapper reacts to flight ticks.
       child: child,
       builder: (context, cachedChild) {
         final inFlight = motion.isInFlight(cardId);
@@ -39,8 +41,8 @@ class FlightAwareCard extends StatelessWidget {
             child: Visibility(
               visible: !inFlight,
               maintainSize: true,
-              maintainAnimation: true,
               maintainState: true,
+              maintainAnimation: true,
               child: cachedChild!,
             ),
           ),

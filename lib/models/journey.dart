@@ -70,6 +70,7 @@ class JourneyCardDef {
       'assets/images/journey/cards_challengers/${world.name}_${rank.name}.png';
 
   /// Cutout art for avatars / composed cards (transparent background).
+  /// Keep in sync with [AvatarCatalog] journey asset paths.
   String get avatarAssetPath =>
       'assets/images/journey/avatars_transparent_challengers/${world.name}_${rank.name}.png';
 
@@ -308,7 +309,8 @@ const journeyBoardSnapshot = JourneyDisplaySnapshot(
           state: JourneyCardState.levelLocked,
           requiredLevel: 1,
           gameMode: GameMode.tresydos,
-          blurb: 'A restless courtier. Prove yourself at the table.',
+          blurb:
+              'Pricey mask, bigger wager — beat him to meet the King.',
         ),
         JourneyCardDef(
           world: JourneyWorld.diamonds,
@@ -316,7 +318,8 @@ const journeyBoardSnapshot = JourneyDisplaySnapshot(
           state: JourneyCardState.levelLocked,
           requiredLevel: 1,
           gameMode: GameMode.rummy,
-          blurb: 'Polished ambition wearing a crown of facets.',
+          blurb:
+              'Only ever lost a wager to her husband — and she wants your mask.',
         ),
         JourneyCardDef(
           world: JourneyWorld.diamonds,
@@ -324,7 +327,8 @@ const journeyBoardSnapshot = JourneyDisplaySnapshot(
           state: JourneyCardState.levelLocked,
           requiredLevel: 1,
           gameMode: GameMode.casinoSpeed,
-          blurb: 'The court tests travelers by tradition.',
+          blurb:
+              'Wagers the Ace itself — and swears he will not lose.',
         ),
         JourneyCardDef(
           world: JourneyWorld.diamonds,

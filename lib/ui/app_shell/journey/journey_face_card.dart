@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -121,6 +123,89 @@ class JourneyFaceUpCard extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Locked challenger: blurred avatar under a lock (next unlock tease).
+class JourneyLockedChallengerCard extends StatelessWidget {
+  const JourneyLockedChallengerCard({
+    super.key,
+    required this.assetPath,
+    required this.world,
+    this.highlighted = false,
+    this.radius = 12,
+    this.shadow = true,
+    this.lockSize = 22,
+  });
+
+  final String assetPath;
+  final JourneyWorld world;
+  final bool highlighted;
+  final double radius;
+  final bool shadow;
+  final double lockSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = journeyPaletteFor(world);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: highlighted
+              ? palette.accent.withValues(alpha: .85)
+              : palette.cardBorder.withValues(alpha: .7),
+          width: highlighted ? 1.6 : 1.15,
+        ),
+        boxShadow: shadow
+            ? [
+                BoxShadow(
+                  color: CupertinoColors.black.withValues(alpha: .28),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius - 1),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: palette.surface),
+            ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 7, sigmaY: 7),
+              child: Opacity(
+                opacity: 0.72,
+                child: Image.asset(
+                  assetPath,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.bottomCenter,
+                  errorBuilder: (_, _, _) => Center(
+                    child: Text(
+                      world.suitSymbol,
+                      style: TextStyle(
+                        color: palette.suitSymbol.withValues(alpha: .45),
+                        fontSize: 22,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            ColoredBox(color: palette.background.withValues(alpha: .38)),
+            Center(
+              child: Icon(
+                CupertinoIcons.lock_fill,
+                size: lockSize,
+                color: const Color(0xE6FFFFFF),
+              ),
+            ),
+          ],
         ),
       ),
     );

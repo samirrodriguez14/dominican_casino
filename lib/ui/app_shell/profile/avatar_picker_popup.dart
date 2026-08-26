@@ -79,6 +79,9 @@ Future<String?> showAvatarPickerPopup(
                                 selected: id ==
                                     (selectedId ?? PlayerAvatars.defaultId),
                                 showJourneyAces: true,
+                                defeatedAces:
+                                    repo.journeyProgress.defeatedAceWorlds,
+                                wearJourneyAccessories: wear,
                               ),
                             ),
                           ),

@@ -538,11 +538,15 @@ class AppRepo extends ChangeNotifier {
     required JourneyWorld world,
     required JourneyRank rank,
     String? gameId,
+    bool ignoreOutcome = false,
+    bool escortOnLoss = false,
   }) async {
     _journeyProgress.pendingChallenge = JourneyChallengeRef(
       world: world,
       rank: rank,
       gameId: gameId,
+      ignoreOutcome: ignoreOutcome,
+      escortOnLoss: escortOnLoss,
     );
     _journeyProgress.pendingLossTaunt = null;
     await _persistJourneyProgress();
@@ -593,10 +597,12 @@ class AppRepo extends ChangeNotifier {
     JourneyRank rank,
   ) async {
     // Themes unlock only when the player enters the next kingdom — not on Ace.
+    // Aces also award the trail trophy ornament alongside the face avatar.
     _journeyProgress.pendingUnlockReward = JourneyUnlockReward(
       world: world,
       rank: rank,
       avatarId: journeyAvatarId(world, rank),
+      showTrophy: rank == JourneyRank.ace,
     );
   }
 
@@ -631,6 +637,147 @@ class AppRepo extends ChangeNotifier {
     if (_journeyProgress.diamondsJackUnlocked) return;
     _journeyProgress.markEntered(JourneyWorld.diamonds);
     _journeyProgress.diamondsJackUnlocked = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// Mark the Diamonds Jack story intro as seen (after conversation or skip).
+  Future<void> markDiamondsJackIntroSeen() async {
+    if (_journeyProgress.diamondsJackIntroSeen) return;
+    _journeyProgress.diamondsJackIntroSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// Mark the Diamonds Queen story intro as seen (after conversation or skip).
+  Future<void> markDiamondsQueenIntroSeen() async {
+    if (_journeyProgress.diamondsQueenIntroSeen) return;
+    _journeyProgress.diamondsQueenIntroSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markDiamondsKingIntroSeen() async {
+    if (_journeyProgress.diamondsKingIntroSeen) return;
+    _journeyProgress.diamondsKingIntroSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markDiamondsAceEscapeSeen() async {
+    if (_journeyProgress.diamondsAceEscapeSeen) return;
+    _journeyProgress.diamondsAceEscapeSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markClubsJackIntroSeen() async {
+    if (_journeyProgress.clubsJackIntroSeen) return;
+    _journeyProgress.clubsJackIntroSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// Reveal Clubs Jack after the bushes Challenge CTA.
+  Future<void> unlockClubsJack() async {
+    if (_journeyProgress.clubsJackUnlocked) return;
+    _journeyProgress.markEntered(JourneyWorld.clubs);
+    _journeyProgress.clubsJackUnlocked = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markClubsCourtIntroSeen() async {
+    if (_journeyProgress.clubsCourtIntroSeen) return;
+    _journeyProgress.clubsCourtIntroSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingClubsAceOffer() async {
+    if (!_journeyProgress.pendingClubsAceOffer) return;
+    _journeyProgress.pendingClubsAceOffer = false;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markHeartsJackIntroSeen() async {
+    if (_journeyProgress.heartsJackIntroSeen) return;
+    _journeyProgress.heartsJackIntroSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> unlockHeartsJack() async {
+    if (_journeyProgress.heartsJackUnlocked) return;
+    _journeyProgress.markEntered(JourneyWorld.hearts);
+    _journeyProgress.heartsJackUnlocked = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markHeartsQueenEscortSeen() async {
+    if (_journeyProgress.heartsQueenEscortSeen) return;
+    _journeyProgress.heartsQueenEscortSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingHeartsQueenEscort() async {
+    if (!_journeyProgress.pendingHeartsQueenEscort) return;
+    _journeyProgress.pendingHeartsQueenEscort = false;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markHeartsKingIntroSeen() async {
+    if (_journeyProgress.heartsKingIntroSeen) return;
+    _journeyProgress.heartsKingIntroSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingHeartsAceOffer() async {
+    if (!_journeyProgress.pendingHeartsAceOffer) return;
+    _journeyProgress.pendingHeartsAceOffer = false;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markHeartsAceGiftSeen() async {
+    if (_journeyProgress.heartsAceGiftSeen) return;
+    _journeyProgress.heartsAceGiftSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markClubsAceGiftSeen() async {
+    if (_journeyProgress.clubsAceGiftSeen) return;
+    _journeyProgress.clubsAceGiftSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// Enter Clubs after the Diamonds Ace escape (theme + kingdom access).
+  Future<void> enterClubsKingdom() async {
+    _journeyProgress.markEntered(JourneyWorld.clubs);
+    await unlockAndEquipPack(JourneyWorld.clubs.themeId);
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// Enter Hearts after the Clubs Ace gift (theme + kingdom access).
+  Future<void> enterHeartsKingdom() async {
+    _journeyProgress.markEntered(JourneyWorld.hearts);
+    await unlockAndEquipPack(JourneyWorld.hearts.themeId);
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// Enter Spades after the Hearts Ace gift (theme + kingdom access).
+  Future<void> enterSpadesKingdom() async {
+    _journeyProgress.markEntered(JourneyWorld.spades);
+    await unlockAndEquipPack(JourneyWorld.spades.themeId);
     await _persistJourneyProgress();
     notifyListeners();
   }
@@ -717,6 +864,53 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Soft restart: clear kingdom progress but stay in Diamonds for Jack's intro.
+  ///
+  /// Keeps XP, tutorials, coins, and the Diamonds theme equipped.
+  Future<void> restartJourneyAtDiamonds() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove('journey_restore_lone_jack_v1');
+
+    _journeyProgress = JourneyProgress(
+      diamondsEntered: true,
+      diamondsJackUnlocked: false,
+      diamondsJackIntroSeen: false,
+      diamondsQueenIntroSeen: false,
+      diamondsKingIntroSeen: false,
+      diamondsAceEscapeSeen: false,
+      clubsJackIntroSeen: false,
+      clubsJackUnlocked: false,
+      clubsCourtIntroSeen: false,
+      clubsAceGiftSeen: false,
+      pendingClubsAceOffer: false,
+      clubsCourtMatchWon: false,
+      heartsJackIntroSeen: false,
+      heartsJackUnlocked: false,
+      heartsQueenEscortSeen: false,
+      heartsKingIntroSeen: false,
+      heartsAceGiftSeen: false,
+      pendingHeartsQueenEscort: false,
+      pendingHeartsAceOffer: false,
+      enteredWorlds: {JourneyWorld.diamonds.name},
+    );
+    await _persistJourneyProgress();
+
+    // Drop later-kingdom play themes; keep Diamonds (Casino) equipped.
+    var changed = false;
+    for (final pack in themePackCatalog) {
+      if (!pack.isPlayLocked) continue;
+      if (pack.id == Theme.casino) continue;
+      if (_ownedPacks.remove(pack.id)) changed = true;
+    }
+    if (changed) await _persistOwnedPacks();
+    await unlockAndEquipPack(Theme.casino);
+
+    _journeyStoryEpoch += 1;
+    _openJourneyRequest = true;
+    _shellTabRequest = 1;
+    notifyListeners();
+  }
+
   /// Resolve a pending Journey match when leaving a game.
   ///
   /// Returns true when this leave was a Journey challenge (win or loss).
@@ -730,6 +924,83 @@ class AppRepo extends ChangeNotifier {
         pending.gameId != null &&
         pending.gameId != gameId) {
       return false;
+    }
+
+    // Clubs court table: win or lose both lead to the Ace offer dialogue.
+    // Ace is claimed later — do not award it here.
+    if (pending.ignoreOutcome &&
+        pending.world == JourneyWorld.clubs &&
+        pending.rank == JourneyRank.king) {
+      for (final rank in [JourneyRank.queen, JourneyRank.king]) {
+        if (!_journeyProgress.isDefeated(pending.world, rank)) {
+          _journeyProgress.recordDefeat(pending.world, rank);
+        }
+      }
+      _journeyProgress.pendingChallenge = null;
+      _journeyProgress.pendingLossTaunt = null;
+      _journeyProgress.pendingReplayPraise = null;
+      _journeyProgress.pendingWinCelebration = null;
+      _journeyProgress.pendingUnlockReward = null;
+      _journeyProgress.pendingClubsAceOffer = true;
+      _journeyProgress.clubsCourtMatchWon = won;
+      _openJourneyRequest = true;
+      _shellTabRequest = 1;
+      await _persistJourneyProgress();
+      notifyListeners();
+      return true;
+    }
+
+    // Hearts Jack: loss escorts to Queen (story). Win is a normal defeat.
+    if (pending.escortOnLoss &&
+        pending.world == JourneyWorld.hearts &&
+        pending.rank == JourneyRank.jack &&
+        !won) {
+      if (!_journeyProgress.isDefeated(
+        JourneyWorld.hearts,
+        JourneyRank.jack,
+      )) {
+        _journeyProgress.recordDefeat(
+          JourneyWorld.hearts,
+          JourneyRank.jack,
+        );
+      }
+      _journeyProgress.pendingChallenge = null;
+      _journeyProgress.pendingLossTaunt = null;
+      _journeyProgress.pendingWinCelebration = null;
+      _journeyProgress.pendingUnlockReward = null;
+      _journeyProgress.pendingReplayPraise = null;
+      _journeyProgress.pendingHeartsQueenEscort = true;
+      _openJourneyRequest = true;
+      _shellTabRequest = 1;
+      await _persistJourneyProgress();
+      notifyListeners();
+      return true;
+    }
+
+    // Hearts King: win or lose both lead to the Ace offer (claim later).
+    if (pending.ignoreOutcome &&
+        pending.world == JourneyWorld.hearts &&
+        pending.rank == JourneyRank.king) {
+      if (!_journeyProgress.isDefeated(
+        JourneyWorld.hearts,
+        JourneyRank.king,
+      )) {
+        _journeyProgress.recordDefeat(
+          JourneyWorld.hearts,
+          JourneyRank.king,
+        );
+      }
+      _journeyProgress.pendingChallenge = null;
+      _journeyProgress.pendingLossTaunt = null;
+      _journeyProgress.pendingReplayPraise = null;
+      _journeyProgress.pendingWinCelebration = null;
+      _journeyProgress.pendingUnlockReward = null;
+      _journeyProgress.pendingHeartsAceOffer = true;
+      _openJourneyRequest = true;
+      _shellTabRequest = 1;
+      await _persistJourneyProgress();
+      notifyListeners();
+      return true;
     }
 
     if (won) {
@@ -2426,6 +2697,7 @@ class AppRepo extends ChangeNotifier {
     int entryCost = WalletConfig.entryCost,
     int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
     LocalBotProfile? botOverride,
+    List<LocalBotProfile>? botOverrides,
   }) async {
     final existingAuth = FirebaseAuth.instance.currentUser;
     if (local && existingAuth == null) {
@@ -2482,11 +2754,18 @@ class AppRepo extends ChangeNotifier {
     if (local) {
       final seats = maxSeatsFor(mode);
       final botCount = (seats > 2 ? playerCount.clamp(2, seats) : 2) - 1;
+      final avoidIds = <String>{
+        if (host?.avatarId != null) host!.avatarId!,
+        if (botOverride != null) botOverride.avatarId,
+        if (botOverrides != null)
+          for (final p in botOverrides) p.avatarId,
+      };
       final profiles = <LocalBotProfile>[
-        if (botOverride != null) botOverride,
+        ...?botOverrides,
+        if (botOverrides == null && botOverride != null) botOverride,
         ...LocalBotRoster.pick(
           botCount,
-          avoidAvatarId: host?.avatarId,
+          avoidAvatarIds: avoidIds,
         ),
       ].take(botCount).toList();
       final botPids = <String>[];
@@ -2498,8 +2777,8 @@ class AppRepo extends ChangeNotifier {
           'id': botPid,
           'name': profile.name,
           'avatarId': profile.avatarId,
-          if (profile.avatarAsset != null && profile.avatarAsset!.isNotEmpty)
-            'avatarAsset': profile.avatarAsset,
+          if (profile.resolvedAvatarAsset != null)
+            'avatarAsset': profile.resolvedAvatarAsset,
         };
       }
       gameState.botPlayerIds = botPids;

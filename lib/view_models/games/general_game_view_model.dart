@@ -1144,7 +1144,10 @@ class GeneralGameViewModel extends ChangeNotifier {
   // ── Board drag / drop (Casino) ───────────────────────────────────────────
 
   BoardDragSource? draggingSource;
-  DropHover? dropHover;
+  /// Hover updates go through this notifier so they do not rebuild the whole
+  /// game tree via [notifyListeners].
+  final ValueNotifier<DropHover?> dropHoverListenable = ValueNotifier(null);
+  DropHover? get dropHover => dropHoverListenable.value;
   DropPending? dropPending;
   DragHandoff? dragHandoff;
 
@@ -1161,6 +1164,17 @@ class GeneralGameViewModel extends ChangeNotifier {
       gameState.gameMode == GameMode.casino ||
       gameState.gameMode == GameMode.casinoSpeed;
 
+  void _setDropHover(DropHover? next) {
+    final prev = dropHoverListenable.value;
+    if (next == null) {
+      if (prev == null) return;
+      dropHoverListenable.value = null;
+      return;
+    }
+    if (next.sameAs(prev)) return;
+    dropHoverListenable.value = next;
+  }
+
   bool beginBoardDrag(BoardDragSource source) {
     if (isAnimating || dropPending != null) return false;
     if (tutorialMode &&
@@ -1172,7 +1186,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       return false;
     }
     draggingSource = source;
-    dropHover = null;
+    _setDropHover(null);
     notifyListeners();
     return true;
   }
@@ -1247,7 +1261,8 @@ class GeneralGameViewModel extends ChangeNotifier {
   void endBoardDrag() {
     if (draggingSource == null && dropHover == null) return;
     draggingSource = null;
-    dropHover = null;
+    _setDropHover(null);
+    _pendingHoverGlobal = null;
     notifyListeners();
   }
 
@@ -1522,18 +1537,12 @@ class GeneralGameViewModel extends ChangeNotifier {
   void _applyDropHover(Offset global, BoardDragSource source) {
     final target = hitTestDropTarget(global, source: source);
     if (target == null) {
-      if (dropHover != null) {
-        dropHover = null;
-        notifyListeners();
-      }
+      _setDropHover(null);
       return;
     }
     final actions = actionsForDrop(source, target);
     if (actions.isEmpty) {
-      if (dropHover != null) {
-        dropHover = null;
-        notifyListeners();
-      }
+      _setDropHover(null);
       return;
     }
     final selection = selectionForDrop(source, target);
@@ -1542,16 +1551,13 @@ class GeneralGameViewModel extends ChangeNotifier {
             target.kind == DropTargetKind.playerHand
         ? null
         : _buildPreviewFor(selection, actions);
-    final next = DropHover(
-      target: target,
-      actions: actions,
-      buildPreview: preview,
+    _setDropHover(
+      DropHover(
+        target: target,
+        actions: actions,
+        buildPreview: preview,
+      ),
     );
-    // Drag moves fire many times per second — only rebuild the board when
-    // the hovered target / preview actually changes.
-    if (next.sameAs(dropHover)) return;
-    dropHover = next;
-    notifyListeners();
   }
 
   /// Apply drop. Returns whether the drag was consumed (commit or pending).
@@ -1561,9 +1567,10 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     final target = hitTestDropTarget(globalCenter, source: source);
     draggingSource = null;
+    _pendingHoverGlobal = null;
 
     if (target == null || !canPlayTurn) {
-      dropHover = null;
+      _setDropHover(null);
       dragHandoff = null;
       notifyListeners();
       return false;
@@ -1601,7 +1608,7 @@ class GeneralGameViewModel extends ChangeNotifier {
           }
 
           final handoff = dragHandoff;
-          dropHover = null;
+          _setDropHover(null);
           clearDragHandoff();
           final endLayout = rummyBoxLayoutForCount(
             rummyBoxCount(boxIndex: boxIndex),
@@ -1617,7 +1624,7 @@ class GeneralGameViewModel extends ChangeNotifier {
           return true;
         }
 
-        dropHover = null;
+        _setDropHover(null);
         clearDragHandoff();
         notifyListeners();
         return true;
@@ -1630,7 +1637,7 @@ class GeneralGameViewModel extends ChangeNotifier {
         rummy.boxBByPid[pid]?.removeWhere((id) => id == cardId);
 
         final handoff = dragHandoff;
-        dropHover = null;
+        _setDropHover(null);
         clearDragHandoff();
         notifyListeners();
         await _flyRummyOrganizerMove(
@@ -1646,7 +1653,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     final actions = actionsForDrop(source, target);
     if (actions.isEmpty) {
-      dropHover = null;
+      _setDropHover(null);
       dragHandoff = null;
       notifyListeners();
       return false;
@@ -1661,13 +1668,13 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     if (actions.length == 1) {
       // Keep the last painted merge preview until [_flyCommit] rebuilds.
-      dropHover = null;
+      _setDropHover(null);
       await _commitDropAction(actions.first, selection, globalCenter);
       return true;
     }
 
     // Multi-action: keep selection + pending UI.
-    dropHover = null;
+    _setDropHover(null);
     dragHandoff = null;
     selectedCard = selection.selectedCard;
     selectedCards = List<PlayingCardModel>.from(selection.selectedCards);
@@ -1759,7 +1766,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       const DropTarget.emptyTable(),
     );
     draggingSource = null;
-    dropHover = null;
+    _setDropHover(null);
     if (actions.length == 1) {
       await _commitDropAction(
         actions.first,
@@ -2683,6 +2690,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     _winCelebrationTimer?.cancel();
     gameRepo.removeListener(_onGameRepoChanged);
     motion.removeListener(notifyListeners);
+    dropHoverListenable.dispose();
     motion.dispose();
     super.dispose();
   }

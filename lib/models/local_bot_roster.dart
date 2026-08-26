@@ -1,3 +1,5 @@
+import 'package:dominican_casino/models/avatar_catalog.dart';
+
 /// On-device AI seats for local matches. Distinct names/avatars so a
 /// 4-player Tres y Dos table is not four copies of Pulilo.
 class LocalBotProfile {
@@ -9,8 +11,14 @@ class LocalBotProfile {
 
   final String name;
   final String avatarId;
-  /// Optional custom image (e.g. Journey challenger art).
+  /// Optional custom image override. When null, resolved from [AvatarCatalog].
   final String? avatarAsset;
+
+  /// Asset path for seat maps — catalog lookup when [avatarAsset] is omitted.
+  String? get resolvedAvatarAsset {
+    if (avatarAsset != null && avatarAsset!.isNotEmpty) return avatarAsset;
+    return AvatarLook.fromId(avatarId).resolvedAssetPath;
+  }
 }
 
 class LocalBotRoster {
@@ -25,13 +33,21 @@ class LocalBotRoster {
     return profiles.any((p) => p.name == name);
   }
 
-  /// Up to [count] bots, preferring avatars that are not [avoidAvatarId].
-  static List<LocalBotProfile> pick(int count, {String? avoidAvatarId}) {
+  /// Up to [count] bots, preferring avatars not in [avoidAvatarIds].
+  static List<LocalBotProfile> pick(
+    int count, {
+    String? avoidAvatarId,
+    Set<String>? avoidAvatarIds,
+  }) {
+    final avoid = <String>{
+      if (avoidAvatarId != null && avoidAvatarId.isNotEmpty) avoidAvatarId,
+      ...?avoidAvatarIds,
+    };
     final ordered = [...profiles];
-    if (avoidAvatarId != null && avoidAvatarId.isNotEmpty) {
+    if (avoid.isNotEmpty) {
       ordered.sort((a, b) {
-        final ac = a.avatarId == avoidAvatarId;
-        final bc = b.avatarId == avoidAvatarId;
+        final ac = avoid.contains(a.avatarId);
+        final bc = avoid.contains(b.avatarId);
         if (ac == bc) return 0;
         return ac ? 1 : -1;
       });

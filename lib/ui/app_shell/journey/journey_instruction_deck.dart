@@ -26,6 +26,7 @@ class JourneyInstructionDeck extends StatelessWidget {
     this.onUnlockNextChallenger,
     this.showEnterKingdomCta = false,
     this.enterKingdomLabel = 'Enter Diamonds kingdom',
+    this.enterKingdomPageId = 1,
     this.onEnterKingdom,
     this.ceremonyPageId,
     this.ceremonyT,
@@ -44,9 +45,11 @@ class JourneyInstructionDeck extends StatelessWidget {
   final bool showUnlockChallengerCta;
   final String unlockChallengerLabel;
   final VoidCallback? onUnlockNextChallenger;
-  /// Welcome-page CTA to enter Diamonds (theme change).
+  /// CTA to enter a kingdom (Diamonds page 1, Clubs page 6, …).
   final bool showEnterKingdomCta;
   final String enterKingdomLabel;
+  /// 1-based instruction page that shows [enterKingdomLabel].
+  final int enterKingdomPageId;
   final VoidCallback? onEnterKingdom;
   /// 1-based page currently playing the sealed → reveal ceremony.
   final int? ceremonyPageId;
@@ -107,6 +110,7 @@ class JourneyInstructionDeck extends StatelessWidget {
       onUnlockNextChallenger: onUnlockNextChallenger,
       showEnterKingdomCta: showEnterKingdomCta,
       enterKingdomLabel: enterKingdomLabel,
+      enterKingdomPageId: enterKingdomPageId,
       onEnterKingdom: onEnterKingdom,
       carouselKey: carouselKey,
       ceremonyPageId: ceremonyPageId,
@@ -196,6 +200,7 @@ class _ExpandedGuide extends StatelessWidget {
     this.onUnlockNextChallenger,
     this.showEnterKingdomCta = false,
     this.enterKingdomLabel = 'Enter Diamonds kingdom',
+    this.enterKingdomPageId = 1,
     this.onEnterKingdom,
     this.carouselKey,
     this.ceremonyPageId,
@@ -215,6 +220,7 @@ class _ExpandedGuide extends StatelessWidget {
   final VoidCallback? onUnlockNextChallenger;
   final bool showEnterKingdomCta;
   final String enterKingdomLabel;
+  final int enterKingdomPageId;
   final VoidCallback? onEnterKingdom;
   final GlobalKey<StackedCardCarouselState>? carouselKey;
   final int? ceremonyPageId;
@@ -304,7 +310,7 @@ class _ExpandedGuide extends StatelessWidget {
                           final page = journeyInstructions[index];
                           final isLatest = pageId == unlockedThrough;
                           final showEnter = showEnterKingdomCta &&
-                              page.id == 1 &&
+                              page.id == enterKingdomPageId &&
                               onEnterKingdom != null;
                           card = _InstructionCard(
                             instruction: page,

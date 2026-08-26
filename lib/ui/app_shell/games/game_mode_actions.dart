@@ -792,6 +792,7 @@ Future<void> gameEnter(
   int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
   Future<void> Function(String gameId)? onCreated,
   LocalBotProfile? botOverride,
+  List<LocalBotProfile>? botOverrides,
 }) async {
   if (mode == GameMode.robaito) return;
   final repo = context.read<AppRepo>();
@@ -813,6 +814,7 @@ Future<void> gameEnter(
       entryCost: entryCost,
       turnDurationSeconds: turnDurationSeconds,
       botOverride: botOverride,
+      botOverrides: botOverrides,
     );
     if (gid != null) {
       if (onCreated != null) await onCreated(gid);

@@ -3,6 +3,7 @@ import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_grid.dart';
@@ -101,6 +102,13 @@ class GamesScreenState extends State<GamesScreen>
   /// Called when the Games shell tab is focused again.
   void onShellTabVisible() {
     _journeyKey.currentState?.onShellTabVisible();
+  }
+
+  /// Spit Journey trophies from the trail avatar (Ace unlock handoff).
+  Future<void> openJourneyTrophies({JourneyWorld? revealWorld}) async {
+    await _journeyKey.currentState?.openJourneyTrophies(
+      revealWorld: revealWorld,
+    );
   }
 
   Future<void> toggleGrid() async {

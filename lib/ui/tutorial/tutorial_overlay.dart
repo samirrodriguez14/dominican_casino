@@ -2,12 +2,15 @@ import 'dart:math' as math;
 
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/tutorial_step.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 enum _BubbleTail { none, up, down }
 
@@ -319,10 +322,13 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     final placedAbove = bubbleRect.center.dy <= rect.center.dy;
     final tail = placedAbove ? _BubbleTail.down : _BubbleTail.up;
 
-    final bubbleCenterX = clampedTooltipOffset.dx +
-        _avatarSize +
-        _avatarGap +
-        _bubbleWidth / 2;
+    final playerOnRight = widget.step.speaker == TutorialSpeaker.player;
+    final bubbleCenterX = playerOnRight
+        ? clampedTooltipOffset.dx + _bubbleWidth / 2
+        : clampedTooltipOffset.dx +
+            _avatarSize +
+            _avatarGap +
+            _bubbleWidth / 2;
     final tailShiftX = rect.center.dx - bubbleCenterX;
     final maxTailShiftX = _bubbleWidth / 2 - 9;
     final safeTailShiftX = tailShiftX.clamp(-maxTailShiftX, maxTailShiftX);
@@ -368,8 +374,10 @@ class _TutorialOverlayState extends State<TutorialOverlay>
       overlaySize.height - _tooltipMinHeight - 12,
     );
 
-    final bubbleCenterX =
-        clampedLeft + _avatarSize + _avatarGap + _bubbleWidth / 2;
+    final playerOnRight = widget.step.speaker == TutorialSpeaker.player;
+    final bubbleCenterX = playerOnRight
+        ? clampedLeft + _bubbleWidth / 2
+        : clampedLeft + _avatarSize + _avatarGap + _bubbleWidth / 2;
     final tailShiftX = rect?.center.dx != null ? rect!.center.dx - bubbleCenterX : 0.0;
     final maxTailShiftX = _bubbleWidth / 2 - 9; // 9 = 18px tail / 2
     final safeTailShiftX = tailShiftX.clamp(-maxTailShiftX, maxTailShiftX);
@@ -400,6 +408,18 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     );
   }
 
+  String _resolveAvatarId() {
+    final override = widget.step.avatarId;
+    if (override != null && override.isNotEmpty) return override;
+    switch (widget.step.speaker) {
+      case TutorialSpeaker.player:
+        final player = context.read<AppRepo>().player;
+        return player?.avatarId ?? Player.defaultAvatarId;
+      case TutorialSpeaker.guide:
+        return GameState.localBotAvatarId;
+    }
+  }
+
   Widget _buildTooltipContent({
     required _BubbleTail tail,
     double tailShiftX = 0.0,
@@ -409,9 +429,12 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     final l10n = AppLocalizations.of(context);
     final fill = theme.surfaceRaised;
     final stroke = theme.turnHighlight.withValues(alpha: .45);
+    final hasSpeakerLabel =
+        widget.step.title.isNotEmpty && widget.step.description.isNotEmpty;
     final message = widget.step.description.isNotEmpty
         ? widget.step.description
         : widget.step.title;
+    final playerOnRight = widget.step.speaker == TutorialSpeaker.player;
 
     final bubble = Stack(
       clipBehavior: Clip.none,
@@ -436,15 +459,35 @@ class _TutorialOverlayState extends State<TutorialOverlay>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.only(right: 36),
-                child: Text(
-                  message,
-                  style: theme.body.copyWith(
-                    color: theme.textPrimary,
-                    fontSize: 20,
-                    height: 1.28,
-                    fontWeight: FontWeight.w700,
-                  ),
+                padding: EdgeInsets.only(
+                  right: playerOnRight ? 0 : 36,
+                  left: playerOnRight ? 36 : 0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (hasSpeakerLabel) ...[
+                      Text(
+                        widget.step.title,
+                        style: theme.body.copyWith(
+                          color: theme.muted,
+                          fontSize: 13,
+                          height: 1.2,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    Text(
+                      message,
+                      style: theme.body.copyWith(
+                        color: theme.textPrimary,
+                        fontSize: 20,
+                        height: 1.28,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 10),
@@ -454,7 +497,8 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         ),
         Positioned(
           top: -6,
-          right: -6,
+          left: playerOnRight ? -6 : null,
+          right: playerOnRight ? null : -6,
           child: _StepProgressCircle(
             current: widget.currentStep + 1,
             total: widget.totalSteps,
@@ -490,22 +534,31 @@ class _TutorialOverlayState extends State<TutorialOverlay>
       );
     }
 
+    final avatar = Padding(
+      padding: EdgeInsets.only(
+        bottom: tail == _BubbleTail.down ? _tailSize : 0,
+      ),
+      child: PlayerAvatarView(
+        avatarId: _resolveAvatarId(),
+        size: _avatarSize,
+      ),
+    );
+    final scaledBubble = ScaleTransition(scale: _popAnimation, child: tailedBubble);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(
-            bottom: tail == _BubbleTail.down ? _tailSize : 0,
-          ),
-          child: PlayerAvatarView(
-            avatarId: GameState.localBotAvatarId,
-            size: _avatarSize,
-          ),
-        ),
-        const SizedBox(width: _avatarGap),
-        ScaleTransition(scale: _popAnimation, child: tailedBubble),
-      ],
+      children: playerOnRight
+          ? [
+              scaledBubble,
+              const SizedBox(width: _avatarGap),
+              avatar,
+            ]
+          : [
+              avatar,
+              const SizedBox(width: _avatarGap),
+              scaledBubble,
+            ],
     );
   }
 
@@ -607,7 +660,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                   )
                 : null,
             child: Text(
-              l10n.tutorialGotIt,
+              l10n.next,
               style: theme.body.copyWith(
                 color: canPressNext
                     ? theme.background

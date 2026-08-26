@@ -136,4 +136,35 @@ void main() {
     expect(progress.hasEntered(JourneyWorld.spades), isFalse);
     expect(progress.hasEntered(JourneyWorld.hearts), isTrue);
   });
+
+  test('diamondsJackIntroSeen persists and migrates with jack unlock', () {
+    final fresh = JourneyProgress(diamondsJackIntroSeen: true);
+    final roundTrip = JourneyProgress.fromJson(fresh.toJson());
+    expect(roundTrip.diamondsJackIntroSeen, isTrue);
+
+    final legacy = JourneyProgress.fromJson({
+      'diamondsEntered': true,
+      'diamondsJackUnlocked': true,
+    });
+    expect(legacy.diamondsJackIntroSeen, isTrue);
+  });
+
+  test('diamondsQueenIntroSeen persists and migrates past Queen', () {
+    final fresh = JourneyProgress(diamondsQueenIntroSeen: true);
+    expect(JourneyProgress.fromJson(fresh.toJson()).diamondsQueenIntroSeen, isTrue);
+
+    final pastQueen = JourneyProgress.fromJson({
+      'defeatedByWorld': {
+        'diamonds': ['jack', 'queen'],
+      },
+    });
+    expect(pastQueen.diamondsQueenIntroSeen, isTrue);
+
+    final onlyJack = JourneyProgress.fromJson({
+      'defeatedByWorld': {
+        'diamonds': ['jack'],
+      },
+    });
+    expect(onlyJack.diamondsQueenIntroSeen, isFalse);
+  });
 }

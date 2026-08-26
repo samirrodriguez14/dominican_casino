@@ -17,134 +17,130 @@ class JourneyInstruction {
 
 /// Full Journey instruction catalog (session-local unlocks).
 ///
-/// Pages 1–6 cover Diamonds. Pages 7–18 mirror the same Jack → Queen →
-/// King → Ace → next-world cadence for Clubs, Hearts, and Spades.
+/// Pages 1–7 cover Diamonds through the Clubs court. Page 8 is the Hearts
+/// entrance (Clubs Queen/King instruction pages are skipped — the court match
+/// gifts the Ace directly). Pages 9–16 continue Hearts and Spades.
 const List<JourneyInstruction> journeyInstructions = [
   JourneyInstruction(
     id: 1,
-    title: 'Welcome, wanderer',
+    title: 'A letter',
     body:
-        'It seems you are lost and looking for your kingdom. '
-        'Come to the Diamonds kingdom — where riches the world can offer await. '
-        'Enter the kingdom when you are ready — the table theme will follow.',
+        'Life is a mystery that unfolds through one\'s journey.\n'
+        'For some that journey is finding their way back home.\n'
+        'If you can\'t remember how to get there, perhaps someone can help.',
   ),
   JourneyInstruction(
     id: 2,
-    title: 'Prove yourself',
+    title: 'The court awaits',
     body:
-        'To live here you must reach the Queen — but first complete the Jack\'s challenge. '
-        'Unlock the next challenger, then drag the face-up card to the center and begin.',
+        'Your path leads through the Diamond Kingdom\'s court. '
+        'The Ace of Diamonds is said to hold answers — but the Jack '
+        'stands between you and the King. Face him when you are ready.',
   ),
   JourneyInstruction(
     id: 3,
     title: 'The Queen awaits',
     body:
-        'Congratulations — you completed the first challenge. '
-        'The Queen of Diamonds now stands open. Face her next.',
+        'Jack\'s wager had a loophole — the Queen of Diamonds stands before '
+        'you now. Beat her at cards, and she will take you to the King. '
+        'No more tricks.',
   ),
   JourneyInstruction(
     id: 4,
     title: 'The King\'s court',
     body:
-        'The Queen falls. The King tests travelers by tradition. '
-        'Prove your ambition before his throne.',
+        'The Queen keeps her word — mostly. You stand before the King of '
+        'Diamonds. He wagers the Ace itself. Beat him, and the path home '
+        'may open.',
   ),
   JourneyInstruction(
     id: 5,
-    title: 'Mastery of Ambition',
+    title: 'The Ace of Diamonds',
     body:
-        'The King is defeated. Claim the Ace of Diamonds — '
-        'mastery of this kingdom\'s ambition.',
+        'You won the King\'s wager. Claim the Ace of Diamonds — the most '
+        'powerful card in the world.',
   ),
   JourneyInstruction(
     id: 6,
-    title: 'The road continues',
+    title: 'The Clubs road',
     body:
-        'The Ace is yours. A path opens toward Clubs — '
-        'the next kingdom awaits when you are ready.',
+        'You outran the guards. Here is the entrance of what used to be '
+        'the Clubs kingdom.\n'
+        'They are missing, but come in and see what you can find. '
+        'Remember — you are looking for a place where peace and freedom '
+        'are your allies.',
   ),
-  // Clubs (pages 7–10)
   JourneyInstruction(
     id: 7,
-    title: 'The Queen awaits',
+    title: 'The Clubs court',
     body:
-        'Congratulations — you completed the Clubs challenge. '
-        'The Queen of Clubs now stands open. Face her next.',
+        'Jack led you to his family — the Queen and King of Clubs. '
+        'They fled a world that traded virtue for vice. Listen carefully; '
+        'their wager may open the next path home.',
   ),
+  // Hearts (pages 8–11) — Clubs Queen/King letter pages skipped.
   JourneyInstruction(
     id: 8,
-    title: 'The King\'s court',
+    title: 'The Hearts entrance',
     body:
-        'The Queen falls. The King tests travelers by freedom. '
-        'Prove your freedom before his throne.',
+        'Here is the entrance of the Hearts kingdom.\n'
+        'You\'ll need a costume.\n'
+        'Luckily with 2 Aces you hold the power to make yourself look older. '
+        'Use it to go to the Hearts kingdom. Find the Jack and use what '
+        'you\'ve learned to wager your way to the King to find the next Ace.',
   ),
   JourneyInstruction(
     id: 9,
-    title: 'Mastery of Freedom',
-    body:
-        'The King is defeated. Claim the Ace of Clubs — '
-        'mastery of this kingdom\'s freedom.',
-  ),
-  JourneyInstruction(
-    id: 10,
-    title: 'The road continues',
-    body:
-        'The Ace is yours. A path opens toward Hearts — '
-        'the next kingdom awaits when you are ready.',
-  ),
-  // Hearts (pages 11–14)
-  JourneyInstruction(
-    id: 11,
     title: 'The Queen awaits',
     body:
         'Congratulations — you completed the Hearts challenge. '
         'The Queen of Hearts now stands open. Face her next.',
   ),
   JourneyInstruction(
-    id: 12,
+    id: 10,
     title: 'The King\'s court',
     body:
         'The Queen falls. The King tests travelers by love. '
         'Prove your love before his throne.',
   ),
   JourneyInstruction(
-    id: 13,
+    id: 11,
     title: 'Mastery of Love',
     body:
         'The King is defeated. Claim the Ace of Hearts — '
         'mastery of this kingdom\'s love.',
   ),
   JourneyInstruction(
-    id: 14,
-    title: 'The road continues',
+    id: 12,
+    title: 'The Spades entrance',
     body:
-        'The Ace is yours. A path opens toward Spades — '
-        'the next kingdom awaits when you are ready.',
+        'The King gave you his heart and died. You must run to the Spades '
+        'kingdom before the Queen finds out.',
   ),
-  // Spades (pages 15–18)
+  // Spades (pages 13–16)
   JourneyInstruction(
-    id: 15,
+    id: 13,
     title: 'The Queen awaits',
     body:
         'Congratulations — you completed the Spades challenge. '
         'The Queen of Spades now stands open. Face her next.',
   ),
   JourneyInstruction(
-    id: 16,
+    id: 14,
     title: 'The King\'s court',
     body:
         'The Queen falls. The King tests travelers by strength. '
         'Prove your strength before his throne.',
   ),
   JourneyInstruction(
-    id: 17,
+    id: 15,
     title: 'Mastery of Strength',
     body:
         'The King is defeated. Claim the Ace of Spades — '
         'mastery of this kingdom\'s strength.',
   ),
   JourneyInstruction(
-    id: 18,
+    id: 16,
     title: 'Four Aces complete',
     body:
         'The Ace of Spades is yours. All four Aces are complete — '
@@ -165,23 +161,28 @@ JourneyInstruction? journeyInstructionById(int id) {
 /// Base page unlocked when [world]'s prior Ace is claimed (before its Jack).
 ///
 /// Diamonds starts at page 2 after tutorial; later worlds use the prior
-/// world's "road continues" page as their entry guide.
+/// world's entry / road page as their guide.
 int _worldInstructionBase(JourneyWorld world) => switch (world) {
       JourneyWorld.diamonds => 2,
       JourneyWorld.clubs => 6,
-      JourneyWorld.hearts => 10,
-      JourneyWorld.spades => 14,
+      JourneyWorld.hearts => 8,
+      JourneyWorld.spades => 12,
     };
 
 /// How many pages are unlocked for the current session board state.
 ///
 /// Always unlocks page 1. Page 2 unlocks after Diamonds kingdom is entered.
-/// Pages 3–6 unlock as Jack → Queen → King → Ace are cleared in Diamonds.
-/// Pages 7–18 unlock the same way across Clubs, Hearts, and Spades.
+/// Pages 3–5 unlock as Jack → Queen → King are cleared in Diamonds.
+/// Page 6 (Clubs road) unlocks only after the Ace escape dialogue is finished.
+/// Page 7 unlocks after Clubs Jack; page 8 (Hearts entrance) waits for the
+/// Clubs Ace gift dialogue. Pages 9–16 continue across Hearts and Spades.
 int journeyUnlockedThrough({
   required JourneyDisplaySnapshot snapshot,
   required bool tutorialDone,
   bool diamondsEntered = false,
+  bool diamondsAceEscapeSeen = true,
+  bool clubsAceGiftSeen = true,
+  bool heartsAceGiftSeen = true,
 }) {
   JourneyCardState? stateOf(JourneyWorld world, JourneyRank rank) =>
       snapshot.worldOf(world).cardOf(rank)?.state;
@@ -193,6 +194,15 @@ int journeyUnlockedThrough({
   for (final world in JourneyWorld.values) {
     if (!defeated(world, JourneyRank.ace)) {
       final base = _worldInstructionBase(world);
+      // Clubs: Jack unlocks court letter; Queen/King letters skipped.
+      // Hearts: stay on entrance until Ace gift unlocks Spades.
+      if (world == JourneyWorld.clubs) {
+        if (defeated(world, JourneyRank.jack)) return base + 1; // 7
+        return base; // 6
+      }
+      if (world == JourneyWorld.hearts) {
+        return base; // 8
+      }
       if (defeated(world, JourneyRank.king)) return base + 3;
       if (defeated(world, JourneyRank.queen)) return base + 2;
       if (defeated(world, JourneyRank.jack)) return base + 1;
@@ -203,8 +213,20 @@ int journeyUnlockedThrough({
       }
       return base;
     }
+    // Diamonds Ace claimed — Clubs road waits for the escape dialogue.
+    if (world == JourneyWorld.diamonds && !diamondsAceEscapeSeen) {
+      return 5;
+    }
+    // Clubs Ace claimed — Hearts letter waits for the gift dialogue.
+    if (world == JourneyWorld.clubs && !clubsAceGiftSeen) {
+      return 7;
+    }
+    // Hearts Ace claimed — Spades letter waits for the gift dialogue.
+    if (world == JourneyWorld.hearts && !heartsAceGiftSeen) {
+      return 8;
+    }
   }
 
   // All four Aces claimed.
-  return 18;
+  return 16;
 }

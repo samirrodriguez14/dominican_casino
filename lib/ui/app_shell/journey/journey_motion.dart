@@ -395,4 +395,32 @@ abstract final class JourneyTableLayout {
     final t = Curves.easeInOutCubic.transform(eat);
     return quad(Offset.zero, mid, toTab, t);
   }
+
+  /// Lift, then dive into [targetCenter] from stage center (popup eat/spit).
+  static Offset flyToTargetDelta({
+    required double eat,
+    required Size stage,
+    required Offset targetCenter,
+  }) {
+    final origin = Offset(stage.width / 2, stage.height / 2);
+    final toTarget = targetCenter - origin;
+    final mid = Offset(toTarget.dx * 0.28, -stage.height * 0.14);
+    final t = Curves.easeInOutCubic.transform(eat);
+    return quad(Offset.zero, mid, toTarget, t);
+  }
+}
+
+/// Multi-phase bubble scale used by Games-tab / trail-avatar eat & spit pulses.
+double journeyEatPulseScale(double t) {
+  if (t <= 0) return 1;
+  if (t < 0.32) {
+    return 1.0 + Curves.easeOut.transform(t / 0.32) * 0.24;
+  }
+  if (t < 0.52) {
+    return 1.24 - Curves.easeIn.transform((t - 0.32) / 0.20) * 0.34;
+  }
+  if (t < 0.78) {
+    return 0.90 + Curves.easeOut.transform((t - 0.52) / 0.26) * 0.18;
+  }
+  return 1.08 - Curves.easeIn.transform((t - 0.78) / 0.22) * 0.08;
 }

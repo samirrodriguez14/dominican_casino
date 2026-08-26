@@ -1,10 +1,8 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/models/avatar_catalog.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:provider/provider.dart';
 
 class AvatarOption {
   const AvatarOption({
@@ -23,7 +21,7 @@ class AvatarOption {
 
 /// Simple painted avatars (sun, palm, suits, moon, star, acorn, leaf).
 class PlayerAvatars {
-  static const defaultId = 'spade';
+  static const defaultId = AvatarCatalog.defaultId;
 
   static final List<AvatarOption> all = [
     AvatarOption(
@@ -141,6 +139,7 @@ class AvatarScoreTheme {
   final bool isLight;
 }
 
+/// Pure avatar disc — no Provider / AppRepo. Looks up [AvatarCatalog].
 class PlayerAvatarView extends StatelessWidget {
   const PlayerAvatarView({
     super.key,
@@ -152,32 +151,30 @@ class PlayerAvatarView extends StatelessWidget {
     this.silhouette = false,
     this.showJourneyAces = false,
     this.defeatedAces,
+    this.wearJourneyAccessories = true,
     this.onAceTap,
   });
 
   final String? avatarId;
-  /// When set, shows this asset instead of the painted [avatarId] icon.
+  /// When set, shows this asset instead of the catalog / painted icon.
   final String? avatarAsset;
   final double size;
   final bool selected;
   final bool showBorder;
   final bool silhouette;
-  /// When true, shows claimed Journey Ace suit medallions around the disc.
+  /// When true and [defeatedAces] is non-empty (and wear is on), stacks Ace
+  /// ornaments. Parents must pass data — this widget never reads AppRepo.
   final bool showJourneyAces;
-  /// Explicit Ace set; when null and [showJourneyAces], reads [AppRepo].
   final Set<JourneyWorld>? defeatedAces;
-  /// Optional tap on an owned Ace ornament (e.g. open trophies on profile).
+  final bool wearJourneyAccessories;
   final ValueChanged<JourneyWorld>? onAceTap;
 
   @override
   Widget build(BuildContext context) {
-    final option = PlayerAvatars.byId(paintedAvatarIdFor(avatarId));
+    final look = AvatarLook.fromId(avatarId, assetOverride: avatarAsset);
+    final option = PlayerAvatars.byId(look.paintedFallbackId);
     final ring = selected ? const Color(0xFFF4F2EC) : const Color(0x33000000);
-    final asset = silhouette
-        ? null
-        : ((avatarAsset != null && avatarAsset!.isNotEmpty)
-            ? avatarAsset
-            : journeyAvatarAssetPath(avatarId));
+    final asset = silhouette ? null : look.resolvedAssetPath;
 
     final disc = SizedBox(
       width: size,
@@ -223,29 +220,36 @@ class PlayerAvatarView extends StatelessWidget {
 
     if (!showJourneyAces) return disc;
 
-    // Narrow Provider selects — never `watch` the whole AppRepo (energy /
-    // wallet / locale would rebuild ornaments on every tick).
-    var wear = true;
-    Set<JourneyWorld> aces = defeatedAces ?? const {};
-    try {
-      wear = context.select<AppRepo, bool>((r) => r.wearJourneyAccessories);
-      if (defeatedAces == null) {
-        final bits = context.select<AppRepo, int>((r) {
-          var mask = 0;
-          for (final w in r.journeyProgress.defeatedAceWorlds) {
-            mask |= 1 << w.index;
-          }
-          return mask;
-        });
-        aces = {
-          for (final w in JourneyWorld.values)
-            if ((bits & (1 << w.index)) != 0) w,
-        };
-      }
-    } catch (_) {
-      // Outside an AppRepo scope (tests / isolated previews).
-    }
-    if (!wear || aces.isEmpty) return disc;
+    return AvatarAceOrnaments(
+      size: size,
+      defeatedAces: defeatedAces ?? const {},
+      wear: wearJourneyAccessories,
+      onAceTap: onAceTap,
+      child: disc,
+    );
+  }
+}
+
+/// Props-only Ace trophy overlay. Parents supply [defeatedAces] / [wear].
+class AvatarAceOrnaments extends StatelessWidget {
+  const AvatarAceOrnaments({
+    super.key,
+    required this.child,
+    required this.size,
+    required this.defeatedAces,
+    this.wear = true,
+    this.onAceTap,
+  });
+
+  final Widget child;
+  final double size;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wear;
+  final ValueChanged<JourneyWorld>? onAceTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!wear || defeatedAces.isEmpty) return child;
 
     final medallion = size * 0.28;
     Widget corner(
@@ -255,7 +259,7 @@ class PlayerAvatarView extends StatelessWidget {
       required bool left,
       required bool right,
     }) {
-      if (!aces.contains(world)) return const SizedBox.shrink();
+      if (!defeatedAces.contains(world)) return const SizedBox.shrink();
       final badge = _AceSuitMedallion(world: world, size: medallion);
       return Positioned(
         top: top ? -medallion * 0.35 : null,
@@ -279,7 +283,7 @@ class PlayerAvatarView extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          disc,
+          child,
           corner(
             JourneyWorld.diamonds,
             top: true,
@@ -314,6 +318,7 @@ class PlayerAvatarView extends StatelessWidget {
   }
 }
 
+/// Suit-glyph medallion (no full Ace card decode).
 class _AceSuitMedallion extends StatelessWidget {
   const _AceSuitMedallion({required this.world, required this.size});
 
@@ -341,13 +346,15 @@ class _AceSuitMedallion extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipOval(
-        child: Image.asset(
-          world.aceCardAssetPath,
-          fit: BoxFit.cover,
-          // Medallions are tiny — decode at display size, not full card art.
-          cacheWidth: (size * 3).ceil().clamp(24, 128),
-          errorBuilder: (_, _, _) => ColoredBox(color: palette.surface),
+      child: Center(
+        child: Text(
+          world.suitSymbol,
+          style: TextStyle(
+            color: palette.accent,
+            fontSize: size * 0.52,
+            height: 1,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );

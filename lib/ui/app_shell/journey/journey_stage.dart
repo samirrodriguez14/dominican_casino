@@ -272,6 +272,17 @@ class JourneyStageState extends State<JourneyStage>
     }
   }
 
+  /// Ensure Journey is showing, then spit trophies from the trail avatar.
+  Future<void> openJourneyTrophies({JourneyWorld? revealWorld}) async {
+    if (_tableDeck != TableDeck.journey) {
+      await restoreJourneySettled();
+      if (!mounted) return;
+    }
+    await _boardKey.currentState?.openJourneyTrophies(
+      revealWorld: revealWorld,
+    );
+  }
+
   void _onWorldThemeEquipped(JourneyWorld world) {
     if (mounted) setState(() {});
   }

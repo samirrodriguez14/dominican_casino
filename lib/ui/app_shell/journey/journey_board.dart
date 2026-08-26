@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/models/journey_instruction.dart';
 import 'package:dominican_casino/models/journey_progress.dart';
@@ -20,6 +21,7 @@ import 'package:dominican_casino/ui/app_shell/journey/journey_instruction_deck.d
 import 'package:dominican_casino/ui/app_shell/journey/journey_loss_taunt.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_progress_trail.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_story_convos.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_world_piles.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
@@ -92,7 +94,7 @@ class JourneyBoardState extends State<JourneyBoard>
     with TickerProviderStateMixin {
   static const _flipDuration = Duration(milliseconds: 720);
   static const _defeatFlyDuration = Duration(milliseconds: 520);
-  static const _revealDuration = Duration(milliseconds: 420);
+  static const _revealDuration = Duration(milliseconds: 1700);
   static const _themeUnlockDuration = Duration(milliseconds: 1700);
   static const _instructionUnlockDuration = Duration(milliseconds: 1700);
 
@@ -101,6 +103,8 @@ class JourneyBoardState extends State<JourneyBoard>
   JourneyCardDef? _selected;
   /// Where the focused card lives when not centered.
   bool _selectedFromDefeated = false;
+  /// First Jack unlock: fly from pile face-down, flip into focus, then unlock.
+  bool _selectStartsFaceDown = false;
   Offset? _selectFromOverride;
   late final AnimationController _selectAnim;
   late final AnimationController _defeatFlyAnim;
@@ -121,6 +125,7 @@ class JourneyBoardState extends State<JourneyBoard>
   final GlobalKey _pilesKey = GlobalKey();
   final GlobalKey _centerKey = GlobalKey();
   final GlobalKey _defeatedKey = GlobalKey();
+  final GlobalKey _trailKey = GlobalKey();
   final GlobalKey _trailTokenKey = GlobalKey();
   final GlobalKey _instructionDeckKey = GlobalKey();
   final GlobalKey<StackedCardCarouselState> _instructionCarouselKey =
@@ -129,6 +134,18 @@ class JourneyBoardState extends State<JourneyBoard>
     for (final w in JourneyWorld.values) w: GlobalKey(),
   };
   late final JourneyCoachController _coach;
+  late final JourneyJackIntroController _jackIntro;
+  late final JourneyQueenIntroController _queenIntro;
+  late final JourneyKingIntroController _kingIntro;
+  late final JourneyAceEscapeController _aceEscape;
+  late final JourneyClubsJackIntroController _clubsJackIntro;
+  late final JourneyClubsCourtController _clubsCourt;
+  late final JourneyClubsAceOfferController _clubsAceOffer;
+  late final JourneyClubsHeartsSendoffController _clubsHeartsSendoff;
+  late final JourneyHeartsJackIntroController _heartsJackIntro;
+  late final JourneyHeartsQueenEscortController _heartsQueenEscort;
+  late final JourneyHeartsKingIntroController _heartsKingIntro;
+  late final JourneyHeartsAceOfferController _heartsAceOffer;
 
   JourneyWorld? _themeUnlockWorld;
   bool _themeUnlockForceSealed = false;
@@ -137,6 +154,10 @@ class JourneyBoardState extends State<JourneyBoard>
   JourneyWorld? _themeUnlockRewardWorld;
   /// After Diamonds theme reward, unlock instruction page 2 with ceremony.
   bool _pendingDiamondsInstructionReveal = false;
+  /// After Clubs theme reward, start Clubs Jack bushes intro.
+  bool _pendingClubsJackIntro = false;
+  /// After Hearts theme reward, start Hearts Jack court intro.
+  bool _pendingHeartsJackIntro = false;
   int? _instructionCeremonyPageId;
   bool _instructionCeremonyUnlocked = false;
   bool _instructionCeremonyShowCta = false;
@@ -144,6 +165,18 @@ class JourneyBoardState extends State<JourneyBoard>
   bool _guideExpanded = false;
   int? _guideOpenPage;
   bool _coachScheduled = false;
+  bool _jackIntroScheduled = false;
+  bool _queenIntroScheduled = false;
+  bool _kingIntroScheduled = false;
+  bool _aceEscapeScheduled = false;
+  bool _clubsJackIntroScheduled = false;
+  bool _clubsCourtScheduled = false;
+  bool _clubsAceOfferScheduled = false;
+  bool _clubsHeartsSendoffScheduled = false;
+  bool _heartsJackIntroScheduled = false;
+  bool _heartsQueenEscortScheduled = false;
+  bool _heartsKingIntroScheduled = false;
+  bool _heartsAceOfferScheduled = false;
   bool _sessionTutorialDone = false;
   AppRepo? _repo;
   int _lastLevel = 1;
@@ -156,6 +189,8 @@ class JourneyBoardState extends State<JourneyBoard>
   /// Center carousel when browsing a defeated kingdom stack.
   JourneyWorld? _defeatedCarouselWorld;
   JourneyRank _defeatedCarouselRank = JourneyRank.queen;
+  late final AnimationController _trailTokenEat;
+  bool _trophiesOpen = false;
 
   @override
   void initState() {
@@ -177,12 +212,26 @@ class JourneyBoardState extends State<JourneyBoard>
       duration: _instructionUnlockDuration,
     );
     _instructionUnlockAnim.addListener(_onInstructionUnlockTick);
+    _trailTokenEat = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
     _coach = JourneyCoachController(
-      pilesKey: _pilesKey,
-      centerKey: _centerKey,
-      defeatedKey: _defeatedKey,
+      trailKey: _trailKey,
       deckKey: _instructionDeckKey,
     );
+    _jackIntro = JourneyJackIntroController();
+    _queenIntro = JourneyQueenIntroController();
+    _kingIntro = JourneyKingIntroController();
+    _aceEscape = JourneyAceEscapeController();
+    _clubsJackIntro = JourneyClubsJackIntroController();
+    _clubsCourt = JourneyClubsCourtController();
+    _clubsAceOffer = JourneyClubsAceOfferController();
+    _clubsHeartsSendoff = JourneyClubsHeartsSendoffController();
+    _heartsJackIntro = JourneyHeartsJackIntroController();
+    _heartsQueenEscort = JourneyHeartsQueenEscortController();
+    _heartsKingIntro = JourneyHeartsKingIntroController();
+    _heartsAceOffer = JourneyHeartsAceOfferController();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final repo = context.read<AppRepo>();
@@ -220,8 +269,44 @@ class JourneyBoardState extends State<JourneyBoard>
     _revealAnim.dispose();
     _themeUnlockAnim.dispose();
     _instructionUnlockAnim.dispose();
+    _trailTokenEat.dispose();
     _coach.dispose();
+    _jackIntro.dispose();
+    _queenIntro.dispose();
+    _kingIntro.dispose();
+    _aceEscape.dispose();
+    _clubsJackIntro.dispose();
+    _clubsCourt.dispose();
+    _clubsAceOffer.dispose();
+    _clubsHeartsSendoff.dispose();
+    _heartsJackIntro.dispose();
+    _heartsQueenEscort.dispose();
+    _heartsKingIntro.dispose();
+    _heartsAceOffer.dispose();
     super.dispose();
+  }
+
+  void pulseTrailTokenEat() {
+    _trailTokenEat.forward(from: 0);
+  }
+
+  /// Spit the Journey trophies card out of the trail avatar (and eat on close).
+  Future<void> openJourneyTrophies({JourneyWorld? revealWorld}) async {
+    if (!mounted || _trophiesOpen) return;
+    _trophiesOpen = true;
+    final repo = context.read<AppRepo>();
+    try {
+      await showJourneyAceAccessoriesPopup(
+        context,
+        avatarId: repo.player?.avatarId,
+        defeatedAces: repo.journeyProgress.defeatedAceWorlds,
+        sourceKey: _trailTokenKey,
+        onSourcePulse: pulseTrailTokenEat,
+        revealWorld: revealWorld,
+      );
+    } finally {
+      _trophiesOpen = false;
+    }
   }
 
   void _onThemeUnlockTick() {
@@ -235,7 +320,13 @@ class JourneyBoardState extends State<JourneyBoard>
       final repo = context.read<AppRepo>();
       _themeUnlockApplyFuture = world == JourneyWorld.diamonds
           ? repo.enterDiamondsKingdom()
-          : repo.unlockAndEquipPack(world.themeId).then((_) {});
+          : world == JourneyWorld.clubs
+              ? repo.enterClubsKingdom()
+              : world == JourneyWorld.hearts
+                  ? repo.enterHeartsKingdom()
+                  : world == JourneyWorld.spades
+                      ? repo.enterSpadesKingdom()
+                      : repo.unlockAndEquipPack(world.themeId).then((_) {});
       widget.onWorldThemeEquipped?.call(world);
     }
     setState(() {});
@@ -248,7 +339,15 @@ class JourneyBoardState extends State<JourneyBoard>
     final alreadyOwned = repo.ownsPack(world.themeId) &&
         repo.journeyProgress.hasEntered(world);
     if (alreadyOwned) {
-      await repo.unlockAndEquipPack(world.themeId);
+      if (world == JourneyWorld.clubs) {
+        await repo.enterClubsKingdom();
+      } else if (world == JourneyWorld.hearts) {
+        await repo.enterHeartsKingdom();
+      } else if (world == JourneyWorld.spades) {
+        await repo.enterSpadesKingdom();
+      } else {
+        await repo.unlockAndEquipPack(world.themeId);
+      }
       if (!mounted) return false;
       widget.onWorldThemeEquipped?.call(world);
       return true;
@@ -277,7 +376,13 @@ class JourneyBoardState extends State<JourneyBoard>
       _themeUnlockApplied = true;
       _themeUnlockApplyFuture = world == JourneyWorld.diamonds
           ? repo.enterDiamondsKingdom()
-          : repo.unlockAndEquipPack(world.themeId).then((_) {});
+          : world == JourneyWorld.clubs
+              ? repo.enterClubsKingdom()
+              : world == JourneyWorld.hearts
+                  ? repo.enterHeartsKingdom()
+                  : world == JourneyWorld.spades
+                      ? repo.enterSpadesKingdom()
+                      : repo.unlockAndEquipPack(world.themeId).then((_) {});
       widget.onWorldThemeEquipped?.call(world);
     }
     await _themeUnlockApplyFuture;
@@ -295,6 +400,12 @@ class JourneyBoardState extends State<JourneyBoard>
         _guideExpanded = false;
         _guideOpenPage = null;
         _guideShowUnlockCta = false;
+      }
+      if (world == JourneyWorld.clubs) {
+        _pendingClubsJackIntro = true;
+      }
+      if (world == JourneyWorld.hearts) {
+        _pendingHeartsJackIntro = true;
       }
     });
     _themeUnlockAnim.value = 0;
@@ -373,10 +484,30 @@ class JourneyBoardState extends State<JourneyBoard>
   Future<void> _onThemeUnlockRewardDismissed({
     required bool goToProfile,
   }) async {
-    final wasDiamonds = _themeUnlockRewardWorld == JourneyWorld.diamonds;
+    final rewardWorld = _themeUnlockRewardWorld;
     if (!mounted) return;
     setState(() => _themeUnlockRewardWorld = null);
-    if (!wasDiamonds || !_pendingDiamondsInstructionReveal) return;
+
+    if (rewardWorld == JourneyWorld.clubs && _pendingClubsJackIntro) {
+      _pendingClubsJackIntro = false;
+      if (!context.read<AppRepo>().journeyProgress.clubsJackIntroSeen) {
+        _startClubsJackIntro();
+      }
+      return;
+    }
+
+    if (rewardWorld == JourneyWorld.hearts && _pendingHeartsJackIntro) {
+      _pendingHeartsJackIntro = false;
+      if (!context.read<AppRepo>().journeyProgress.heartsJackIntroSeen) {
+        _startHeartsJackIntro();
+      }
+      return;
+    }
+
+    if (rewardWorld != JourneyWorld.diamonds ||
+        !_pendingDiamondsInstructionReveal) {
+      return;
+    }
 
     // Profile path: keep pending so Games tab return can reveal later.
     if (goToProfile) return;
@@ -385,24 +516,27 @@ class JourneyBoardState extends State<JourneyBoard>
     await _runInstructionUnlockCeremony(
       beforeUnlock: 1,
       afterUnlock: 2,
-      showUnlockCtaAfter: false,
+      showUnlockCtaAfter: true,
     );
   }
 
   /// Called when the Games tab is focused again (e.g. after Go to profile).
   void onShellTabVisible() {
-    if (!_pendingDiamondsInstructionReveal) return;
-    if (_themeUnlockRewardWorld != null) return;
-    if (_instructionCeremonyPageId != null) return;
-    _pendingDiamondsInstructionReveal = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _runInstructionUnlockCeremony(
-        beforeUnlock: 1,
-        afterUnlock: 2,
-        showUnlockCtaAfter: false,
-      );
-    });
+    if (_pendingDiamondsInstructionReveal &&
+        _themeUnlockRewardWorld == null &&
+        _instructionCeremonyPageId == null) {
+      _pendingDiamondsInstructionReveal = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await _runInstructionUnlockCeremony(
+          beforeUnlock: 1,
+          afterUnlock: 2,
+          showUnlockCtaAfter: true,
+        );
+      });
+      return;
+    }
+    _maybeStartJackIntro();
   }
 
   List<JourneyWorldDef> _copyWorlds(JourneyDisplaySnapshot snap) {
@@ -445,11 +579,24 @@ class JourneyBoardState extends State<JourneyBoard>
     _instructionUnlockAnim.stop();
     _instructionUnlockAnim.value = 0;
     _coach.reset();
+    _jackIntro.reset();
+    _queenIntro.reset();
+    _kingIntro.reset();
+    _aceEscape.reset();
+    _clubsJackIntro.reset();
+    _clubsCourt.reset();
+    _clubsAceOffer.reset();
+    _clubsHeartsSendoff.reset();
+    _heartsJackIntro.reset();
+    _heartsQueenEscort.reset();
+    _heartsKingIntro.reset();
+    _heartsAceOffer.reset();
     setState(() {
       _worlds = _copyWorlds(_repo!.journeyBoardForLevel());
       _activeWorld = JourneyWorld.diamonds;
       _selected = null;
       _selectedFromDefeated = false;
+      _selectStartsFaceDown = false;
       _selectFromOverride = null;
       _defeatFlying = null;
       _revealCard = null;
@@ -459,6 +606,18 @@ class JourneyBoardState extends State<JourneyBoard>
       _guideExpanded = false;
       _guideOpenPage = null;
       _coachScheduled = false;
+      _jackIntroScheduled = false;
+      _queenIntroScheduled = false;
+      _kingIntroScheduled = false;
+      _aceEscapeScheduled = false;
+      _clubsJackIntroScheduled = false;
+      _clubsCourtScheduled = false;
+      _clubsAceOfferScheduled = false;
+      _clubsHeartsSendoffScheduled = false;
+      _heartsJackIntroScheduled = false;
+      _heartsQueenEscortScheduled = false;
+      _heartsKingIntroScheduled = false;
+      _heartsAceOfferScheduled = false;
       _sessionTutorialDone = false;
       _tauntScheduled = false;
       _guideDisplayedUnlock = null;
@@ -467,6 +626,7 @@ class JourneyBoardState extends State<JourneyBoard>
       _themeUnlockWorld = null;
       _themeUnlockRewardWorld = null;
       _pendingDiamondsInstructionReveal = false;
+      _pendingClubsJackIntro = false;
       _instructionCeremonyPageId = null;
       _instructionCeremonyUnlocked = false;
       _instructionCeremonyShowCta = false;
@@ -474,6 +634,14 @@ class JourneyBoardState extends State<JourneyBoard>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _maybeStartCoach();
+      // Soft restart at Diamonds: resume Jack's entrance conversation.
+      final progress = _repo?.journeyProgress;
+      if (progress != null &&
+          progress.diamondsEntered &&
+          !progress.diamondsJackUnlocked &&
+          !progress.diamondsJackIntroSeen) {
+        _startJackIntro();
+      }
     });
   }
 
@@ -491,14 +659,26 @@ class JourneyBoardState extends State<JourneyBoard>
           requiredLevel: 1,
           gameMode: journeyGameForRank(taunt.rank),
         );
-    await showJourneyLossTaunt(context, card: card);
+    final action = await showJourneyLossTaunt(context, card: card);
     if (!mounted) return;
     await repo.clearPendingJourneyLossTaunt();
     _tauntScheduled = false;
     if (!mounted) return;
-    // Replay losses stay on the board until return-to-progress; don't re-focus.
-    if (card.isSelectable && card.state != JourneyCardState.defeated) {
-      await _selectCard(card, fromDefeated: false);
+
+    if (action == JourneyLossAction.restartDiamonds) {
+      await repo.restartJourneyAtDiamonds();
+      return;
+    }
+
+    // Replay (default): immediately rematch the same challenger.
+    if (action == JourneyLossAction.replay || action == null) {
+      if (card.state == JourneyCardState.defeated) {
+        await _selectCard(card, fromDefeated: true, skipEquip: true);
+      } else if (card.isSelectable) {
+        await _selectCard(card, fromDefeated: false, skipEquip: true);
+      }
+      if (!mounted) return;
+      await _startJourneyMatch(card);
     }
   }
 
@@ -524,10 +704,13 @@ class JourneyBoardState extends State<JourneyBoard>
   void didUpdateWidget(covariant JourneyBoard oldWidget) {
     super.didUpdateWidget(oldWidget);
     _maybeStartCoach();
+    _maybeStartJackIntro();
+    _maybeStartQueenIntro();
   }
 
   void _maybeStartCoach() {
     if (_coachScheduled || _coach.isActive || _coach.isFinished) return;
+    if (_coach.isWaitingForLetter) return;
     final open = widget.openProgress;
     final settled = open.pileDeal > 0.95 &&
         open.defeatedDeal > 0.95 &&
@@ -549,6 +732,804 @@ class JourneyBoardState extends State<JourneyBoard>
     });
   }
 
+  void _maybeStartJackIntro() {
+    if (_jackIntroScheduled || _jackIntro.isActive || _jackIntro.isFinished) {
+      return;
+    }
+    if (_coach.isActive ||
+        _coach.isWaitingForLetter ||
+        _queenIntro.isActive ||
+        _guideExpanded ||
+        _themeUnlockWorld != null ||
+        _themeUnlockRewardWorld != null ||
+        _pendingDiamondsInstructionReveal ||
+        _instructionCeremonyPageId != null) {
+      return;
+    }
+    final open = widget.openProgress;
+    final settled = open.pileDeal > 0.95 &&
+        open.defeatedDeal > 0.95 &&
+        open.cardGather < 0.02;
+    if (!settled) return;
+
+    final progress = context.read<AppRepo>().journeyProgress;
+    if (!progress.diamondsEntered ||
+        progress.diamondsJackIntroSeen ||
+        progress.diamondsJackUnlocked) {
+      return;
+    }
+
+    _startJackIntro();
+  }
+
+  void _startJackIntro() {
+    if (_jackIntro.isActive) return;
+    if (_jackIntro.isFinished) {
+      // Conversation already done — go straight to unlock + challenge.
+      _onJackIntroChallenge();
+      return;
+    }
+    _jackIntroScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _jackIntro.isActive || _jackIntro.isFinished) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _jackIntro.start();
+      setState(() {});
+    });
+  }
+
+  /// Resume Queen intro if Jack is beaten and the story convo hasn't played.
+  void _maybeStartQueenIntro() {
+    if (_queenIntroScheduled ||
+        _queenIntro.isActive ||
+        _queenIntro.isFinished) {
+      return;
+    }
+    if (_coach.isActive ||
+        _coach.isWaitingForLetter ||
+        _jackIntro.isActive ||
+        _guideExpanded ||
+        _themeUnlockWorld != null ||
+        _themeUnlockRewardWorld != null ||
+        _pendingDiamondsInstructionReveal ||
+        _instructionCeremonyPageId != null) {
+      return;
+    }
+    final open = widget.openProgress;
+    final settled = open.pileDeal > 0.95 &&
+        open.defeatedDeal > 0.95 &&
+        open.cardGather < 0.02;
+    if (!settled) return;
+
+    final repo = context.read<AppRepo>();
+    final progress = repo.journeyProgress;
+    if (progress.diamondsQueenIntroSeen) return;
+    if (!progress.isDefeated(JourneyWorld.diamonds, JourneyRank.jack)) {
+      return;
+    }
+    if (progress.isDefeated(JourneyWorld.diamonds, JourneyRank.queen)) {
+      return;
+    }
+    // Home rewards / Jack win celebration own the first trigger.
+    if (repo.hasPendingHomeRewardSequence) return;
+    final pending = progress.pendingWinCelebration;
+    if (pending != null &&
+        pending.world == JourneyWorld.diamonds &&
+        pending.rank == JourneyRank.jack) {
+      return;
+    }
+
+    _startQueenIntro();
+  }
+
+  void _startQueenIntro() {
+    if (_queenIntroScheduled ||
+        _queenIntro.isActive ||
+        _queenIntro.isFinished) {
+      return;
+    }
+    _queenIntroScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _queenIntro.start();
+      setState(() {});
+    });
+  }
+
+  void _startKingIntro() {
+    if (_kingIntroScheduled || _kingIntro.isActive || _kingIntro.isFinished) {
+      return;
+    }
+    _kingIntroScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _kingIntro.start();
+      setState(() {});
+    });
+  }
+
+  void _startAceEscape() {
+    if (_aceEscapeScheduled || _aceEscape.isActive || _aceEscape.isFinished) {
+      return;
+    }
+    _aceEscapeScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _aceEscape.start();
+      setState(() {});
+    });
+  }
+
+  void _startClubsJackIntro() {
+    if (_clubsJackIntroScheduled ||
+        _clubsJackIntro.isActive ||
+        _clubsJackIntro.isFinished) {
+      return;
+    }
+    _clubsJackIntroScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _clubsJackIntro.start();
+      setState(() {});
+    });
+  }
+
+  void _startClubsCourt() {
+    if (_clubsCourtScheduled ||
+        _clubsCourt.isActive ||
+        _clubsCourt.isFinished) {
+      return;
+    }
+    _clubsCourtScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _clubsCourt.start();
+      setState(() {});
+    });
+  }
+
+  void _startClubsAceOffer() {
+    if (_clubsAceOfferScheduled ||
+        _clubsAceOffer.isActive ||
+        _clubsAceOffer.isFinished) {
+      return;
+    }
+    _clubsAceOfferScheduled = true;
+    final won =
+        context.read<AppRepo>().journeyProgress.clubsCourtMatchWon;
+    _clubsAceOffer.configure(won: won);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _clubsAceOffer.start();
+      setState(() {});
+    });
+  }
+
+  void _startClubsHeartsSendoff() {
+    if (_clubsHeartsSendoffScheduled ||
+        _clubsHeartsSendoff.isActive ||
+        _clubsHeartsSendoff.isFinished) {
+      return;
+    }
+    _clubsHeartsSendoffScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _clubsHeartsSendoff.start();
+      setState(() {});
+    });
+  }
+
+  void _startHeartsJackIntro() {
+    if (_heartsJackIntroScheduled ||
+        _heartsJackIntro.isActive ||
+        _heartsJackIntro.isFinished) {
+      return;
+    }
+    _heartsJackIntroScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _heartsJackIntro.start();
+      setState(() {});
+    });
+  }
+
+  void _startHeartsQueenEscort() {
+    if (_heartsQueenEscortScheduled ||
+        _heartsQueenEscort.isActive ||
+        _heartsQueenEscort.isFinished) {
+      return;
+    }
+    _heartsQueenEscortScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _heartsQueenEscort.start();
+      setState(() {});
+    });
+  }
+
+  void _startHeartsKingIntro() {
+    if (_heartsKingIntroScheduled ||
+        _heartsKingIntro.isActive ||
+        _heartsKingIntro.isFinished) {
+      return;
+    }
+    _heartsKingIntroScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _heartsKingIntro.start();
+      setState(() {});
+    });
+  }
+
+  void _startHeartsAceOffer() {
+    if (_heartsAceOfferScheduled ||
+        _heartsAceOffer.isActive ||
+        _heartsAceOffer.isFinished) {
+      return;
+    }
+    _heartsAceOfferScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _heartsAceOffer.start();
+      setState(() {});
+    });
+  }
+
+  Future<void> _onKingIntroChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markDiamondsKingIntroSeen();
+    if (!mounted) return;
+
+    final next = _pendingUnlockCard ??
+        _snapshot.worldOf(JourneyWorld.diamonds).cardOf(JourneyRank.king);
+    await repo.clearPendingWinCelebration();
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideDisplayedUnlock = null;
+      _guideShowUnlockCta = false;
+      _pendingUnlockCard = null;
+      _worlds = _copyWorlds(
+        hydrateJourneyBoard(
+          progress: repo.journeyProgress,
+          playerLevel: repo.experienceProgress.level,
+          deferPendingWin: false,
+        ),
+      );
+    });
+
+    final king = next == null
+        ? null
+        : (_snapshot.worldOf(next.world).cardOf(next.rank) ?? next);
+    final unlocked = king ??
+        _snapshot.worldOf(JourneyWorld.diamonds).cardOf(JourneyRank.king);
+    if (unlocked == null) return;
+
+    setState(() {
+      _revealCard = unlocked;
+      _revealAnim.value = 0;
+      _activeWorld = JourneyWorld.diamonds;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(unlocked, fromDefeated: false, skipEquip: true);
+    if (!mounted) return;
+    await _promptChallengeMatch(unlocked);
+  }
+
+  /// After King win: claim Ace with "Yes, I won", then escape dialogue.
+  Future<void> _offerDiamondsAceClaim() async {
+    final repo = context.read<AppRepo>();
+    await repo.clearPendingWinCelebration();
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideDisplayedUnlock = null;
+      _guideShowUnlockCta = false;
+      _pendingUnlockCard = null;
+      _worlds = _copyWorlds(
+        hydrateJourneyBoard(
+          progress: repo.journeyProgress,
+          playerLevel: repo.experienceProgress.level,
+          deferPendingWin: false,
+        ),
+      );
+      _activeWorld = JourneyWorld.diamonds;
+    });
+
+    final ace =
+        _snapshot.worldOf(JourneyWorld.diamonds).cardOf(JourneyRank.ace);
+    if (ace == null) return;
+
+    setState(() {
+      _revealCard = ace;
+      _revealAnim.value = 0;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(ace, fromDefeated: false, skipEquip: true);
+    if (!mounted) return;
+
+    final claim = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(ace.title),
+        content: const Text('Yes — I won.'),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Claim'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || claim != true) return;
+    await _resolveDefeat(ace);
+  }
+
+  Future<void> _onAceEscapeComplete() async {
+    final repo = context.read<AppRepo>();
+    await repo.markDiamondsAceEscapeSeen();
+    await repo.clearPendingWinCelebration();
+    if (!mounted) return;
+    setState(() {
+      _pendingUnlockCard = null;
+      _guideDisplayedUnlock = 5;
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+    });
+    await _runInstructionUnlockCeremony(
+      beforeUnlock: 5,
+      afterUnlock: 6,
+      showUnlockCtaAfter: false,
+    );
+  }
+
+  Future<void> _onClubsJackChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markClubsJackIntroSeen();
+    if (!mounted) return;
+
+    // Keep Jack hidden in data for the face-down → center flip, then unlock.
+    final lockedJack = _snapshot
+        .worldOf(JourneyWorld.clubs)
+        .cardOf(JourneyRank.jack);
+    if (lockedJack == null) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideShowUnlockCta = false;
+      _activeWorld = JourneyWorld.clubs;
+      _selectStartsFaceDown = true;
+    });
+
+    await _selectCard(
+      lockedJack,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
+    );
+    if (!mounted) return;
+
+    if (!repo.journeyProgress.clubsJackUnlocked) {
+      await repo.unlockClubsJack();
+      if (!mounted) return;
+    }
+
+    setState(() {
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      _selectStartsFaceDown = false;
+    });
+    final unlocked =
+        _snapshot.worldOf(JourneyWorld.clubs).cardOf(JourneyRank.jack);
+    if (unlocked == null) return;
+    setState(() => _selected = unlocked);
+    await _promptChallengeMatch(unlocked);
+  }
+
+  Future<void> _onClubsCourtChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markClubsCourtIntroSeen();
+    await repo.clearPendingWinCelebration();
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideShowUnlockCta = false;
+      _pendingUnlockCard = null;
+      _activeWorld = JourneyWorld.clubs;
+    });
+
+    final vm = context.read<GamesViewModel>();
+    await gameEnter(
+      context,
+      vm,
+      GameMode.rummy,
+      true,
+      playerCount: 4,
+      botOverrides: [
+        LocalBotProfile(
+          name: 'King',
+          avatarId: journeyAvatarId(JourneyWorld.clubs, JourneyRank.king),
+        ),
+        LocalBotProfile(
+          name: 'Queen',
+          avatarId: journeyAvatarId(JourneyWorld.clubs, JourneyRank.queen),
+        ),
+        LocalBotProfile(
+          name: 'Jack',
+          avatarId: journeyAvatarId(JourneyWorld.clubs, JourneyRank.jack),
+        ),
+      ],
+      onCreated: (gid) => repo.beginJourneyChallenge(
+        world: JourneyWorld.clubs,
+        rank: JourneyRank.king,
+        gameId: gid,
+        ignoreOutcome: true,
+      ),
+    );
+  }
+
+  Future<void> _onClubsAceOfferComplete() async {
+    final repo = context.read<AppRepo>();
+    await repo.clearPendingClubsAceOffer();
+    if (!mounted) return;
+
+    final ace =
+        _snapshot.worldOf(JourneyWorld.clubs).cardOf(JourneyRank.ace);
+    if (ace == null) return;
+
+    setState(() {
+      _revealCard = ace;
+      _revealAnim.value = 0;
+      _activeWorld = JourneyWorld.clubs;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(
+      ace,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
+    );
+    if (!mounted) return;
+
+    final claim = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(ace.title),
+        content: const Text('Claim the Ace of Clubs.'),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Claim'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || claim != true) return;
+
+    await repo.applyJourneyDefeat(
+      JourneyWorld.clubs,
+      JourneyRank.ace,
+      celebrate: true,
+    );
+    if (!mounted) return;
+    setState(() {
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      _selected = null;
+      _selectAnim.value = 0;
+    });
+
+    await _awaitHomeRewardsThen(() async {
+      _startClubsHeartsSendoff();
+    });
+  }
+
+  Future<void> _onClubsHeartsSendoffComplete() async {
+    final repo = context.read<AppRepo>();
+    await repo.markClubsAceGiftSeen();
+    await repo.clearPendingWinCelebration();
+    if (!mounted) return;
+    setState(() {
+      _pendingUnlockCard = null;
+      _guideDisplayedUnlock = 7;
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+    });
+    await _runInstructionUnlockCeremony(
+      beforeUnlock: 7,
+      afterUnlock: 8,
+      showUnlockCtaAfter: false,
+    );
+  }
+
+  Future<void> _onHeartsJackChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markHeartsJackIntroSeen();
+    if (!mounted) return;
+
+    final lockedJack = _snapshot
+        .worldOf(JourneyWorld.hearts)
+        .cardOf(JourneyRank.jack);
+    if (lockedJack == null) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideShowUnlockCta = false;
+      _activeWorld = JourneyWorld.hearts;
+      _selectStartsFaceDown = true;
+    });
+
+    await _selectCard(
+      lockedJack,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
+    );
+    if (!mounted) return;
+
+    if (!repo.journeyProgress.heartsJackUnlocked) {
+      await repo.unlockHeartsJack();
+      if (!mounted) return;
+    }
+
+    setState(() {
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      _selectStartsFaceDown = false;
+    });
+    final unlocked =
+        _snapshot.worldOf(JourneyWorld.hearts).cardOf(JourneyRank.jack);
+    if (unlocked == null) return;
+    setState(() => _selected = unlocked);
+
+    final vm = context.read<GamesViewModel>();
+    final mode = unlocked.gameMode;
+    if (mode == null) return;
+    await gameEnter(
+      context,
+      vm,
+      mode,
+      true,
+      botOverride: LocalBotProfile(
+        name: unlocked.rank.label,
+        avatarId: journeyAvatarId(unlocked.world, unlocked.rank),
+      ),
+      onCreated: (gid) => repo.beginJourneyChallenge(
+        world: JourneyWorld.hearts,
+        rank: JourneyRank.jack,
+        gameId: gid,
+        escortOnLoss: true,
+      ),
+    );
+  }
+
+  Future<void> _onHeartsQueenEscortChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markHeartsQueenEscortSeen();
+    await repo.clearPendingHeartsQueenEscort();
+    await repo.clearPendingWinCelebration();
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideShowUnlockCta = false;
+      _pendingUnlockCard = null;
+      _worlds = _copyWorlds(
+        hydrateJourneyBoard(
+          progress: repo.journeyProgress,
+          playerLevel: repo.experienceProgress.level,
+          deferPendingWin: false,
+        ),
+      );
+      _activeWorld = JourneyWorld.hearts;
+    });
+
+    final queen =
+        _snapshot.worldOf(JourneyWorld.hearts).cardOf(JourneyRank.queen);
+    if (queen == null) return;
+
+    setState(() {
+      _revealCard = queen;
+      _revealAnim.value = 0;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(queen, fromDefeated: false, skipEquip: true);
+    if (!mounted) return;
+    await _promptChallengeMatch(queen);
+  }
+
+  Future<void> _onHeartsKingIntroChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markHeartsKingIntroSeen();
+    await repo.clearPendingWinCelebration();
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideShowUnlockCta = false;
+      _pendingUnlockCard = null;
+      _worlds = _copyWorlds(
+        hydrateJourneyBoard(
+          progress: repo.journeyProgress,
+          playerLevel: repo.experienceProgress.level,
+          deferPendingWin: false,
+        ),
+      );
+      _activeWorld = JourneyWorld.hearts;
+    });
+
+    final king =
+        _snapshot.worldOf(JourneyWorld.hearts).cardOf(JourneyRank.king);
+    if (king == null) return;
+
+    setState(() {
+      _revealCard = king;
+      _revealAnim.value = 0;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(king, fromDefeated: false, skipEquip: true);
+    if (!mounted) return;
+
+    final vm = context.read<GamesViewModel>();
+    final mode = king.gameMode ?? GameMode.casinoSpeed;
+    await gameEnter(
+      context,
+      vm,
+      mode,
+      true,
+      botOverride: LocalBotProfile(
+        name: king.rank.label,
+        avatarId: journeyAvatarId(king.world, king.rank),
+      ),
+      onCreated: (gid) => repo.beginJourneyChallenge(
+        world: JourneyWorld.hearts,
+        rank: JourneyRank.king,
+        gameId: gid,
+        ignoreOutcome: true,
+      ),
+    );
+  }
+
+  Future<void> _onHeartsAceOfferComplete() async {
+    final repo = context.read<AppRepo>();
+    await repo.clearPendingHeartsAceOffer();
+    if (!mounted) return;
+
+    final ace =
+        _snapshot.worldOf(JourneyWorld.hearts).cardOf(JourneyRank.ace);
+    if (ace == null) return;
+
+    setState(() {
+      _revealCard = ace;
+      _revealAnim.value = 0;
+      _activeWorld = JourneyWorld.hearts;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(
+      ace,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
+    );
+    if (!mounted) return;
+
+    final claim = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(ace.title),
+        content: const Text('Claim the Ace of Hearts.'),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Claim'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || claim != true) return;
+
+    await repo.applyJourneyDefeat(
+      JourneyWorld.hearts,
+      JourneyRank.ace,
+      celebrate: true,
+    );
+    if (!mounted) return;
+    setState(() {
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      _selected = null;
+      _selectAnim.value = 0;
+    });
+
+    await _awaitHomeRewardsThen(() async {
+      await repo.markHeartsAceGiftSeen();
+      await repo.clearPendingWinCelebration();
+      if (!mounted) return;
+      setState(() {
+        _pendingUnlockCard = null;
+        _guideDisplayedUnlock = 8;
+        _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      });
+      await _runInstructionUnlockCeremony(
+        beforeUnlock: 8,
+        afterUnlock: 12,
+        showUnlockCtaAfter: false,
+      );
+    });
+  }
+
   bool get _tutorialDoneForUnlocks =>
       _sessionTutorialDone || _coach.isFinished;
 
@@ -556,6 +1537,12 @@ class JourneyBoardState extends State<JourneyBoard>
         snapshot: _snapshot,
         tutorialDone: _tutorialDoneForUnlocks,
         diamondsEntered: context.read<AppRepo>().journeyProgress.diamondsEntered,
+        diamondsAceEscapeSeen:
+            context.read<AppRepo>().journeyProgress.diamondsAceEscapeSeen,
+        clubsAceGiftSeen:
+            context.read<AppRepo>().journeyProgress.clubsAceGiftSeen,
+        heartsAceGiftSeen:
+            context.read<AppRepo>().journeyProgress.heartsAceGiftSeen,
       );
 
   bool get _needsFirstJackUnlock {
@@ -563,8 +1550,65 @@ class JourneyBoardState extends State<JourneyBoard>
     return progress.diamondsEntered && !progress.diamondsJackUnlocked;
   }
 
-  bool get _showProveYourselfUnlockCta =>
-      _needsFirstJackUnlock && !_guideShowUnlockCta;
+  /// Page-2 Continue while Jack is still locked and his intro hasn't played.
+  bool get _showJackContinueCta {
+    final progress = context.read<AppRepo>().journeyProgress;
+    return progress.diamondsEntered &&
+        !progress.diamondsJackUnlocked &&
+        !progress.diamondsJackIntroSeen;
+  }
+
+  /// Page-3 Continue after Jack win before Queen conversation.
+  bool get _showQueenContinueCta {
+    final progress = context.read<AppRepo>().journeyProgress;
+    return progress.isDefeated(JourneyWorld.diamonds, JourneyRank.jack) &&
+        !progress.isDefeated(JourneyWorld.diamonds, JourneyRank.queen) &&
+        !progress.diamondsQueenIntroSeen &&
+        !_queenIntro.isActive;
+  }
+
+  /// Page-4 Continue after Queen win before King conversation.
+  bool get _showKingContinueCta {
+    final progress = context.read<AppRepo>().journeyProgress;
+    return progress.isDefeated(JourneyWorld.diamonds, JourneyRank.queen) &&
+        !progress.isDefeated(JourneyWorld.diamonds, JourneyRank.king) &&
+        !progress.diamondsKingIntroSeen &&
+        !_kingIntro.isActive;
+  }
+
+  /// Page-7 Continue after Clubs Jack win before court conversation.
+  bool get _showClubsCourtContinueCta {
+    final progress = context.read<AppRepo>().journeyProgress;
+    return progress.isDefeated(JourneyWorld.clubs, JourneyRank.jack) &&
+        !progress.clubsCourtIntroSeen &&
+        !_clubsCourt.isActive;
+  }
+
+  /// After Hearts Jack (win path): Continue → Queen escort.
+  bool get _showHeartsQueenContinueCta {
+    final progress = context.read<AppRepo>().journeyProgress;
+    return progress.isDefeated(JourneyWorld.hearts, JourneyRank.jack) &&
+        !progress.heartsQueenEscortSeen &&
+        !progress.pendingHeartsQueenEscort &&
+        !_heartsQueenEscort.isActive;
+  }
+
+  /// After Hearts Queen win: Continue → King intro.
+  bool get _showHeartsKingContinueCta {
+    final progress = context.read<AppRepo>().journeyProgress;
+    return progress.isDefeated(JourneyWorld.hearts, JourneyRank.queen) &&
+        !progress.isDefeated(JourneyWorld.hearts, JourneyRank.king) &&
+        !progress.heartsKingIntroSeen &&
+        !_heartsKingIntro.isActive;
+  }
+
+  bool get _showStoryContinueCta =>
+      _showJackContinueCta ||
+      _showQueenContinueCta ||
+      _showKingContinueCta ||
+      _showClubsCourtContinueCta ||
+      _showHeartsQueenContinueCta ||
+      _showHeartsKingContinueCta;
 
   /// Unlock count shown in the guide (may lag during win celebration).
   int get _guideUnlockCount => _guideDisplayedUnlock ?? _unlockedThrough;
@@ -577,9 +1621,26 @@ class JourneyBoardState extends State<JourneyBoard>
   }
 
   void _closeGuide() {
+    final resumePhaseB = _coach.isWaitingForLetter;
     setState(() {
       _guideExpanded = false;
       _guideOpenPage = null;
+    });
+    if (resumePhaseB) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _coach.resumePhaseB();
+        setState(() {});
+      });
+    } else {
+      _maybeStartJackIntro();
+    }
+  }
+
+  void _onCoachOpenLetter() {
+    setState(() {
+      _guideExpanded = true;
+      _guideOpenPage = 0;
     });
   }
 
@@ -587,9 +1648,57 @@ class JourneyBoardState extends State<JourneyBoard>
     setState(() {
       _sessionTutorialDone = true;
       _guideExpanded = true;
-      // Always open the welcome page first after the coach.
+      // Re-open the letter / enter CTA after Phase B.
       _guideOpenPage = 0;
     });
+  }
+
+  Future<void> _onJackIntroChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markDiamondsJackIntroSeen();
+    if (!mounted) return;
+
+    // Keep Jack locked in data for the face-down → center flip, then unlock.
+    final lockedJack = _snapshot
+        .worldOf(JourneyWorld.diamonds)
+        .cardOf(JourneyRank.jack);
+    if (lockedJack == null) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideShowUnlockCta = false;
+      _activeWorld = JourneyWorld.diamonds;
+      _selectStartsFaceDown = true;
+    });
+
+    await _selectCard(
+      lockedJack,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
+    );
+    if (!mounted) return;
+
+    if (!repo.journeyProgress.diamondsJackUnlocked) {
+      await repo.unlockDiamondsJack();
+      if (!mounted) return;
+    }
+
+    final unlocked = _snapshot
+            .worldOf(JourneyWorld.diamonds)
+            .cardOf(JourneyRank.jack) ??
+        lockedJack;
+    setState(() {
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      _selected = _snapshot
+              .worldOf(JourneyWorld.diamonds)
+              .cardOf(JourneyRank.jack) ??
+          unlocked;
+      _selectStartsFaceDown = false;
+    });
+
+    await _promptChallengeMatch(_selected ?? unlocked);
   }
 
   JourneyWorld get activeWorld => _activeWorld;
@@ -620,6 +1729,9 @@ class JourneyBoardState extends State<JourneyBoard>
     final win = repo.journeyProgress.pendingWinCelebration;
     final praise = repo.journeyProgress.pendingReplayPraise;
     final loss = repo.journeyProgress.pendingLossTaunt;
+    final clubsAceOffer = repo.journeyProgress.pendingClubsAceOffer;
+    final heartsQueenEscort = repo.journeyProgress.pendingHeartsQueenEscort;
+    final heartsAceOffer = repo.journeyProgress.pendingHeartsAceOffer;
     setState(() {
       _worlds = _copyWorlds(repo.journeyBoardForLevel());
       _selected = null;
@@ -630,12 +1742,53 @@ class JourneyBoardState extends State<JourneyBoard>
     });
     // Shell was recreated on leave — keep the challenger's kingdom / trail /
     // replay card in focus (theme stays equipped from before the match).
-    final focus = win ?? praise ?? loss;
+    final focus = win ??
+        praise ??
+        loss ??
+        (clubsAceOffer
+            ? const JourneyChallengeRef(
+                world: JourneyWorld.clubs,
+                rank: JourneyRank.king,
+              )
+            : null) ??
+        (heartsQueenEscort
+            ? const JourneyChallengeRef(
+                world: JourneyWorld.hearts,
+                rank: JourneyRank.jack,
+              )
+            : null) ??
+        (heartsAceOffer
+            ? const JourneyChallengeRef(
+                world: JourneyWorld.hearts,
+                rank: JourneyRank.king,
+              )
+            : null);
     if (focus != null) {
       _restorePostMatchChallenger(
         focus,
-        openCarousel: win == null,
+        openCarousel: win == null &&
+            !clubsAceOffer &&
+            !heartsQueenEscort &&
+            !heartsAceOffer,
       );
+    }
+    if (clubsAceOffer) {
+      await _awaitHomeRewardsThen(() async {
+        _startClubsAceOffer();
+      });
+      return;
+    }
+    if (heartsQueenEscort) {
+      await _awaitHomeRewardsThen(() async {
+        _startHeartsQueenEscort();
+      });
+      return;
+    }
+    if (heartsAceOffer) {
+      await _awaitHomeRewardsThen(() async {
+        _startHeartsAceOffer();
+      });
+      return;
     }
     if (win != null) {
       // Win celebration owns kingdom focus until Unlock next challenger.
@@ -752,8 +1905,15 @@ class JourneyBoardState extends State<JourneyBoard>
       snapshot: fullSnap,
       tutorialDone: _tutorialDoneForUnlocks,
       diamondsEntered: repo.journeyProgress.diamondsEntered,
+      diamondsAceEscapeSeen: repo.journeyProgress.diamondsAceEscapeSeen,
+      clubsAceGiftSeen: repo.journeyProgress.clubsAceGiftSeen,
+      heartsAceGiftSeen: repo.journeyProgress.heartsAceGiftSeen,
     );
     final beforeUnlock = (afterUnlock - 1).clamp(1, afterUnlock);
+
+    final aceEscapeStory = defeated.world == JourneyWorld.diamonds &&
+        defeated.rank == JourneyRank.ace &&
+        !repo.journeyProgress.diamondsAceEscapeSeen;
 
     setState(() {
       _worlds = _copyWorlds(repo.journeyBoardForLevel());
@@ -765,6 +1925,12 @@ class JourneyBoardState extends State<JourneyBoard>
       _defeatedCarouselWorld = null;
     });
 
+    // Ace claim rewards finished — escape conversation starts immediately.
+    if (aceEscapeStory) {
+      _startAceEscape();
+      return;
+    }
+
     await _runInstructionUnlockCeremony(
       beforeUnlock: beforeUnlock,
       afterUnlock: afterUnlock,
@@ -772,36 +1938,193 @@ class JourneyBoardState extends State<JourneyBoard>
     );
   }
 
+  Future<void> _onQueenIntroChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markDiamondsQueenIntroSeen();
+    if (!mounted) return;
+
+    final next = _pendingUnlockCard ??
+        _snapshot.worldOf(JourneyWorld.diamonds).cardOf(JourneyRank.queen);
+    await repo.clearPendingWinCelebration();
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideDisplayedUnlock = null;
+      _guideShowUnlockCta = false;
+      _pendingUnlockCard = null;
+      _worlds = _copyWorlds(
+        hydrateJourneyBoard(
+          progress: repo.journeyProgress,
+          playerLevel: repo.experienceProgress.level,
+          deferPendingWin: false,
+        ),
+      );
+    });
+
+    final queen = next == null
+        ? null
+        : (_snapshot.worldOf(next.world).cardOf(next.rank) ?? next);
+    final unlocked = queen ??
+        _snapshot.worldOf(JourneyWorld.diamonds).cardOf(JourneyRank.queen);
+    if (unlocked == null) return;
+
+    setState(() {
+      _revealCard = unlocked;
+      _revealAnim.value = 0;
+      _activeWorld = JourneyWorld.diamonds;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(unlocked, fromDefeated: false, skipEquip: true);
+    if (!mounted) return;
+    await _promptChallengeMatch(unlocked);
+  }
+
   Future<void> _onUnlockNextChallenger() async {
     final repo = context.read<AppRepo>();
 
-    // First-time Diamonds Jack reveal from Prove yourself.
-    if (_pendingUnlockCard == null && _needsFirstJackUnlock) {
-      await repo.unlockDiamondsJack();
-      if (!mounted) return;
+    // Page-2 Continue: start Jack conversation (card stays locked until Challenge).
+    if (_pendingUnlockCard == null && _showJackContinueCta) {
       setState(() {
         _guideExpanded = false;
         _guideOpenPage = null;
         _guideShowUnlockCta = false;
-        _worlds = _copyWorlds(repo.journeyBoardForLevel());
-        _revealCard = _snapshot
-            .worldOf(JourneyWorld.diamonds)
-            .cardOf(JourneyRank.jack);
-        _revealAnim.value = 0;
-        _activeWorld = JourneyWorld.diamonds;
       });
-      await _playRevealIfNeeded();
-      if (!mounted) return;
-      final unlocked = _snapshot
+      _startJackIntro();
+      return;
+    }
+
+    // Queen win → Continue on instructions → King conversation.
+    if (_showKingContinueCta) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _startKingIntro();
+      return;
+    }
+
+    // Jack win → Continue on instructions → Queen conversation.
+    if (_showQueenContinueCta) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _startQueenIntro();
+      return;
+    }
+
+    // Clubs Jack win → Continue → court conversation.
+    if (_showClubsCourtContinueCta) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _startClubsCourt();
+      return;
+    }
+
+    // Hearts Jack win → Continue → Queen escort.
+    if (_showHeartsQueenContinueCta) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _startHeartsQueenEscort();
+      return;
+    }
+
+    // Hearts Queen win → Continue → King intro.
+    if (_showHeartsKingContinueCta) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _startHeartsKingIntro();
+      return;
+    }
+
+    // First-time Diamonds Jack unlock without intro (already seen).
+    if (_pendingUnlockCard == null && _needsFirstJackUnlock) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+        _activeWorld = JourneyWorld.diamonds;
+        _selectStartsFaceDown = true;
+      });
+      final locked = _snapshot
           .worldOf(JourneyWorld.diamonds)
           .cardOf(JourneyRank.jack);
-      if (unlocked != null) {
-        await _selectCard(unlocked, fromDefeated: false, skipEquip: true);
+      if (locked != null) {
+        await _selectCard(
+          locked,
+          fromDefeated: false,
+          skipEquip: true,
+          allowLocked: true,
+        );
+        if (!mounted) return;
       }
+      await repo.unlockDiamondsJack();
+      if (!mounted) return;
+      setState(() {
+        _worlds = _copyWorlds(repo.journeyBoardForLevel());
+        _selected = _snapshot
+            .worldOf(JourneyWorld.diamonds)
+            .cardOf(JourneyRank.jack);
+        _selectStartsFaceDown = false;
+      });
       return;
     }
 
     final next = _pendingUnlockCard;
+    // Jack win → Queen: story conversation owns the reveal + challenge.
+    if (next != null &&
+        next.world == JourneyWorld.diamonds &&
+        next.rank == JourneyRank.queen &&
+        !repo.journeyProgress.diamondsQueenIntroSeen) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _startQueenIntro();
+      return;
+    }
+    // Queen win → King intro.
+    if (next != null &&
+        next.world == JourneyWorld.diamonds &&
+        next.rank == JourneyRank.king &&
+        !repo.journeyProgress.diamondsKingIntroSeen) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _startKingIntro();
+      return;
+    }
+    // King win → Ace claim story.
+    if (next != null &&
+        next.world == JourneyWorld.diamonds &&
+        next.rank == JourneyRank.ace &&
+        !repo.journeyProgress.diamondsAceEscapeSeen) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      await _offerDiamondsAceClaim();
+      return;
+    }
+
     await repo.clearPendingWinCelebration();
     if (!mounted) return;
 
@@ -868,6 +2191,18 @@ class JourneyBoardState extends State<JourneyBoard>
   }
 
   Future<void> _enterKingdomFromGuide(JourneyWorld world) async {
+    if (world == JourneyWorld.clubs) {
+      await _enterClubsFromGuide();
+      return;
+    }
+    if (world == JourneyWorld.hearts) {
+      await _enterHeartsFromGuide();
+      return;
+    }
+    if (world == JourneyWorld.spades) {
+      await _enterSpadesFromGuide();
+      return;
+    }
     if (world != JourneyWorld.diamonds) {
       final ok = await _equipWorld(world);
       if (!ok || !mounted) return;
@@ -885,6 +2220,17 @@ class JourneyBoardState extends State<JourneyBoard>
       if (!go || !mounted) return;
     }
     if (!mounted) return;
+
+    // Entering from the letter can skip Phase B — still mark the coach done.
+    if (_coach.isWaitingForLetter ||
+        _coach.phase == JourneyCoachPhase.phaseB ||
+        !_sessionTutorialDone) {
+      _coach.finish();
+      await repo.completeJourneyTutorial();
+      if (!mounted) return;
+      setState(() => _sessionTutorialDone = true);
+    }
+
     if (repo.journeyProgress.diamondsEntered &&
         repo.ownsPack(JourneyWorld.diamonds.themeId)) {
       await repo.enterDiamondsKingdom();
@@ -899,6 +2245,105 @@ class JourneyBoardState extends State<JourneyBoard>
       return;
     }
     await _runThemeUnlockCeremony(JourneyWorld.diamonds);
+  }
+
+  Future<void> _enterClubsFromGuide() async {
+    final repo = context.read<AppRepo>();
+    final currentWorld = journeyWorldForTheme(repo.appTheme);
+    if (currentWorld != JourneyWorld.clubs) {
+      final go = await confirmEnterKingdom(
+        context,
+        world: JourneyWorld.clubs,
+      );
+      if (!go || !mounted) return;
+    }
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+    });
+
+    if (repo.journeyProgress.hasEntered(JourneyWorld.clubs) &&
+        repo.ownsPack(JourneyWorld.clubs.themeId)) {
+      await repo.enterClubsKingdom();
+      if (!mounted) return;
+      setState(() {
+        _activeWorld = JourneyWorld.clubs;
+        _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      });
+      if (!repo.journeyProgress.clubsJackIntroSeen) {
+        _startClubsJackIntro();
+      }
+      return;
+    }
+
+    await _runThemeUnlockCeremony(JourneyWorld.clubs);
+  }
+
+  Future<void> _enterHeartsFromGuide() async {
+    final repo = context.read<AppRepo>();
+    final currentWorld = journeyWorldForTheme(repo.appTheme);
+    if (currentWorld != JourneyWorld.hearts) {
+      final go = await confirmEnterKingdom(
+        context,
+        world: JourneyWorld.hearts,
+      );
+      if (!go || !mounted) return;
+    }
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+    });
+
+    if (repo.journeyProgress.hasEntered(JourneyWorld.hearts) &&
+        repo.ownsPack(JourneyWorld.hearts.themeId)) {
+      await repo.enterHeartsKingdom();
+      if (!mounted) return;
+      setState(() {
+        _activeWorld = JourneyWorld.hearts;
+        _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      });
+      if (!repo.journeyProgress.heartsJackIntroSeen) {
+        _startHeartsJackIntro();
+      }
+      return;
+    }
+
+    await _runThemeUnlockCeremony(JourneyWorld.hearts);
+  }
+
+  Future<void> _enterSpadesFromGuide() async {
+    final repo = context.read<AppRepo>();
+    final currentWorld = journeyWorldForTheme(repo.appTheme);
+    if (currentWorld != JourneyWorld.spades) {
+      final go = await confirmEnterKingdom(
+        context,
+        world: JourneyWorld.spades,
+      );
+      if (!go || !mounted) return;
+    }
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+    });
+
+    if (repo.journeyProgress.hasEntered(JourneyWorld.spades) &&
+        repo.ownsPack(JourneyWorld.spades.themeId)) {
+      await repo.enterSpadesKingdom();
+      if (!mounted) return;
+      setState(() {
+        _activeWorld = JourneyWorld.spades;
+        _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      });
+      return;
+    }
+
+    await _runThemeUnlockCeremony(JourneyWorld.spades);
   }
 
   Future<void> _resolveDefeat(JourneyCardDef card) async {
@@ -1078,7 +2523,15 @@ class JourneyBoardState extends State<JourneyBoard>
       }
       if (testOutcome == 'lose') {
         _pinTrailToCard(card);
-        await showJourneyLossTaunt(context, card: card);
+        final action = await showJourneyLossTaunt(context, card: card);
+        if (!mounted) return;
+        if (action == JourneyLossAction.restartDiamonds) {
+          await context.read<AppRepo>().restartJourneyAtDiamonds();
+          return;
+        }
+        if (action == JourneyLossAction.replay) {
+          await _startJourneyMatch(card);
+        }
       }
       return;
     }
@@ -1137,7 +2590,6 @@ class JourneyBoardState extends State<JourneyBoard>
       botOverride: LocalBotProfile(
         name: card.rank.label,
         avatarId: journeyAvatarId(card.world, card.rank),
-        avatarAsset: card.avatarAssetPath,
       ),
       onCreated: (gid) => repo.beginJourneyChallenge(
         world: card.world,
@@ -1151,8 +2603,23 @@ class JourneyBoardState extends State<JourneyBoard>
     final card = _revealCard;
     if (card == null) return;
     SoundService.instance.playLayered(GameSound.softCard);
-    AppHaptics.lightImpact();
-    await _revealAnim.forward(from: 0);
+    AppHaptics.mediumImpact();
+    var boomed = false;
+    void onTick() {
+      if (boomed || !mounted) return;
+      if (JourneyThemeUnlockTimeline(_revealAnim.value).pastBoom) {
+        boomed = true;
+        AppHaptics.heavyImpact();
+        SoundService.instance.playLayered(GameSound.softCard);
+      }
+    }
+
+    _revealAnim.addListener(onTick);
+    try {
+      await _revealAnim.forward(from: 0);
+    } finally {
+      _revealAnim.removeListener(onTick);
+    }
     if (!mounted) return;
     setState(() => _revealCard = null);
     _revealAnim.value = 1;
@@ -1164,9 +2631,10 @@ class JourneyBoardState extends State<JourneyBoard>
     Offset? fromOverride,
     double startProgress = 0,
     bool skipEquip = false,
+    bool allowLocked = false,
   }) async {
     final def = _snapshot.worldOf(card.world);
-    if (!def.unlocked || !card.isSelectable) {
+    if (!def.unlocked || (!card.isSelectable && !allowLocked)) {
       SoundService.instance.playLayered(GameSound.softCard);
       AppHaptics.selectionClick();
       return;
@@ -1424,6 +2892,8 @@ class JourneyBoardState extends State<JourneyBoard>
   @override
   Widget build(BuildContext context) {
     _maybeStartCoach();
+    _maybeStartJackIntro();
+    _maybeStartQueenIntro();
 
     final worldDef = _snapshot.worldOf(_activeWorld);
     final hasAvailable = worldDef.nextSelectable != null;
@@ -1437,8 +2907,21 @@ class JourneyBoardState extends State<JourneyBoard>
 
     final centerReveal = journeySlotExpand(open.sectionExpand, 1, count: 3);
     final plan = dealPlan;
-    final boardInteractive =
-        !_coach.isActive && !_guideExpanded && _themeUnlockWorld == null;
+    final boardInteractive = !_coach.isActive &&
+        !_jackIntro.isActive &&
+        !_queenIntro.isActive &&
+        !_kingIntro.isActive &&
+        !_aceEscape.isActive &&
+        !_clubsJackIntro.isActive &&
+        !_clubsCourt.isActive &&
+        !_clubsAceOffer.isActive &&
+        !_clubsHeartsSendoff.isActive &&
+        !_heartsJackIntro.isActive &&
+        !_heartsQueenEscort.isActive &&
+        !_heartsKingIntro.isActive &&
+        !_heartsAceOffer.isActive &&
+        !_guideExpanded &&
+        _themeUnlockWorld == null;
 
     // Only hide the centered selection from piles — keep the dragging card in
     // the pile tree (ghosted) so the pan GestureDetector stays alive.
@@ -1484,7 +2967,7 @@ class JourneyBoardState extends State<JourneyBoard>
             final selectProgress = _selectAnim.value;
             final revealProgress = _revealCard == null
                 ? 1.0
-                : Curves.easeOut.transform(_revealAnim.value);
+                : _revealAnim.value;
             final homeFrom = selected == null
                 ? Offset.zero
                 : (_selectFromOverride ??
@@ -1553,14 +3036,34 @@ class JourneyBoardState extends State<JourneyBoard>
                           ),
                         ),
                       ),
-                      JourneyProgressTrail(
-                        progress: context.watch<AppRepo>().journeyProgress,
-                        tokenStepIndex: _trailTokenStep(
-                          context.watch<AppRepo>().journeyProgress,
+                      JourneyCoachPulse(
+                        controller: _coach,
+                        extraController: _jackIntro,
+                        targetKey: _trailKey,
+                        child: KeyedSubtree(
+                          key: _trailKey,
+                          child: AnimatedBuilder(
+                            animation: _trailTokenEat,
+                            builder: (context, _) {
+                              return JourneyProgressTrail(
+                                progress: context
+                                    .watch<AppRepo>()
+                                    .journeyProgress,
+                                tokenStepIndex: _trailTokenStep(
+                                  context.watch<AppRepo>().journeyProgress,
+                                ),
+                                activeWorld: _activeWorld,
+                                tokenKey: _trailTokenKey,
+                                tokenScale:
+                                    journeyEatPulseScale(_trailTokenEat.value),
+                                onAvatarTap: () {
+                                  openJourneyTrophies();
+                                },
+                                height: 52,
+                              );
+                            },
+                          ),
                         ),
-                        activeWorld: _activeWorld,
-                        tokenKey: _trailTokenKey,
-                        height: 52,
                       ),
                       Expanded(
                         flex: 48,
@@ -1644,11 +3147,25 @@ class JourneyBoardState extends State<JourneyBoard>
                     bottom: h * 0.28,
                     width: 72,
                     child: IgnorePointer(
-                      ignoring: _coach.isActive || _guideExpanded,
+                      ignoring: _coach.isActive ||
+                          _jackIntro.isActive ||
+                          _queenIntro.isActive ||
+                          _kingIntro.isActive ||
+                          _aceEscape.isActive ||
+                          _clubsJackIntro.isActive ||
+                          _clubsCourt.isActive ||
+                          _clubsAceOffer.isActive ||
+                          _clubsHeartsSendoff.isActive ||
+                          _heartsJackIntro.isActive ||
+                          _heartsQueenEscort.isActive ||
+                          _heartsKingIntro.isActive ||
+                          _heartsAceOffer.isActive ||
+                          _guideExpanded,
                       child: Opacity(
                         opacity: centerReveal,
                         child: JourneyCoachPulse(
                           controller: _coach,
+                          extraController: _jackIntro,
                           targetKey: _instructionDeckKey,
                           bounce: false,
                           child: JourneyInstructionDeck(
@@ -1679,19 +3196,135 @@ class JourneyBoardState extends State<JourneyBoard>
                         onCollapse: _instructionCeremonyPageId != null
                             ? () {}
                             : _closeGuide,
-                        showUnlockChallengerCta: _guideShowUnlockCta ||
-                            _showProveYourselfUnlockCta,
-                        unlockChallengerLabel: _pendingUnlockCard == null
-                            ? 'Unlock next challenger'
+                        showUnlockChallengerCta: _instructionCeremonyPageId ==
+                                null &&
+                            (_guideShowUnlockCta || _showStoryContinueCta),
+                        unlockChallengerLabel: _showStoryContinueCta
+                            ? 'Continue'
                             : 'Unlock next challenger',
                         onUnlockNextChallenger: _onUnlockNextChallenger,
-                        showEnterKingdomCta: !context
-                            .read<AppRepo>()
-                            .journeyProgress
-                            .diamondsEntered,
-                        enterKingdomLabel: 'Enter Diamonds kingdom',
-                        onEnterKingdom: () =>
-                            _enterKingdomFromGuide(JourneyWorld.diamonds),
+                        showEnterKingdomCta: () {
+                          final p = context.read<AppRepo>().journeyProgress;
+                          if (_coach.isWaitingForLetter) return true;
+                          if ((_sessionTutorialDone || _coach.isFinished) &&
+                              !p.diamondsEntered) {
+                            return true;
+                          }
+                          if (p.diamondsAceEscapeSeen &&
+                              p.isDefeated(
+                                JourneyWorld.diamonds,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.clubs)) {
+                            return true;
+                          }
+                          if (p.clubsAceGiftSeen &&
+                              p.isDefeated(
+                                JourneyWorld.clubs,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.hearts)) {
+                            return true;
+                          }
+                          return p.heartsAceGiftSeen &&
+                              p.isDefeated(
+                                JourneyWorld.hearts,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.spades);
+                        }(),
+                        enterKingdomPageId: () {
+                          final p = context.read<AppRepo>().journeyProgress;
+                          if (p.heartsAceGiftSeen &&
+                              p.isDefeated(
+                                JourneyWorld.hearts,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.spades)) {
+                            return 12;
+                          }
+                          if (p.clubsAceGiftSeen &&
+                              p.isDefeated(
+                                JourneyWorld.clubs,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.hearts)) {
+                            return 8;
+                          }
+                          if (p.diamondsAceEscapeSeen &&
+                              p.isDefeated(
+                                JourneyWorld.diamonds,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.clubs)) {
+                            return 6;
+                          }
+                          return 1;
+                        }(),
+                        enterKingdomLabel: () {
+                          final p = context.read<AppRepo>().journeyProgress;
+                          if (_coach.isWaitingForLetter) return 'Continue';
+                          if (p.heartsAceGiftSeen &&
+                              p.isDefeated(
+                                JourneyWorld.hearts,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.spades)) {
+                            return 'Enter Spades kingdom';
+                          }
+                          if (p.clubsAceGiftSeen &&
+                              p.isDefeated(
+                                JourneyWorld.clubs,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.hearts)) {
+                            return 'Enter Hearts kingdom';
+                          }
+                          if (p.diamondsAceEscapeSeen &&
+                              p.isDefeated(
+                                JourneyWorld.diamonds,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.clubs)) {
+                            return 'Enter Clubs kingdom';
+                          }
+                          return 'Enter Diamonds kingdom';
+                        }(),
+                        onEnterKingdom: () {
+                          final p = context.read<AppRepo>().journeyProgress;
+                          if (_coach.isWaitingForLetter) {
+                            _closeGuide();
+                            return;
+                          }
+                          if (p.heartsAceGiftSeen &&
+                              p.isDefeated(
+                                JourneyWorld.hearts,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.spades)) {
+                            _enterKingdomFromGuide(JourneyWorld.spades);
+                            return;
+                          }
+                          if (p.clubsAceGiftSeen &&
+                              p.isDefeated(
+                                JourneyWorld.clubs,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.hearts)) {
+                            _enterKingdomFromGuide(JourneyWorld.hearts);
+                            return;
+                          }
+                          if (p.diamondsAceEscapeSeen &&
+                              p.isDefeated(
+                                JourneyWorld.diamonds,
+                                JourneyRank.ace,
+                              ) &&
+                              !p.hasEntered(JourneyWorld.clubs)) {
+                            _enterKingdomFromGuide(JourneyWorld.clubs);
+                            return;
+                          }
+                          _enterKingdomFromGuide(JourneyWorld.diamonds);
+                        },
                       ),
                     ),
                 ],
@@ -1726,8 +3359,8 @@ class JourneyBoardState extends State<JourneyBoard>
                     to: centerTarget,
                     fromSize: pileCardSize,
                     toSize: centerSize,
-                    // Pile available + defeated are already face-up.
-                    startsFaceUp: true,
+                    // First Jack unlock flips face-down → face-up into focus.
+                    startsFaceUp: !_selectStartsFaceDown,
                     onChallenge: _onChallenge,
                     onDismiss: _onDismissSelected,
                   ),
@@ -1774,7 +3407,158 @@ class JourneyBoardState extends State<JourneyBoard>
 
                 JourneyCoachOverlay(
                   controller: _coach,
+                  onOpenLetter: _onCoachOpenLetter,
                   onCompleted: _onCoachCompleted,
+                ),
+
+                JourneyJackIntroOverlay(
+                  controller: _jackIntro,
+                  onChallenge: _onJackIntroChallenge,
+                ),
+
+                JourneyQueenIntroOverlay(
+                  controller: _queenIntro,
+                  onChallenge: _onQueenIntroChallenge,
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _kingIntro,
+                  isActive: () => _kingIntro.isActive,
+                  currentStep: () => _kingIntro.currentStep,
+                  stepIndex: () => _kingIntro.stepIndex,
+                  totalSteps: () => _kingIntro.steps.length,
+                  onNext: _kingIntro.next,
+                  onComplete: () async {
+                    _kingIntro.finish();
+                    await _onKingIntroChallenge();
+                  },
+                  lastPrimaryLabel: 'Challenge',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _aceEscape,
+                  isActive: () => _aceEscape.isActive,
+                  currentStep: () => _aceEscape.currentStep,
+                  stepIndex: () => _aceEscape.stepIndex,
+                  totalSteps: () => _aceEscape.steps.length,
+                  onNext: _aceEscape.next,
+                  onComplete: () async {
+                    _aceEscape.finish();
+                    await _onAceEscapeComplete();
+                  },
+                  lastPrimaryLabel: 'Run away',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _clubsJackIntro,
+                  isActive: () => _clubsJackIntro.isActive,
+                  currentStep: () => _clubsJackIntro.currentStep,
+                  stepIndex: () => _clubsJackIntro.stepIndex,
+                  totalSteps: () => _clubsJackIntro.steps.length,
+                  onNext: _clubsJackIntro.next,
+                  onComplete: () async {
+                    _clubsJackIntro.finish();
+                    await _onClubsJackChallenge();
+                  },
+                  lastPrimaryLabel: 'Challenge',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _clubsCourt,
+                  isActive: () => _clubsCourt.isActive,
+                  currentStep: () => _clubsCourt.currentStep,
+                  stepIndex: () => _clubsCourt.stepIndex,
+                  totalSteps: () => _clubsCourt.steps.length,
+                  onNext: _clubsCourt.next,
+                  onComplete: () async {
+                    _clubsCourt.finish();
+                    await _onClubsCourtChallenge();
+                  },
+                  lastPrimaryLabel: 'Challenge',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _clubsAceOffer,
+                  isActive: () => _clubsAceOffer.isActive,
+                  currentStep: () => _clubsAceOffer.currentStep,
+                  stepIndex: () => _clubsAceOffer.stepIndex,
+                  totalSteps: () => _clubsAceOffer.steps.length,
+                  onNext: _clubsAceOffer.next,
+                  onComplete: () async {
+                    _clubsAceOffer.finish();
+                    await _onClubsAceOfferComplete();
+                  },
+                  lastPrimaryLabel: 'Continue',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _clubsHeartsSendoff,
+                  isActive: () => _clubsHeartsSendoff.isActive,
+                  currentStep: () => _clubsHeartsSendoff.currentStep,
+                  stepIndex: () => _clubsHeartsSendoff.stepIndex,
+                  totalSteps: () => _clubsHeartsSendoff.steps.length,
+                  onNext: _clubsHeartsSendoff.next,
+                  onComplete: () async {
+                    _clubsHeartsSendoff.finish();
+                    await _onClubsHeartsSendoffComplete();
+                  },
+                  lastPrimaryLabel: 'Continue',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _heartsJackIntro,
+                  isActive: () => _heartsJackIntro.isActive,
+                  currentStep: () => _heartsJackIntro.currentStep,
+                  stepIndex: () => _heartsJackIntro.stepIndex,
+                  totalSteps: () => _heartsJackIntro.steps.length,
+                  onNext: _heartsJackIntro.next,
+                  onComplete: () async {
+                    _heartsJackIntro.finish();
+                    await _onHeartsJackChallenge();
+                  },
+                  lastPrimaryLabel: 'Challenge',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _heartsQueenEscort,
+                  isActive: () => _heartsQueenEscort.isActive,
+                  currentStep: () => _heartsQueenEscort.currentStep,
+                  stepIndex: () => _heartsQueenEscort.stepIndex,
+                  totalSteps: () => _heartsQueenEscort.steps.length,
+                  onNext: _heartsQueenEscort.next,
+                  onComplete: () async {
+                    _heartsQueenEscort.finish();
+                    await _onHeartsQueenEscortChallenge();
+                  },
+                  lastPrimaryLabel: 'Challenge',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _heartsKingIntro,
+                  isActive: () => _heartsKingIntro.isActive,
+                  currentStep: () => _heartsKingIntro.currentStep,
+                  stepIndex: () => _heartsKingIntro.stepIndex,
+                  totalSteps: () => _heartsKingIntro.steps.length,
+                  onNext: _heartsKingIntro.next,
+                  onComplete: () async {
+                    _heartsKingIntro.finish();
+                    await _onHeartsKingIntroChallenge();
+                  },
+                  lastPrimaryLabel: 'Challenge',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _heartsAceOffer,
+                  isActive: () => _heartsAceOffer.isActive,
+                  currentStep: () => _heartsAceOffer.currentStep,
+                  stepIndex: () => _heartsAceOffer.stepIndex,
+                  totalSteps: () => _heartsAceOffer.steps.length,
+                  onNext: _heartsAceOffer.next,
+                  onComplete: () async {
+                    _heartsAceOffer.finish();
+                    await _onHeartsAceOfferComplete();
+                  },
+                  lastPrimaryLabel: 'Continue',
                 ),
 
                 if (_themeUnlockRewardWorld != null)

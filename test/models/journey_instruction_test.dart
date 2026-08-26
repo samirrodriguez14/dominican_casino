@@ -4,12 +4,54 @@ import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('catalog has pages 1–18', () {
-    expect(journeyInstructionCatalogSize, 18);
-    for (var id = 1; id <= 18; id++) {
+  test('catalog has pages 1–16', () {
+    expect(journeyInstructionCatalogSize, 16);
+    for (var id = 1; id <= 16; id++) {
       expect(journeyInstructionById(id), isNotNull, reason: 'missing id $id');
       expect(journeyInstructionById(id)!.id, id);
     }
+  });
+
+  test('first instruction is the opening letter', () {
+    final page = journeyInstructionById(1)!;
+    expect(page.title, 'A letter');
+    expect(page.body, contains('Life is a mystery'));
+    expect(page.body, contains('finding their way back home'));
+  });
+
+  test('second instruction points toward the Ace without Jack CTA copy', () {
+    final page = journeyInstructionById(2)!;
+    expect(page.title, 'The court awaits');
+    expect(page.body, contains('Ace of Diamonds'));
+    expect(page.body.toLowerCase(), isNot(contains('unlock the next')));
+  });
+
+  test('third instruction covers Queen loophole wager', () {
+    final page = journeyInstructionById(3)!;
+    expect(page.title, 'The Queen awaits');
+    expect(page.body, contains('loophole'));
+    expect(page.body, contains('King'));
+  });
+
+  test('Clubs road letter mentions peace and freedom', () {
+    final page = journeyInstructionById(6)!;
+    expect(page.title, 'The Clubs road');
+    expect(page.body, contains('outran the guards'));
+    expect(page.body, contains('peace and freedom'));
+  });
+
+  test('Hearts entrance letter mentions costume and two Aces', () {
+    final page = journeyInstructionById(8)!;
+    expect(page.title, 'The Hearts entrance');
+    expect(page.body, contains('costume'));
+    expect(page.body, contains('2 Aces'));
+  });
+
+  test('Spades entrance letter after Hearts Ace gift', () {
+    final page = journeyInstructionById(12)!;
+    expect(page.title, 'The Spades entrance');
+    expect(page.body, contains('gave you his heart'));
+    expect(page.body, contains('Spades'));
   });
 
   test('journeyUnlockedThrough gates Diamonds on enter + tutorial', () {
@@ -83,14 +125,23 @@ void main() {
         snapshot: snap,
         tutorialDone: true,
         diamondsEntered: true,
+        diamondsAceEscapeSeen: false,
+      ),
+      5,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
       ),
       6,
     );
   });
 
-  test('journeyUnlockedThrough continues through Clubs Hearts Spades', () {
+  test('Clubs skips Queen/King letters and holds Hearts until gift', () {
     var snap = journeyBoardSnapshot;
-    // Clear Diamonds fully so Clubs is the active story world.
     for (final rank in JourneyRank.values) {
       snap = JourneyDisplaySnapshot(
         worlds: snap.withDefeat(JourneyWorld.diamonds, rank).worlds,
@@ -101,14 +152,162 @@ void main() {
         snapshot: snap,
         tutorialDone: true,
         diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
       ),
       6,
     );
 
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.clubs, JourneyRank.jack).worlds,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+      ),
+      7,
+    );
+
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.clubs, JourneyRank.queen).worlds,
+    );
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.clubs, JourneyRank.king).worlds,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+      ),
+      7,
+      reason: 'Queen/King defeats do not unlock Club letter pages',
+    );
+
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.clubs, JourneyRank.ace).worlds,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: false,
+      ),
+      7,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+      ),
+      8,
+    );
+  });
+
+  test('Hearts stays on entrance until Ace gift unlocks Spades', () {
+    var snap = journeyBoardSnapshot;
+    for (final world in [JourneyWorld.diamonds, JourneyWorld.clubs]) {
+      for (final rank in JourneyRank.values) {
+        snap = JourneyDisplaySnapshot(
+          worlds: snap.withDefeat(world, rank).worlds,
+        );
+      }
+    }
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+      ),
+      8,
+    );
+
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.hearts, JourneyRank.jack).worlds,
+    );
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.hearts, JourneyRank.queen).worlds,
+    );
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.hearts, JourneyRank.king).worlds,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+      ),
+      8,
+    );
+
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.hearts, JourneyRank.ace).worlds,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+        heartsAceGiftSeen: false,
+      ),
+      8,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+        heartsAceGiftSeen: true,
+      ),
+      12,
+    );
+  });
+
+  test('journeyUnlockedThrough continues through Hearts Spades', () {
+    var snap = journeyBoardSnapshot;
+    for (final world in [JourneyWorld.diamonds, JourneyWorld.clubs]) {
+      for (final rank in JourneyRank.values) {
+        snap = JourneyDisplaySnapshot(
+          worlds: snap.withDefeat(world, rank).worlds,
+        );
+      }
+    }
+    // Hearts Ace claimed + gift seen so Spades progression can run.
+    for (final rank in JourneyRank.values) {
+      snap = JourneyDisplaySnapshot(
+        worlds: snap.withDefeat(JourneyWorld.hearts, rank).worlds,
+      );
+    }
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+        heartsAceGiftSeen: true,
+      ),
+      12,
+    );
+
     final laterWorlds = [
-      (JourneyWorld.clubs, 6),
-      (JourneyWorld.hearts, 10),
-      (JourneyWorld.spades, 14),
+      (JourneyWorld.spades, 12),
     ];
 
     for (final (world, base) in laterWorlds) {
@@ -117,6 +316,9 @@ void main() {
           snapshot: snap,
           tutorialDone: true,
           diamondsEntered: true,
+          diamondsAceEscapeSeen: true,
+          clubsAceGiftSeen: true,
+          heartsAceGiftSeen: true,
         ),
         base,
         reason: '$world entry page',
@@ -130,6 +332,9 @@ void main() {
           snapshot: snap,
           tutorialDone: true,
           diamondsEntered: true,
+          diamondsAceEscapeSeen: true,
+          clubsAceGiftSeen: true,
+          heartsAceGiftSeen: true,
         ),
         base + 1,
       );
@@ -142,6 +347,9 @@ void main() {
           snapshot: snap,
           tutorialDone: true,
           diamondsEntered: true,
+          diamondsAceEscapeSeen: true,
+          clubsAceGiftSeen: true,
+          heartsAceGiftSeen: true,
         ),
         base + 2,
       );
@@ -154,6 +362,9 @@ void main() {
           snapshot: snap,
           tutorialDone: true,
           diamondsEntered: true,
+          diamondsAceEscapeSeen: true,
+          clubsAceGiftSeen: true,
+          heartsAceGiftSeen: true,
         ),
         base + 3,
       );
@@ -166,6 +377,9 @@ void main() {
           snapshot: snap,
           tutorialDone: true,
           diamondsEntered: true,
+          diamondsAceEscapeSeen: true,
+          clubsAceGiftSeen: true,
+          heartsAceGiftSeen: true,
         ),
         base + 4,
       );
@@ -176,8 +390,11 @@ void main() {
         snapshot: snap,
         tutorialDone: true,
         diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+        heartsAceGiftSeen: true,
       ),
-      18,
+      16,
     );
   });
 }

@@ -1,6 +1,17 @@
+import 'package:dominican_casino/models/avatar_catalog.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
+
+export 'package:dominican_casino/models/avatar_catalog.dart'
+    show
+        AvatarCatalog,
+        AvatarDef,
+        AvatarKind,
+        AvatarLook,
+        journeyAvatarAssetPath,
+        journeyAvatarId,
+        paintedAvatarIdFor;
 
 /// Painted avatar unlocked when the player reaches [requiredLevel].
 class LevelAvatarExtra {
@@ -33,52 +44,6 @@ class ThemeAvatarUnlocks {
       for (final rank in JourneyRank.values)
         journeyAvatarId(journeyWorld!, rank),
   ];
-}
-
-/// Stable id for a Journey face cutout used as a player avatar.
-String journeyAvatarId(JourneyWorld world, JourneyRank rank) =>
-    'journey_${world.name}_${rank.name}';
-
-/// Asset path for a `journey_{world}_{rank}` avatar id, or null if not a Journey id.
-String? journeyAvatarAssetPath(String? avatarId) {
-  if (avatarId == null || !avatarId.startsWith('journey_')) return null;
-  final rest = avatarId.substring('journey_'.length);
-  final parts = rest.split('_');
-  if (parts.length != 2) return null;
-  final worldName = parts[0];
-  final rankName = parts[1];
-  var valid = false;
-  for (final w in JourneyWorld.values) {
-    if (w.name == worldName) {
-      valid = true;
-      break;
-    }
-  }
-  if (!valid) return null;
-  valid = false;
-  for (final r in JourneyRank.values) {
-    if (r.name == rankName) {
-      valid = true;
-      break;
-    }
-  }
-  if (!valid) return null;
-  return 'assets/images/journey/avatars_transparent_challengers/$rest.png';
-}
-
-/// Painted suit/base id used for colors when [avatarId] is a Journey face.
-String paintedAvatarIdFor(String? avatarId) {
-  if (avatarId == null || avatarId.isEmpty) return 'spade';
-  final asset = journeyAvatarAssetPath(avatarId);
-  if (asset == null) return avatarId;
-  final worldName = avatarId.substring('journey_'.length).split('_').first;
-  return switch (worldName) {
-    'diamonds' => 'diamond',
-    'clubs' => 'club',
-    'hearts' => 'heart',
-    'spades' => 'spade',
-    _ => 'spade',
-  };
 }
 
 const themeAvatarUnlockCatalog = <Theme, ThemeAvatarUnlocks>{
@@ -188,7 +153,7 @@ bool hasLockedJourneyAvatars(
     level: level,
     defeatedByWorld: defeatedByWorld,
   );
-  return locked.any((id) => id.startsWith('journey_'));
+  return locked.any((id) => AvatarCatalog.byId(id).isJourney);
 }
 
 /// Lowest level still required for a locked painted extra, or null.

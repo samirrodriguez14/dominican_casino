@@ -3,13 +3,22 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
+/// Choice from the Journey loss taunt dialog.
+enum JourneyLossAction {
+  /// Play the same challenger again; story progress stays.
+  replay,
+
+  /// Wipe kingdom progress and return to the Diamonds Jack intro.
+  restartDiamonds,
+}
+
 /// Challenger taunt shown after a Journey challenge loss.
-Future<void> showJourneyLossTaunt(
+Future<JourneyLossAction?> showJourneyLossTaunt(
   BuildContext context, {
   required JourneyCardDef card,
 }) {
   final palette = journeyPaletteFor(card.world);
-  return showCupertinoDialog<void>(
+  return showCupertinoDialog<JourneyLossAction>(
     context: context,
     builder: (ctx) {
       return CupertinoAlertDialog(
@@ -42,7 +51,8 @@ Future<void> showJourneyLossTaunt(
               ),
               const SizedBox(height: 14),
               Text(
-                'Try again next time, kid.',
+                'Haha, you didn\'t stand a chance, kiddo. Give me that mask…',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: palette.text.withValues(alpha: 0.9),
                   fontSize: 15,
@@ -54,8 +64,17 @@ Future<void> showJourneyLossTaunt(
         actions: [
           CupertinoDialogAction(
             isDefaultAction: true,
-            onPressed: SoundService.wrapTap(() => Navigator.of(ctx).pop()),
-            child: const Text('OK'),
+            onPressed: SoundService.wrapTap(
+              () => Navigator.of(ctx).pop(JourneyLossAction.replay),
+            ),
+            child: const Text('Replay'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: SoundService.wrapTap(
+              () => Navigator.of(ctx).pop(JourneyLossAction.restartDiamonds),
+            ),
+            child: const Text('Back to Diamonds'),
           ),
         ],
       );

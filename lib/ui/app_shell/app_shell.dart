@@ -7,6 +7,7 @@ import 'package:dominican_casino/ui/app_shell/games/account_setup_popup.dart';
 import 'package:dominican_casino/ui/app_shell/games/current_games_peek_card.dart';
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/ui/app_shell/games/welcome_tutorial_popup.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_screen.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
@@ -239,20 +240,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _gamesTabEat.forward(from: 0);
   }
 
-  double get _gamesTabEatScale {
-    final t = _gamesTabEat.value;
-    if (t <= 0) return 1;
-    if (t < 0.32) {
-      return 1.0 + Curves.easeOut.transform(t / 0.32) * 0.24;
-    }
-    if (t < 0.52) {
-      return 1.24 - Curves.easeIn.transform((t - 0.32) / 0.20) * 0.34;
-    }
-    if (t < 0.78) {
-      return 0.90 + Curves.easeOut.transform((t - 0.52) / 0.26) * 0.18;
-    }
-    return 1.08 - Curves.easeIn.transform((t - 0.78) / 0.22) * 0.08;
-  }
+  double get _gamesTabEatScale => journeyEatPulseScale(_gamesTabEat.value);
 
   void _onTabTap(int index) {
     if (index == currentIndex) {
@@ -472,9 +460,28 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 reward: appRepo.journeyProgress.pendingUnlockReward!,
                 onDismissed: () async {
                   if (!mounted) return;
-                  await context.read<AppRepo>().clearPendingJourneyUnlockReward();
+                  final pending =
+                      context.read<AppRepo>().journeyProgress.pendingUnlockReward;
+                  final showTrophy = pending?.showTrophy ?? false;
+                  final world = pending?.world;
+                  await context
+                      .read<AppRepo>()
+                      .clearPendingJourneyUnlockReward();
                   if (!mounted) return;
                   setState(() => _journeyUnlockShowing = false);
+                  if (showTrophy && world != null) {
+                    if (currentIndex != 1) {
+                      _selectShellTab(1);
+                    }
+                    await Future<void>.delayed(Duration.zero);
+                    if (!mounted) return;
+                    await WidgetsBinding.instance.endOfFrame;
+                    if (!mounted) return;
+                    await _gamesKey.currentState?.openJourneyTrophies(
+                      revealWorld: world,
+                    );
+                    if (!mounted) return;
+                  }
                   _offeredTutorial = false;
                   _maybeOfferFirstRun();
                 },

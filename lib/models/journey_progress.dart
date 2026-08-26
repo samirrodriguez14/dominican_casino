@@ -17,16 +17,24 @@ class JourneyChallengeRef {
     required this.world,
     required this.rank,
     this.gameId,
+    this.ignoreOutcome = false,
+    this.escortOnLoss = false,
   });
 
   final JourneyWorld world;
   final JourneyRank rank;
   final String? gameId;
+  /// When true, win/loss both complete the story beat (Clubs court / Hearts King).
+  final bool ignoreOutcome;
+  /// When true, only a loss advances the story (Hearts Jack → Queen escort).
+  final bool escortOnLoss;
 
   Map<String, dynamic> toJson() => {
     'world': world.name,
     'rank': rank.name,
     if (gameId != null && gameId!.isNotEmpty) 'gameId': gameId,
+    if (ignoreOutcome) 'ignoreOutcome': true,
+    if (escortOnLoss) 'escortOnLoss': true,
   };
 
   static JourneyChallengeRef? fromJson(Map<String, dynamic>? json) {
@@ -48,6 +56,8 @@ class JourneyChallengeRef {
       world: world,
       rank: rank,
       gameId: (gameId != null && gameId.isNotEmpty) ? gameId : null,
+      ignoreOutcome: json['ignoreOutcome'] == true,
+      escortOnLoss: json['escortOnLoss'] == true,
     );
   }
 
@@ -55,11 +65,15 @@ class JourneyChallengeRef {
     JourneyWorld? world,
     JourneyRank? rank,
     String? gameId,
+    bool? ignoreOutcome,
+    bool? escortOnLoss,
   }) {
     return JourneyChallengeRef(
       world: world ?? this.world,
       rank: rank ?? this.rank,
       gameId: gameId ?? this.gameId,
+      ignoreOutcome: ignoreOutcome ?? this.ignoreOutcome,
+      escortOnLoss: escortOnLoss ?? this.escortOnLoss,
     );
   }
 }
@@ -71,6 +85,7 @@ class JourneyUnlockReward {
     required this.rank,
     this.avatarId,
     this.themeId,
+    this.showTrophy = false,
   });
 
   final JourneyWorld world;
@@ -79,16 +94,20 @@ class JourneyUnlockReward {
   final String? avatarId;
   /// Newly unlocked play theme (usually the next world after an Ace).
   final String? themeId;
+  /// When true, also show the Ace trophy card art (Ace victories).
+  final bool showTrophy;
 
   bool get hasContent =>
       (avatarId != null && avatarId!.isNotEmpty) ||
-      (themeId != null && themeId!.isNotEmpty);
+      (themeId != null && themeId!.isNotEmpty) ||
+      showTrophy;
 
   Map<String, dynamic> toJson() => {
     'world': world.name,
     'rank': rank.name,
     if (avatarId != null) 'avatarId': avatarId,
     if (themeId != null) 'themeId': themeId,
+    if (showTrophy) 'showTrophy': true,
   };
 
   static JourneyUnlockReward? fromJson(Map<String, dynamic>? json) {
@@ -110,6 +129,7 @@ class JourneyUnlockReward {
       rank: rank,
       avatarId: json['avatarId'] as String?,
       themeId: json['themeId'] as String?,
+      showTrophy: json['showTrophy'] == true || rank == JourneyRank.ace,
     );
     return reward.hasContent ? reward : null;
   }
@@ -127,6 +147,23 @@ class JourneyProgress {
     this.pendingUnlockReward,
     this.diamondsEntered = false,
     this.diamondsJackUnlocked = false,
+    this.diamondsJackIntroSeen = false,
+    this.diamondsQueenIntroSeen = false,
+    this.diamondsKingIntroSeen = false,
+    this.diamondsAceEscapeSeen = false,
+    this.clubsJackIntroSeen = false,
+    this.clubsJackUnlocked = false,
+    this.clubsCourtIntroSeen = false,
+    this.clubsAceGiftSeen = false,
+    this.pendingClubsAceOffer = false,
+    this.clubsCourtMatchWon = false,
+    this.heartsJackIntroSeen = false,
+    this.heartsJackUnlocked = false,
+    this.heartsQueenEscortSeen = false,
+    this.heartsKingIntroSeen = false,
+    this.heartsAceGiftSeen = false,
+    this.pendingHeartsQueenEscort = false,
+    this.pendingHeartsAceOffer = false,
   }) : defeatedByWorld = {
          for (final e in (defeatedByWorld ?? {}).entries)
            e.key: List<String>.from(e.value),
@@ -186,15 +223,80 @@ class JourneyProgress {
       ),
       diamondsEntered: json['diamondsEntered'] == true,
       diamondsJackUnlocked: json['diamondsJackUnlocked'] == true,
+      diamondsJackIntroSeen: json['diamondsJackIntroSeen'] == true,
+      diamondsQueenIntroSeen: json['diamondsQueenIntroSeen'] == true,
+      diamondsKingIntroSeen: json['diamondsKingIntroSeen'] == true,
+      diamondsAceEscapeSeen: json['diamondsAceEscapeSeen'] == true,
+      clubsJackIntroSeen: json['clubsJackIntroSeen'] == true,
+      clubsJackUnlocked: json['clubsJackUnlocked'] == true,
+      clubsCourtIntroSeen: json['clubsCourtIntroSeen'] == true,
+      clubsAceGiftSeen: json['clubsAceGiftSeen'] == true,
+      pendingClubsAceOffer: json['pendingClubsAceOffer'] == true,
+      clubsCourtMatchWon: json['clubsCourtMatchWon'] == true,
+      heartsJackIntroSeen: json['heartsJackIntroSeen'] == true,
+      heartsJackUnlocked: json['heartsJackUnlocked'] == true,
+      heartsQueenEscortSeen: json['heartsQueenEscortSeen'] == true,
+      heartsKingIntroSeen: json['heartsKingIntroSeen'] == true,
+      heartsAceGiftSeen: json['heartsAceGiftSeen'] == true,
+      pendingHeartsQueenEscort: json['pendingHeartsQueenEscort'] == true,
+      pendingHeartsAceOffer: json['pendingHeartsAceOffer'] == true,
     );
     // Migrate older saves that already beat Diamonds content.
     if (progress.isDefeated(JourneyWorld.diamonds, JourneyRank.jack) ||
         progress.isDefeated(JourneyWorld.diamonds, JourneyRank.ace)) {
       progress.diamondsEntered = true;
       progress.diamondsJackUnlocked = true;
+      progress.diamondsJackIntroSeen = true;
+    }
+    if (progress.isDefeated(JourneyWorld.diamonds, JourneyRank.queen) ||
+        progress.isDefeated(JourneyWorld.diamonds, JourneyRank.king) ||
+        progress.isDefeated(JourneyWorld.diamonds, JourneyRank.ace)) {
+      progress.diamondsQueenIntroSeen = true;
+    }
+    if (progress.isDefeated(JourneyWorld.diamonds, JourneyRank.king) ||
+        progress.isDefeated(JourneyWorld.diamonds, JourneyRank.ace)) {
+      progress.diamondsKingIntroSeen = true;
+    }
+    if (progress.isDefeated(JourneyWorld.diamonds, JourneyRank.ace)) {
+      progress.diamondsAceEscapeSeen = true;
+    }
+    if (progress.isDefeated(JourneyWorld.clubs, JourneyRank.jack)) {
+      progress.clubsJackIntroSeen = true;
+      progress.clubsJackUnlocked = true;
+    }
+    if (progress.isDefeated(JourneyWorld.clubs, JourneyRank.ace)) {
+      progress.clubsCourtIntroSeen = true;
+      progress.clubsJackUnlocked = true;
+      progress.clubsJackIntroSeen = true;
+      // Older saves already past Clubs Ace — skip gift dialogue hold.
+      if (json['clubsAceGiftSeen'] == null) {
+        progress.clubsAceGiftSeen = true;
+      }
+    }
+    if (progress.isDefeated(JourneyWorld.hearts, JourneyRank.jack)) {
+      progress.heartsJackIntroSeen = true;
+      progress.heartsJackUnlocked = true;
+    }
+    if (progress.isDefeated(JourneyWorld.hearts, JourneyRank.queen) ||
+        progress.isDefeated(JourneyWorld.hearts, JourneyRank.king) ||
+        progress.isDefeated(JourneyWorld.hearts, JourneyRank.ace)) {
+      progress.heartsQueenEscortSeen = true;
+    }
+    if (progress.isDefeated(JourneyWorld.hearts, JourneyRank.king) ||
+        progress.isDefeated(JourneyWorld.hearts, JourneyRank.ace)) {
+      progress.heartsKingIntroSeen = true;
+    }
+    if (progress.isDefeated(JourneyWorld.hearts, JourneyRank.ace)) {
+      if (json['heartsAceGiftSeen'] == null) {
+        progress.heartsAceGiftSeen = true;
+      }
     }
     if (progress.diamondsEntered) {
       progress.enteredWorlds.add(JourneyWorld.diamonds.name);
+    }
+    // Already past the Jack unlock — don't replay the intro conversation.
+    if (progress.diamondsJackUnlocked) {
+      progress.diamondsJackIntroSeen = true;
     }
     // Any fight in a world counts as having entered that kingdom.
     for (final world in JourneyWorld.values) {
@@ -220,6 +322,33 @@ class JourneyProgress {
   bool diamondsEntered;
   /// Prove-yourself CTA revealed the Diamonds Jack face-up.
   bool diamondsJackUnlocked;
+  /// Jack intro conversation after profile tutorial has been shown.
+  bool diamondsJackIntroSeen;
+  /// Queen intro conversation after defeating Diamonds Jack.
+  bool diamondsQueenIntroSeen;
+  /// King intro conversation after defeating Diamonds Queen.
+  bool diamondsKingIntroSeen;
+  /// Escape dialogue after claiming the Diamonds Ace.
+  bool diamondsAceEscapeSeen;
+  /// Clubs Jack bushes intro after entering Clubs.
+  bool clubsJackIntroSeen;
+  /// Clubs Jack stays mystery-hidden until the bushes Challenge unlocks him.
+  bool clubsJackUnlocked;
+  /// Court conversation after beating Clubs Jack (before King table match).
+  bool clubsCourtIntroSeen;
+  /// Post-match Ace gift dialogue finished (gates Hearts road letter).
+  bool clubsAceGiftSeen;
+  /// Clubs court table finished — King offers Ace (before Claim).
+  bool pendingClubsAceOffer;
+  /// Whether the player won the Clubs court table (flavor line only).
+  bool clubsCourtMatchWon;
+  bool heartsJackIntroSeen;
+  bool heartsJackUnlocked;
+  bool heartsQueenEscortSeen;
+  bool heartsKingIntroSeen;
+  bool heartsAceGiftSeen;
+  bool pendingHeartsQueenEscort;
+  bool pendingHeartsAceOffer;
 
   bool hasEntered(JourneyWorld world) {
     if (enteredWorlds.contains(world.name)) return true;
@@ -311,6 +440,23 @@ class JourneyProgress {
       'pendingUnlockReward': pendingUnlockReward!.toJson(),
     'diamondsEntered': diamondsEntered,
     'diamondsJackUnlocked': diamondsJackUnlocked,
+    'diamondsJackIntroSeen': diamondsJackIntroSeen,
+    'diamondsQueenIntroSeen': diamondsQueenIntroSeen,
+    'diamondsKingIntroSeen': diamondsKingIntroSeen,
+    'diamondsAceEscapeSeen': diamondsAceEscapeSeen,
+    'clubsJackIntroSeen': clubsJackIntroSeen,
+    'clubsJackUnlocked': clubsJackUnlocked,
+    'clubsCourtIntroSeen': clubsCourtIntroSeen,
+    'clubsAceGiftSeen': clubsAceGiftSeen,
+    'pendingClubsAceOffer': pendingClubsAceOffer,
+    'clubsCourtMatchWon': clubsCourtMatchWon,
+    'heartsJackIntroSeen': heartsJackIntroSeen,
+    'heartsJackUnlocked': heartsJackUnlocked,
+    'heartsQueenEscortSeen': heartsQueenEscortSeen,
+    'heartsKingIntroSeen': heartsKingIntroSeen,
+    'heartsAceGiftSeen': heartsAceGiftSeen,
+    'pendingHeartsQueenEscort': pendingHeartsQueenEscort,
+    'pendingHeartsAceOffer': pendingHeartsAceOffer,
     if (enteredWorlds.isNotEmpty) 'enteredWorlds': enteredWorlds.toList(),
   };
 }
@@ -336,6 +482,16 @@ JourneyDisplaySnapshot hydrateJourneyBoard({
   snap = snap.withDiamondsGates(
     entered: progress.diamondsEntered,
     jackUnlocked: progress.diamondsJackUnlocked,
+    playerLevel: playerLevel,
+  );
+  snap = snap.withClubsGates(
+    jackUnlocked: progress.clubsJackUnlocked,
+    aceClaimed: progress.isDefeated(JourneyWorld.clubs, JourneyRank.ace),
+    playerLevel: playerLevel,
+  );
+  snap = snap.withHeartsGates(
+    jackUnlocked: progress.heartsJackUnlocked,
+    aceClaimed: progress.isDefeated(JourneyWorld.hearts, JourneyRank.ace),
     playerLevel: playerLevel,
   );
   final defer =
@@ -385,6 +541,100 @@ extension on JourneyDisplaySnapshot {
             )
           else
             // Snapshot starts locked; re-apply level once both gates clear.
+            w.copyWith(unlocked: true).withLevelApplied(playerLevel),
+      ],
+    );
+  }
+
+  /// Clubs Jack stays hidden until Challenge; Queen/King stay locked until Ace gift.
+  JourneyDisplaySnapshot withClubsGates({
+    required bool jackUnlocked,
+    required bool aceClaimed,
+    int playerLevel = 1,
+  }) {
+    return JourneyDisplaySnapshot(
+      worlds: [
+        for (final w in worlds)
+          if (w.world != JourneyWorld.clubs)
+            w
+          else if (!w.unlocked)
+            w
+          else if (!jackUnlocked)
+            w.copyWith(
+              unlocked: true,
+              cards: [
+                for (final c in w.cards)
+                  if (c.state != JourneyCardState.defeated)
+                    c.copyWith(state: JourneyCardState.mysteryLocked)
+                  else
+                    c,
+              ],
+            )
+          else if (!aceClaimed)
+            w.copyWith(
+              unlocked: true,
+              cards: [
+                for (final c in w.cards)
+                  if (c.rank == JourneyRank.jack)
+                    c.state == JourneyCardState.defeated
+                        ? c
+                        : c.copyWith(
+                            state: playerLevel >= (c.requiredLevel ?? 1)
+                                ? JourneyCardState.available
+                                : JourneyCardState.levelLocked,
+                          )
+                  else if (c.state != JourneyCardState.defeated)
+                    c.copyWith(state: JourneyCardState.mysteryLocked)
+                  else
+                    c,
+              ],
+            )
+          else
+            w.copyWith(unlocked: true).withLevelApplied(playerLevel),
+      ],
+    );
+  }
+
+  /// Hearts Jack stays hidden until Challenge; Ace stays mystery until gift claim.
+  JourneyDisplaySnapshot withHeartsGates({
+    required bool jackUnlocked,
+    required bool aceClaimed,
+    int playerLevel = 1,
+  }) {
+    return JourneyDisplaySnapshot(
+      worlds: [
+        for (final w in worlds)
+          if (w.world != JourneyWorld.hearts)
+            w
+          else if (!w.unlocked)
+            w
+          else if (!jackUnlocked)
+            w.copyWith(
+              unlocked: true,
+              cards: [
+                for (final c in w.cards)
+                  if (c.state != JourneyCardState.defeated)
+                    c.copyWith(state: JourneyCardState.mysteryLocked)
+                  else
+                    c,
+              ],
+            )
+          else if (!aceClaimed)
+            () {
+              final leveled =
+                  w.copyWith(unlocked: true).withLevelApplied(playerLevel);
+              return leveled.copyWith(
+                cards: [
+                  for (final c in leveled.cards)
+                    if (c.rank == JourneyRank.ace &&
+                        c.state != JourneyCardState.defeated)
+                      c.copyWith(state: JourneyCardState.mysteryLocked)
+                    else
+                      c,
+                ],
+              );
+            }()
+          else
             w.copyWith(unlocked: true).withLevelApplied(playerLevel),
       ],
     );

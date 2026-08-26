@@ -132,6 +132,8 @@ class _XpPlayerAvatarState extends State<XpPlayerAvatar>
               size: widget.size,
               showBorder: false,
               showJourneyAces: true,
+              defeatedAces: repo.journeyProgress.defeatedAceWorlds,
+              wearJourneyAccessories: repo.wearJourneyAccessories,
             ),
             Positioned(
               right: -1,

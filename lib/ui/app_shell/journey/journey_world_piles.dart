@@ -286,21 +286,27 @@ class _WorldPile extends StatelessWidget {
                                         card: availableVisible.last,
                                         world: worldDef.world,
                                         active: active,
-                                        faceAmount: revealingThis
-                                            ? revealProgress.clamp(0.0, 1.0)
-                                            : 1.0,
+                                        revealT: revealingThis
+                                            ? revealProgress
+                                            : null,
                                       )
-                                    : JourneyFaceDownCard(
-                                        world: worldDef.world,
-                                        dimmed: false,
-                                        highlighted: active &&
-                                            i == pile.length - 1 &&
-                                            selectedCard == null &&
-                                            !draggingThis &&
-                                            !topAvailableOnPile,
-                                        showSuit: i == pile.length - 1,
-                                        shadow: i == pile.length - 1,
-                                      ),
+                                    : i == pile.length - 1 &&
+                                            !topAvailableOnPile
+                                        ? JourneyLockedChallengerCard(
+                                            assetPath: pile[i].avatarAssetPath,
+                                            world: worldDef.world,
+                                            highlighted: active &&
+                                                selectedCard == null &&
+                                                !draggingThis,
+                                            shadow: true,
+                                          )
+                                        : JourneyLockedChallengerCard(
+                                            assetPath: pile[i].avatarAssetPath,
+                                            world: worldDef.world,
+                                            highlighted: false,
+                                            shadow: false,
+                                            lockSize: 16,
+                                          ),
                               ),
                         ],
                       ),
@@ -466,45 +472,47 @@ class _MysteryLockedPileSlot extends StatelessWidget {
   }
 }
 
-/// Face-up (or flipping) top challenger on an unlocked pile.
+/// Face-up top challenger — shake/pop reveal on first unlock, then clear face.
 class _PileTopFace extends StatelessWidget {
   const _PileTopFace({
     required this.card,
     required this.world,
     required this.active,
-    required this.faceAmount,
+    this.revealT,
   });
 
   final JourneyCardDef card;
   final JourneyWorld world;
   final bool active;
-  final double faceAmount;
+  /// When non-null, plays the sealed → clear unlock ceremony (0→1).
+  final double? revealT;
 
   @override
   Widget build(BuildContext context) {
-    final face = faceAmount.clamp(0.0, 1.0);
-    return Transform(
-      alignment: Alignment.center,
-      transform: Matrix4.identity()
-        ..setEntry(3, 2, 0.0014)
-        ..rotateY((1 - face) * 1.55),
+    final clear = JourneyFaceUpCard(
+      assetPath: card.avatarAssetPath,
+      world: world,
+    );
+    final t = revealT;
+    if (t == null) return clear;
+
+    final timeline = JourneyThemeUnlockTimeline(t);
+    return JourneyThemeUnlockTransform(
+      timeline: timeline,
       child: Stack(
         fit: StackFit.expand,
         children: [
           Opacity(
-            opacity: (1.0 - face).clamp(0.0, 1.0),
-            child: JourneyFaceDownCard(
-              world: world,
-              highlighted: active,
-              showSuit: true,
-              shadow: true,
-            ),
+            opacity: timeline.revealAmount,
+            child: clear,
           ),
           Opacity(
-            opacity: face.clamp(0.0, 1.0),
-            child: JourneyFaceUpCard(
+            opacity: timeline.lockOpacity,
+            child: JourneyLockedChallengerCard(
               assetPath: card.avatarAssetPath,
               world: world,
+              highlighted: active,
+              shadow: true,
             ),
           ),
         ],

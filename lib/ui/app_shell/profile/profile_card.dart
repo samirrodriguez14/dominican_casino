@@ -3,6 +3,7 @@ import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_progress_trail.dart';
 import 'package:dominican_casino/ui/app_shell/profile/avatar_picker_popup.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_coach.dart';
@@ -81,6 +82,8 @@ class _ProfileCardState extends State<ProfileCard> {
                 avatarId: avatarId,
                 name: name,
                 score: score,
+                defeatedAces: repo.journeyProgress.defeatedAceWorlds,
+                wearJourneyAccessories: repo.wearJourneyAccessories,
               ),
               if (!_editingCard)
                 Padding(
@@ -107,6 +110,10 @@ class _ProfileCardState extends State<ProfileCard> {
                                       size: avatarSize,
                                       score: score,
                                       playingCardWidth: avatarSize * 0.32,
+                                      defeatedAces: repo
+                                          .journeyProgress.defeatedAceWorlds,
+                                      wearJourneyAccessories:
+                                          repo.wearJourneyAccessories,
                                       onPressed: () =>
                                           _changeAvatar(context, vm),
                                       onEditPlayingCard: () =>
@@ -210,11 +217,15 @@ class _CornerPip extends StatelessWidget {
     required this.avatarId,
     required this.name,
     required this.score,
+    required this.defeatedAces,
+    required this.wearJourneyAccessories,
   });
 
   final String? avatarId;
   final String name;
   final AvatarScoreTheme score;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wearJourneyAccessories;
 
   @override
   Widget build(BuildContext context) {
@@ -229,7 +240,14 @@ class _CornerPip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            PlayerAvatarView(avatarId: avatarId, size: 40, showBorder: false, showJourneyAces: true),
+            PlayerAvatarView(
+              avatarId: avatarId,
+              size: 40,
+              showBorder: false,
+              showJourneyAces: true,
+              defeatedAces: defeatedAces,
+              wearJourneyAccessories: wearJourneyAccessories,
+            ),
             if (letter != null) ...[
               const SizedBox(height: 4),
               Text(
@@ -291,6 +309,8 @@ class _AvatarButton extends StatelessWidget {
     required this.onPressed,
     required this.onEditPlayingCard,
     required this.onAceTap,
+    required this.defeatedAces,
+    required this.wearJourneyAccessories,
   });
 
   final String? avatarId;
@@ -300,6 +320,8 @@ class _AvatarButton extends StatelessWidget {
   final VoidCallback onPressed;
   final VoidCallback onEditPlayingCard;
   final VoidCallback onAceTap;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wearJourneyAccessories;
 
   @override
   Widget build(BuildContext context) {
@@ -322,6 +344,8 @@ class _AvatarButton extends StatelessWidget {
                   avatarId: avatarId,
                   size: size,
                   showJourneyAces: true,
+                  defeatedAces: defeatedAces,
+                  wearJourneyAccessories: wearJourneyAccessories,
                   onAceTap: (_) => onAceTap(),
                 ),
                 Container(

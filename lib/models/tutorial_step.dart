@@ -3,6 +3,15 @@ import 'package:flutter/cupertino.dart';
 
 typedef TutorialStepCallback = void Function(BuildContext context);
 
+/// Who appears beside the tutorial speech bubble.
+enum TutorialSpeaker {
+  /// Pulilo / journey guide (default bot avatar).
+  guide,
+
+  /// The local player.
+  player,
+}
+
 class TutorialStep {
   final int step;
   final String title;
@@ -10,6 +19,12 @@ class TutorialStep {
   final bool blockGameInteraction;
   final List<TutorialAction> allowedActions;
   final GlobalKey? targetKey;
+
+  /// Bubble speaker; [avatarId] overrides the default for this speaker when set.
+  final TutorialSpeaker speaker;
+
+  /// Optional avatar id override (e.g. Journey Jack face).
+  final String? avatarId;
 
   final TutorialAction? expectedAction;
   final String? expectedCardId;
@@ -55,6 +70,8 @@ class TutorialStep {
     required this.title,
     required this.description,
     this.targetKey,
+    this.speaker = TutorialSpeaker.guide,
+    this.avatarId,
     this.expectedAction,
     this.expectedCardId,
     this.expectedStackId,

@@ -147,6 +147,29 @@ class _JourneyUnlockCelebrationOverlayState
                             ),
                           ),
                         ],
+                        if (reward.showTrophy) ...[
+                          const SizedBox(height: 16),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.asset(
+                              reward.world.aceCardAssetPath,
+                              height: 96,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => Icon(
+                                CupertinoIcons.suit_diamond_fill,
+                                size: 40,
+                                color: theme.turnHighlight,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${reward.world.label} Ace trophy',
+                            style: theme.body.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                         if (themeLabel != null) ...[
                           const SizedBox(height: 16),
                           Icon(
