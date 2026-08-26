@@ -425,6 +425,11 @@ class AppLocalizations {
         return isEs
             ? 'Google no está configurado en este dispositivo.'
             : 'Google isn\'t configured on this device.';
+      case 'interrupted':
+      case 'unknownError':
+        return isEs
+            ? 'Google Sign-In se interrumpió. Vuelve a intentarlo.'
+            : 'Google Sign-In was interrupted. Please try again.';
       default:
         return isEs
             ? 'No se pudo conectar con Google. Inténtalo de nuevo.'

@@ -273,7 +273,12 @@ class GamesScreenState extends State<GamesScreen>
       });
     }
     return Padding(
-      padding: EdgeInsets.fromLTRB(12, shellTopBarHeight(context), 12, 108),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        shellTopBarHeight(context),
+        12,
+        shellBottomNavClearance(context),
+      ),
       child: AnimatedBuilder(
         animation: _gridAnim,
         builder: (context, _) {

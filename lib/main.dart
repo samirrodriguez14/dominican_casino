@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 
 import 'package:dominican_casino/app.dart';
 import 'package:dominican_casino/services/firebase_options.dart';
+import 'package:dominican_casino/services/google_sign_in_setup.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
@@ -25,6 +26,7 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await configureGoogleSignIn();
   } catch (e) {
     developer.log("Error initializing Firebase");
   }

@@ -27,6 +27,10 @@ class TutorialOverlay extends StatefulWidget {
   final GlobalKey? tableAnchorKey;
   /// When [isLastScreen] and [onExit] is null, label for the single primary button.
   final String? lastPrimaryLabel;
+  /// Extra inset from the bottom of the overlay (e.g. shell tab bar).
+  final double bottomClearance;
+  /// Extra inset from the top of the overlay (e.g. shell currency bar).
+  final double topClearance;
 
   const TutorialOverlay({
     super.key,
@@ -41,6 +45,8 @@ class TutorialOverlay extends StatefulWidget {
     this.onExit,
     this.tableAnchorKey,
     this.lastPrimaryLabel,
+    this.bottomClearance = 0,
+    this.topClearance = 0,
   });
 
   @override
@@ -58,10 +64,23 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   static const double _avatarGap = 8;
   static const double _bubbleWidth = 248;
   static const double _tooltipWidth = _avatarSize + _avatarGap + _bubbleWidth;
-  static const double _tooltipMinHeight = 88;
-  /// Conservative height used when [TutorialStep.promptClearance] is set.
-  static const double _tooltipPlaceHeight = 168;
+  /// Conservative height for clamping (avatar row + text + Next/Skip + tail).
+  static const double _tooltipLayoutHeight = 196;
   static const double _tailSize = 12;
+
+  double _safeTop(BuildContext context) {
+    final base = widget.topClearance > 0
+        ? widget.topClearance
+        : MediaQuery.paddingOf(context).top;
+    return base + 8;
+  }
+
+  double _safeBottom(BuildContext context) {
+    final base = widget.bottomClearance > 0
+        ? widget.bottomClearance
+        : MediaQuery.paddingOf(context).bottom;
+    return base + 12;
+  }
 
   @override
   void initState() {
@@ -194,24 +213,31 @@ class _TutorialOverlayState extends State<TutorialOverlay>
       );
     }
 
-    final placeAbove = rect.center.dy > overlaySize.height * 0.5;
+    final safeTop = _safeTop(context);
+    final safeBottom = _safeBottom(context);
+    final gap = 16.0;
+    final spaceAbove = rect.top - safeTop;
+    final spaceBelow = overlaySize.height - rect.bottom - safeBottom;
+    final placeAbove = spaceAbove >= _tooltipLayoutHeight + gap &&
+        (spaceBelow < _tooltipLayoutHeight + gap ||
+            rect.center.dy > overlaySize.height * 0.45);
     final tail = placeAbove ? _BubbleTail.down : _BubbleTail.up;
     final desiredTooltipOffset = placeAbove
         ? Offset(
             rect.center.dx - _tooltipWidth / 2,
-            rect.top - _tooltipMinHeight - 16,
+            rect.top - _tooltipLayoutHeight - gap,
           )
         : Offset(
             rect.center.dx - _tooltipWidth / 2,
-            rect.bottom + 12,
+            rect.bottom + gap,
           );
 
     final clampedTooltipOffset = Offset(
       desiredTooltipOffset.dx
           .clamp(12.0, overlaySize.width - _tooltipWidth - 12),
       desiredTooltipOffset.dy.clamp(
-        12.0,
-        overlaySize.height - _tooltipMinHeight - 12,
+        safeTop,
+        overlaySize.height - _tooltipLayoutHeight - safeBottom,
       ),
     );
 
@@ -249,22 +275,23 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     required Size overlaySize,
     required double gap,
   }) {
-    final safeTop = MediaQuery.paddingOf(context).top + 8;
+    final safeTop = _safeTop(context);
+    final safeBottom = _safeBottom(context);
     final maxLeft = math.max(12.0, overlaySize.width - _tooltipWidth - 12);
     final maxTop = math.max(
       safeTop,
-      overlaySize.height - _tooltipPlaceHeight - 12,
+      overlaySize.height - _tooltipLayoutHeight - safeBottom,
     );
 
     final spaceAbove = rect.top - safeTop;
-    final spaceBelow = overlaySize.height - rect.bottom - 12;
-    final placeAbove = spaceAbove >= _tooltipPlaceHeight + gap ||
+    final spaceBelow = overlaySize.height - rect.bottom - safeBottom;
+    final placeAbove = spaceAbove >= _tooltipLayoutHeight + gap ||
         (spaceAbove >= spaceBelow && spaceAbove >= gap + 48);
 
     Offset desiredTooltipOffset = placeAbove
         ? Offset(
             rect.center.dx - _tooltipWidth / 2,
-            rect.top - _tooltipPlaceHeight - gap,
+            rect.top - _tooltipLayoutHeight - gap,
           )
         : Offset(
             rect.center.dx - _tooltipWidth / 2,
@@ -281,23 +308,23 @@ class _TutorialOverlayState extends State<TutorialOverlay>
       clampedTooltipOffset.dx,
       clampedTooltipOffset.dy,
       _tooltipWidth,
-      _tooltipPlaceHeight,
+      _tooltipLayoutHeight,
     );
     if (bubbleRect.overlaps(paddedTarget)) {
       final aboveTop =
-          (rect.top - _tooltipPlaceHeight - gap).clamp(safeTop, maxTop);
+          (rect.top - _tooltipLayoutHeight - gap).clamp(safeTop, maxTop);
       final belowTop = (rect.bottom + gap).clamp(safeTop, maxTop);
       final aboveRect = Rect.fromLTWH(
         clampedTooltipOffset.dx,
         aboveTop,
         _tooltipWidth,
-        _tooltipPlaceHeight,
+        _tooltipLayoutHeight,
       );
       final belowRect = Rect.fromLTWH(
         clampedTooltipOffset.dx,
         belowTop,
         _tooltipWidth,
-        _tooltipPlaceHeight,
+        _tooltipLayoutHeight,
       );
       final aboveClear = !aboveRect.overlaps(paddedTarget);
       final belowClear = !belowRect.overlaps(paddedTarget);
@@ -315,7 +342,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         clampedTooltipOffset.dx,
         clampedTooltipOffset.dy,
         _tooltipWidth,
-        _tooltipPlaceHeight,
+        _tooltipLayoutHeight,
       );
     }
 
@@ -354,14 +381,15 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         ? overlay.size
         : MediaQuery.of(context).size;
 
-    final safeTop = MediaQuery.paddingOf(context).top + 8;
+    final safeTop = _safeTop(context);
+    final safeBottom = _safeBottom(context);
 
     // Aim the tail at the same highlight rect (not just centered above the
     // table). If the tooltip has to be clamped, we also translate the tail
     // to compensate.
     final rect = _targetRect();
     final desiredTop = rect != null
-        ? rect.top - _tooltipMinHeight - 16
+        ? rect.top - _tooltipLayoutHeight - 16
         : safeTop;
     final desiredLeft = rect != null
         ? rect.center.dx - _tooltipWidth / 2
@@ -371,7 +399,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         desiredLeft.clamp(12.0, overlaySize.width - _tooltipWidth - 12);
     final clampedTop = desiredTop.clamp(
       safeTop,
-      overlaySize.height - _tooltipMinHeight - 12,
+      overlaySize.height - _tooltipLayoutHeight - safeBottom,
     );
 
     final playerOnRight = widget.step.speaker == TutorialSpeaker.player;
@@ -400,9 +428,14 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   }
 
   Widget _buildFloatingTooltip(BuildContext context) {
-    return Center(
+    final pad = MediaQuery.paddingOf(context);
+    final top = (widget.topClearance > 0 ? widget.topClearance : pad.top) + 8;
+    final bottom =
+        (widget.bottomClearance > 0 ? widget.bottomClearance : pad.bottom) + 12;
+    return Align(
+      alignment: Alignment.center,
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.fromLTRB(28, top, 28, bottom),
         child: _buildTooltipContent(tail: _BubbleTail.none),
       ),
     );

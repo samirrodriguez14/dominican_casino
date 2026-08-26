@@ -1,6 +1,7 @@
 import 'package:dominican_casino/models/tutorial_action.dart';
 import 'package:dominican_casino/models/tutorial_step.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_hint_pulse.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
 import 'package:flutter/cupertino.dart';
@@ -116,6 +117,8 @@ class ProfileCoachOverlay extends StatelessWidget {
               canGoNext: true,
               isLastScreen: true,
               lastPrimaryLabel: 'Got it',
+              topClearance: shellTopBarHeight(context),
+              bottomClearance: shellBottomNavClearance(context),
               onPlay: () => _complete(context),
               onNext: () => _complete(context),
               onSkip: () => _complete(context),

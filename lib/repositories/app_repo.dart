@@ -16,7 +16,7 @@ import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/repositories/account_display_name.dart';
 import 'package:dominican_casino/repositories/apple_account_deletion.dart';
-import 'package:dominican_casino/services/firebase_options.dart';
+import 'package:dominican_casino/services/google_sign_in_setup.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/services/notifications_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -131,7 +131,6 @@ class AppRepo extends ChangeNotifier {
   AuthorizationStatus notificationStatus = AuthorizationStatus.notDetermined;
   Wallet _wallet = Wallet.starter();
   Wallet get wallet => _wallet;
-  bool _googleSignInReady = false;
   String? _walletUid;
   bool _walletPersistPaused = false;
   Timer? _energyTimer;
@@ -2188,13 +2187,14 @@ class AppRepo extends ChangeNotifier {
   }
 
   Future<void> _ensureGoogleSignIn() async {
-    if (_googleSignInReady || kIsWeb) return;
-    await GoogleSignIn.instance.initialize(
-      clientId: defaultTargetPlatform == TargetPlatform.iOS
-          ? DefaultFirebaseOptions.ios.iosClientId
-          : null,
-    );
-    _googleSignInReady = true;
+    await ensureGoogleSignInConfigured();
+  }
+
+  void _logGoogleSignIn(String message, [Object? error, StackTrace? stackTrace]) {
+    developer.log(message, name: 'GoogleSignIn', error: error, stackTrace: stackTrace);
+    if (kDebugMode) {
+      debugPrint('[GoogleSignIn] $message${error != null ? ': $error' : ''}');
+    }
   }
 
   /// Attach Google to the current anonymous uid, or sign in if that Google
@@ -2214,24 +2214,32 @@ class AppRepo extends ChangeNotifier {
       }
 
       await _ensureGoogleSignIn();
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (e) {
+        _logGoogleSignIn('signOut before authenticate ignored', e);
+      }
+
       final GoogleSignInAccount account;
       try {
-        account = await GoogleSignIn.instance.authenticate(
-          scopeHint: const ['email', 'profile'],
-        );
-      } on GoogleSignInException catch (e) {
+        _logGoogleSignIn('authenticate starting');
+        account = await GoogleSignIn.instance.authenticate();
+      } on GoogleSignInException catch (e, st) {
+        _logGoogleSignIn('authenticate failed (${e.code.name})', e, st);
         if (e.code == GoogleSignInExceptionCode.canceled) {
           return const GoogleAuthResult.canceled();
         }
-        developer.log('AppRepo.linkGoogleAccount GoogleSignIn: $e');
         return GoogleAuthResult.failed(e.code.name);
       }
 
+      _logGoogleSignIn('authenticate ok: ${account.email}');
       final idToken = account.authentication.idToken;
       if (idToken == null) {
+        _logGoogleSignIn('missing idToken after authenticate');
         return const GoogleAuthResult.failed('missing-id-token');
       }
       final credential = GoogleAuthProvider.credential(idToken: idToken);
+      _logGoogleSignIn('linking Firebase user ${current?.uid ?? 'none'}');
       return await _linkOrSignIn(current, credential, account.displayName);
     } on FirebaseAuthException catch (e) {
       developer.log('AppRepo.linkGoogleAccount Auth: ${e.code}', error: e);
