@@ -7,6 +7,9 @@ import * as logger from "firebase-functions/logger";
 /** Must match WalletConfig.energyCap on the client. */
 const ENERGY_CAP = 50;
 
+/** Must match AndroidManifest + NotificationsService on the client. */
+const ANDROID_CHANNEL_ID = "fcm_game";
+
 admin.initializeApp();
 
 /**
@@ -213,7 +216,7 @@ async function _sendToUser(
         priority: "high",
         notification: {
           sound: "default",
-          channelId: data.type === "energy_full" ? "energy" : "turns",
+          channelId: ANDROID_CHANNEL_ID,
         },
       },
       apns: {

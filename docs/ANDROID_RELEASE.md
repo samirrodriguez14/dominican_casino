@@ -48,7 +48,7 @@ Firebase Console → Project settings → Your apps → Android (`com.sr2.domini
 | Build source | SHA-1 | SHA-256 |
 |--------------|-------|---------|
 | **Upload key** (local release builds) | `A7:4F:CB:F6:24:E7:EB:48:EC:D1:CE:79:D2:9C:0D:87:28:65:AD:3C` | `28:B5:C9:E1:3D:02:A4:81:36:48:A8:85:FA:25:BF:95:04:95:EA:6B:8B:4B:EA:58:B5:78:58:19:BA:54:9C:21` |
-| **Play App Signing key** (Play/internal/closed installs) | Copy from Play Console → App integrity → **App signing key certificate** | `70:5F:74:E5:86:EB:B5:14:93:58:DC:90:F1:67:65:BD:C2:04:F1:21:D2:BB:F0:E5:D7:3B:5D:A0:F4:88:C4:5B` |
+| **Play App Signing key** (Play/internal/closed installs) — **verified on device 2026-08-26** | `17:22:61:63:59:86:A8:95:2B:87:BA:D1:0B:78:0D:FB:9C:81:80:6A` | `70:5F:74:E5:86:EB:B5:14:93:58:DC:90:F1:67:65:BD:C2:04:F1:21:D2:BB:F0:E5:D7:3B:5D:A0:F4:88:C4:5B` |
 | **Debug keystore** (emulator / `flutter run`) | From `keytool` on `~/.android/debug.keystore` | same command |
 
 After adding fingerprints:
@@ -81,6 +81,24 @@ Firebase Console → **Authentication → Sign-in method → Google** must be **
 If the OAuth consent screen is in **Testing** mode, add your Gmail as a test user in
 [Google Cloud Console](https://console.cloud.google.com) → **APIs & Services → OAuth consent screen**.
 
+**Important:** Google Sign-In matches the installed APK's **SHA-1**. Play Console may list
+other keys (upload, quantum-ready, previous classical) — only the cert that actually signs
+the APK matters. If SHA-256 is registered but SHA-1 is wrong, Sign-In still fails.
+
+### Verify the Play-installed APK cert (adb)
+
+```bash
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/36.0.0:$PATH"
+
+adb shell pm path com.sr2.dominicanCasino   # note base.apk path
+adb pull "/data/app/.../base.apk" /tmp/play-base.apk
+apksigner verify --print-certs /tmp/play-base.apk
+```
+
+Confirm `google-services.json` contains an `oauth_client` with `"client_type": 1` whose
+`certificate_hash` equals the apksigner **SHA-1 digest** (lowercase, no colons).
+
 ## Emulator / local run
 
 Use **JDK 17** (Android Studio’s bundled JDK 25 is incompatible with the current Gradle wrapper):
@@ -88,6 +106,7 @@ Use **JDK 17** (Android Studio’s bundled JDK 25 is incompatible with the curre
 ```bash
 export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
 export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
 flutter config --jdk-dir "$JAVA_HOME"
 flutter config --android-sdk "$ANDROID_HOME"
 flutter emulators --launch Pixel_7_API_35

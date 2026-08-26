@@ -68,5 +68,8 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Google Sign-In / Play Services (package visibility, Android 11+). -->
+        <package android:name="com.google.android.gms" />
+        <package android:name="com.android.vending" />
     </queries>
 </manifest>

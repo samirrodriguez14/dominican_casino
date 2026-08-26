@@ -1,7 +1,7 @@
 name: dominican_casino
 description: "Dominican Card Game"
 publish_to: "none"
-version: 0.1.0+5
+version: 0.1.0+6
 
 environment:
   sdk: ^3.11.0

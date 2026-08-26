@@ -21,11 +21,27 @@ class SoundService extends ChangeNotifier {
   static const _musicAsset = 'sounds/bg_music.mp3';
   static const _defaultMusicVolume = 0.35;
 
-  final AudioPlayer _oneshot = AudioPlayer();
-  final AudioPlayer _music = AudioPlayer();
+  static final _musicContext = AudioContext(
+    android: AudioContextAndroid(
+      contentType: AndroidContentType.music,
+      usageType: AndroidUsageType.game,
+      audioFocus: AndroidAudioFocus.gain,
+    ),
+  );
+
+  static final _sfxContext = AudioContext(
+    android: AudioContextAndroid(
+      contentType: AndroidContentType.sonification,
+      usageType: AndroidUsageType.game,
+      audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+    ),
+  );
+
+  final AudioPlayer _oneshot = AudioPlayer()..positionUpdater = null;
+  final AudioPlayer _music = AudioPlayer()..positionUpdater = null;
   final List<AudioPlayer> _layers = List.generate(
     cardTickMax,
-    (_) => AudioPlayer(),
+    (_) => AudioPlayer()..positionUpdater = null,
   );
   int _layer = 0;
 
@@ -69,12 +85,16 @@ class SoundService extends ChangeNotifier {
     sfxVolume = (sp.getDouble(_sfxVolumeKey) ?? 1).clamp(0, 1);
     musicVolume =
         (sp.getDouble(_musicVolumeKey) ?? _defaultMusicVolume).clamp(0, 1);
+    await _music.setPlayerMode(PlayerMode.mediaPlayer);
+    await _music.setAudioContext(_musicContext);
     await _music.setReleaseMode(ReleaseMode.loop);
     await _music.setVolume(musicVolume);
     // Low-latency mode on SFX players — set once, not per tick.
     await _oneshot.setPlayerMode(PlayerMode.lowLatency);
+    await _oneshot.setAudioContext(_sfxContext);
     for (final p in _layers) {
       await p.setPlayerMode(PlayerMode.lowLatency);
+      await p.setAudioContext(_sfxContext);
     }
     notifyListeners();
     if (musicEnabled) await startMusic();
@@ -147,10 +167,13 @@ class SoundService extends ChangeNotifier {
   Future<void> pauseMusic() async {
     if (!_musicPlaying) return;
     try {
-      await _music.pause();
+      // Stop (not pause) so Android MediaPlayer releases and stops polling
+      // getCurrentPosition while backgrounded or after audio-focus loss.
+      await _music.stop();
     } catch (e) {
       debugPrint('SoundService music: $e');
     }
+    _musicPlaying = false;
   }
 
   Future<void> stopMusic() async {

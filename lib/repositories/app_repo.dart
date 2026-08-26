@@ -2086,6 +2086,14 @@ class AppRepo extends ChangeNotifier {
   Future<void> _syncFcmToken() async {
     if (!notificationsEnabled) return;
     try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null && player?.id != uid) {
+        try {
+          await ensurePlayableUid();
+        } catch (e) {
+          developer.log('AppRepo._syncFcmToken ensurePlayableUid: $e');
+        }
+      }
       final messaging = FirebaseMessaging.instance;
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
         String? apns;
@@ -2100,7 +2108,10 @@ class AppRepo extends ChangeNotifier {
         }
       }
       final token = await messaging.getToken();
-      if (token == null) return;
+      if (token == null) {
+        developer.log('FCM getToken returned null', name: 'notifications');
+        return;
+      }
       await _saveFcmToken(token);
     } catch (e) {
       developer.log('AppRepo._syncFcmToken: $e');
@@ -2110,7 +2121,21 @@ class AppRepo extends ChangeNotifier {
   Future<void> _saveFcmToken(String token) async {
     final current = player;
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (current == null || uid == null || current.id != uid) return;
+    if (current == null || uid == null) {
+      developer.log(
+        'FCM token not saved: player=${current != null} uid=$uid',
+        name: 'notifications',
+      );
+      return;
+    }
+    if (current.id != uid) {
+      developer.log(
+        'FCM token not saved: player.id=${current.id} != auth uid=$uid '
+        '(call ensurePlayableUid first)',
+        name: 'notifications',
+      );
+      return;
+    }
     if (_savedFcmToken == token && current.token == token) return;
     player = current.copyWith(token: token);
     await _persistPlayerLocal();
@@ -2996,6 +3021,10 @@ class AppRepo extends ChangeNotifier {
   /// the FCM token under users/{uid} — never on game documents.
   /// Does not open the system Settings app.
   Future<bool> enableNotifications() async {
+    await NotificationsService.instance.configure();
+    await NotificationsService.instance
+        .requestAndroidPostNotificationsPermission();
+
     final messaging = FirebaseMessaging.instance;
     final settings = await messaging.requestPermission(
       alert: true,
@@ -3012,7 +3041,11 @@ class AppRepo extends ChangeNotifier {
     }
 
     notificationsEnabled = true;
-    await NotificationsService.instance.configure();
+    try {
+      await ensurePlayableUid();
+    } catch (e) {
+      developer.log('AppRepo.enableNotifications ensurePlayableUid: $e');
+    }
     await _syncFcmToken();
     notifyListeners();
     return true;
