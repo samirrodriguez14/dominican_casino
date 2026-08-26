@@ -4,6 +4,7 @@ import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 
 /// Language, sound, and haptic controls shared by login and profile settings.
@@ -175,12 +176,10 @@ class SettingsToggleRow extends StatelessWidget {
             Expanded(child: Text(label, style: theme.body)),
           if (hasVolume)
             Expanded(
-              child: CupertinoSlider(
+              child: _CarouselSafeVolumeSlider(
                 value: volume!,
-                min: 0,
-                max: 1,
                 activeColor: theme.success,
-                onChanged: onVolumeChanged,
+                onChanged: onVolumeChanged!,
               ),
             ),
           Transform.scale(
@@ -194,5 +193,82 @@ class SettingsToggleRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Volume slider that works inside [StackedCardCarousel] horizontal swipes.
+///
+/// Parent carousels own [HorizontalDragGestureRecognizer]s that beat
+/// [CupertinoSlider]. We win the arena with an eager recognizer and drive
+/// the value ourselves; the Cupertino thumb is display-only.
+class _CarouselSafeVolumeSlider extends StatelessWidget {
+  const _CarouselSafeVolumeSlider({
+    required this.value,
+    required this.onChanged,
+    required this.activeColor,
+  });
+
+  final double value;
+  final ValueChanged<double> onChanged;
+  final Color activeColor;
+
+  void _setFromGlobal(BuildContext context, Offset global, double width) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || width <= 0) return;
+    final local = box.globalToLocal(global);
+    onChanged((local.dx / width).clamp(0.0, 1.0));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        return Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (event) {
+            _setFromGlobal(context, event.position, width);
+          },
+          child: RawGestureDetector(
+            behavior: HitTestBehavior.opaque,
+            gestures: <Type, GestureRecognizerFactory>{
+              _EagerHorizontalDragGestureRecognizer:
+                  GestureRecognizerFactoryWithHandlers<
+                    _EagerHorizontalDragGestureRecognizer
+                  >(
+                    _EagerHorizontalDragGestureRecognizer.new,
+                    (_EagerHorizontalDragGestureRecognizer instance) {
+                      instance.onStart = (details) {
+                        _setFromGlobal(context, details.globalPosition, width);
+                      };
+                      instance.onUpdate = (details) {
+                        _setFromGlobal(context, details.globalPosition, width);
+                      };
+                    },
+                  ),
+            },
+            child: IgnorePointer(
+              child: CupertinoSlider(
+                value: value,
+                min: 0,
+                max: 1,
+                activeColor: activeColor,
+                // Non-null so the control is not drawn disabled.
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _EagerHorizontalDragGestureRecognizer
+    extends HorizontalDragGestureRecognizer {
+  @override
+  void rejectGesture(int pointer) {
+    // Never lose to the parent card carousel.
+    acceptGesture(pointer);
   }
 }

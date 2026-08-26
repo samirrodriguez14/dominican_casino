@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.sr2.dominicanCasino",
+      "sha256_cert_fingerprints": [
+        "51:1A:9F:70:1B:A4:E9:7D:5D:8A:9B:45:63:12:8B:C8:12:99:D0:BE:A4:36:DD:19:98:71:2F:F8:0D:96:49:E1"
+      ]
+    }
+  }
+]

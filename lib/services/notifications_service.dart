@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/widgets.dart';
@@ -43,7 +44,8 @@ class NotificationsService {
         );
 
     // Initialize local notifications (for backgrounded "data-only" payloads).
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // Icon must match flutter_launcher_icons output (`launcher_icon`).
+    const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
     const iosInit = DarwinInitializationSettings();
     const init = InitializationSettings(
       android: androidInit,
@@ -98,13 +100,15 @@ class NotificationsService {
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   const channelId = NotificationsService._channelId;
   const channelName = NotificationsService._channelName;
 
   final local = FlutterLocalNotificationsPlugin();
-  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
   const iosInit = DarwinInitializationSettings();
   const init = InitializationSettings(
     android: androidInit,

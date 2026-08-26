@@ -253,7 +253,10 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         sounds.startMusic();
         break;
+      // Skip [inactive]: on Android it fires for transient system UI (and
+      // around audio focus changes) without the app leaving the foreground.
       case AppLifecycleState.inactive:
+        break;
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:

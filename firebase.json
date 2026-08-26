@@ -1,1 +1,115 @@
-{"flutter":{"platforms":{"ios":{"default":{"projectId":"dominican-casino","appId":"1:932020449632:ios:316853b7dc8a39fdc9ee05","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"},"buildConfigurations":{"Debug":{"projectId":"dominican-casino","appId":"1:932020449632:ios:93523b9132363a72c9ee05","uploadDebugSymbols":false,"fileOutput":"ios/GoogleService-Info.plist"}}},"dart":{"lib/firebase_options.dart":{"projectId":"dominican-casino","configurations":{"ios":"1:932020449632:ios:316853b7dc8a39fdc9ee05","web":"1:932020449632:web:7e9af9ddd03e2c60c9ee05"}},"lib/services/firebase_options.dart":{"projectId":"dominican-casino","configurations":{"ios":"1:932020449632:ios:93523b9132363a72c9ee05","web":"1:932020449632:web:7e9af9ddd03e2c60c9ee05"}}}}},"firestore":{"rules":"firestore.rules"},"hosting":{"public":"public","ignore":["firebase.json","**/node_modules/**","**/.DS_Store"],"headers":[{"source":"/.well-known/apple-app-site-association","headers":[{"key":"Content-Type","value":"application/json"}]},{"source":"/apple-app-site-association","headers":[{"key":"Content-Type","value":"application/json"}]}],"rewrites":[{"source":"/privacy","destination":"/privacy.html"},{"source":"/support","destination":"/support.html"},{"source":"/terms","destination":"/terms.html"},{"source":"**","destination":"/index.html"}]},"functions":[{"source":"functions","codebase":"default","disallowLegacyRuntimeConfig":true,"ignore":["node_modules",".git","firebase-debug.log","firebase-debug.*.log","*.local"],"predeploy":["npm --prefix \"$RESOURCE_DIR\" run lint","npm --prefix \"$RESOURCE_DIR\" run build"]}]}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dominican-casino",
+          "appId": "1:932020449632:android:6541fabbce84c931c9ee05",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "dominican-casino",
+          "appId": "1:932020449632:ios:316853b7dc8a39fdc9ee05",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        },
+        "buildConfigurations": {
+          "Debug": {
+            "projectId": "dominican-casino",
+            "appId": "1:932020449632:ios:93523b9132363a72c9ee05",
+            "uploadDebugSymbols": false,
+            "fileOutput": "ios/GoogleService-Info.plist"
+          }
+        }
+      },
+      "dart": {
+        "lib/services/firebase_options.dart": {
+          "projectId": "dominican-casino",
+          "configurations": {
+            "android": "1:932020449632:android:6541fabbce84c931c9ee05",
+            "ios": "1:932020449632:ios:93523b9132363a72c9ee05",
+            "web": "1:932020449632:web:7e9af9ddd03e2c60c9ee05"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/node_modules/**",
+      "**/.DS_Store"
+    ],
+    "headers": [
+      {
+        "source": "/.well-known/apple-app-site-association",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      {
+        "source": "/apple-app-site-association",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      {
+        "source": "/.well-known/assetlinks.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/privacy",
+        "destination": "/privacy.html"
+      },
+      {
+        "source": "/support",
+        "destination": "/support.html"
+      },
+      {
+        "source": "/terms",
+        "destination": "/terms.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
+}

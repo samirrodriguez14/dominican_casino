@@ -21,10 +21,7 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
@@ -59,13 +56,22 @@ class DefaultFirebaseOptions {
     measurementId: 'G-WRB5LNKS9F',
   );
 
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyCkD6O_3RSAs9ZyFWXtQ_283pYSs0aX-ek',
+    appId: '1:932020449632:android:6541fabbce84c931c9ee05',
+    messagingSenderId: '932020449632',
+    projectId: 'dominican-casino',
+    storageBucket: 'dominican-casino.firebasestorage.app',
+  );
+
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDYylFD_Vl8q60bRPO_6r0vAjX_EV02w8g',
     appId: '1:932020449632:ios:93523b9132363a72c9ee05',
     messagingSenderId: '932020449632',
     projectId: 'dominican-casino',
     storageBucket: 'dominican-casino.firebasestorage.app',
-    iosClientId: '932020449632-hkq967iebi5413bfr275l3es99n03oj8.apps.googleusercontent.com',
+    iosClientId:
+        '932020449632-hkq967iebi5413bfr275l3es99n03oj8.apps.googleusercontent.com',
     iosBundleId: 'com.sr2.dominicanCasino',
   );
 }

@@ -10,6 +10,7 @@ If a PR contradicts a contract, update the contract in the same PR or reject the
 | [DATA_MODEL.md](DATA_MODEL.md) | Firestore `games` document shape |
 | [SECURITY.md](SECURITY.md) | Auth, rules, cheating, coins |
 | [IOS_RELEASE.md](IOS_RELEASE.md) | App Store packaging |
+| [ANDROID_RELEASE.md](ANDROID_RELEASE.md) | Play Store packaging and emulator setup |
 | [UX.md](UX.md) | Navigation, tutorial, sound, animation |
 | [DOMINION_JOURNEY.md](DOMINION_JOURNEY.md) | Journey progression, worlds, characters, canon |
 
@@ -21,6 +22,6 @@ If a PR contradicts a contract, update the contract in the same PR or reject the
 - Robaito is catalog-only and hidden from the carousel.
 - Deploy: `firebase deploy --only firestore:rules,functions,hosting`
 - Enable **Anonymous** sign-in in Firebase Console → Authentication.
-- Bundle id is `com.sr2.dominicanCasino` — re-register the iOS app in Firebase if you need a fresh `GoogleService-Info.plist`.
+- Bundle / application id is `com.sr2.dominicanCasino` on iOS and Android — keep Firebase configs (`GoogleService-Info.plist`, `google-services.json`) in sync when rotating apps.
 
-Updated 2026-08-16.
+Updated 2026-08-25.

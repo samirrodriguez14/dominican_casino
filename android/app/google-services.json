@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "932020449632",
+    "project_id": "dominican-casino",
+    "storage_bucket": "dominican-casino.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:932020449632:android:c690ba1b72e9fcb1c9ee05",
+        "android_client_info": {
+          "package_name": "com.example.elavare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "932020449632-la1rnifajdj2jfdo8mrgtbskdpe0iljp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkD6O_3RSAs9ZyFWXtQ_283pYSs0aX-ek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "932020449632-la1rnifajdj2jfdo8mrgtbskdpe0iljp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "932020449632-hkq967iebi5413bfr275l3es99n03oj8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.sr2.dominicanCasino"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:932020449632:android:6541fabbce84c931c9ee05",
+        "android_client_info": {
+          "package_name": "com.sr2.dominicanCasino"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "932020449632-la1rnifajdj2jfdo8mrgtbskdpe0iljp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkD6O_3RSAs9ZyFWXtQ_283pYSs0aX-ek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "932020449632-la1rnifajdj2jfdo8mrgtbskdpe0iljp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "932020449632-hkq967iebi5413bfr275l3es99n03oj8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.sr2.dominicanCasino"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

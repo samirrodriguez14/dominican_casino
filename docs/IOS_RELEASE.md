@@ -34,7 +34,7 @@ Version in `pubspec.yaml`: `0.1.0+1`. Bundle id in Firebase/Xcode: `com.example.
 
 ## Android / web
 
-No `google-services.json` in repo. Do not claim Android in the store listing until configured. Web hosting is used for invite links (`dominican-casino.web.app`).
+Android Firebase config and Play blockers live in [ANDROID_RELEASE.md](ANDROID_RELEASE.md). Web hosting is used for invite links (`dominican-casino.web.app`).
 
 ## TestFlight smoke list
 

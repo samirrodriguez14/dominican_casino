@@ -119,6 +119,7 @@ class PlayingCard extends StatelessWidget {
             Center(
               child: Text(
                 suit,
+                textScaler: TextScaler.noScaling,
                 style: TextStyle(
                   fontSize: metrics.centerSize,
                   height: 1,
@@ -161,7 +162,9 @@ class _CardMetrics {
       pad = (width * 0.075).clamp(4.0, 8.0),
       rankSize = _rankSize(width, rank),
       cornerSuitSize = (width * 0.22).clamp(12.0, 16.0),
-      centerSize = width * 0.46,
+      // Clamp + slightly smaller than width*0.46: Android suit glyphs paint
+      // larger than iOS for the same fontSize.
+      centerSize = (width * 0.38).clamp(16.0, 28.0),
       shadowBlur = (width * 0.12).clamp(4.0, 10.0),
       shadowY = (width * 0.045).clamp(2.0, 4.0);
 
@@ -201,6 +204,7 @@ class _CornerIndex extends StatelessWidget {
       children: [
         Text(
           rank,
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             fontSize: metrics.rankSize,
             fontWeight: FontWeight.w700,
@@ -211,6 +215,7 @@ class _CornerIndex extends StatelessWidget {
         ),
         Text(
           suit,
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             fontSize: metrics.cornerSuitSize,
             height: 1.05,
