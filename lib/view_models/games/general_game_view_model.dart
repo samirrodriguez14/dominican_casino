@@ -29,10 +29,8 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
-import 'package:dominican_casino/view_models/games/hand_order.dart';
 import 'package:dominican_casino/view_models/games/rummy_box_layout.dart';
 import 'package:flutter/cupertino.dart' hide Action;
-import 'package:flutter/scheduler.dart';
 import 'package:uuid/uuid.dart';
 
 typedef ActionGuard =
@@ -105,10 +103,6 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   /// Destination slots stay laid out but invisible until flights land.
   final CardMotionController motion = CardMotionController();
-
-  /// Local fan order for [me]. Remote replaces would otherwise snap the hand
-  /// back to deal order — especially after a flight drains a queued repo echo.
-  List<String> _myHandOrderIds = [];
 
   ActionGuard? actionGuard;
 
@@ -198,7 +192,7 @@ class GeneralGameViewModel extends ChangeNotifier {
             },
           );
         } else if (newEvents.isEmpty && newSettlement.isEmpty) {
-          _adoptIncomingState(nextState);
+          gameState = nextState;
         } else {
           await _commitStateWithMotion(
             nextState,
@@ -396,7 +390,8 @@ class GeneralGameViewModel extends ChangeNotifier {
     selectedStacks = [];
 
     if (events.isEmpty && settlementEvents.isEmpty) {
-      _adoptIncomingState(next);
+      _preserveMyHandOrder(next);
+      gameState = next;
       return;
     }
 
@@ -523,13 +518,12 @@ class GeneralGameViewModel extends ChangeNotifier {
     final handoff = dragHandoff;
     dragHandoff = null;
 
-    // Hide destinations first — gameState is often already mutated in place,
-    // so a later notify would otherwise paint dealt cards before flyers exist.
     if (events.isNotEmpty) {
       motion.markInFlight(events.map((e) => e.card.id));
     }
 
-    _adoptIncomingState(commit);
+    _preserveMyHandOrder(commit);
+    gameState = commit;
     if (_disposed) return;
     notifyListeners();
 
@@ -1068,7 +1062,6 @@ class GeneralGameViewModel extends ChangeNotifier {
     } else {
       hand.sort((a, b) => b.valueHigh.compareTo(a.valueHigh));
     }
-    _rememberMyHandOrder();
     notifyListeners();
   }
 
@@ -1080,24 +1073,39 @@ class GeneralGameViewModel extends ChangeNotifier {
     return true;
   }
 
-  void _rememberMyHandOrder() {
-    _myHandOrderIds = handOrderIds(gameState.hands[me] ?? const []);
-  }
-
-  /// Re-apply this player's fan order onto [incoming], then take it as live.
+  /// Re-apply this player's fan order onto [incoming].
   ///
-  /// Hand order is local-only. A remote replace (turn clock, repo echo after
-  /// a flight) would otherwise snap the fan back to deal order.
-  void _adoptIncomingState(GameState incoming) {
-    _preserveMyHandOrder(incoming);
-    gameState = incoming;
-    _rememberMyHandOrder();
+  /// Hand order is local-only and is not written during the opponent's turn,
+  /// so a remote state replace would otherwise snap the fan back.
+  void _preserveMyHandOrder(GameState incoming) {
+    final previous = gameState.hands[me];
+    final incomingHand = incoming.hands[me];
+    if (previous == null || incomingHand == null) return;
+    if (previous.isEmpty || incomingHand.isEmpty) return;
+
+    final byId = <String, PlayingCardModel>{
+      for (final c in incomingHand) c.id: c,
+    };
+    final ordered = <PlayingCardModel>[];
+    for (final card in previous) {
+      final next = byId.remove(card.id);
+      if (next != null) ordered.add(next);
+    }
+    // Brand-new hand (deal) — keep the incoming sequence.
+    if (ordered.isEmpty) return;
+    ordered.addAll(byId.values);
+    if (_sameHandIds(incomingHand, ordered)) return;
+    incomingHand
+      ..clear()
+      ..addAll(ordered);
   }
 
-  void _preserveMyHandOrder(GameState incoming) {
-    final incomingHand = incoming.hands[me];
-    if (incomingHand == null) return;
-    applyPreferredHandOrder(incomingHand, _myHandOrderIds);
+  bool _sameHandIds(List<PlayingCardModel> a, List<PlayingCardModel> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
   }
 
   /// Local-only fan order (same persistence rules as [sortHandCards]).
@@ -1110,7 +1118,6 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (insert > from) insert -= 1;
     insert = insert.clamp(0, hand.length);
     hand.insert(insert, card);
-    _rememberMyHandOrder();
     notifyListeners();
   }
 
@@ -1122,7 +1129,6 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (from == target) return;
     final card = hand.removeAt(from);
     hand.insert(target, card);
-    _rememberMyHandOrder();
     notifyListeners();
   }
 
@@ -1144,10 +1150,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   // ── Board drag / drop (Casino) ───────────────────────────────────────────
 
   BoardDragSource? draggingSource;
-  /// Hover updates go through this notifier so they do not rebuild the whole
-  /// game tree via [notifyListeners].
-  final ValueNotifier<DropHover?> dropHoverListenable = ValueNotifier(null);
-  DropHover? get dropHover => dropHoverListenable.value;
+  DropHover? dropHover;
   DropPending? dropPending;
   DragHandoff? dragHandoff;
 
@@ -1164,17 +1167,6 @@ class GeneralGameViewModel extends ChangeNotifier {
       gameState.gameMode == GameMode.casino ||
       gameState.gameMode == GameMode.casinoSpeed;
 
-  void _setDropHover(DropHover? next) {
-    final prev = dropHoverListenable.value;
-    if (next == null) {
-      if (prev == null) return;
-      dropHoverListenable.value = null;
-      return;
-    }
-    if (next.sameAs(prev)) return;
-    dropHoverListenable.value = next;
-  }
-
   bool beginBoardDrag(BoardDragSource source) {
     if (isAnimating || dropPending != null) return false;
     if (tutorialMode &&
@@ -1186,7 +1178,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       return false;
     }
     draggingSource = source;
-    _setDropHover(null);
+    dropHover = null;
     notifyListeners();
     return true;
   }
@@ -1261,8 +1253,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   void endBoardDrag() {
     if (draggingSource == null && dropHover == null) return;
     draggingSource = null;
-    _setDropHover(null);
-    _pendingHoverGlobal = null;
+    dropHover = null;
     notifyListeners();
   }
 
@@ -1519,30 +1510,20 @@ class GeneralGameViewModel extends ChangeNotifier {
   void updateDropHover(Offset global) {
     final source = draggingSource;
     if (source == null) return;
-    _pendingHoverGlobal = global;
-    if (_hoverFrameScheduled) return;
-    _hoverFrameScheduled = true;
-    SchedulerBinding.instance.scheduleFrameCallback((_) {
-      _hoverFrameScheduled = false;
-      final pending = _pendingHoverGlobal;
-      final src = draggingSource;
-      if (pending == null || src == null) return;
-      _applyDropHover(pending, src);
-    });
-  }
-
-  Offset? _pendingHoverGlobal;
-  bool _hoverFrameScheduled = false;
-
-  void _applyDropHover(Offset global, BoardDragSource source) {
     final target = hitTestDropTarget(global, source: source);
     if (target == null) {
-      _setDropHover(null);
+      if (dropHover != null) {
+        dropHover = null;
+        notifyListeners();
+      }
       return;
     }
     final actions = actionsForDrop(source, target);
     if (actions.isEmpty) {
-      _setDropHover(null);
+      if (dropHover != null) {
+        dropHover = null;
+        notifyListeners();
+      }
       return;
     }
     final selection = selectionForDrop(source, target);
@@ -1551,13 +1532,12 @@ class GeneralGameViewModel extends ChangeNotifier {
             target.kind == DropTargetKind.playerHand
         ? null
         : _buildPreviewFor(selection, actions);
-    _setDropHover(
-      DropHover(
-        target: target,
-        actions: actions,
-        buildPreview: preview,
-      ),
+    dropHover = DropHover(
+      target: target,
+      actions: actions,
+      buildPreview: preview,
     );
+    notifyListeners();
   }
 
   /// Apply drop. Returns whether the drag was consumed (commit or pending).
@@ -1567,10 +1547,9 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     final target = hitTestDropTarget(globalCenter, source: source);
     draggingSource = null;
-    _pendingHoverGlobal = null;
 
     if (target == null || !canPlayTurn) {
-      _setDropHover(null);
+      dropHover = null;
       dragHandoff = null;
       notifyListeners();
       return false;
@@ -1608,7 +1587,7 @@ class GeneralGameViewModel extends ChangeNotifier {
           }
 
           final handoff = dragHandoff;
-          _setDropHover(null);
+          dropHover = null;
           clearDragHandoff();
           final endLayout = rummyBoxLayoutForCount(
             rummyBoxCount(boxIndex: boxIndex),
@@ -1624,7 +1603,7 @@ class GeneralGameViewModel extends ChangeNotifier {
           return true;
         }
 
-        _setDropHover(null);
+        dropHover = null;
         clearDragHandoff();
         notifyListeners();
         return true;
@@ -1637,7 +1616,7 @@ class GeneralGameViewModel extends ChangeNotifier {
         rummy.boxBByPid[pid]?.removeWhere((id) => id == cardId);
 
         final handoff = dragHandoff;
-        _setDropHover(null);
+        dropHover = null;
         clearDragHandoff();
         notifyListeners();
         await _flyRummyOrganizerMove(
@@ -1653,7 +1632,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     final actions = actionsForDrop(source, target);
     if (actions.isEmpty) {
-      _setDropHover(null);
+      dropHover = null;
       dragHandoff = null;
       notifyListeners();
       return false;
@@ -1668,13 +1647,13 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     if (actions.length == 1) {
       // Keep the last painted merge preview until [_flyCommit] rebuilds.
-      _setDropHover(null);
+      dropHover = null;
       await _commitDropAction(actions.first, selection, globalCenter);
       return true;
     }
 
     // Multi-action: keep selection + pending UI.
-    _setDropHover(null);
+    dropHover = null;
     dragHandoff = null;
     selectedCard = selection.selectedCard;
     selectedCards = List<PlayingCardModel>.from(selection.selectedCards);
@@ -1766,7 +1745,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       const DropTarget.emptyTable(),
     );
     draggingSource = null;
-    _setDropHover(null);
+    dropHover = null;
     if (actions.length == 1) {
       await _commitDropAction(
         actions.first,
@@ -2212,22 +2191,17 @@ class GeneralGameViewModel extends ChangeNotifier {
             final progressFrom = DailyChallengeGameSnap.of(gameState, me);
             final next = gameEngine.performInGameAction(gameState, action, pid);
             final events = List<CardMoveEvent>.from(next.cardMoveEvents);
-            final motionFuture = _commitStateWithMotion(
-              next,
-              events,
-              progressFrom: progressFrom,
-            );
             if (!tutorialMode) {
               for (final e in events) {
                 gameRepo.lastPlayedIds.add(e.id);
               }
-              await Future.wait([
-                gameRepo.fs.updateGame(next),
-                motionFuture,
-              ]);
-            } else {
-              await motionFuture;
+              await gameRepo.fs.updateGame(next);
             }
+            await _commitStateWithMotion(
+              next,
+              events,
+              progressFrom: progressFrom,
+            );
           },
           onSquared: () async {
             motion.setShuffling(false);
@@ -2240,24 +2214,15 @@ class GeneralGameViewModel extends ChangeNotifier {
       final progressFrom = DailyChallengeGameSnap.of(gameState, me);
       final next = gameEngine.performInGameAction(gameState, action, pid);
       final events = List<CardMoveEvent>.from(next.cardMoveEvents);
-      // Start flights immediately. Awaiting persist first yielded a frame
-      // where dealt cards were already in gameState (in-place) and painted.
-      final motionFuture = _commitStateWithMotion(
-        next,
-        events,
-        progressFrom: progressFrom,
-      );
+
       if (!tutorialMode) {
         for (final e in events) {
           gameRepo.lastPlayedIds.add(e.id);
         }
-        await Future.wait([
-          gameRepo.fs.updateGame(next),
-          motionFuture,
-        ]);
-      } else {
-        await motionFuture;
+        await gameRepo.fs.updateGame(next);
       }
+
+      await _commitStateWithMotion(next, events, progressFrom: progressFrom);
     } catch (e) {
       developer.log("performInGameAction Error $e");
     } finally {
@@ -2287,7 +2252,6 @@ class GeneralGameViewModel extends ChangeNotifier {
         gameState = await gameRepo.fs.loadGame(gid);
         gameState.ensureBotMetadata();
       }
-      _rememberMyHandOrder();
       _syncRevealedPending();
       _syncWinCelebration();
       _syncTurnClock();
@@ -2602,11 +2566,6 @@ class GeneralGameViewModel extends ChangeNotifier {
     await appRepo.queueHomeDailyChallengeEnergyClaims(gameState);
   }
 
-  Future<void> queueHomeXpClaim() async {
-    if (tutorialMode) return;
-    await appRepo.queueHomeXpClaim(gameState, me);
-  }
-
   /// Occasional local-bot emoji after a play/take. Never writes game state.
   void _maybeBotReact({
     required bool took,
@@ -2690,7 +2649,6 @@ class GeneralGameViewModel extends ChangeNotifier {
     _winCelebrationTimer?.cancel();
     gameRepo.removeListener(_onGameRepoChanged);
     motion.removeListener(notifyListeners);
-    dropHoverListenable.dispose();
     motion.dispose();
     super.dispose();
   }

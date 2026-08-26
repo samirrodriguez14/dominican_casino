@@ -155,8 +155,6 @@ class _FlightEntry {
   }
 
   Widget build(BuildContext context) {
-    // Chase destination every paint so flyers stay locked to live slots
-    // (table reflow / hand fan) — same as main.
     syncDestination();
     final t = Curves.easeOutCubic.transform(controller.value);
     final p = Offset.lerp(begin, end, t) ?? begin;

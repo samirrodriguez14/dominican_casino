@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,9 +35,6 @@ class SoundService extends ChangeNotifier {
   bool _musicPlaying = false;
   bool _loaded = false;
 
-  Timer? _sfxVolumePersist;
-  Timer? _musicVolumePersist;
-
   static const _assets = {
     GameSound.deal: 'sounds/deal.wav',
     GameSound.capture: 'sounds/capture.wav',
@@ -70,38 +65,6 @@ class SoundService extends ChangeNotifier {
     sfxVolume = (sp.getDouble(_sfxVolumeKey) ?? 1).clamp(0, 1);
     musicVolume =
         (sp.getDouble(_musicVolumeKey) ?? _defaultMusicVolume).clamp(0, 1);
-
-    // audioplayers defaults to FramePositionUpdater, which calls
-    // getCurrentPosition every frame. We never listen to onPositionChanged;
-    // on Android that floods MediaPlayer-JNI logs and can jank the UI.
-    _oneshot.positionUpdater = null;
-    _music.positionUpdater = null;
-    for (final p in _layers) {
-      p.positionUpdater = null;
-    }
-
-    // SFX must not request AndroidAudioFocus.gain — that steals focus from
-    // bg music (AUDIOFOCUS_LOSS) and pauses it permanently.
-    final sfxContext = AudioContext(
-      android: const AudioContextAndroid(
-        contentType: AndroidContentType.sonification,
-        usageType: AndroidUsageType.game,
-        audioFocus: AndroidAudioFocus.none,
-      ),
-    );
-    final musicContext = AudioContext(
-      android: const AudioContextAndroid(
-        contentType: AndroidContentType.music,
-        usageType: AndroidUsageType.game,
-        audioFocus: AndroidAudioFocus.gain,
-      ),
-    );
-    await _music.setAudioContext(musicContext);
-    await _oneshot.setAudioContext(sfxContext);
-    for (final p in _layers) {
-      await p.setAudioContext(sfxContext);
-    }
-
     await _music.setReleaseMode(ReleaseMode.loop);
     await _music.setVolume(musicVolume);
     // Low-latency mode on SFX players — set once, not per tick.
@@ -134,31 +97,23 @@ class SoundService extends ChangeNotifier {
     }
   }
 
-  void setSfxVolume(double value) {
-    sfxVolume = value.clamp(0.0, 1.0);
+  Future<void> setSfxVolume(double value) async {
+    sfxVolume = value.clamp(0, 1);
     notifyListeners();
-    _sfxVolumePersist?.cancel();
-    _sfxVolumePersist = Timer(const Duration(milliseconds: 250), () async {
-      final sp = await SharedPreferences.getInstance();
-      await sp.setDouble(_sfxVolumeKey, sfxVolume);
-    });
+    final sp = await SharedPreferences.getInstance();
+    await sp.setDouble(_sfxVolumeKey, sfxVolume);
   }
 
-  void setMusicVolume(double value) {
-    musicVolume = value.clamp(0.0, 1.0);
+  Future<void> setMusicVolume(double value) async {
+    musicVolume = value.clamp(0, 1);
+    try {
+      await _music.setVolume(musicVolume);
+    } catch (e) {
+      debugPrint('SoundService music volume: $e');
+    }
     notifyListeners();
-    // Don't await — slider fires many times per drag; queueing platform
-    // awaits makes the thumb feel stuck.
-    unawaited(
-      _music.setVolume(musicVolume).catchError((Object e) {
-        debugPrint('SoundService music volume: $e');
-      }),
-    );
-    _musicVolumePersist?.cancel();
-    _musicVolumePersist = Timer(const Duration(milliseconds: 250), () async {
-      final sp = await SharedPreferences.getInstance();
-      await sp.setDouble(_musicVolumeKey, musicVolume);
-    });
+    final sp = await SharedPreferences.getInstance();
+    await sp.setDouble(_musicVolumeKey, musicVolume);
   }
 
   Future<void> setHapticEnabled(bool value) async {
