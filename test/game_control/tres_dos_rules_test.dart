@@ -56,7 +56,7 @@ void main() {
       expect(result.result, isFalse);
     });
 
-    test('3+2 round end increments score, sets winner at 3, and advances turn', () {
+    test('3+2 round end increments score, sets winner, and ends the match', () {
       final playCard = GameStateFixtures.card(
         id: 'play_9',
         rank: '9',
@@ -82,7 +82,7 @@ void main() {
         playingArea: [],
         p1Hand: p1Hand,
         p2Hand: const [],
-        scores: {pid1: 2, pid2: 0},
+        scores: {pid1: 0, pid2: 0},
         round: Round(
           id: 0,
           roundStatus: RoundStatus.playing,
@@ -105,12 +105,10 @@ void main() {
       // Turn advanced after hand size returns to 5.
       expect(result.currentTurnPlayerId, pid2);
 
-      // Round ended + score advanced + winner at 3.
+      // Round ended + score advanced + match over (first round wins).
       expect(result.round.roundStatus, RoundStatus.completed);
-      // When someone wins (score >= 3), handleRoundEnded returns early and
-      // does not increment round.id.
       expect(result.round.id, 0);
-      expect(result.scores[pid1], 3);
+      expect(result.scores[pid1], 1);
       expect(result.winnerId, pid1);
       expect(result.gameStatus, GameStatus.gameOver);
 

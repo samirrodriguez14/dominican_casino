@@ -430,7 +430,7 @@ Future<void> _changeAvatar(BuildContext context, ProfileViewModel vm) async {
   final picked = await showAvatarPickerPopup(
     context,
     selectedId: vm.player?.avatarId,
-    avatarIds: avatarsForPack(repo.appTheme),
+    avatarIds: repo.unlockedAvatarIdsForTheme(repo.appTheme),
   );
   if (picked == null || picked == vm.player?.avatarId) return;
   await vm.updatePlayerAvatar(picked);

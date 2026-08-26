@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -10,6 +11,7 @@ import 'package:dominican_casino/ui/app_shell/journey/journey_stage.dart';
 import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
 class GamesScreen extends StatefulWidget {
   const GamesScreen({
@@ -237,6 +239,14 @@ class GamesScreenState extends State<GamesScreen>
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
+    final repo = context.watch<AppRepo>();
+    if (repo.openJourneyRequest) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (!context.read<AppRepo>().takeOpenJourneyRequest()) return;
+        _journeyKey.currentState?.showJourney();
+      });
+    }
     return Padding(
       padding: EdgeInsets.fromLTRB(12, shellTopBarHeight(context), 12, 108),
       child: AnimatedBuilder(

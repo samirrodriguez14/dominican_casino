@@ -400,6 +400,16 @@ class AppLocalizations {
       ? 'Sales de tu cuenta y se borra el progreso de este dispositivo. Nombre, temas, monedas y energía se restauran al volver a entrar.'
       : 'Signs out of your account and clears progress on this device. Your name, themes, coins, and energy restore when you sign in again.';
 
+  String get resetJourney =>
+      isEs ? 'Restablecer Journey' : 'Reset Journey';
+
+  String get resetJourneyBody => isEs
+      ? 'Esto reinicia la historia de Journey, el entrenamiento, el XP y vuelve a bloquear temas y avatares desbloqueados. Monedas y energía no cambian.'
+      : 'This resets Journey story progress, training, XP, and locks Journey themes and avatars again. Coins and energy are unchanged.';
+
+  String get resetJourneyConfirm =>
+      isEs ? 'Restablecer' : 'Reset';
+
   String googleSignInError(String? code) {
     switch (code) {
       case 'operation-not-allowed':

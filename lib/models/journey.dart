@@ -1,3 +1,4 @@
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 
 /// Royal ranks shown on the Journey table (v1: four cards per world).
@@ -31,13 +32,30 @@ enum JourneyCardState {
   mysteryLocked,
 }
 
+/// Preferred match mode for a royal rank (Ace has none).
+GameMode? journeyGameForRank(JourneyRank rank) => switch (rank) {
+  JourneyRank.jack => GameMode.tresydos,
+  JourneyRank.queen => GameMode.rummy,
+  JourneyRank.king => GameMode.casinoSpeed,
+  JourneyRank.ace => null,
+};
+
+String journeyGameModeLabel(GameMode? mode) => switch (mode) {
+  GameMode.tresydos => 'Tres y Dos',
+  GameMode.rummy => 'Rummy',
+  GameMode.casinoSpeed => 'Casino Speed',
+  GameMode.casino => 'Casino',
+  GameMode.robaito => 'Robaito',
+  null => '',
+};
+
 class JourneyCardDef {
   const JourneyCardDef({
     required this.world,
     required this.rank,
     required this.state,
     this.requiredLevel,
-    this.preferredGame = 'Casino',
+    this.gameMode,
     this.blurb = '',
   });
 
@@ -45,13 +63,19 @@ class JourneyCardDef {
   final JourneyRank rank;
   final JourneyCardState state;
   final int? requiredLevel;
-  final String preferredGame;
+  final GameMode? gameMode;
   final String blurb;
 
   String get assetPath =>
-      'assets/images/journey/${world.name}_${rank.name}.png';
+      'assets/images/journey/cards_challengers/${world.name}_${rank.name}.png';
+
+  /// Cutout art for avatars / composed cards (transparent background).
+  String get avatarAssetPath =>
+      'assets/images/journey/avatars_transparent_challengers/${world.name}_${rank.name}.png';
 
   String get title => '${rank.label} of ${world.label}';
+
+  String get gameLabel => journeyGameModeLabel(gameMode);
 
   bool get isSelectable =>
       state == JourneyCardState.available || state == JourneyCardState.defeated;
@@ -64,7 +88,7 @@ class JourneyCardDef {
     JourneyRank? rank,
     JourneyCardState? state,
     int? requiredLevel,
-    String? preferredGame,
+    GameMode? gameMode,
     String? blurb,
   }) {
     return JourneyCardDef(
@@ -72,7 +96,7 @@ class JourneyCardDef {
       rank: rank ?? this.rank,
       state: state ?? this.state,
       requiredLevel: requiredLevel ?? this.requiredLevel,
-      preferredGame: preferredGame ?? this.preferredGame,
+      gameMode: gameMode ?? this.gameMode,
       blurb: blurb ?? this.blurb,
     );
   }
@@ -119,8 +143,8 @@ class JourneyWorldDef {
     return cardOf(next);
   }
 
-  /// Mark [rank] defeated and promote the next card to available (if any).
-  JourneyWorldDef withDefeat(JourneyRank rank) {
+  /// Mark [rank] defeated and promote the next card when level allows.
+  JourneyWorldDef withDefeat(JourneyRank rank, {int playerLevel = 99}) {
     final promote = rank.next;
     return copyWith(
       cards: [
@@ -128,7 +152,33 @@ class JourneyWorldDef {
           if (c.rank == rank)
             c.copyWith(state: JourneyCardState.defeated)
           else if (promote != null && c.rank == promote)
-            c.copyWith(state: JourneyCardState.available)
+            c.copyWith(
+              state: _unlockedStateFor(c, playerLevel),
+            )
+          else
+            c,
+      ],
+    );
+  }
+
+  /// Unlock the current frontier card when [playerLevel] meets [requiredLevel].
+  JourneyWorldDef withLevelApplied(int playerLevel) {
+    if (!unlocked) return this;
+    JourneyRank? frontier;
+    for (final rank in JourneyRank.values) {
+      final c = cardOf(rank);
+      if (c == null) continue;
+      if (c.state == JourneyCardState.defeated) continue;
+      if (c.state == JourneyCardState.mysteryLocked) break;
+      frontier = rank;
+      break;
+    }
+    if (frontier == null) return this;
+    return copyWith(
+      cards: [
+        for (final c in cards)
+          if (c.rank == frontier)
+            c.copyWith(state: _unlockedStateFor(c, playerLevel))
           else
             c,
       ],
@@ -146,6 +196,12 @@ class JourneyWorldDef {
       cards: cards ?? this.cards,
     );
   }
+}
+
+JourneyCardState _unlockedStateFor(JourneyCardDef card, int playerLevel) {
+  final need = card.requiredLevel ?? 1;
+  if (playerLevel >= need) return JourneyCardState.available;
+  return JourneyCardState.levelLocked;
 }
 
 /// Result of applying a defeat: updated worlds plus the card that should flip.
@@ -171,11 +227,26 @@ class JourneyDisplaySnapshot {
     return worlds.firstWhere((entry) => entry.world == world);
   }
 
+  JourneyDisplaySnapshot withLevelApplied(int playerLevel) {
+    return JourneyDisplaySnapshot(
+      worlds: [
+        for (final w in worlds) w.withLevelApplied(playerLevel),
+      ],
+    );
+  }
+
   /// Defeat [rank] in [world]; Ace also unlocks the next world + its Jack.
-  JourneyDefeatResult withDefeat(JourneyWorld world, JourneyRank rank) {
+  JourneyDefeatResult withDefeat(
+    JourneyWorld world,
+    JourneyRank rank, {
+    int playerLevel = 99,
+  }) {
     var nextWorlds = [
       for (final w in worlds)
-        if (w.world == world) w.withDefeat(rank) else w,
+        if (w.world == world)
+          w.withDefeat(rank, playerLevel: playerLevel)
+        else
+          w,
     ];
 
     JourneyCardDef? revealed;
@@ -195,7 +266,7 @@ class JourneyDisplaySnapshot {
                 cards: [
                   for (final c in w.cards)
                     if (c.rank == JourneyRank.jack)
-                      c.copyWith(state: JourneyCardState.available)
+                      c.copyWith(state: _unlockedStateFor(c, playerLevel))
                     else
                       c,
                 ],
@@ -228,24 +299,25 @@ const journeyBoardSnapshot = JourneyDisplaySnapshot(
         JourneyCardDef(
           world: JourneyWorld.diamonds,
           rank: JourneyRank.jack,
-          state: JourneyCardState.available,
-          preferredGame: 'Casino',
+          state: JourneyCardState.levelLocked,
+          requiredLevel: 1,
+          gameMode: GameMode.tresydos,
           blurb: 'A restless courtier. Prove yourself at the table.',
         ),
         JourneyCardDef(
           world: JourneyWorld.diamonds,
           rank: JourneyRank.queen,
           state: JourneyCardState.levelLocked,
-          requiredLevel: 10,
-          preferredGame: 'Casino',
+          requiredLevel: 1,
+          gameMode: GameMode.rummy,
           blurb: 'Polished ambition wearing a crown of facets.',
         ),
         JourneyCardDef(
           world: JourneyWorld.diamonds,
           rank: JourneyRank.king,
           state: JourneyCardState.levelLocked,
-          requiredLevel: 13,
-          preferredGame: 'Casino',
+          requiredLevel: 1,
+          gameMode: GameMode.casinoSpeed,
           blurb: 'The court tests travelers by tradition.',
         ),
         JourneyCardDef(
@@ -260,82 +332,117 @@ const journeyBoardSnapshot = JourneyDisplaySnapshot(
       world: JourneyWorld.clubs,
       unlocked: false,
       cards: [
-        JourneyCardDef(
-          world: JourneyWorld.clubs,
-          rank: JourneyRank.jack,
-          state: JourneyCardState.mysteryLocked,
-        ),
-        JourneyCardDef(
-          world: JourneyWorld.clubs,
-          rank: JourneyRank.queen,
-          state: JourneyCardState.mysteryLocked,
-        ),
-        JourneyCardDef(
-          world: JourneyWorld.clubs,
-          rank: JourneyRank.king,
-          state: JourneyCardState.mysteryLocked,
-        ),
-        JourneyCardDef(
-          world: JourneyWorld.clubs,
-          rank: JourneyRank.ace,
-          state: JourneyCardState.mysteryLocked,
-        ),
+        _placeholderClubsJack,
+        _placeholderClubsQueen,
+        _placeholderClubsKing,
+        _placeholderClubsAce,
       ],
     ),
     JourneyWorldDef(
       world: JourneyWorld.hearts,
       unlocked: false,
       cards: [
-        JourneyCardDef(
-          world: JourneyWorld.hearts,
-          rank: JourneyRank.jack,
-          state: JourneyCardState.mysteryLocked,
-        ),
-        JourneyCardDef(
-          world: JourneyWorld.hearts,
-          rank: JourneyRank.queen,
-          state: JourneyCardState.mysteryLocked,
-        ),
-        JourneyCardDef(
-          world: JourneyWorld.hearts,
-          rank: JourneyRank.king,
-          state: JourneyCardState.mysteryLocked,
-        ),
-        JourneyCardDef(
-          world: JourneyWorld.hearts,
-          rank: JourneyRank.ace,
-          state: JourneyCardState.mysteryLocked,
-        ),
+        _placeholderHeartsJack,
+        _placeholderHeartsQueen,
+        _placeholderHeartsKing,
+        _placeholderHeartsAce,
       ],
     ),
     JourneyWorldDef(
       world: JourneyWorld.spades,
       unlocked: false,
       cards: [
-        JourneyCardDef(
-          world: JourneyWorld.spades,
-          rank: JourneyRank.jack,
-          state: JourneyCardState.mysteryLocked,
-        ),
-        JourneyCardDef(
-          world: JourneyWorld.spades,
-          rank: JourneyRank.queen,
-          state: JourneyCardState.mysteryLocked,
-        ),
-        JourneyCardDef(
-          world: JourneyWorld.spades,
-          rank: JourneyRank.king,
-          state: JourneyCardState.mysteryLocked,
-        ),
-        JourneyCardDef(
-          world: JourneyWorld.spades,
-          rank: JourneyRank.ace,
-          state: JourneyCardState.mysteryLocked,
-        ),
+        _placeholderSpadesJack,
+        _placeholderSpadesQueen,
+        _placeholderSpadesKing,
+        _placeholderSpadesAce,
       ],
     ),
   ],
 );
 
+// Const board cards for locked worlds (explicit so the snapshot stays const).
+const _placeholderClubsJack = JourneyCardDef(
+  world: JourneyWorld.clubs,
+  rank: JourneyRank.jack,
+  state: JourneyCardState.mysteryLocked,
+  requiredLevel: 1,
+  gameMode: GameMode.tresydos,
+);
+const _placeholderClubsQueen = JourneyCardDef(
+  world: JourneyWorld.clubs,
+  rank: JourneyRank.queen,
+  state: JourneyCardState.mysteryLocked,
+  requiredLevel: 1,
+  gameMode: GameMode.rummy,
+);
+const _placeholderClubsKing = JourneyCardDef(
+  world: JourneyWorld.clubs,
+  rank: JourneyRank.king,
+  state: JourneyCardState.mysteryLocked,
+  requiredLevel: 1,
+  gameMode: GameMode.casinoSpeed,
+);
+const _placeholderClubsAce = JourneyCardDef(
+  world: JourneyWorld.clubs,
+  rank: JourneyRank.ace,
+  state: JourneyCardState.mysteryLocked,
+);
+const _placeholderHeartsJack = JourneyCardDef(
+  world: JourneyWorld.hearts,
+  rank: JourneyRank.jack,
+  state: JourneyCardState.mysteryLocked,
+  requiredLevel: 1,
+  gameMode: GameMode.tresydos,
+);
+const _placeholderHeartsQueen = JourneyCardDef(
+  world: JourneyWorld.hearts,
+  rank: JourneyRank.queen,
+  state: JourneyCardState.mysteryLocked,
+  requiredLevel: 1,
+  gameMode: GameMode.rummy,
+);
+const _placeholderHeartsKing = JourneyCardDef(
+  world: JourneyWorld.hearts,
+  rank: JourneyRank.king,
+  state: JourneyCardState.mysteryLocked,
+  requiredLevel: 1,
+  gameMode: GameMode.casinoSpeed,
+);
+const _placeholderHeartsAce = JourneyCardDef(
+  world: JourneyWorld.hearts,
+  rank: JourneyRank.ace,
+  state: JourneyCardState.mysteryLocked,
+);
+const _placeholderSpadesJack = JourneyCardDef(
+  world: JourneyWorld.spades,
+  rank: JourneyRank.jack,
+  state: JourneyCardState.mysteryLocked,
+  requiredLevel: 1,
+  gameMode: GameMode.tresydos,
+);
+const _placeholderSpadesQueen = JourneyCardDef(
+  world: JourneyWorld.spades,
+  rank: JourneyRank.queen,
+  state: JourneyCardState.mysteryLocked,
+  requiredLevel: 1,
+  gameMode: GameMode.rummy,
+);
+const _placeholderSpadesKing = JourneyCardDef(
+  world: JourneyWorld.spades,
+  rank: JourneyRank.king,
+  state: JourneyCardState.mysteryLocked,
+  requiredLevel: 1,
+  gameMode: GameMode.casinoSpeed,
+);
+const _placeholderSpadesAce = JourneyCardDef(
+  world: JourneyWorld.spades,
+  rank: JourneyRank.ace,
+  state: JourneyCardState.mysteryLocked,
+);
+
 String journeyAceAsset(JourneyWorld world) =>
-    'assets/images/journey/${world.name}_ace.png';
+    'assets/images/journey/cards_challengers/${world.name}_ace.png';
+
+String journeyAceAvatarAsset(JourneyWorld world) =>
+    'assets/images/journey/avatars_transparent_challengers/${world.name}_ace.png';

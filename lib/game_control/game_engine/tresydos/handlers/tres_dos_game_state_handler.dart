@@ -59,7 +59,8 @@ class TresDosGameStateHandler {
     gameState.round.roundStatus = RoundStatus.completed;
     gameState.round.nextAcknowledged = false;
     gameState.controllerId = GameActionHandler.getNextControllerId(gameState);
-    bool won = gameState.scores[performedBy] >= 3;
+    // One round wins the match.
+    final won = (gameState.scores[performedBy] ?? 0) >= 1;
     if (won) {
       gameState.winnerId = performedBy;
       gameState.gameStatus = GameStatus.gameOver;

@@ -316,6 +316,7 @@ class _CompactSideSeat extends StatelessWidget {
         ? _CompactSideSeat.winCardWidth
         : _CompactSideSeat.cardWidth;
     final avatarId = info['avatarId'] as String?;
+    final avatarAsset = info['avatarAsset'] as String?;
     final name = waiting
         ? AppLocalizations.of(context).openSeat
         : ((info['name'] as String?) ?? 'Rival');
@@ -335,6 +336,7 @@ class _CompactSideSeat extends StatelessWidget {
             PlayerScoreAvatar(
               key: waiting ? null : vm.celebrationAvatarKeyForPid(oppId),
               avatarId: avatarId,
+              avatarAsset: avatarAsset,
               name: name,
               score: score,
               pendingCoins: waiting ? 0 : vm.revealedPendingFor(oppId),

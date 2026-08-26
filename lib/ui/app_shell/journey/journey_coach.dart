@@ -127,6 +127,14 @@ class JourneyCoachController extends ChangeNotifier {
     _finished = true;
     notifyListeners();
   }
+
+  /// Clears finished/active state so the coach can run again after a story reset.
+  void reset() {
+    _step = 0;
+    _active = false;
+    _finished = false;
+    notifyListeners();
+  }
 }
 
 /// Overlay host for [JourneyCoachController].

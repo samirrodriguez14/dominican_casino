@@ -3,9 +3,9 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/services/share_invite.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/general_game/leave_match_to_home.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class GenGameControl extends StatefulWidget {
@@ -102,13 +102,7 @@ class _GenGameControlState extends State<GenGameControl> {
           gameMode: vm.gameState.gameMode.name,
         );
       case InGameAction.exit:
-        return () async {
-          await vm.queueHomeCoinClaim();
-          await vm.queueHomeDailyChallengeEnergyClaims();
-          await vm.queueHomeXpClaim();
-          if (!mounted) return;
-          context.go('/landing');
-        };
+        return () => leaveMatchToHome(buttonContext, vm);
       case InGameAction.waiting:
         return () => {};
       default:

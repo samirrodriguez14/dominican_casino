@@ -131,6 +131,7 @@ class OpponentIdentityChip extends StatelessWidget {
         : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
     final name = waiting ? 'Waiting...' : ((info['name'] as String?) ?? 'Rival');
     final avatarId = info['avatarId'] as String?;
+    final avatarAsset = info['avatarAsset'] as String?;
     final score = waiting ? 0 : (vm.gameState.scores[oppId] ?? 0);
     final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
         ? vm.incomingReaction
@@ -159,6 +160,7 @@ class OpponentIdentityChip extends StatelessWidget {
             children: [
               PlayerAvatarView(
                 avatarId: avatarId,
+                avatarAsset: avatarAsset,
                 size: 28,
                 showBorder: false,
               ),

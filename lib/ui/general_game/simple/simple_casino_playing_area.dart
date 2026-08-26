@@ -536,6 +536,7 @@ class _OpponentScoreChip extends StatelessWidget {
         ? <String, dynamic>{}
         : Map<String, dynamic>.from(vm.gameState.playersInfo[oppId] ?? {});
     final avatarId = info['avatarId'] as String?;
+    final avatarAsset = info['avatarAsset'] as String?;
     final name = waiting
         ? AppLocalizations.of(context).openSeat
         : ((info['name'] as String?) ?? 'Rival');
@@ -550,6 +551,7 @@ class _OpponentScoreChip extends StatelessWidget {
         PlayerScoreAvatar(
           key: waiting ? null : (avatarKey ?? vm.oppScoreKey),
           avatarId: avatarId,
+          avatarAsset: avatarAsset,
           name: name,
           score: score,
           pendingCoins: waiting ? 0 : vm.revealedPendingFor(oppId),

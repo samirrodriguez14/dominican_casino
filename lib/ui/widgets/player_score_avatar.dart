@@ -14,6 +14,7 @@ class PlayerScoreAvatar extends StatelessWidget {
     required this.avatarId,
     required this.score,
     required this.pendingCoins,
+    this.avatarAsset,
     this.name,
     this.onPressed,
     this.size = 64,
@@ -24,6 +25,7 @@ class PlayerScoreAvatar extends StatelessWidget {
   });
 
   final String? avatarId;
+  final String? avatarAsset;
   final dynamic score;
   final int pendingCoins;
   final String? name;
@@ -217,6 +219,7 @@ class PlayerScoreAvatar extends StatelessWidget {
       ),
       child: PlayerAvatarView(
         avatarId: avatarId,
+        avatarAsset: avatarAsset,
         size: s,
         showBorder: false,
       ),

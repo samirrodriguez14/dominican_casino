@@ -4,7 +4,6 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Empty center hint when no challenger is focused.
@@ -58,7 +57,7 @@ class JourneyActiveStage extends StatelessWidget {
   }
 }
 
-/// Pile → center flight, then the same stack-swipe carousel as Profile settings.
+/// One continuous card object: pile → flip → grow → rewards peel to the right.
 class JourneyChallengerFocus extends StatelessWidget {
   const JourneyChallengerFocus({
     super.key,
@@ -86,11 +85,15 @@ class JourneyChallengerFocus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 0–0.72: travel + flip + size up; then hand off to stack carousel.
+    // 0–0.52: travel + flip + size up
+    // 0.52–0.68: hold at final size
+    // 0.68–1.0: rewards card peels out to the right
     final travel = Curves.easeInOutCubic.transform(
-      (progress / 0.72).clamp(0.0, 1.0),
+      (progress / 0.52).clamp(0.0, 1.0),
     );
-    final settled = progress > 0.92;
+    final peel = Curves.easeOutCubic.transform(
+      ((progress - 0.68) / 0.32).clamp(0.0, 1.0),
+    );
     final mid = Offset(
       (from.dx + to.dx) / 2,
       (from.dy < to.dy ? from.dy : to.dy) - 36,
@@ -103,66 +106,66 @@ class JourneyChallengerFocus extends StatelessWidget {
         : Curves.easeOut.transform(
             ((travel - 0.32) / 0.28).clamp(0.0, 1.0),
           );
-
-    if (settled) {
-      final stageW = toSize + 48;
-      final stageH = toSize / homeCardAspect + 36;
-      return Positioned(
-        left: to.dx - stageW / 2,
-        top: to.dy - stageH / 2,
-        width: stageW,
-        height: stageH,
-        child: StackedCardCarousel(
-          key: ValueKey('journey-focus-${card.world.name}-${card.rank.name}'),
-          itemCount: 2,
-          peekStyle: CardPeekStyle.stack,
-          animateBackIn: true,
-          widthFactor: 1,
-          maxCardWidth: toSize,
-          fitToHeight: true,
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return _ChallengeFace(
-                card: card,
-                showChrome: true,
-                onChallenge: onChallenge,
-                onDismiss: onDismiss,
-              );
-            }
-            return _RewardsFace(card: card);
-          },
-        ),
-      );
-    }
+    final interactive = progress > 0.92;
 
     return Positioned(
       left: pos.dx - size / 2,
       top: pos.dy - height / 2,
-      width: size,
-      height: height,
-      child: Transform(
-        alignment: Alignment.center,
-        transform: Matrix4.identity()
-          ..setEntry(3, 2, 0.0014)
-          ..rotateY((1 - faceAmount) * 1.55),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Opacity(
-              opacity: (1.0 - faceAmount).clamp(0.0, 1.0),
-              child: JourneyFaceDownCard(world: card.world, radius: 14),
-            ),
-            Opacity(
-              opacity: faceAmount.clamp(0.0, 1.0),
-              child: _ChallengeFace(
-                card: card,
-                showChrome: travel > 0.78,
-                onChallenge: null,
-                onDismiss: null,
+      width: size + 28 * peel,
+      height: height + 20 * peel,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Rewards peels from under the challenger toward the right.
+          if (peel > 0.01)
+            Positioned(
+              left: 10 * peel,
+              top: 10 * peel,
+              width: size,
+              height: height,
+              child: Transform.rotate(
+                angle: 0.14 * peel,
+                child: Opacity(
+                  opacity: peel,
+                  child: Transform.scale(
+                    scale: 0.94 + 0.02 * peel,
+                    child: _RewardsFace(card: card),
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+          // Front challenger — same object for the whole motion.
+          Positioned(
+            left: 0,
+            top: 0,
+            width: size,
+            height: height,
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.0014)
+                ..rotateY((1 - faceAmount) * 1.55),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Opacity(
+                    opacity: (1.0 - faceAmount).clamp(0.0, 1.0),
+                    child: JourneyFaceDownCard(world: card.world, radius: 14),
+                  ),
+                  Opacity(
+                    opacity: faceAmount.clamp(0.0, 1.0),
+                    child: _ChallengeFace(
+                      card: card,
+                      showChrome: travel > 0.78,
+                      onChallenge: interactive ? onChallenge : null,
+                      onDismiss: interactive ? onDismiss : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -192,109 +195,129 @@ class _ChallengeFace extends StatelessWidget {
     final theme = AppStyle.theme;
     final isAce = card.rank == JourneyRank.ace;
 
-    return GestureDetector(
-      onTap: onDismiss,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: palette.accent.withValues(alpha: .8),
-            width: 1.6,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: palette.accent.withValues(alpha: .2),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-            BoxShadow(
-              color: CupertinoColors.black.withValues(alpha: .3),
-              blurRadius: 14,
-              offset: const Offset(0, 8),
-            ),
-          ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: palette.accent.withValues(alpha: .8),
+          width: 1.6,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(17),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ColoredBox(color: palette.surface),
-              Image.asset(card.assetPath, fit: BoxFit.cover),
-              if (showChrome)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          palette.background.withValues(alpha: 0),
-                          palette.background.withValues(alpha: .92),
-                        ],
-                      ),
+        boxShadow: [
+          BoxShadow(
+            color: palette.accent.withValues(alpha: .2),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: .3),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(17),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: palette.surface),
+            Image.asset(
+              card.avatarAssetPath,
+              fit: BoxFit.contain,
+              alignment: Alignment.bottomCenter,
+              errorBuilder: (_, _, _) => Image.asset(
+                card.assetPath,
+                fit: BoxFit.cover,
+              ),
+            ),
+            if (showChrome && onDismiss != null)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: CupertinoButton(
+                  padding: const EdgeInsets.all(6),
+                  minimumSize: Size.zero,
+                  onPressed: SoundService.wrapTap(onDismiss),
+                  child: Icon(
+                    CupertinoIcons.xmark_circle_fill,
+                    size: 28,
+                    color: palette.text.withValues(alpha: .85),
+                  ),
+                ),
+              ),
+            if (showChrome)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        palette.background.withValues(alpha: 0),
+                        palette.background.withValues(alpha: .92),
+                      ],
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 32, 14, 14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            card.title,
-                            style: theme.title.copyWith(
-                              fontSize: 20,
-                              color: palette.text,
-                            ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 32, 14, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          card.title,
+                          style: theme.title.copyWith(
+                            fontSize: 20,
+                            color: palette.text,
                           ),
-                          if (card.blurb.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              card.blurb,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.caption.copyWith(
-                                color: palette.text.withValues(alpha: .8),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 8),
+                        ),
+                        if (card.blurb.isNotEmpty) ...[
+                          const SizedBox(height: 4),
                           Text(
-                            isAce ? 'World summary' : card.preferredGame,
-                            style: theme.body.copyWith(
-                              color: palette.accent,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          CupertinoButton(
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                            borderRadius: BorderRadius.circular(12),
-                            color: palette.accent.withValues(alpha: .95),
-                            minimumSize: Size.zero,
-                            onPressed: onChallenge == null
-                                ? null
-                                : SoundService.wrapTap(onChallenge),
-                            child: Text(
-                              isAce ? 'Claim' : 'Challenge',
-                              style: TextStyle(
-                                color: palette.background,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            card.blurb,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.caption.copyWith(
+                              color: palette.text.withValues(alpha: .8),
                             ),
                           ),
                         ],
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isAce ? 'World summary' : card.gameLabel,
+                          style: theme.body.copyWith(
+                            color: palette.accent,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          borderRadius: BorderRadius.circular(12),
+                          color: palette.accent.withValues(alpha: .95),
+                          minimumSize: Size.zero,
+                          onPressed: onChallenge == null
+                              ? null
+                              : SoundService.wrapTap(onChallenge),
+                          child: Text(
+                            isAce ? 'Claim' : 'Challenge',
+                            style: TextStyle(
+                              color: palette.background,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

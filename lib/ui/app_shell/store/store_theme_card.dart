@@ -21,7 +21,7 @@ class StoreThemeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final packTheme = themeFromEnum(pack.id);
     final ink = packTheme.textPrimary;
-    final avatars = pack.avatarIds.take(3).toList();
+    final avatars = [pack.starterAvatarId];
 
     return CupertinoButton(
       padding: EdgeInsets.zero,
@@ -82,7 +82,7 @@ class StoreThemeCard extends StatelessWidget {
                         width: 28,
                         tintId: pack.defaultTintId,
                         mark: CardBackMark.logo,
-                        avatarId: pack.avatarIds.first,
+                        avatarId: pack.starterAvatarId,
                         previewTheme: packTheme,
                       ),
                       const Spacer(),

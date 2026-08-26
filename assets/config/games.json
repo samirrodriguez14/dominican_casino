@@ -46,7 +46,7 @@
       "id": "tresydos",
       "title": "Tres y Dos",
       "subtitle": "Form a 3 and a 2 of matching ranks",
-      "description": "Form a set of 3 and a set of 2 of the same card ranks before the other players do. Win 3 rounds to take the match. About 5–7 minutes · 2–4 players.",
+      "description": "Form a set of 3 and a set of 2 of the same card ranks before the other players do. Win one round to take the match. About 2–4 minutes · 2–4 players.",
       "players": {
         "min": 2,
         "max": 4,
@@ -60,7 +60,7 @@
         "Collect matching card ranks",
         "Create one set of 3",
         "Create one set of 2",
-        "Win 3 rounds to win the match"
+        "Win one round to win the match"
       ]
     },
     {

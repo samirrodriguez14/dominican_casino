@@ -68,24 +68,28 @@ class JourneyFaceDownCard extends StatelessWidget {
   }
 }
 
-/// Face-up challenger art used in the Defeated piles.
+/// Face-up challenger art — transparent cutout on a world-colored card back.
 class JourneyFaceUpCard extends StatelessWidget {
   const JourneyFaceUpCard({
     super.key,
     required this.assetPath,
     required this.world,
     this.radius = 12,
+    this.useTransparentAvatar = true,
   });
 
   final String assetPath;
   final JourneyWorld world;
   final double radius;
+  /// When true, [assetPath] is treated as a cutout over [palette.surface].
+  final bool useTransparentAvatar;
 
   @override
   Widget build(BuildContext context) {
     final palette = journeyPaletteFor(world);
     return DecoratedBox(
       decoration: BoxDecoration(
+        color: palette.surface,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: palette.accent.withValues(alpha: .55),
@@ -101,7 +105,23 @@ class JourneyFaceUpCard extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius - 1),
-        child: Image.asset(assetPath, fit: BoxFit.cover),
+        child: ColoredBox(
+          color: palette.surface,
+          child: Image.asset(
+            assetPath,
+            fit: useTransparentAvatar ? BoxFit.contain : BoxFit.cover,
+            alignment: Alignment.bottomCenter,
+            errorBuilder: (_, _, _) => Center(
+              child: Text(
+                world.suitSymbol,
+                style: TextStyle(
+                  color: palette.suitSymbol.withValues(alpha: .5),
+                  fontSize: 22,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

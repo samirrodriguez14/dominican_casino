@@ -7,13 +7,13 @@ import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
+import 'package:dominican_casino/ui/general_game/leave_match_to_home.dart';
 import 'package:dominican_casino/ui/general_game/match_coin_payout.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:go_router/go_router.dart';
 
 Future<void> showGameStatusPopup(
   BuildContext context, {
@@ -263,11 +263,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                   _StatusHomeButton(
                     onPressed: () async {
                       Navigator.of(context).pop();
-                      await vm.queueHomeCoinClaim();
-                      await vm.queueHomeDailyChallengeEnergyClaims();
-                      await vm.queueHomeXpClaim();
-                      if (!context.mounted) return;
-                      context.go('/landing');
+                      await leaveMatchToHome(context, vm);
                     },
                   ),
                   const SizedBox(width: 8),
@@ -368,12 +364,8 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     if (shouldLeave != true || !context.mounted) return;
     await vm.resign();
     if (!context.mounted) return;
-    await vm.queueHomeCoinClaim();
-    await vm.queueHomeDailyChallengeEnergyClaims();
-    await vm.queueHomeXpClaim();
-    if (!context.mounted) return;
     Navigator.of(context).pop();
-    context.go('/landing');
+    await leaveMatchToHome(context, vm);
   }
 
   Future<bool?> _confirmResignGame(BuildContext context) {

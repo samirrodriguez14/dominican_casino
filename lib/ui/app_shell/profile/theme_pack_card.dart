@@ -1,4 +1,5 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -51,8 +52,13 @@ class _ThemePackCardState extends State<ThemePackCard> {
     }
   }
 
+  void _ensurePreviewUnlocked(List<String> unlocked) {
+    if (unlocked.contains(_previewAvatarId) || unlocked.isEmpty) return;
+    _previewAvatarId = unlocked.first;
+  }
+
   void _syncPreviewFromPack() {
-    _previewAvatarId = pack.avatarIds.first;
+    _previewAvatarId = pack.starterAvatarId;
     _previewTintId = pack.defaultTintId;
     _previewMark = CardBackMark.logo;
   }
@@ -64,6 +70,14 @@ class _ThemePackCardState extends State<ThemePackCard> {
     final owned = repo.ownsPack(pack.id);
     final equipped = repo.appTheme == pack.id;
     final tints = tintsForTheme(pack.id);
+    final unlocked = repo.unlockedAvatarIdsForTheme(pack.id);
+    final locked = repo.lockedAvatarIdsForTheme(pack.id);
+    if (!unlocked.contains(_previewAvatarId) && unlocked.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _ensurePreviewUnlocked(unlocked));
+      });
+    }
 
     return AspectRatio(
       aspectRatio: 2.5 / 3.5,
@@ -109,7 +123,7 @@ class _ThemePackCardState extends State<ThemePackCard> {
                         const SizedBox(height: 12),
                         _PreviewPair(
                           packTheme: packTheme,
-                          avatarId: pack.avatarIds.first,
+                          avatarId: pack.starterAvatarId,
                           tintId: pack.defaultTintId,
                           mark: CardBackMark.logo,
                           width: 40,
@@ -142,7 +156,7 @@ class _ThemePackCardState extends State<ThemePackCard> {
                             runSpacing: 8,
                             alignment: WrapAlignment.center,
                             children: [
-                              for (final id in pack.avatarIds)
+                              for (final id in unlocked)
                                 GestureDetector(
                                   onTap: SoundService.wrapTap(() {
                                     setState(() => _previewAvatarId = id);
@@ -152,6 +166,16 @@ class _ThemePackCardState extends State<ThemePackCard> {
                                     size: 44,
                                     showBorder: true,
                                     selected: _previewAvatarId == id,
+                                  ),
+                                ),
+                              if (locked.isNotEmpty)
+                                _LockedAvatarStack(
+                                  lockedIds: locked,
+                                  packTheme: packTheme,
+                                  onTap: () => _showLockedAvatarDialog(
+                                    context,
+                                    pack.id,
+                                    repo,
                                   ),
                                 ),
                             ],
@@ -270,6 +294,111 @@ class _ThemePackCardState extends State<ThemePackCard> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showLockedAvatarDialog(
+    BuildContext context,
+    Theme theme,
+    AppRepo repo,
+  ) async {
+    final level = repo.experienceProgress.level;
+    final defeated = repo.journeyProgress.defeatedByWorld;
+    final message = hasLockedJourneyAvatars(
+          theme,
+          level: level,
+          defeatedByWorld: defeated,
+        )
+        ? 'Defeat the next challenger to unlock new avatars.'
+        : () {
+            final next = nextLevelAvatarUnlock(theme, level: level);
+            if (next == null) {
+              return 'Unlock more avatars as you progress.';
+            }
+            return 'Reach level $next to unlock new avatars.';
+          }();
+
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Avatars locked'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: SoundService.wrapTap(
+              () => Navigator.pop(dialogContext),
+            ),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LockedAvatarStack extends StatelessWidget {
+  const _LockedAvatarStack({
+    required this.lockedIds,
+    required this.packTheme,
+    required this.onTap,
+  });
+
+  final List<String> lockedIds;
+  final AppTheme packTheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = lockedIds.take(3).toList();
+    const size = 44.0;
+    final stackWidth = size + (preview.length - 1) * 12.0;
+
+    return GestureDetector(
+      onTap: SoundService.wrapTap(onTap),
+      child: SizedBox(
+        width: stackWidth,
+        height: size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            for (var i = 0; i < preview.length; i++)
+              Positioned(
+                left: i * 12.0,
+                child: Opacity(
+                  opacity: 0.55,
+                  child: PlayerAvatarView(
+                    avatarId: preview[i],
+                    size: size,
+                    showBorder: true,
+                    silhouette: true,
+                  ),
+                ),
+              ),
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: packTheme.pickerFace,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: packTheme.textPrimary.withValues(alpha: .35),
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  CupertinoIcons.lock_fill,
+                  size: 11,
+                  color: packTheme.textPrimary.withValues(alpha: .85),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,10 +1,16 @@
 /// On-device AI seats for local matches. Distinct names/avatars so a
 /// 4-player Tres y Dos table is not four copies of Pulilo.
 class LocalBotProfile {
-  const LocalBotProfile({required this.name, required this.avatarId});
+  const LocalBotProfile({
+    required this.name,
+    required this.avatarId,
+    this.avatarAsset,
+  });
 
   final String name;
   final String avatarId;
+  /// Optional custom image (e.g. Journey challenger art).
+  final String? avatarAsset;
 }
 
 class LocalBotRoster {

@@ -1,5 +1,4 @@
 import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
@@ -8,7 +7,6 @@ import 'package:dominican_casino/ui/app_shell/journey/journey_board.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_deck.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:provider/provider.dart';
 
 enum TableDeck { games, journey }
 
@@ -178,10 +176,9 @@ class JourneyStageState extends State<JourneyStage>
 
     setState(() => _tableDeck = TableDeck.journey);
     widget.onTableDeckChanged?.call(TableDeck.journey);
+    _boardKey.currentState?.reloadFromProgress();
 
-    final world =
-        _boardKey.currentState?.activeWorld ?? JourneyWorld.diamonds;
-    await context.read<AppRepo>().unlockAndEquipPack(world.themeId);
+    // Keep Base (Sage) until the player confirms entering a kingdom.
     if (!mounted) {
       _busy = false;
       return;

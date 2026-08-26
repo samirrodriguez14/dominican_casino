@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:flutter/cupertino.dart';
 
 class AvatarOption {
@@ -106,7 +107,7 @@ class AvatarScoreTheme {
   });
 
   factory AvatarScoreTheme.of(String? avatarId) {
-    final option = PlayerAvatars.byId(avatarId);
+    final option = PlayerAvatars.byId(paintedAvatarIdFor(avatarId));
     final background = option.background;
     final foreground = option.foreground;
     final isLight = background.computeLuminance() > 0.42;
@@ -142,12 +143,15 @@ class PlayerAvatarView extends StatelessWidget {
     super.key,
     required this.avatarId,
     required this.size,
+    this.avatarAsset,
     this.selected = false,
     this.showBorder = true,
     this.silhouette = false,
   });
 
   final String? avatarId;
+  /// When set, shows this asset instead of the painted [avatarId] icon.
+  final String? avatarAsset;
   final double size;
   final bool selected;
   final bool showBorder;
@@ -155,8 +159,13 @@ class PlayerAvatarView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final option = PlayerAvatars.byId(avatarId);
+    final option = PlayerAvatars.byId(paintedAvatarIdFor(avatarId));
     final ring = selected ? const Color(0xFFF4F2EC) : const Color(0x33000000);
+    final asset = silhouette
+        ? null
+        : ((avatarAsset != null && avatarAsset!.isNotEmpty)
+            ? avatarAsset
+            : journeyAvatarAssetPath(avatarId));
 
     return SizedBox(
       width: size,
@@ -176,10 +185,25 @@ class PlayerAvatarView extends StatelessWidget {
           ],
         ),
         child: ClipOval(
-          child: CustomPaint(
-            painter: _AvatarPainter(option, silhouette: silhouette),
-            size: Size.square(size),
-          ),
+          child: asset != null && asset.isNotEmpty
+              ? ColoredBox(
+                  color: option.background,
+                  child: Image.asset(
+                    asset,
+                    fit: BoxFit.contain,
+                    width: size,
+                    height: size,
+                    alignment: Alignment.bottomCenter,
+                    errorBuilder: (_, _, _) => CustomPaint(
+                      painter: _AvatarPainter(option, silhouette: silhouette),
+                      size: Size.square(size),
+                    ),
+                  ),
+                )
+              : CustomPaint(
+                  painter: _AvatarPainter(option, silhouette: silhouette),
+                  size: Size.square(size),
+                ),
         ),
       ),
     );

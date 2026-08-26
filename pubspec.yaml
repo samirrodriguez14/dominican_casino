@@ -49,6 +49,8 @@ flutter:
   assets:
     - assets/images/
     - assets/images/journey/
+    - assets/images/journey/cards_challengers/
+    - assets/images/journey/avatars_transparent_challengers/
     - assets/config/
     - assets/sounds/
 

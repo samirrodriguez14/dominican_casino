@@ -27,6 +27,7 @@ import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/rummy_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
+import 'package:dominican_casino/ui/general_game/leave_match_to_home.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/general_game/simple/simple_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/simple/simple_player_area.dart';
@@ -673,12 +674,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     }
   }
 
-  Future<void> _leaveToHome() async {
-    await vm.queueHomeCoinClaim();
-    await vm.queueHomeDailyChallengeEnergyClaims();
-    await vm.queueHomeXpClaim();
-    if (mounted) context.go('/landing');
-  }
+  Future<void> _leaveToHome() => leaveMatchToHome(context, vm);
 
   Future<void> _playDeckCoinFlight(DeckCoinFlight flight) async {
     await Future<void>.delayed(const Duration(milliseconds: 40));

@@ -338,7 +338,7 @@ class _PileTopFace extends StatelessWidget {
           Opacity(
             opacity: face.clamp(0.0, 1.0),
             child: JourneyFaceUpCard(
-              assetPath: card.assetPath,
+              assetPath: card.avatarAssetPath,
               world: world,
             ),
           ),

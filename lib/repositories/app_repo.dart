@@ -6,8 +6,11 @@ import 'package:dominican_casino/models/daily_challenge.dart';
 import 'package:dominican_casino/models/experience.dart';
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/journey.dart';
+import 'package:dominican_casino/models/journey_progress.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/player.dart';
+import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
@@ -17,6 +20,7 @@ import 'package:dominican_casino/services/firebase_options.dart';
 import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/services/notifications_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
@@ -155,6 +159,13 @@ class AppRepo extends ChangeNotifier {
   DateTime? get lastDailyClaimAt => _lastDailyClaimAt;
   DailyChallengeState _dailyChallenges = DailyChallengeState.empty('');
   DailyChallengeState get dailyChallengesState => _dailyChallenges;
+  JourneyProgress _journeyProgress = JourneyProgress.empty();
+  JourneyProgress get journeyProgress => _journeyProgress;
+  /// Bumped when Journey story/progress is wiped so UI can remount coach/board.
+  int _journeyStoryEpoch = 0;
+  int get journeyStoryEpoch => _journeyStoryEpoch;
+  bool _openJourneyRequest = false;
+  bool get openJourneyRequest => _openJourneyRequest;
   StreamSubscription<String>? _fcmTokenSub;
   String? _savedFcmToken;
   String? _activeGameId;
@@ -274,10 +285,11 @@ class AppRepo extends ChangeNotifier {
     AppStyle.cardBack = pack.cardBack;
     _cardBackTintId = coerceTintForTheme(_cardBackTintId, id);
     AppStyle.cardBackTintId = _cardBackTintId;
+    final unlocked = unlockedAvatarIdsForTheme(id);
     final current = avatarId ?? player?.avatarId;
-    final resolved = (current != null && pack.avatarIds.contains(current))
+    final resolved = (current != null && unlocked.contains(current))
         ? current
-        : pack.avatarIds.first;
+        : (unlocked.isNotEmpty ? unlocked.first : pack.starterAvatarId);
     final avatarChanged = player != null && player!.avatarId != resolved;
     if (avatarChanged) {
       player = player!.copyWith(avatarId: resolved);
@@ -285,6 +297,25 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
     if (avatarChanged) unawaited(_persistPlayerLocal());
     unawaited(_persistLooks());
+  }
+
+  /// Unlocked avatar ids for [theme] (or the equipped theme) given current
+  /// level + Journey defeats.
+  List<String> unlockedAvatarIdsForTheme([Theme? theme]) {
+    return unlockedAvatarIdsForPack(
+      theme ?? _appTheme,
+      level: experienceProgress.level,
+      defeatedByWorld: _journeyProgress.defeatedByWorld,
+    );
+  }
+
+  /// Still-locked avatar ids for [theme] (or the equipped theme).
+  List<String> lockedAvatarIdsForTheme([Theme? theme]) {
+    return lockedAvatarIdsForPack(
+      theme ?? _appTheme,
+      level: experienceProgress.level,
+      defeatedByWorld: _journeyProgress.defeatedByWorld,
+    );
   }
 
   /// Unlock a play-gated pack if needed, then equip it (Journey world select).
@@ -341,6 +372,7 @@ class AppRepo extends ChangeNotifier {
       await _loadTheme();
       player = await _loadPlayer();
       await _loadWallet();
+      await _loadJourneyProgress();
       await _persistLooksRemote();
       _ensureEnergyTicker();
       _ensureDailyRewardTicker();
@@ -385,6 +417,241 @@ class AppRepo extends ChangeNotifier {
     final v = _shellTabRequest;
     _shellTabRequest = null;
     return v;
+  }
+
+  void requestOpenJourney() {
+    _openJourneyRequest = true;
+    notifyListeners();
+  }
+
+  bool takeOpenJourneyRequest() {
+    final v = _openJourneyRequest;
+    _openJourneyRequest = false;
+    return v;
+  }
+
+  JourneyDisplaySnapshot journeyBoardForLevel([int? level]) {
+    return hydrateJourneyBoard(
+      progress: _journeyProgress,
+      playerLevel: level ?? experienceProgress.level,
+    );
+  }
+
+  /// One-shot undo for accidental debug Defeat on Diamonds Jack.
+  Future<bool> maybeRestoreMistakenJackDefeat() async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      const repairKey = 'journey_restore_lone_jack_v1';
+      if (sp.getBool(repairKey) ?? false) return false;
+      final diamonds = _journeyProgress.defeatedRanksFor(JourneyWorld.diamonds);
+      final restored =
+          diamonds.length == 1 && diamonds.first == JourneyRank.jack;
+      if (restored) {
+        _journeyProgress.clearDefeat(JourneyWorld.diamonds, JourneyRank.jack);
+        await _persistJourneyProgress();
+        notifyListeners();
+      }
+      await sp.setBool(repairKey, true);
+      return restored;
+    } catch (e) {
+      developer.log('AppRepo.maybeRestoreMistakenJackDefeat: $e');
+      return false;
+    }
+  }
+
+  String _journeyProgressPrefsKey(String uid) => 'journey_progress_$uid';
+
+  Future<void> _loadJourneyProgress() async {
+    final uid = _currentUid;
+    if (uid == null) {
+      _journeyProgress = JourneyProgress.empty();
+      return;
+    }
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_journeyProgressPrefsKey(uid));
+      if (raw == null || raw.isEmpty) {
+        _journeyProgress = JourneyProgress.empty();
+      } else {
+        final decoded = jsonDecode(raw);
+        _journeyProgress = JourneyProgress.fromJson(
+          decoded is Map ? Map<String, dynamic>.from(decoded) : null,
+        );
+      }
+      await maybeRestoreMistakenJackDefeat();
+    } catch (e) {
+      developer.log('AppRepo._loadJourneyProgress: $e');
+      _journeyProgress = JourneyProgress.empty();
+    }
+  }
+
+  Future<void> _persistJourneyProgress() async {
+    final uid = _currentUid;
+    if (uid == null) return;
+    try {
+      final sp = await SharedPreferences.getInstance();
+      await sp.setString(
+        _journeyProgressPrefsKey(uid),
+        jsonEncode(_journeyProgress.toJson()),
+      );
+    } catch (e) {
+      developer.log('AppRepo._persistJourneyProgress: $e');
+    }
+  }
+
+  Future<void> beginJourneyChallenge({
+    required JourneyWorld world,
+    required JourneyRank rank,
+    String? gameId,
+  }) async {
+    _journeyProgress.pendingChallenge = JourneyChallengeRef(
+      world: world,
+      rank: rank,
+      gameId: gameId,
+    );
+    _journeyProgress.pendingLossTaunt = null;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingJourneyChallenge() async {
+    if (_journeyProgress.pendingChallenge == null) return;
+    _journeyProgress.pendingChallenge = null;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingJourneyLossTaunt() async {
+    if (_journeyProgress.pendingLossTaunt == null) return;
+    _journeyProgress.pendingLossTaunt = null;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> applyJourneyDefeat(
+    JourneyWorld world,
+    JourneyRank rank, {
+    bool celebrate = false,
+  }) async {
+    _journeyProgress.recordDefeat(world, rank);
+    _journeyProgress.pendingChallenge = null;
+    if (celebrate) {
+      _journeyProgress.pendingWinCelebration = JourneyChallengeRef(
+        world: world,
+        rank: rank,
+      );
+    }
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingWinCelebration() async {
+    if (_journeyProgress.pendingWinCelebration == null) return;
+    _journeyProgress.pendingWinCelebration = null;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> undoJourneyDefeat(
+    JourneyWorld world,
+    JourneyRank rank,
+  ) async {
+    _journeyProgress.clearDefeat(world, rank);
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// Wipe Journey story: defeats, coach training, play-locked themes, and XP.
+  ///
+  /// Leaves coins, energy, casino tutorial, and account data intact.
+  Future<void> resetJourneyProgress() async {
+    _journeyProgress = JourneyProgress.empty();
+    await _persistJourneyProgress();
+
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove('journey_restore_lone_jack_v1');
+
+    _ownedPacks = {...defaultOwnedPacks};
+    for (final pack in themePackCatalog) {
+      if (pack.unlock == ThemeUnlockKind.free) {
+        _ownedPacks.add(pack.id);
+      }
+    }
+    await equipPack(Theme.sage);
+
+    _pendingHomeXpClaim = null;
+    _claimedXpGameIds.clear();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? player?.id;
+    if (uid != null) {
+      await sp.remove(_homeXpClaimPrefsKey(uid));
+      await sp.remove(_claimedXpGamesPrefsKey(uid));
+    }
+
+    if (player != null) {
+      final baseAvatar = themePack(Theme.sage).starterAvatarId;
+      player = player!.copyWith(
+        completedJourneyTutorial: false,
+        avatarId: baseAvatar,
+        xp: 0,
+      );
+      await _persistPlayer();
+    }
+
+    _journeyStoryEpoch += 1;
+    _openJourneyRequest = false;
+    notifyListeners();
+  }
+
+  /// Resolve a pending Journey match when leaving a game.
+  ///
+  /// Returns true when this leave was a Journey challenge (win or loss).
+  Future<bool> noteJourneyChallengeResult({
+    required bool won,
+    String? gameId,
+  }) async {
+    final pending = _journeyProgress.pendingChallenge;
+    if (pending == null) return false;
+    if (gameId != null &&
+        pending.gameId != null &&
+        pending.gameId != gameId) {
+      return false;
+    }
+
+    if (won) {
+      _journeyProgress.recordDefeat(pending.world, pending.rank);
+      _journeyProgress.pendingChallenge = null;
+      _journeyProgress.pendingLossTaunt = null;
+      _journeyProgress.pendingWinCelebration = JourneyChallengeRef(
+        world: pending.world,
+        rank: pending.rank,
+      );
+    } else {
+      _journeyProgress.pendingLossTaunt = JourneyChallengeRef(
+        world: pending.world,
+        rank: pending.rank,
+      );
+      _journeyProgress.pendingChallenge = null;
+      _journeyProgress.pendingWinCelebration = null;
+    }
+    _openJourneyRequest = true;
+    _shellTabRequest = 1;
+    await _persistJourneyProgress();
+    notifyListeners();
+    return true;
+  }
+
+  /// Abandon a pending challenge without win/loss (e.g. leave before game over).
+  Future<void> abandonJourneyChallenge({String? gameId}) async {
+    final pending = _journeyProgress.pendingChallenge;
+    if (pending == null) return;
+    if (gameId != null &&
+        pending.gameId != null &&
+        pending.gameId != gameId) {
+      return;
+    }
+    _journeyProgress.pendingChallenge = null;
+    await _persistJourneyProgress();
+    notifyListeners();
   }
 
   void _ensureEnergyTicker() {
@@ -1346,12 +1613,14 @@ class AppRepo extends ChangeNotifier {
       player = await _playerFromRemoteOrLocal(uid, null);
       await _persistPlayer();
       await _loadWallet();
+      await _loadJourneyProgress();
       notifyListeners();
     } else if (current.id != uid) {
       await fs.rebindLocalPlayer(fromPid: current.id, toPid: uid);
       player = current.copyWith(id: uid);
       await _persistPlayer();
       await _loadWallet();
+      await _loadJourneyProgress();
       if (notificationsEnabled) {
         _savedFcmToken = null;
         unawaited(_syncFcmToken());
@@ -1359,6 +1628,7 @@ class AppRepo extends ChangeNotifier {
       notifyListeners();
     } else if (_walletUid != uid) {
       await _loadWallet();
+      await _loadJourneyProgress();
     }
     return uid;
   }
@@ -1605,6 +1875,7 @@ class AppRepo extends ChangeNotifier {
       await _persistLooksLocal();
       await _persistPlayerLocal();
       await _loadWallet(preferRemote: true);
+      await _loadJourneyProgress();
       if (notificationsEnabled) {
         _savedFcmToken = null;
         unawaited(_syncFcmToken());
@@ -1635,6 +1906,7 @@ class AppRepo extends ChangeNotifier {
     } else {
       await _loadWallet();
     }
+    await _loadJourneyProgress();
     if (notificationsEnabled) {
       _savedFcmToken = null;
       unawaited(_syncFcmToken());
@@ -2007,6 +2279,7 @@ class AppRepo extends ChangeNotifier {
     int playerCount = 2,
     int entryCost = WalletConfig.entryCost,
     int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
+    LocalBotProfile? botOverride,
   }) async {
     final existingAuth = FirebaseAuth.instance.currentUser;
     if (local && existingAuth == null) {
@@ -2063,10 +2336,13 @@ class AppRepo extends ChangeNotifier {
     if (local) {
       final seats = maxSeatsFor(mode);
       final botCount = (seats > 2 ? playerCount.clamp(2, seats) : 2) - 1;
-      final profiles = LocalBotRoster.pick(
-        botCount,
-        avoidAvatarId: host?.avatarId,
-      );
+      final profiles = <LocalBotProfile>[
+        if (botOverride != null) botOverride,
+        ...LocalBotRoster.pick(
+          botCount,
+          avoidAvatarId: host?.avatarId,
+        ),
+      ].take(botCount).toList();
       final botPids = <String>[];
       gameState.isLocalBot = true;
       for (final profile in profiles) {
@@ -2076,6 +2352,8 @@ class AppRepo extends ChangeNotifier {
           'id': botPid,
           'name': profile.name,
           'avatarId': profile.avatarId,
+          if (profile.avatarAsset != null && profile.avatarAsset!.isNotEmpty)
+            'avatarAsset': profile.avatarAsset,
         };
       }
       gameState.botPlayerIds = botPids;
@@ -2223,6 +2501,7 @@ class AppRepo extends ChangeNotifier {
   Future<bool> updatePlayerAvatar(String avatarId) async {
     try {
       if (player == null) return false;
+      if (!unlockedAvatarIdsForTheme().contains(avatarId)) return false;
       player = player!.copyWith(avatarId: avatarId);
       await _persistPlayer();
       notifyListeners();
@@ -2484,6 +2763,7 @@ class AppRepo extends ChangeNotifier {
     await sp.remove(_homeDailyChallengeEnergyPrefsKey(uid));
     await sp.remove(_dailyClaimPrefsKey(uid));
     await sp.remove(_dailyChallengesPrefsKey(uid));
+    await sp.remove(_journeyProgressPrefsKey(uid));
   }
 
   Future<void> _clearLocalSession() async {
@@ -2503,7 +2783,8 @@ class AppRepo extends ChangeNotifier {
           key.startsWith('home_xp_claim_') ||
           key.startsWith('claimed_xp_games_') ||
           key.startsWith('daily_claim_') ||
-          key.startsWith('daily_challenges_')) {
+          key.startsWith('daily_challenges_') ||
+          key.startsWith('journey_progress_')) {
         await sp.remove(key);
       }
     }
@@ -2521,6 +2802,8 @@ class AppRepo extends ChangeNotifier {
     _pendingHomeDailyChallengeEnergy = {};
     _lastDailyClaimAt = null;
     _dailyChallenges = DailyChallengeState.empty(_localDayKey());
+    _journeyProgress = JourneyProgress.empty();
+    _journeyStoryEpoch += 1;
     _resetLooksInMemory();
     appStatus = AppStatus.notReady;
   }

@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
@@ -42,6 +43,7 @@ class GamesViewModel extends ChangeNotifier {
     int playerCount = 2,
     int entryCost = WalletConfig.entryCost,
     int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
+    LocalBotProfile? botOverride,
   }) async {
     try {
       final gid = await _appRepo.createNewGame(
@@ -51,6 +53,7 @@ class GamesViewModel extends ChangeNotifier {
         playerCount: playerCount,
         entryCost: entryCost,
         turnDurationSeconds: turnDurationSeconds,
+        botOverride: botOverride,
       );
       debugPrint('newGame $gid local=$local');
       return gid;

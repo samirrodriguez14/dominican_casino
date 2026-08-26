@@ -19,6 +19,12 @@ class JourneyInstructionDeck extends StatelessWidget {
     this.deckKey,
     this.initialPage,
     this.world = JourneyWorld.diamonds,
+    this.showUnlockChallengerCta = false,
+    this.unlockChallengerLabel = 'Unlock next challenger',
+    this.onUnlockNextChallenger,
+    this.showEnterKingdomCta = false,
+    this.enterKingdomLabel = 'Enter Diamonds kingdom',
+    this.onEnterKingdom,
   });
 
   /// Highest unlocked 1-based instruction id.
@@ -30,6 +36,13 @@ class JourneyInstructionDeck extends StatelessWidget {
   /// 0-based carousel index to open on (defaults to latest unlocked).
   final int? initialPage;
   final JourneyWorld world;
+  final bool showUnlockChallengerCta;
+  final String unlockChallengerLabel;
+  final VoidCallback? onUnlockNextChallenger;
+  /// Welcome-page CTA to enter Diamonds (theme change).
+  final bool showEnterKingdomCta;
+  final String enterKingdomLabel;
+  final VoidCallback? onEnterKingdom;
 
   /// Unlocked pages, plus one locked "next" peek when more catalog remains.
   int get _visibleCount {
@@ -71,6 +84,12 @@ class JourneyInstructionDeck extends StatelessWidget {
       initialIndex: (initialPage ?? _maxFrontIndex).clamp(0, _maxFrontIndex),
       world: world,
       onCollapse: onCollapse,
+      showUnlockChallengerCta: showUnlockChallengerCta,
+      unlockChallengerLabel: unlockChallengerLabel,
+      onUnlockNextChallenger: onUnlockNextChallenger,
+      showEnterKingdomCta: showEnterKingdomCta,
+      enterKingdomLabel: enterKingdomLabel,
+      onEnterKingdom: onEnterKingdom,
     );
   }
 }
@@ -149,6 +168,12 @@ class _ExpandedGuide extends StatelessWidget {
     required this.initialIndex,
     required this.world,
     required this.onCollapse,
+    this.showUnlockChallengerCta = false,
+    this.unlockChallengerLabel = 'Unlock next challenger',
+    this.onUnlockNextChallenger,
+    this.showEnterKingdomCta = false,
+    this.enterKingdomLabel = 'Enter Diamonds kingdom',
+    this.onEnterKingdom,
   });
 
   final int unlockedThrough;
@@ -158,6 +183,12 @@ class _ExpandedGuide extends StatelessWidget {
   final int initialIndex;
   final JourneyWorld world;
   final VoidCallback onCollapse;
+  final bool showUnlockChallengerCta;
+  final String unlockChallengerLabel;
+  final VoidCallback? onUnlockNextChallenger;
+  final bool showEnterKingdomCta;
+  final String enterKingdomLabel;
+  final VoidCallback? onEnterKingdom;
 
   void _onBlocked(int _) {
     SoundService.instance.playLayered(GameSound.softCard);
@@ -170,10 +201,12 @@ class _ExpandedGuide extends StatelessWidget {
     final palette = journeyPaletteFor(world);
 
     return GestureDetector(
-      onTap: () {
-        SoundService.instance.playLayered(GameSound.softCard);
-        onCollapse();
-      },
+      onTap: showUnlockChallengerCta
+          ? null
+          : () {
+              SoundService.instance.playLayered(GameSound.softCard);
+              onCollapse();
+            },
       behavior: HitTestBehavior.opaque,
       child: ColoredBox(
         color: CupertinoColors.black.withValues(alpha: .45),
@@ -214,11 +247,26 @@ class _ExpandedGuide extends StatelessWidget {
                           );
                         }
                         final page = journeyInstructions[index];
+                        final isLatest = pageId == unlockedThrough;
+                        final showEnter = showEnterKingdomCta &&
+                            page.id == 1 &&
+                            onEnterKingdom != null;
                         return _InstructionCard(
                           instruction: page,
                           pageLabel: '${page.id}/$pagerTotal',
                           palette: palette,
                           theme: theme,
+                          unlockChallengerLabel: showUnlockChallengerCta &&
+                                  isLatest &&
+                                  onUnlockNextChallenger != null
+                              ? unlockChallengerLabel
+                              : null,
+                          onUnlockChallenger: showUnlockChallengerCta && isLatest
+                              ? onUnlockNextChallenger
+                              : null,
+                          enterKingdomLabel:
+                              showEnter ? enterKingdomLabel : null,
+                          onEnterKingdom: showEnter ? onEnterKingdom : null,
                         );
                       },
                     ),
@@ -231,11 +279,15 @@ class _ExpandedGuide extends StatelessWidget {
                 child: CupertinoButton(
                   padding: const EdgeInsets.all(8),
                   minimumSize: Size.zero,
-                  onPressed: SoundService.wrapTap(onCollapse),
+                  onPressed: showUnlockChallengerCta
+                      ? null
+                      : SoundService.wrapTap(onCollapse),
                   child: Icon(
                     CupertinoIcons.xmark_circle_fill,
                     size: 28,
-                    color: theme.textPrimary.withValues(alpha: .9),
+                    color: theme.textPrimary.withValues(
+                      alpha: showUnlockChallengerCta ? .35 : .9,
+                    ),
                   ),
                 ),
               ),
@@ -253,12 +305,20 @@ class _InstructionCard extends StatelessWidget {
     required this.pageLabel,
     required this.palette,
     required this.theme,
+    this.unlockChallengerLabel,
+    this.onUnlockChallenger,
+    this.enterKingdomLabel,
+    this.onEnterKingdom,
   });
 
   final JourneyInstruction instruction;
   final String pageLabel;
   final JourneyWorldPalette palette;
   final AppTheme theme;
+  final String? unlockChallengerLabel;
+  final VoidCallback? onUnlockChallenger;
+  final String? enterKingdomLabel;
+  final VoidCallback? onEnterKingdom;
 
   @override
   Widget build(BuildContext context) {
@@ -303,6 +363,43 @@ class _InstructionCard extends StatelessWidget {
                 ),
               ),
             ),
+            if (enterKingdomLabel != null && onEnterKingdom != null) ...[
+              const SizedBox(height: 12),
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                borderRadius: BorderRadius.circular(12),
+                color: palette.accent.withValues(alpha: .95),
+                minimumSize: Size.zero,
+                onPressed: SoundService.wrapTap(onEnterKingdom),
+                child: Text(
+                  enterKingdomLabel!,
+                  style: TextStyle(
+                    color: palette.background,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+            if (unlockChallengerLabel != null &&
+                onUnlockChallenger != null) ...[
+              const SizedBox(height: 12),
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                borderRadius: BorderRadius.circular(12),
+                color: palette.accent.withValues(alpha: .95),
+                minimumSize: Size.zero,
+                onPressed: SoundService.wrapTap(onUnlockChallenger),
+                child: Text(
+                  unlockChallengerLabel!,
+                  style: TextStyle(
+                    color: palette.background,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             Center(
               child: Text(

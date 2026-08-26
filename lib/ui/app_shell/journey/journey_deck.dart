@@ -375,7 +375,7 @@ class JourneyLiveDeck extends StatelessWidget {
   }) {
     if (slot.toDefeated && slot.card != null) {
       return JourneyFaceUpCard(
-        assetPath: slot.card!.assetPath,
+        assetPath: slot.card!.avatarAssetPath,
         world: slot.world,
         radius: radius,
       );
@@ -498,7 +498,7 @@ class _FlightCard extends StatelessWidget {
         angle: angle,
         child: slot.toDefeated && slot.card != null
             ? JourneyFaceUpCard(
-                assetPath: slot.card!.assetPath,
+                assetPath: slot.card!.avatarAssetPath,
                 world: slot.world,
                 radius: 12,
               )

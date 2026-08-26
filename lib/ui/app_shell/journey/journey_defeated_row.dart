@@ -196,7 +196,7 @@ class _DefeatedPile extends StatelessWidget {
                     onPanEnd:
                         i == visible.length - 1 ? onDefeatedPanEnd : null,
                     child: JourneyFaceUpCard(
-                      assetPath: visible[i].assetPath,
+                      assetPath: visible[i].avatarAssetPath,
                       world: visible[i].world,
                       radius: 10,
                     ),

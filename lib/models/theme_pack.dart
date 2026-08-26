@@ -1,3 +1,4 @@
+import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -7,7 +8,6 @@ class ThemePack {
   const ThemePack({
     required this.id,
     required this.cardBack,
-    required this.avatarIds,
     required this.unlock,
     this.coinCost,
     this.defaultTintId = 'sage',
@@ -15,10 +15,14 @@ class ThemePack {
 
   final Theme id;
   final CardBack cardBack;
-  final List<String> avatarIds;
   final ThemeUnlockKind unlock;
   final int? coinCost;
   final String defaultTintId;
+
+  /// All avatars that can belong to this pack (starter + extras + Journey faces).
+  List<String> get avatarIds => themeAvatarUnlocks(id).allAvatarIds;
+
+  String get starterAvatarId => themeAvatarUnlocks(id).starterAvatarId;
 
   bool get isCoinLocked => unlock == ThemeUnlockKind.coins;
   bool get isPlayLocked => unlock == ThemeUnlockKind.play;
@@ -29,35 +33,30 @@ const themePackCatalog = <ThemePack>[
   ThemePack(
     id: Theme.sage,
     cardBack: CardBack.sage,
-    avatarIds: ['palm', 'leaf', 'star'],
     unlock: ThemeUnlockKind.free,
     defaultTintId: 'sage',
   ),
   ThemePack(
     id: Theme.casino,
     cardBack: CardBack.clay,
-    avatarIds: ['diamond', 'acorn'],
     unlock: ThemeUnlockKind.play,
     defaultTintId: 'diamonds',
   ),
   ThemePack(
     id: Theme.dune,
     cardBack: CardBack.dune,
-    avatarIds: ['club', 'leaf'],
     unlock: ThemeUnlockKind.play,
     defaultTintId: 'clubs',
   ),
   ThemePack(
     id: Theme.fig,
     cardBack: CardBack.fig,
-    avatarIds: ['heart'],
     unlock: ThemeUnlockKind.play,
     defaultTintId: 'hearts',
   ),
   ThemePack(
     id: Theme.midnight,
     cardBack: CardBack.tide,
-    avatarIds: ['spade', 'moon'],
     unlock: ThemeUnlockKind.play,
     defaultTintId: 'spades',
   ),
@@ -78,6 +77,8 @@ ThemePack? themePackForCardBack(CardBack back) {
 
 CardBack defaultCardBackFor(Theme theme) => themePack(theme).cardBack;
 
+/// Catalog avatars for a pack (includes locked Journey / level extras).
+/// Prefer [unlockedAvatarIdsForPack] for pickers and equip.
 List<String> avatarsForPack(Theme id) => themePack(id).avatarIds;
 
 /// Coin theme sales retired — worlds unlock through Journey.

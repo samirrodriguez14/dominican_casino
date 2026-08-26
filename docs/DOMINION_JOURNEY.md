@@ -355,7 +355,12 @@ Completed worlds remain revisit-able. Locked future worlds preserve mystery.
 
 ## 17. Avatars
 
-Avatars are primarily **earned identity**. Major character avatars unlock by defeating their associated characters.
+Avatars are primarily **earned identity**.
+
+- Each theme pack starts with **one** free painted avatar.
+- Journey face cutouts (Jack, Queen, King, Ace) unlock when that challenger is defeated or the Ace is claimed, and stay usable while that world’s theme is equipped.
+- Painted extras unlock by player level: Base `leaf`@5 / `star`@10; Diamonds `acorn`@5; Clubs `leaf`@10; Hearts `sun`@15; Spades `moon`@20.
+- Profile Looks shows unlocked avatars plus a locked stack for the rest.
 
 Do not immediately add large parallel collectible systems (badges, gems, stickers, equipment, pets, multiple cosmetic currencies).
 
@@ -489,7 +494,7 @@ Three bands on the Journey table:
 2. **Center — Active stage:** empty hint, or selected challenger (game-card + Challenge) with Rewards peek to the right.
 3. **Bottom — Defeated:** four slots for beaten challengers per world (replay later).
 
-Selecting a challenger flips/scales into center. Challenge Play is chrome-only until match wiring ships.
+Selecting a challenger flips/scales into center. Challenge dialog offers **Play** (local bot match for the card's game), plus **Defeat** / **Lose** debug shortcuts. Wins persist defeat progress; losses show a challenger taunt. Journey progress is stored locally.
 
 ### Theme system (Base + four worlds)
 
@@ -513,16 +518,16 @@ Coin theme sales are retired (`coinPacksForSale` is empty). Profile shows play-l
 
 `AppRepo.unlockAndEquipPack` is the shared entry point. `JourneyWorld.themeId` maps world → Theme.
 
-### v1 Diamonds pacing (logic later)
+### v1 Diamonds pacing
 
-| Character | Unlock level |
-|-----------|--------------|
-| Jack | 5 |
-| Queen | 10 |
-| King | 13 |
+| Character | Unlock level | Game |
+|-----------|--------------|------|
+| Jack | 2 | Tres y Dos |
+| Queen | 2 | Rummy |
+| King | 2 | Casino Speed |
 
 Defeating the King grants the Ace and unlocks the next world / theme.
 
 ### Explicitly later
 
-XP persistence, challenge launch, defeat → Defeated animation/persistence, Ace world summary content, avatar unlock from character art, Spades Queen twist, Joker chapter, accent intensity ramps (Jack→King→Ace).
+Spades Queen twist, Joker chapter, accent intensity ramps (Jack→King→Ace), Firestore mirror of Journey progress.

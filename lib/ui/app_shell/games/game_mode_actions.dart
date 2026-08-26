@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
+import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
@@ -789,6 +790,8 @@ Future<void> gameEnter(
   int playerCount = 2,
   int entryCost = WalletConfig.entryCost,
   int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
+  Future<void> Function(String gameId)? onCreated,
+  LocalBotProfile? botOverride,
 }) async {
   if (mode == GameMode.robaito) return;
   final repo = context.read<AppRepo>();
@@ -809,8 +812,10 @@ Future<void> gameEnter(
       playerCount: playerCount,
       entryCost: entryCost,
       turnDurationSeconds: turnDurationSeconds,
+      botOverride: botOverride,
     );
     if (gid != null) {
+      if (onCreated != null) await onCreated(gid);
       router.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
     }
   } on InsufficientFundsException catch (e) {

@@ -12,11 +12,9 @@ Future<String?> showAvatarPickerPopup(
 }) {
   final theme = AppStyle.theme;
   final l10n = AppLocalizations.of(context);
-  final options = (avatarIds == null || avatarIds.isEmpty)
-      ? PlayerAvatars.all
-      : [
-          for (final id in avatarIds) PlayerAvatars.byId(id),
-        ];
+  final ids = (avatarIds == null || avatarIds.isEmpty)
+      ? [for (final a in PlayerAvatars.all) a.id]
+      : avatarIds;
 
   return showGeneralDialog<String>(
     context: context,
@@ -57,24 +55,23 @@ Future<String?> showAvatarPickerPopup(
                 ),
                 const SizedBox(height: 18),
                 GridView.count(
-                  crossAxisCount: options.length >= 4 ? 4 : options.length.clamp(1, 3),
+                  crossAxisCount: ids.length >= 4 ? 4 : ids.length.clamp(1, 3),
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   children: [
-                    for (final option in options)
+                    for (final id in ids)
                       GestureDetector(
                         onTap: SoundService.wrapTap(
-                          () => Navigator.pop(dialogContext, option.id),
+                          () => Navigator.pop(dialogContext, id),
                         ),
                         child: Center(
                           child: PlayerAvatarView(
-                            avatarId: option.id,
+                            avatarId: id,
                             size: 56,
                             selected:
-                                option.id ==
-                                (selectedId ?? PlayerAvatars.defaultId),
+                                id == (selectedId ?? PlayerAvatars.defaultId),
                           ),
                         ),
                       ),
@@ -100,7 +97,9 @@ Future<String?> showAvatarPickerPopup(
       return FadeTransition(
         opacity: animation,
         child: ScaleTransition(
-          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          scale: Tween<double>(begin: 0.96, end: 1).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
           child: child,
         ),
       );
