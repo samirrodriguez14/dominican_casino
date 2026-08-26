@@ -98,6 +98,11 @@ class GamesScreenState extends State<GamesScreen>
     await _journeyKey.currentState?.toggleTableDeck();
   }
 
+  /// Called when the Games shell tab is focused again.
+  void onShellTabVisible() {
+    _journeyKey.currentState?.onShellTabVisible();
+  }
+
   Future<void> toggleGrid() async {
     if (_gridAnim.isAnimating) return;
     if (_carouselKey.currentState?.isBusy == true) return;

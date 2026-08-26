@@ -4,6 +4,7 @@ import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_card.dart';
+import 'package:dominican_casino/ui/app_shell/profile/profile_coach.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_settings_body.dart';
 import 'package:dominican_casino/ui/app_shell/profile/theme_pack_carousel.dart';
 import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
@@ -21,30 +22,111 @@ class ProfileScreen extends StatefulWidget {
 
 class ProfileScreenState extends State<ProfileScreen> {
   final GlobalKey<StackedCardCarouselState> _carouselKey = GlobalKey();
+  final GlobalKey<ThemePackCarouselState> _themesCarouselKey = GlobalKey();
+  final GlobalKey _identityKey = GlobalKey();
+  final GlobalKey _walletKey = GlobalKey();
+  final GlobalKey _looksKey = GlobalKey();
+  final GlobalKey _themesKey = GlobalKey();
+  final GlobalKey _doneKey = GlobalKey();
+
+  late final ProfileCoachController _coach;
+
   bool _looksMode = false;
   bool _looksGrid = false;
   int _looksIndex = 0;
   int _frontIndex = 0;
+  bool _coachScheduled = false;
+  AppRepo? _repo;
+  int _lastStoryEpoch = -1;
 
-  void toggleProfileSettings() {
+  @override
+  void initState() {
+    super.initState();
+    _coach = ProfileCoachController(looksKey: _looksKey);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repo = context.read<AppRepo>();
+    if (!identical(_repo, repo)) {
+      _repo?.removeListener(_onRepoChanged);
+      _repo = repo;
+      _repo!.addListener(_onRepoChanged);
+      _lastStoryEpoch = repo.journeyStoryEpoch;
+    }
+  }
+
+  @override
+  void dispose() {
+    _repo?.removeListener(_onRepoChanged);
+    _coach.dispose();
+    super.dispose();
+  }
+
+  void _onRepoChanged() {
+    if (!mounted || _repo == null) return;
+    final epoch = _repo!.journeyStoryEpoch;
+    if (epoch == _lastStoryEpoch) return;
+    _lastStoryEpoch = epoch;
+    _coachScheduled = false;
+    _coach.reset();
+  }
+
+  /// Called by the shell when the Profile tab becomes visible.
+  void onBecameVisible() {
+    _maybeStartCoach();
+  }
+
+  Future<void> _ensureProfileCardFront() async {
     if (_looksMode) {
       setState(() {
         _looksMode = false;
         _looksGrid = false;
       });
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+    if (_frontIndex != 0) {
+      await _carouselKey.currentState?.goToIndex(0);
+      if (!mounted) return;
+      setState(() => _frontIndex = 0);
+    }
+  }
+
+  void _maybeStartCoach() {
+    if (_coachScheduled || _coach.isActive || _coach.isFinished) return;
+    final repo = context.read<AppRepo>();
+    final player = repo.player;
+    if (player == null) return;
+    if (player.completedProfileTutorial) {
+      _coach.finish();
+      return;
+    }
+    // Only after Journey theme unlock → "Go to profile".
+    if (!repo.takePendingProfileThemeTip()) return;
+    _coachScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _ensureProfileCardFront();
+      if (!mounted) return;
+      // Let the profile card / looks button lay out before highlighting.
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      _coach.start();
+    });
+  }
+
+  void toggleProfileSettings() {
+    if (_looksMode) {
+      closeLooks();
       return;
     }
     _carouselKey.currentState?.toggleFront();
   }
 
-  void _toggleLooks() {
-    if (_looksMode) {
-      setState(() {
-        _looksMode = false;
-        _looksGrid = false;
-      });
-      return;
-    }
+  void openLooks() {
+    if (_looksMode) return;
     final repo = context.read<AppRepo>();
     final current = repo.appTheme;
     final packs = visibleThemePacksForProfile(repo.ownedPacks);
@@ -54,6 +136,22 @@ class ProfileScreenState extends State<ProfileScreen> {
       _looksMode = true;
       _looksGrid = false;
     });
+  }
+
+  void closeLooks() {
+    if (!_looksMode) return;
+    setState(() {
+      _looksMode = false;
+      _looksGrid = false;
+    });
+  }
+
+  void _toggleLooks() {
+    if (_looksMode) {
+      closeLooks();
+    } else {
+      openLooks();
+    }
   }
 
   @override
@@ -71,10 +169,13 @@ class ProfileScreenState extends State<ProfileScreen> {
             _looksMode ? 0 : 108,
           ),
           child: _looksMode
-              ? ThemePackCarousel(
-                  key: ValueKey(_looksIndex),
-                  initialIndex: _looksIndex,
-                  grid: _looksGrid,
+              ? KeyedSubtree(
+                  key: _themesKey,
+                  child: ThemePackCarousel(
+                    key: _themesCarouselKey,
+                    initialIndex: _looksIndex,
+                    grid: _looksGrid,
+                  ),
                 )
               : StackedCardCarousel(
                   key: _carouselKey,
@@ -86,7 +187,13 @@ class ProfileScreenState extends State<ProfileScreen> {
                   fitToHeight: true,
                   itemBuilder: (context, index) {
                     return index == 0
-                        ? ProfileCard(onToggleLooks: _toggleLooks)
+                        ? ProfileCard(
+                            onToggleLooks: _toggleLooks,
+                            identityKey: _identityKey,
+                            walletKey: _walletKey,
+                            looksKey: _looksKey,
+                            coach: _coach,
+                          )
                         : const ProfileSettingsBody();
                   },
                   onIndexChanged: (index) {
@@ -98,7 +205,6 @@ class ProfileScreenState extends State<ProfileScreen> {
         Positioned(
           left: 0,
           right: 0,
-          // Lift the slide hint above the floating tab bar.
           bottom: 124,
           child: Center(
             child: _looksMode
@@ -123,15 +229,18 @@ class ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(width: 20),
-                      CupertinoButton(
-                        padding: const EdgeInsets.all(8),
-                        minimumSize: Size.zero,
-                        onPressed: SoundService.wrapTap(_toggleLooks),
-                        child: Icon(
-                          CupertinoIcons.check_mark,
-                          size: 22,
-                          color: theme.textPrimary,
-                          semanticLabel: l10n.done,
+                      KeyedSubtree(
+                        key: _doneKey,
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.all(8),
+                          minimumSize: Size.zero,
+                          onPressed: SoundService.wrapTap(closeLooks),
+                          child: Icon(
+                            CupertinoIcons.check_mark,
+                            size: 22,
+                            color: theme.textPrimary,
+                            semanticLabel: l10n.done,
+                          ),
                         ),
                       ),
                     ],
@@ -142,6 +251,12 @@ class ProfileScreenState extends State<ProfileScreen> {
                         : l10n.slideForProfile,
                   ),
           ),
+        ),
+        ProfileCoachOverlay(
+          controller: _coach,
+          onCompleted: () {
+            if (mounted) setState(() {});
+          },
         ),
       ],
     );
@@ -166,7 +281,7 @@ class _SlideHintState extends State<_SlideHint>
     super.initState();
     _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2200),
+      duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
   }
 
@@ -179,24 +294,15 @@ class _SlideHintState extends State<_SlideHint>
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (context, child) {
-        return Opacity(opacity: 0.35 + 0.65 * _pulse.value, child: child);
-      },
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 2),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          child: Text(
-            widget.text,
-            key: ValueKey(widget.text),
-            textAlign: TextAlign.center,
-            style: theme.mutedText.copyWith(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.55, end: 1).animate(
+        CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+      ),
+      child: Text(
+        widget.text,
+        style: theme.caption.copyWith(
+          color: theme.muted,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
@@ -17,6 +18,7 @@ class JourneyInstructionDeck extends StatelessWidget {
     required this.onExpand,
     required this.onCollapse,
     this.deckKey,
+    this.carouselKey,
     this.initialPage,
     this.world = JourneyWorld.diamonds,
     this.showUnlockChallengerCta = false,
@@ -25,6 +27,8 @@ class JourneyInstructionDeck extends StatelessWidget {
     this.showEnterKingdomCta = false,
     this.enterKingdomLabel = 'Enter Diamonds kingdom',
     this.onEnterKingdom,
+    this.ceremonyPageId,
+    this.ceremonyT,
   });
 
   /// Highest unlocked 1-based instruction id.
@@ -33,6 +37,7 @@ class JourneyInstructionDeck extends StatelessWidget {
   final VoidCallback onExpand;
   final VoidCallback onCollapse;
   final GlobalKey? deckKey;
+  final GlobalKey<StackedCardCarouselState>? carouselKey;
   /// 0-based carousel index to open on (defaults to latest unlocked).
   final int? initialPage;
   final JourneyWorld world;
@@ -43,6 +48,10 @@ class JourneyInstructionDeck extends StatelessWidget {
   final bool showEnterKingdomCta;
   final String enterKingdomLabel;
   final VoidCallback? onEnterKingdom;
+  /// 1-based page currently playing the sealed → reveal ceremony.
+  final int? ceremonyPageId;
+  /// Ceremony timeline 0→1 when [ceremonyPageId] is set.
+  final double? ceremonyT;
 
   /// Unlocked pages, plus one locked "next" peek when more catalog remains.
   int get _visibleCount {
@@ -55,7 +64,14 @@ class JourneyInstructionDeck extends StatelessWidget {
   int get _pagerTotal => _visibleCount;
 
   /// 0-based highest index that may be brought to the front.
-  int get _maxFrontIndex => (unlockedThrough - 1).clamp(0, _visibleCount - 1);
+  int get _maxFrontIndex {
+    final ceremony = ceremonyPageId;
+    // During unlock ceremony the sealed page must be allowably fronted.
+    if (ceremony != null) {
+      return (ceremony - 1).clamp(0, _visibleCount - 1);
+    }
+    return (unlockedThrough - 1).clamp(0, _visibleCount - 1);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,12 +92,14 @@ class JourneyInstructionDeck extends StatelessWidget {
       );
     }
 
+    final ceremonyActive = ceremonyPageId != null && ceremonyT != null;
     return _ExpandedGuide(
       unlockedThrough: unlockedThrough,
       visibleCount: _visibleCount,
       pagerTotal: _pagerTotal,
       maxFrontIndex: _maxFrontIndex,
-      initialIndex: (initialPage ?? _maxFrontIndex).clamp(0, _maxFrontIndex),
+      initialIndex: (initialPage ?? (unlockedThrough - 1).clamp(0, _maxFrontIndex))
+          .clamp(0, _maxFrontIndex),
       world: world,
       onCollapse: onCollapse,
       showUnlockChallengerCta: showUnlockChallengerCta,
@@ -90,6 +108,11 @@ class JourneyInstructionDeck extends StatelessWidget {
       showEnterKingdomCta: showEnterKingdomCta,
       enterKingdomLabel: enterKingdomLabel,
       onEnterKingdom: onEnterKingdom,
+      carouselKey: carouselKey,
+      ceremonyPageId: ceremonyPageId,
+      ceremonyT: ceremonyT,
+      // Keep carousel alive across the unlock bump at boom.
+      stableCarousel: ceremonyActive,
     );
   }
 }
@@ -174,6 +197,10 @@ class _ExpandedGuide extends StatelessWidget {
     this.showEnterKingdomCta = false,
     this.enterKingdomLabel = 'Enter Diamonds kingdom',
     this.onEnterKingdom,
+    this.carouselKey,
+    this.ceremonyPageId,
+    this.ceremonyT,
+    this.stableCarousel = false,
   });
 
   final int unlockedThrough;
@@ -189,19 +216,27 @@ class _ExpandedGuide extends StatelessWidget {
   final bool showEnterKingdomCta;
   final String enterKingdomLabel;
   final VoidCallback? onEnterKingdom;
+  final GlobalKey<StackedCardCarouselState>? carouselKey;
+  final int? ceremonyPageId;
+  final double? ceremonyT;
+  final bool stableCarousel;
 
   void _onBlocked(int _) {
     SoundService.instance.playLayered(GameSound.softCard);
     AppHaptics.selectionClick();
   }
 
+  bool get _ceremonyActive =>
+      ceremonyPageId != null && ceremonyT != null;
+
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final palette = journeyPaletteFor(world);
+    final blockDismiss = showUnlockChallengerCta || _ceremonyActive;
 
     return GestureDetector(
-      onTap: showUnlockChallengerCta
+      onTap: blockDismiss
           ? null
           : () {
               SoundService.instance.playLayered(GameSound.softCard);
@@ -220,9 +255,12 @@ class _ExpandedGuide extends StatelessWidget {
                     width: 340,
                     height: 420,
                     child: StackedCardCarousel(
-                      key: ValueKey(
-                        'journey-guide-$unlockedThrough-$initialIndex',
-                      ),
+                      key: carouselKey ??
+                          ValueKey(
+                            stableCarousel
+                                ? 'journey-guide-ceremony'
+                                : 'journey-guide-$unlockedThrough-$initialIndex',
+                          ),
                       itemCount: visibleCount,
                       initialIndex: initialIndex,
                       maxFrontIndex: maxFrontIndex,
@@ -238,36 +276,57 @@ class _ExpandedGuide extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final pageId = index + 1;
                         final locked = pageId > unlockedThrough;
-                        if (locked) {
-                          return _LockedInstructionCard(
+                        final isCeremonyPage = ceremonyPageId == pageId &&
+                            ceremonyT != null;
+
+                        Widget card;
+                        if (isCeremonyPage) {
+                          card = _CeremonyInstructionCard(
+                            pageId: pageId,
+                            pagerTotal: pagerTotal,
+                            world: world,
+                            palette: palette,
+                            theme: theme,
+                            timeline: JourneyThemeUnlockTimeline(ceremonyT!),
+                            unlockedThrough: unlockedThrough,
+                            showUnlockChallengerCta: showUnlockChallengerCta,
+                            unlockChallengerLabel: unlockChallengerLabel,
+                            onUnlockNextChallenger: onUnlockNextChallenger,
+                          );
+                        } else if (locked) {
+                          card = _LockedInstructionCard(
                             pageLabel: '$pageId/$pagerTotal',
                             world: world,
                             palette: palette,
                             theme: theme,
                           );
+                        } else {
+                          final page = journeyInstructions[index];
+                          final isLatest = pageId == unlockedThrough;
+                          final showEnter = showEnterKingdomCta &&
+                              page.id == 1 &&
+                              onEnterKingdom != null;
+                          card = _InstructionCard(
+                            instruction: page,
+                            pageLabel: '${page.id}/$pagerTotal',
+                            palette: palette,
+                            theme: theme,
+                            unlockChallengerLabel: showUnlockChallengerCta &&
+                                    isLatest &&
+                                    onUnlockNextChallenger != null
+                                ? unlockChallengerLabel
+                                : null,
+                            onUnlockChallenger:
+                                showUnlockChallengerCta && isLatest
+                                    ? onUnlockNextChallenger
+                                    : null,
+                            enterKingdomLabel:
+                                showEnter ? enterKingdomLabel : null,
+                            onEnterKingdom: showEnter ? onEnterKingdom : null,
+                          );
                         }
-                        final page = journeyInstructions[index];
-                        final isLatest = pageId == unlockedThrough;
-                        final showEnter = showEnterKingdomCta &&
-                            page.id == 1 &&
-                            onEnterKingdom != null;
-                        return _InstructionCard(
-                          instruction: page,
-                          pageLabel: '${page.id}/$pagerTotal',
-                          palette: palette,
-                          theme: theme,
-                          unlockChallengerLabel: showUnlockChallengerCta &&
-                                  isLatest &&
-                                  onUnlockNextChallenger != null
-                              ? unlockChallengerLabel
-                              : null,
-                          onUnlockChallenger: showUnlockChallengerCta && isLatest
-                              ? onUnlockNextChallenger
-                              : null,
-                          enterKingdomLabel:
-                              showEnter ? enterKingdomLabel : null,
-                          onEnterKingdom: showEnter ? onEnterKingdom : null,
-                        );
+
+                        return card;
                       },
                     ),
                   ),
@@ -279,14 +338,14 @@ class _ExpandedGuide extends StatelessWidget {
                 child: CupertinoButton(
                   padding: const EdgeInsets.all(8),
                   minimumSize: Size.zero,
-                  onPressed: showUnlockChallengerCta
+                  onPressed: blockDismiss
                       ? null
                       : SoundService.wrapTap(onCollapse),
                   child: Icon(
                     CupertinoIcons.xmark_circle_fill,
                     size: 28,
                     color: theme.textPrimary.withValues(
-                      alpha: showUnlockChallengerCta ? .35 : .9,
+                      alpha: blockDismiss ? .35 : .9,
                     ),
                   ),
                 ),
@@ -294,6 +353,88 @@ class _ExpandedGuide extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Sealed instruction that shakes, breaks, and reveals catalog copy.
+class _CeremonyInstructionCard extends StatelessWidget {
+  const _CeremonyInstructionCard({
+    required this.pageId,
+    required this.pagerTotal,
+    required this.world,
+    required this.palette,
+    required this.theme,
+    required this.timeline,
+    required this.unlockedThrough,
+    required this.showUnlockChallengerCta,
+    required this.unlockChallengerLabel,
+    this.onUnlockNextChallenger,
+  });
+
+  final int pageId;
+  final int pagerTotal;
+  final JourneyWorld world;
+  final JourneyWorldPalette palette;
+  final AppTheme theme;
+  final JourneyThemeUnlockTimeline timeline;
+  final int unlockedThrough;
+  final bool showUnlockChallengerCta;
+  final String unlockChallengerLabel;
+  final VoidCallback? onUnlockNextChallenger;
+
+  @override
+  Widget build(BuildContext context) {
+    final page = journeyInstructionById(pageId) ??
+        (pageId >= 1 && pageId <= journeyInstructions.length
+            ? journeyInstructions[pageId - 1]
+            : null);
+    final isLatest = pageId == unlockedThrough || timeline.pastBoom;
+    final revealed = page == null
+        ? _LockedInstructionCard(
+            pageLabel: '$pageId/$pagerTotal',
+            world: world,
+            palette: palette,
+            theme: theme,
+          )
+        : _InstructionCard(
+            instruction: page,
+            pageLabel: '${page.id}/$pagerTotal',
+            palette: palette,
+            theme: theme,
+            unlockChallengerLabel: showUnlockChallengerCta &&
+                    isLatest &&
+                    timeline.pastBoom &&
+                    onUnlockNextChallenger != null
+                ? unlockChallengerLabel
+                : null,
+            onUnlockChallenger: showUnlockChallengerCta &&
+                    isLatest &&
+                    timeline.pastBoom
+                ? onUnlockNextChallenger
+                : null,
+          );
+
+    return JourneyThemeUnlockTransform(
+      timeline: timeline,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Opacity(
+            opacity: timeline.revealAmount,
+            child: revealed,
+          ),
+          Opacity(
+            opacity: timeline.lockOpacity,
+            child: _LockedInstructionCard(
+              pageLabel: '$pageId/$pagerTotal',
+              world: world,
+              palette: palette,
+              theme: theme,
+            ),
+          ),
+        ],
       ),
     );
   }

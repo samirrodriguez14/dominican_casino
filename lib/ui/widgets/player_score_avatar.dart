@@ -332,12 +332,17 @@ class _TurnCountdownRing extends StatefulWidget {
 class _TurnCountdownRingState extends State<_TurnCountdownRing>
     with SingleTickerProviderStateMixin {
   late final Ticker _ticker;
+  Duration _lastPaint = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _ticker = createTicker((_) {
+    // ~12fps is plenty for a countdown ring and much cheaper than a
+    // full setState on every vsync tick with blur paints.
+    _ticker = createTicker((elapsed) {
       if (!mounted) return;
+      if (elapsed - _lastPaint < const Duration(milliseconds: 80)) return;
+      _lastPaint = elapsed;
       setState(() {});
       if (_remaining <= 0) _ticker.stop();
     })..start();
@@ -392,23 +397,25 @@ class _TurnCountdownRingState extends State<_TurnCountdownRing>
     return SizedBox(
       width: widget.size,
       height: widget.size,
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          IgnorePointer(
-            child: CustomPaint(
-              size: Size.square(widget.size),
-              painter: _CountdownRingPainter(
-                progress: remaining,
-                color: color,
-                strokeWidth: stroke,
-                glowStrength: pulse,
+      child: RepaintBoundary(
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            IgnorePointer(
+              child: CustomPaint(
+                size: Size.square(widget.size),
+                painter: _CountdownRingPainter(
+                  progress: remaining,
+                  color: color,
+                  strokeWidth: stroke,
+                  glowStrength: pulse,
+                ),
               ),
             ),
-          ),
-          widget.child,
-        ],
+            widget.child,
+          ],
+        ),
       ),
     );
   }
@@ -470,11 +477,10 @@ class _CountdownRingPainter extends CustomPainter {
       sweep,
       false,
       Paint()
-        ..color = color.withValues(alpha: 0.28 * glowStrength)
+        ..color = color.withValues(alpha: 0.22 * glowStrength)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth + 5.5
-        ..strokeCap = cap
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.2),
+        ..strokeWidth = strokeWidth + 4
+        ..strokeCap = cap,
     );
     canvas.drawArc(
       rect,
@@ -509,10 +515,8 @@ class _CountdownRingPainter extends CustomPainter {
     );
     canvas.drawCircle(
       bead,
-      strokeWidth * 0.92,
-      Paint()
-        ..color = color.withValues(alpha: 0.45 * glowStrength)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.4),
+      strokeWidth * 0.7,
+      Paint()..color = color.withValues(alpha: 0.35 * glowStrength),
     );
     canvas.drawCircle(bead, strokeWidth * 0.62, Paint()..color = color);
     canvas.drawCircle(

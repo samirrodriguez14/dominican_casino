@@ -17,11 +17,12 @@ class ThemePackCarousel extends StatefulWidget {
   final bool grid;
 
   @override
-  State<ThemePackCarousel> createState() => _ThemePackCarouselState();
+  State<ThemePackCarousel> createState() => ThemePackCarouselState();
 }
 
-class _ThemePackCarouselState extends State<ThemePackCarousel> {
+class ThemePackCarouselState extends State<ThemePackCarousel> {
   late int _frontIndex;
+  final GlobalKey<StackedCardCarouselState> _stackKey = GlobalKey();
 
   @override
   void initState() {
@@ -31,6 +32,32 @@ class _ThemePackCarouselState extends State<ThemePackCarousel> {
 
   List<ThemePack> _packs(AppRepo repo) =>
       visibleThemePacksForProfile(repo.ownedPacks);
+
+  int get frontIndex => _frontIndex;
+
+  Future<void> goToIndex(int index) async {
+    if (widget.grid) {
+      setState(() => _frontIndex = index);
+      return;
+    }
+    await _stackKey.currentState?.goToIndex(index);
+  }
+
+  /// Slide to the next pack after the equipped one (sealed preview or next owned).
+  Future<void> slideToNextThemePreview() async {
+    final repo = context.read<AppRepo>();
+    final packs = _packs(repo);
+    if (packs.length < 2) return;
+    final current = repo.appTheme;
+    var from = packs.indexWhere((p) => p.id == current);
+    if (from < 0) from = _frontIndex;
+    final next = (from + 1).clamp(0, packs.length - 1);
+    if (next == from && from > 0) {
+      await goToIndex(0);
+      return;
+    }
+    await goToIndex(next);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +77,7 @@ class _ThemePackCarouselState extends State<ThemePackCarousel> {
       child: widget.grid
           ? _ThemePackGrid(key: const ValueKey('grid'), packs: packs)
           : StackedCardCarousel(
-              key: ValueKey('stack-${packs.length}'),
+              key: _stackKey,
               itemCount: packs.length,
               initialIndex: safeFront,
               peekStyle: CardPeekStyle.fan,

@@ -3,7 +3,9 @@ import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_progress_trail.dart';
 import 'package:dominican_casino/ui/app_shell/profile/avatar_picker_popup.dart';
+import 'package:dominican_casino/ui/app_shell/profile/profile_coach.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_wallet_cards.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
@@ -16,9 +18,20 @@ import 'package:provider/provider.dart';
 /// Playing-card identity face, tinted from the player's avatar like the
 /// in-game status scoreboards. The card itself is the winning-card look.
 class ProfileCard extends StatefulWidget {
-  const ProfileCard({super.key, this.onToggleLooks});
+  const ProfileCard({
+    super.key,
+    this.onToggleLooks,
+    this.identityKey,
+    this.walletKey,
+    this.looksKey,
+    this.coach,
+  });
 
   final VoidCallback? onToggleLooks;
+  final GlobalKey? identityKey;
+  final GlobalKey? walletKey;
+  final GlobalKey? looksKey;
+  final ProfileCoachController? coach;
 
   @override
   State<ProfileCard> createState() => _ProfileCardState();
@@ -75,42 +88,76 @@ class _ProfileCardState extends State<ProfileCard> {
                   child: Column(
                     children: [
                       Expanded(
-                        child: LayoutBuilder(
-                          builder: (context, inner) {
-                            final avatarSize = (inner.maxHeight * 0.52).clamp(
-                              108.0,
-                              156.0,
-                            );
-                            return Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _AvatarButton(
-                                  avatarId: avatarId,
-                                  size: avatarSize,
-                                  score: score,
-                                  playingCardWidth: avatarSize * 0.32,
-                                  onPressed: () => _changeAvatar(context, vm),
-                                  onEditPlayingCard: () => _setEditing(true),
-                                ),
-                                const SizedBox(height: 16),
-                                _NameButton(
-                                  name: name,
-                                  score: score,
-                                  onPressed: () => _changeName(context, vm),
-                                ),
-                              ],
-                            );
-                          },
+                        child: _CoachWrap(
+                          coach: widget.coach,
+                          targetKey: widget.identityKey,
+                          child: KeyedSubtree(
+                            key: widget.identityKey,
+                            child: LayoutBuilder(
+                              builder: (context, inner) {
+                                final avatarSize = (inner.maxHeight * 0.52).clamp(
+                                  108.0,
+                                  156.0,
+                                );
+                                return Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _AvatarButton(
+                                      avatarId: avatarId,
+                                      size: avatarSize,
+                                      score: score,
+                                      playingCardWidth: avatarSize * 0.32,
+                                      onPressed: () =>
+                                          _changeAvatar(context, vm),
+                                      onEditPlayingCard: () =>
+                                          _setEditing(true),
+                                      onAceTap: () {
+                                        final aces = repo
+                                            .journeyProgress.defeatedAceWorlds;
+                                        showJourneyAceAccessoriesPopup(
+                                          context,
+                                          avatarId: avatarId,
+                                          defeatedAces: aces,
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _NameButton(
+                                      name: name,
+                                      score: score,
+                                      onPressed: () =>
+                                          _changeName(context, vm),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
                         ),
                       ),
-                      ProfileWalletPills(
-                        scoreTheme: score,
-                        trailing: widget.onToggleLooks == null
-                            ? null
-                            : _LooksActionButton(
-                                score: score,
-                                onPressed: widget.onToggleLooks!,
-                              ),
+                      _CoachWrap(
+                        coach: widget.coach,
+                        targetKey: widget.walletKey,
+                        child: KeyedSubtree(
+                          key: widget.walletKey,
+                          child: ProfileWalletPills(
+                            scoreTheme: score,
+                            trailing: widget.onToggleLooks == null
+                                ? null
+                                : _CoachWrap(
+                                    coach: widget.coach,
+                                    targetKey: widget.looksKey,
+                                    bounce: false,
+                                    child: KeyedSubtree(
+                                      key: widget.looksKey,
+                                      child: _LooksActionButton(
+                                        score: score,
+                                        onPressed: widget.onToggleLooks!,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -127,6 +174,33 @@ class _ProfileCardState extends State<ProfileCard> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CoachWrap extends StatelessWidget {
+  const _CoachWrap({
+    required this.child,
+    this.coach,
+    this.targetKey,
+    this.bounce = false,
+  });
+
+  final ProfileCoachController? coach;
+  final GlobalKey? targetKey;
+  final Widget child;
+  final bool bounce;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = coach;
+    final key = targetKey;
+    if (c == null || key == null) return child;
+    return ProfileCoachPulse(
+      controller: c,
+      targetKey: key,
+      bounce: bounce,
+      child: child,
     );
   }
 }
@@ -216,6 +290,7 @@ class _AvatarButton extends StatelessWidget {
     required this.playingCardWidth,
     required this.onPressed,
     required this.onEditPlayingCard,
+    required this.onAceTap,
   });
 
   final String? avatarId;
@@ -224,6 +299,7 @@ class _AvatarButton extends StatelessWidget {
   final double playingCardWidth;
   final VoidCallback onPressed;
   final VoidCallback onEditPlayingCard;
+  final VoidCallback onAceTap;
 
   @override
   Widget build(BuildContext context) {
@@ -240,8 +316,14 @@ class _AvatarButton extends StatelessWidget {
             onPressed: SoundService.wrapTap(onPressed),
             child: Stack(
               alignment: Alignment.bottomRight,
+              clipBehavior: Clip.none,
               children: [
-                PlayerAvatarView(avatarId: avatarId, size: size, showJourneyAces: true),
+                PlayerAvatarView(
+                  avatarId: avatarId,
+                  size: size,
+                  showJourneyAces: true,
+                  onAceTap: (_) => onAceTap(),
+                ),
                 Container(
                   width: 34,
                   height: 34,

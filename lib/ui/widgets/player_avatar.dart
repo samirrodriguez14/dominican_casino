@@ -152,6 +152,7 @@ class PlayerAvatarView extends StatelessWidget {
     this.silhouette = false,
     this.showJourneyAces = false,
     this.defeatedAces,
+    this.onAceTap,
   });
 
   final String? avatarId;
@@ -165,6 +166,8 @@ class PlayerAvatarView extends StatelessWidget {
   final bool showJourneyAces;
   /// Explicit Ace set; when null and [showJourneyAces], reads [AppRepo].
   final Set<JourneyWorld>? defeatedAces;
+  /// Optional tap on an owned Ace ornament (e.g. open trophies on profile).
+  final ValueChanged<JourneyWorld>? onAceTap;
 
   @override
   Widget build(BuildContext context) {
@@ -175,15 +178,6 @@ class PlayerAvatarView extends StatelessWidget {
         : ((avatarAsset != null && avatarAsset!.isNotEmpty)
             ? avatarAsset
             : journeyAvatarAssetPath(avatarId));
-
-    Set<JourneyWorld> aces = defeatedAces ?? const {};
-    if (showJourneyAces && defeatedAces == null) {
-      try {
-        aces = context.watch<AppRepo>().journeyProgress.defeatedAceWorlds;
-      } catch (_) {
-        aces = const {};
-      }
-    }
 
     final disc = SizedBox(
       width: size,
@@ -212,6 +206,7 @@ class PlayerAvatarView extends StatelessWidget {
                     width: size,
                     height: size,
                     alignment: Alignment.bottomCenter,
+                    cacheWidth: (size * 3).ceil().clamp(48, 512),
                     errorBuilder: (_, _, _) => CustomPaint(
                       painter: _AvatarPainter(option, silhouette: silhouette),
                       size: Size.square(size),
@@ -228,17 +223,52 @@ class PlayerAvatarView extends StatelessWidget {
 
     if (!showJourneyAces) return disc;
 
+    // Narrow Provider selects — never `watch` the whole AppRepo (energy /
+    // wallet / locale would rebuild ornaments on every tick).
+    var wear = true;
+    Set<JourneyWorld> aces = defeatedAces ?? const {};
+    try {
+      wear = context.select<AppRepo, bool>((r) => r.wearJourneyAccessories);
+      if (defeatedAces == null) {
+        final bits = context.select<AppRepo, int>((r) {
+          var mask = 0;
+          for (final w in r.journeyProgress.defeatedAceWorlds) {
+            mask |= 1 << w.index;
+          }
+          return mask;
+        });
+        aces = {
+          for (final w in JourneyWorld.values)
+            if ((bits & (1 << w.index)) != 0) w,
+        };
+      }
+    } catch (_) {
+      // Outside an AppRepo scope (tests / isolated previews).
+    }
+    if (!wear || aces.isEmpty) return disc;
+
     final medallion = size * 0.28;
-    Widget corner(JourneyWorld world, {required bool top, required bool bottom, required bool left, required bool right}) {
-      final owned = aces.contains(world);
+    Widget corner(
+      JourneyWorld world, {
+      required bool top,
+      required bool bottom,
+      required bool left,
+      required bool right,
+    }) {
+      if (!aces.contains(world)) return const SizedBox.shrink();
+      final badge = _AceSuitMedallion(world: world, size: medallion);
       return Positioned(
         top: top ? -medallion * 0.35 : null,
         bottom: bottom ? -medallion * 0.35 : null,
         left: left ? -medallion * 0.35 : null,
         right: right ? -medallion * 0.35 : null,
-        child: owned
-            ? _AceSuitMedallion(world: world, size: medallion)
-            : _LockedAceSlot(world: world, size: medallion),
+        child: onAceTap == null
+            ? badge
+            : GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onAceTap!(world),
+                child: badge,
+              ),
       );
     }
 
@@ -250,10 +280,34 @@ class PlayerAvatarView extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           disc,
-          corner(JourneyWorld.diamonds, top: true, bottom: false, left: false, right: false),
-          corner(JourneyWorld.clubs, top: false, bottom: false, left: false, right: true),
-          corner(JourneyWorld.hearts, top: false, bottom: true, left: false, right: false),
-          corner(JourneyWorld.spades, top: false, bottom: false, left: true, right: false),
+          corner(
+            JourneyWorld.diamonds,
+            top: true,
+            bottom: false,
+            left: false,
+            right: false,
+          ),
+          corner(
+            JourneyWorld.clubs,
+            top: false,
+            bottom: false,
+            left: false,
+            right: true,
+          ),
+          corner(
+            JourneyWorld.hearts,
+            top: false,
+            bottom: true,
+            left: false,
+            right: false,
+          ),
+          corner(
+            JourneyWorld.spades,
+            top: false,
+            bottom: false,
+            left: true,
+            right: false,
+          ),
         ],
       ),
     );
@@ -291,38 +345,10 @@ class _AceSuitMedallion extends StatelessWidget {
         child: Image.asset(
           world.aceCardAssetPath,
           fit: BoxFit.cover,
+          // Medallions are tiny — decode at display size, not full card art.
+          cacheWidth: (size * 3).ceil().clamp(24, 128),
           errorBuilder: (_, _, _) => ColoredBox(color: palette.surface),
         ),
-      ),
-    );
-  }
-}
-
-/// Locked Ace corner: no suit glyph — lock only.
-class _LockedAceSlot extends StatelessWidget {
-  const _LockedAceSlot({required this.world, required this.size});
-
-  final JourneyWorld world;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = journeyPaletteFor(world);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFF1A1A1E),
-        border: Border.all(
-          color: palette.accent.withValues(alpha: .28),
-          width: 1,
-        ),
-      ),
-      child: Icon(
-        CupertinoIcons.lock_fill,
-        size: size * 0.42,
-        color: palette.accent.withValues(alpha: .45),
       ),
     );
   }

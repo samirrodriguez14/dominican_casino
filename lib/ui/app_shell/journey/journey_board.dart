@@ -20,8 +20,11 @@ import 'package:dominican_casino/ui/app_shell/journey/journey_instruction_deck.d
 import 'package:dominican_casino/ui/app_shell/journey/journey_loss_taunt.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_progress_trail.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_world_piles.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:dominican_casino/ui/widgets/journey_theme_unlock_reward.dart';
+import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -90,6 +93,8 @@ class JourneyBoardState extends State<JourneyBoard>
   static const _flipDuration = Duration(milliseconds: 720);
   static const _defeatFlyDuration = Duration(milliseconds: 520);
   static const _revealDuration = Duration(milliseconds: 420);
+  static const _themeUnlockDuration = Duration(milliseconds: 1700);
+  static const _instructionUnlockDuration = Duration(milliseconds: 1700);
 
   late List<JourneyWorldDef> _worlds;
   JourneyWorld _activeWorld = JourneyWorld.diamonds;
@@ -100,6 +105,8 @@ class JourneyBoardState extends State<JourneyBoard>
   late final AnimationController _selectAnim;
   late final AnimationController _defeatFlyAnim;
   late final AnimationController _revealAnim;
+  late final AnimationController _themeUnlockAnim;
+  late final AnimationController _instructionUnlockAnim;
   JourneyCardDef? _defeatFlying;
   /// Override flight target (Ace → trail token); null uses defeated pile.
   Offset? _defeatFlyTo;
@@ -116,7 +123,23 @@ class JourneyBoardState extends State<JourneyBoard>
   final GlobalKey _defeatedKey = GlobalKey();
   final GlobalKey _trailTokenKey = GlobalKey();
   final GlobalKey _instructionDeckKey = GlobalKey();
+  final GlobalKey<StackedCardCarouselState> _instructionCarouselKey =
+      GlobalKey();
+  final Map<JourneyWorld, GlobalKey> _pileKeys = {
+    for (final w in JourneyWorld.values) w: GlobalKey(),
+  };
   late final JourneyCoachController _coach;
+
+  JourneyWorld? _themeUnlockWorld;
+  bool _themeUnlockForceSealed = false;
+  bool _themeUnlockApplied = false;
+  Future<void>? _themeUnlockApplyFuture;
+  JourneyWorld? _themeUnlockRewardWorld;
+  /// After Diamonds theme reward, unlock instruction page 2 with ceremony.
+  bool _pendingDiamondsInstructionReveal = false;
+  int? _instructionCeremonyPageId;
+  bool _instructionCeremonyUnlocked = false;
+  bool _instructionCeremonyShowCta = false;
 
   bool _guideExpanded = false;
   int? _guideOpenPage;
@@ -144,6 +167,16 @@ class JourneyBoardState extends State<JourneyBoard>
       duration: _defeatFlyDuration,
     );
     _revealAnim = AnimationController(vsync: this, duration: _revealDuration);
+    _themeUnlockAnim = AnimationController(
+      vsync: this,
+      duration: _themeUnlockDuration,
+    );
+    _themeUnlockAnim.addListener(_onThemeUnlockTick);
+    _instructionUnlockAnim = AnimationController(
+      vsync: this,
+      duration: _instructionUnlockDuration,
+    );
+    _instructionUnlockAnim.addListener(_onInstructionUnlockTick);
     _coach = JourneyCoachController(
       pilesKey: _pilesKey,
       centerKey: _centerKey,
@@ -180,11 +213,196 @@ class JourneyBoardState extends State<JourneyBoard>
   @override
   void dispose() {
     _repo?.removeListener(_onRepoChanged);
+    _themeUnlockAnim.removeListener(_onThemeUnlockTick);
+    _instructionUnlockAnim.removeListener(_onInstructionUnlockTick);
     _selectAnim.dispose();
     _defeatFlyAnim.dispose();
     _revealAnim.dispose();
+    _themeUnlockAnim.dispose();
+    _instructionUnlockAnim.dispose();
     _coach.dispose();
     super.dispose();
+  }
+
+  void _onThemeUnlockTick() {
+    if (!mounted || _themeUnlockWorld == null) return;
+    final timeline = JourneyThemeUnlockTimeline(_themeUnlockAnim.value);
+    if (!_themeUnlockApplied && timeline.shouldApplyTheme) {
+      _themeUnlockApplied = true;
+      AppHaptics.heavyImpact();
+      SoundService.instance.play(GameSound.win);
+      final world = _themeUnlockWorld!;
+      final repo = context.read<AppRepo>();
+      _themeUnlockApplyFuture = world == JourneyWorld.diamonds
+          ? repo.enterDiamondsKingdom()
+          : repo.unlockAndEquipPack(world.themeId).then((_) {});
+      widget.onWorldThemeEquipped?.call(world);
+    }
+    setState(() {});
+  }
+
+  /// First-time theme unlock ceremony for [world]. Returns false if cancelled.
+  Future<bool> _runThemeUnlockCeremony(JourneyWorld world) async {
+    if (_themeUnlockWorld != null) return false;
+    final repo = context.read<AppRepo>();
+    final alreadyOwned = repo.ownsPack(world.themeId) &&
+        repo.journeyProgress.hasEntered(world);
+    if (alreadyOwned) {
+      await repo.unlockAndEquipPack(world.themeId);
+      if (!mounted) return false;
+      widget.onWorldThemeEquipped?.call(world);
+      return true;
+    }
+
+    final boardUnlocked = _snapshot.worldOf(world).unlocked;
+    setState(() {
+      _guideExpanded = false;
+      _defeatedCarouselWorld = null;
+      _selected = null;
+      _selectAnim.value = 0;
+      _themeUnlockWorld = world;
+      _themeUnlockForceSealed = boardUnlocked;
+      _themeUnlockApplied = false;
+      _themeUnlockApplyFuture = null;
+      _activeWorld = world;
+    });
+    _themeUnlockAnim.value = 0;
+    AppHaptics.mediumImpact();
+    SoundService.instance.playLayered(GameSound.softCard);
+    await _themeUnlockAnim.forward();
+    if (!mounted) return false;
+
+    // Ensure unlock landed even if the boom tick was skipped.
+    if (!_themeUnlockApplied) {
+      _themeUnlockApplied = true;
+      _themeUnlockApplyFuture = world == JourneyWorld.diamonds
+          ? repo.enterDiamondsKingdom()
+          : repo.unlockAndEquipPack(world.themeId).then((_) {});
+      widget.onWorldThemeEquipped?.call(world);
+    }
+    await _themeUnlockApplyFuture;
+    if (!mounted) return false;
+
+    setState(() {
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      _themeUnlockWorld = null;
+      _themeUnlockForceSealed = false;
+      _themeUnlockRewardWorld = world;
+      // Diamonds: hold instruction page 2 sealed until the reward is dismissed.
+      if (world == JourneyWorld.diamonds) {
+        _pendingDiamondsInstructionReveal = true;
+        _guideDisplayedUnlock = 1;
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      }
+    });
+    _themeUnlockAnim.value = 0;
+    return true;
+  }
+
+  void _onInstructionUnlockTick() {
+    if (!mounted || _instructionCeremonyPageId == null) return;
+    final timeline = JourneyThemeUnlockTimeline(_instructionUnlockAnim.value);
+    if (!_instructionCeremonyUnlocked && timeline.pastBoom) {
+      _instructionCeremonyUnlocked = true;
+      AppHaptics.heavyImpact();
+      SoundService.instance.playLayered(GameSound.softCard);
+      setState(() {
+        _guideDisplayedUnlock = _instructionCeremonyPageId;
+        _guideOpenPage = (_instructionCeremonyPageId! - 1).clamp(0, 100);
+      });
+    } else {
+      setState(() {});
+    }
+  }
+
+  /// Open the guide on the sealed next page, then shake → boom → reveal.
+  Future<void> _runInstructionUnlockCeremony({
+    required int beforeUnlock,
+    required int afterUnlock,
+    bool showUnlockCtaAfter = false,
+  }) async {
+    if (!mounted || afterUnlock <= beforeUnlock) return;
+    if (_instructionCeremonyPageId != null) return;
+
+    final sealedIndex = afterUnlock - 1;
+    setState(() {
+      _guideExpanded = true;
+      // Hold unlock count so the target page stays sealed while front.
+      _guideDisplayedUnlock = beforeUnlock;
+      // Open directly on the sealed page (allowed via ceremony maxFrontIndex).
+      _guideOpenPage = sealedIndex;
+      _guideShowUnlockCta = false;
+      _instructionCeremonyPageId = afterUnlock;
+      _instructionCeremonyUnlocked = false;
+      _instructionCeremonyShowCta = showUnlockCtaAfter;
+      _instructionUnlockAnim.value = 0;
+    });
+
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 320));
+    if (!mounted) return;
+
+    // Ensure the sealed page is front even if the carousel remounted.
+    await _instructionCarouselKey.currentState?.goToIndex(sealedIndex);
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!mounted) return;
+
+    AppHaptics.mediumImpact();
+    SoundService.instance.playLayered(GameSound.softCard);
+    await _instructionUnlockAnim.forward();
+    if (!mounted) return;
+
+    if (!_instructionCeremonyUnlocked) {
+      _instructionCeremonyUnlocked = true;
+      setState(() {
+        _guideDisplayedUnlock = afterUnlock;
+        _guideOpenPage = sealedIndex;
+      });
+    }
+
+    setState(() {
+      _instructionCeremonyPageId = null;
+      _guideShowUnlockCta = _instructionCeremonyShowCta;
+      _instructionCeremonyShowCta = false;
+    });
+    _instructionUnlockAnim.value = 0;
+  }
+
+  Future<void> _onThemeUnlockRewardDismissed({
+    required bool goToProfile,
+  }) async {
+    final wasDiamonds = _themeUnlockRewardWorld == JourneyWorld.diamonds;
+    if (!mounted) return;
+    setState(() => _themeUnlockRewardWorld = null);
+    if (!wasDiamonds || !_pendingDiamondsInstructionReveal) return;
+
+    // Profile path: keep pending so Games tab return can reveal later.
+    if (goToProfile) return;
+
+    _pendingDiamondsInstructionReveal = false;
+    await _runInstructionUnlockCeremony(
+      beforeUnlock: 1,
+      afterUnlock: 2,
+      showUnlockCtaAfter: false,
+    );
+  }
+
+  /// Called when the Games tab is focused again (e.g. after Go to profile).
+  void onShellTabVisible() {
+    if (!_pendingDiamondsInstructionReveal) return;
+    if (_themeUnlockRewardWorld != null) return;
+    if (_instructionCeremonyPageId != null) return;
+    _pendingDiamondsInstructionReveal = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _runInstructionUnlockCeremony(
+        beforeUnlock: 1,
+        afterUnlock: 2,
+        showUnlockCtaAfter: false,
+      );
+    });
   }
 
   List<JourneyWorldDef> _copyWorlds(JourneyDisplaySnapshot snap) {
@@ -222,6 +440,10 @@ class JourneyBoardState extends State<JourneyBoard>
     _defeatFlyAnim.value = 0;
     _revealAnim.stop();
     _revealAnim.value = 0;
+    _themeUnlockAnim.stop();
+    _themeUnlockAnim.value = 0;
+    _instructionUnlockAnim.stop();
+    _instructionUnlockAnim.value = 0;
     _coach.reset();
     setState(() {
       _worlds = _copyWorlds(_repo!.journeyBoardForLevel());
@@ -242,6 +464,12 @@ class JourneyBoardState extends State<JourneyBoard>
       _guideDisplayedUnlock = null;
       _guideShowUnlockCta = false;
       _pendingUnlockCard = null;
+      _themeUnlockWorld = null;
+      _themeUnlockRewardWorld = null;
+      _pendingDiamondsInstructionReveal = false;
+      _instructionCeremonyPageId = null;
+      _instructionCeremonyUnlocked = false;
+      _instructionCeremonyShowCta = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -391,6 +619,7 @@ class JourneyBoardState extends State<JourneyBoard>
     _lastLevel = repo.experienceProgress.level;
     final win = repo.journeyProgress.pendingWinCelebration;
     final praise = repo.journeyProgress.pendingReplayPraise;
+    final loss = repo.journeyProgress.pendingLossTaunt;
     setState(() {
       _worlds = _copyWorlds(repo.journeyBoardForLevel());
       _selected = null;
@@ -399,6 +628,15 @@ class JourneyBoardState extends State<JourneyBoard>
       _revealCard = null;
       _defeatedCarouselWorld = null;
     });
+    // Shell was recreated on leave — keep the challenger's kingdom / trail /
+    // replay card in focus (theme stays equipped from before the match).
+    final focus = win ?? praise ?? loss;
+    if (focus != null) {
+      _restorePostMatchChallenger(
+        focus,
+        openCarousel: win == null,
+      );
+    }
     if (win != null) {
       // Win celebration owns kingdom focus until Unlock next challenger.
       await _awaitHomeRewardsThen(() => _beginWinCelebration(win));
@@ -411,18 +649,48 @@ class JourneyBoardState extends State<JourneyBoard>
       });
       return;
     }
-    await _awaitHomeRewardsThen(() async {
-      await _maybeShowPendingLossTaunt();
-      await _offerReturnToProgressKingdom();
+    if (loss != null) {
+      await _awaitHomeRewardsThen(() async {
+        await _maybeShowPendingLossTaunt();
+        await _offerReturnToProgressKingdom();
+      });
+      return;
+    }
+    // Plain open / XP refresh — never prompt return-to-kingdom.
+  }
+
+  /// Rebind board focus to the challenger just played (trail + optional carousel).
+  void _restorePostMatchChallenger(
+    JourneyChallengeRef ref, {
+    required bool openCarousel,
+  }) {
+    final progress = context.read<AppRepo>().journeyProgress;
+    final card = _snapshot.worldOf(ref.world).cardOf(ref.rank);
+    final defeated = card?.state == JourneyCardState.defeated ||
+        progress.isDefeated(ref.world, ref.rank);
+    setState(() {
+      _activeWorld = ref.world;
+      _selected = null;
+      _selectAnim.value = 0;
+      _selectFromOverride = null;
+      if (openCarousel && defeated) {
+        _defeatedCarouselWorld = ref.world;
+        _defeatedCarouselRank = ref.rank;
+        _selectedFromDefeated = true;
+      } else {
+        _defeatedCarouselWorld = null;
+      }
     });
   }
 
-  /// After a match, trail focuses the frontier — ask to match theme / kingdom.
+  /// After a match off the progress kingdom, ask to return (or keep browsing).
   Future<void> _offerReturnToProgressKingdom() async {
     if (!mounted) return;
     final progressWorld = _progressKingdom();
     final repo = context.read<AppRepo>();
     final themeWorld = journeyWorldForTheme(repo.appTheme);
+    // Still on Base (Sage) — kingdom entry is a separate confirm flow.
+    if (themeWorld == null) return;
     if (_activeWorld == progressWorld && themeWorld == progressWorld) {
       return;
     }
@@ -437,7 +705,12 @@ class JourneyBoardState extends State<JourneyBoard>
     await repo.unlockAndEquipPack(progressWorld.themeId);
     if (!mounted) return;
     widget.onWorldThemeEquipped?.call(progressWorld);
-    setState(() => _activeWorld = progressWorld);
+    setState(() {
+      _activeWorld = progressWorld;
+      _defeatedCarouselWorld = null;
+      _selected = null;
+      _selectAnim.value = 0;
+    });
   }
 
   Future<void> _awaitHomeRewardsThen(Future<void> Function() next) async {
@@ -485,24 +758,18 @@ class JourneyBoardState extends State<JourneyBoard>
     setState(() {
       _worlds = _copyWorlds(repo.journeyBoardForLevel());
       _pendingUnlockCard = next;
-      _guideDisplayedUnlock = beforeUnlock;
-      _guideShowUnlockCta = false;
-      _guideExpanded = true;
-      _guideOpenPage = (beforeUnlock - 1).clamp(0, 100);
       _selected = null;
       _selectAnim.value = 0;
       _revealCard = null;
+      _activeWorld = defeated.world;
+      _defeatedCarouselWorld = null;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 480));
-    if (!mounted) return;
-    SoundService.instance.playLayered(GameSound.softCard);
-    AppHaptics.mediumImpact();
-    setState(() {
-      _guideDisplayedUnlock = afterUnlock;
-      _guideOpenPage = (afterUnlock - 1).clamp(0, 100);
-      _guideShowUnlockCta = true;
-    });
+    await _runInstructionUnlockCeremony(
+      beforeUnlock: beforeUnlock,
+      afterUnlock: afterUnlock,
+      showUnlockCtaAfter: true,
+    );
   }
 
   Future<void> _onUnlockNextChallenger() async {
@@ -584,10 +851,15 @@ class JourneyBoardState extends State<JourneyBoard>
   /// Returns false if the player chose to stay on the current theme.
   Future<bool> _equipWorld(JourneyWorld world) async {
     final repo = context.read<AppRepo>();
+    final firstUnlock = !repo.ownsPack(world.themeId) ||
+        !repo.journeyProgress.hasEntered(world);
     final currentWorld = journeyWorldForTheme(repo.appTheme);
     if (currentWorld != world) {
       final go = await confirmEnterKingdom(context, world: world);
       if (!go || !mounted) return false;
+    }
+    if (firstUnlock) {
+      return _runThemeUnlockCeremony(world);
     }
     await repo.unlockAndEquipPack(world.themeId);
     if (!mounted) return false;
@@ -612,15 +884,21 @@ class JourneyBoardState extends State<JourneyBoard>
       );
       if (!go || !mounted) return;
     }
-    await repo.enterDiamondsKingdom();
     if (!mounted) return;
-    setState(() {
-      _activeWorld = JourneyWorld.diamonds;
-      _worlds = _copyWorlds(repo.journeyBoardForLevel());
-      _guideExpanded = true;
-      _guideOpenPage = 1;
-      _guideShowUnlockCta = false;
-    });
+    if (repo.journeyProgress.diamondsEntered &&
+        repo.ownsPack(JourneyWorld.diamonds.themeId)) {
+      await repo.enterDiamondsKingdom();
+      if (!mounted) return;
+      setState(() {
+        _activeWorld = JourneyWorld.diamonds;
+        _worlds = _copyWorlds(repo.journeyBoardForLevel());
+        _guideExpanded = true;
+        _guideOpenPage = 1;
+        _guideShowUnlockCta = false;
+      });
+      return;
+    }
+    await _runThemeUnlockCeremony(JourneyWorld.diamonds);
   }
 
   Future<void> _resolveDefeat(JourneyCardDef card) async {
@@ -832,8 +1110,17 @@ class JourneyBoardState extends State<JourneyBoard>
       gameId: 'test-replay',
     );
     await repo.noteJourneyChallengeResult(won: true, gameId: 'test-replay');
+    // In-place test — cancel home-return flags meant for leaving a real match.
+    repo.takeOpenJourneyRequest();
+    repo.takeShellTabRequest();
     if (!mounted) return;
+    _restorePostMatchChallenger(
+      JourneyChallengeRef(world: card.world, rank: card.rank),
+      openCarousel: true,
+    );
     await _maybeShowReplayPraise();
+    if (!mounted) return;
+    await _offerReturnToProgressKingdom();
   }
 
   /// Launch the Journey match for [card] (Challenge / Replay).
@@ -975,8 +1262,8 @@ class JourneyBoardState extends State<JourneyBoard>
     final progressWorld = _progressKingdom();
     final repo = context.read<AppRepo>();
     final themeWorld = journeyWorldForTheme(repo.appTheme);
-    final needsReturn =
-        browsing != progressWorld || themeWorld != progressWorld;
+    final needsReturn = themeWorld != null &&
+        (browsing != progressWorld || themeWorld != progressWorld);
 
     if (needsReturn) {
       final go = await confirmReturnToProgressKingdom(
@@ -1150,7 +1437,8 @@ class JourneyBoardState extends State<JourneyBoard>
 
     final centerReveal = journeySlotExpand(open.sectionExpand, 1, count: 3);
     final plan = dealPlan;
-    final boardInteractive = !_coach.isActive && !_guideExpanded;
+    final boardInteractive =
+        !_coach.isActive && !_guideExpanded && _themeUnlockWorld == null;
 
     // Only hide the centered selection from piles — keep the dragging card in
     // the pile tree (ghosted) so the pan GestureDetector stays alive.
@@ -1188,6 +1476,8 @@ class JourneyBoardState extends State<JourneyBoard>
             _defeatFlyAnim,
             _selectAnim,
             _revealAnim,
+            _themeUnlockAnim,
+            _instructionUnlockAnim,
             _coach,
           ]),
           builder: (context, _) {
@@ -1229,6 +1519,12 @@ class JourneyBoardState extends State<JourneyBoard>
                               sectionExpand: open.sectionExpand,
                               pileDeal:
                                   open.cardGather > 0.02 ? 0 : open.pileDeal,
+                              pileKeys: _pileKeys,
+                              ceremonyWorld: _themeUnlockWorld,
+                              ceremonyT: _themeUnlockWorld == null
+                                  ? null
+                                  : _themeUnlockAnim.value,
+                              ceremonyForceSealed: _themeUnlockForceSealed,
                               onWorldTap: interactive ? _onWorldTap : null,
                               onTopCardTap:
                                   interactive ? _onTopCardTap : null,
@@ -1374,8 +1670,15 @@ class JourneyBoardState extends State<JourneyBoard>
                         expanded: true,
                         initialPage: _guideOpenPage,
                         world: _activeWorld,
+                        carouselKey: _instructionCarouselKey,
+                        ceremonyPageId: _instructionCeremonyPageId,
+                        ceremonyT: _instructionCeremonyPageId == null
+                            ? null
+                            : _instructionUnlockAnim.value,
                         onExpand: _openGuide,
-                        onCollapse: _closeGuide,
+                        onCollapse: _instructionCeremonyPageId != null
+                            ? () {}
+                            : _closeGuide,
                         showUnlockChallengerCta: _guideShowUnlockCta ||
                             _showProveYourselfUnlockCta,
                         unlockChallengerLabel: _pendingUnlockCard == null
@@ -1473,6 +1776,22 @@ class JourneyBoardState extends State<JourneyBoard>
                   controller: _coach,
                   onCompleted: _onCoachCompleted,
                 ),
+
+                if (_themeUnlockRewardWorld != null)
+                  Positioned.fill(
+                    child: JourneyThemeUnlockRewardOverlay(
+                      world: _themeUnlockRewardWorld!,
+                      onGoToProfile: () {
+                        final repo = context.read<AppRepo>();
+                        repo.requestProfileThemeTip();
+                        _onThemeUnlockRewardDismissed(goToProfile: true);
+                        repo.requestShellTab(2);
+                      },
+                      onContinue: () {
+                        _onThemeUnlockRewardDismissed(goToProfile: false);
+                      },
+                    ),
+                  ),
               ],
             );
           },

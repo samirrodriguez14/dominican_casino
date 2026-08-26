@@ -56,6 +56,8 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   static const double _bubbleWidth = 248;
   static const double _tooltipWidth = _avatarSize + _avatarGap + _bubbleWidth;
   static const double _tooltipMinHeight = 88;
+  /// Conservative height used when [TutorialStep.promptClearance] is set.
+  static const double _tooltipPlaceHeight = 168;
   static const double _tailSize = 12;
 
   @override
@@ -176,6 +178,19 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         ? overlay.size
         : MediaQuery.of(context).size;
 
+    // Profile coach (and others that set [promptClearance]) get stronger
+    // target clearance. Casino / Journey keep the original placement so
+    // training prompts stay where they were tuned.
+    final customClearance = widget.step.promptClearance;
+    if (customClearance != null) {
+      return _buildTooltipClearOfTarget(
+        context,
+        rect: rect,
+        overlaySize: overlaySize,
+        gap: customClearance,
+      );
+    }
+
     final placeAbove = rect.center.dy > overlaySize.height * 0.5;
     final tail = placeAbove ? _BubbleTail.down : _BubbleTail.up;
     final desiredTooltipOffset = placeAbove
@@ -206,6 +221,110 @@ class _TutorialOverlayState extends State<TutorialOverlay>
         _bubbleWidth / 2;
     final tailShiftX = rect.center.dx - bubbleCenterX;
     final maxTailShiftX = _bubbleWidth / 2 - 9; // 9 = 18px tail / 2
+    final safeTailShiftX = tailShiftX.clamp(-maxTailShiftX, maxTailShiftX);
+    final tailShiftY = desiredTooltipOffset.dy - clampedTooltipOffset.dy;
+
+    return Positioned(
+      left: clampedTooltipOffset.dx,
+      top: clampedTooltipOffset.dy,
+      child: Material(
+        color: Colors.transparent,
+        child: _buildTooltipContent(
+          tail: tail,
+          tailShiftX: safeTailShiftX,
+          tailShiftY: tailShiftY,
+        ),
+      ),
+    );
+  }
+
+  /// Places the bubble with extra clearance and flips sides if it would cover
+  /// a tappable coach target (Profile tutorial).
+  Widget _buildTooltipClearOfTarget(
+    BuildContext context, {
+    required Rect rect,
+    required Size overlaySize,
+    required double gap,
+  }) {
+    final safeTop = MediaQuery.paddingOf(context).top + 8;
+    final maxLeft = math.max(12.0, overlaySize.width - _tooltipWidth - 12);
+    final maxTop = math.max(
+      safeTop,
+      overlaySize.height - _tooltipPlaceHeight - 12,
+    );
+
+    final spaceAbove = rect.top - safeTop;
+    final spaceBelow = overlaySize.height - rect.bottom - 12;
+    final placeAbove = spaceAbove >= _tooltipPlaceHeight + gap ||
+        (spaceAbove >= spaceBelow && spaceAbove >= gap + 48);
+
+    Offset desiredTooltipOffset = placeAbove
+        ? Offset(
+            rect.center.dx - _tooltipWidth / 2,
+            rect.top - _tooltipPlaceHeight - gap,
+          )
+        : Offset(
+            rect.center.dx - _tooltipWidth / 2,
+            rect.bottom + gap,
+          );
+
+    var clampedTooltipOffset = Offset(
+      desiredTooltipOffset.dx.clamp(12.0, maxLeft),
+      desiredTooltipOffset.dy.clamp(safeTop, maxTop),
+    );
+
+    final paddedTarget = rect.inflate(gap);
+    Rect bubbleRect = Rect.fromLTWH(
+      clampedTooltipOffset.dx,
+      clampedTooltipOffset.dy,
+      _tooltipWidth,
+      _tooltipPlaceHeight,
+    );
+    if (bubbleRect.overlaps(paddedTarget)) {
+      final aboveTop =
+          (rect.top - _tooltipPlaceHeight - gap).clamp(safeTop, maxTop);
+      final belowTop = (rect.bottom + gap).clamp(safeTop, maxTop);
+      final aboveRect = Rect.fromLTWH(
+        clampedTooltipOffset.dx,
+        aboveTop,
+        _tooltipWidth,
+        _tooltipPlaceHeight,
+      );
+      final belowRect = Rect.fromLTWH(
+        clampedTooltipOffset.dx,
+        belowTop,
+        _tooltipWidth,
+        _tooltipPlaceHeight,
+      );
+      final aboveClear = !aboveRect.overlaps(paddedTarget);
+      final belowClear = !belowRect.overlaps(paddedTarget);
+      if (aboveClear && (!belowClear || spaceAbove >= spaceBelow)) {
+        clampedTooltipOffset = Offset(clampedTooltipOffset.dx, aboveTop);
+        desiredTooltipOffset = Offset(desiredTooltipOffset.dx, aboveTop);
+      } else if (belowClear) {
+        clampedTooltipOffset = Offset(clampedTooltipOffset.dx, belowTop);
+        desiredTooltipOffset = Offset(desiredTooltipOffset.dx, belowTop);
+      } else {
+        clampedTooltipOffset = Offset(clampedTooltipOffset.dx, safeTop);
+        desiredTooltipOffset = Offset(desiredTooltipOffset.dx, safeTop);
+      }
+      bubbleRect = Rect.fromLTWH(
+        clampedTooltipOffset.dx,
+        clampedTooltipOffset.dy,
+        _tooltipWidth,
+        _tooltipPlaceHeight,
+      );
+    }
+
+    final placedAbove = bubbleRect.center.dy <= rect.center.dy;
+    final tail = placedAbove ? _BubbleTail.down : _BubbleTail.up;
+
+    final bubbleCenterX = clampedTooltipOffset.dx +
+        _avatarSize +
+        _avatarGap +
+        _bubbleWidth / 2;
+    final tailShiftX = rect.center.dx - bubbleCenterX;
+    final maxTailShiftX = _bubbleWidth / 2 - 9;
     final safeTailShiftX = tailShiftX.clamp(-maxTailShiftX, maxTailShiftX);
     final tailShiftY = desiredTooltipOffset.dy - clampedTooltipOffset.dy;
 

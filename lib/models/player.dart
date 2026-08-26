@@ -4,6 +4,7 @@ class Player {
   String id;
   bool completedTutorial;
   bool completedJourneyTutorial;
+  bool completedProfileTutorial;
   String? name;
   String? token;
   String? avatarId;
@@ -15,6 +16,7 @@ class Player {
     this.avatarId = defaultAvatarId,
     this.completedTutorial = false,
     this.completedJourneyTutorial = false,
+    this.completedProfileTutorial = false,
     this.xp = 0,
   });
   factory Player.fromDto(Map<String, dynamic> playerDto) {
@@ -26,6 +28,8 @@ class Player {
       completedTutorial: playerDto['completedTutorial'] ?? false,
       completedJourneyTutorial:
           playerDto['completedJourneyTutorial'] ?? false,
+      completedProfileTutorial:
+          playerDto['completedProfileTutorial'] ?? false,
       xp: (playerDto['xp'] as num?)?.toInt() ?? 0,
     );
   }
@@ -36,6 +40,7 @@ class Player {
     'avatarId': avatarId,
     'completedTutorial': completedTutorial,
     'completedJourneyTutorial': completedJourneyTutorial,
+    'completedProfileTutorial': completedProfileTutorial,
     'xp': xp,
   };
 
@@ -51,6 +56,7 @@ class Player {
     String? id,
     bool? completedTutorial,
     bool? completedJourneyTutorial,
+    bool? completedProfileTutorial,
     String? name,
     String? token,
     String? avatarId,
@@ -64,6 +70,8 @@ class Player {
       completedTutorial: completedTutorial ?? this.completedTutorial,
       completedJourneyTutorial:
           completedJourneyTutorial ?? this.completedJourneyTutorial,
+      completedProfileTutorial:
+          completedProfileTutorial ?? this.completedProfileTutorial,
       xp: xp ?? this.xp,
     );
   }

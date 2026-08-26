@@ -44,6 +44,10 @@ class TutorialStep {
   /// next to the highlighted widget (so table cards stay visible).
   final bool promptAboveTable;
 
+  /// Extra space between the highlight target and the prompt bubble.
+  /// Keeps tappable coach targets clear of the overlay.
+  final double? promptClearance;
+
   final TutorialStepCallback? onShow;
 
   const TutorialStep({
@@ -67,6 +71,7 @@ class TutorialStep {
     this.dragIds = const [],
     this.resolveTargets,
     this.promptAboveTable = false,
+    this.promptClearance,
     this.onShow,
     required this.blockGameInteraction,
     required this.allowedActions,

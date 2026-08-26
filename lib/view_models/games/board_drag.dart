@@ -133,6 +133,29 @@ class DropHover {
     if (actions.length > 1) return 'Drop to choose';
     return actionLabel(actions.first);
   }
+
+  /// Same drop slot + same action set (preview cards ignored for equality).
+  bool sameAs(DropHover? other) {
+    if (other == null) return false;
+    if (identical(this, other)) return true;
+    if (target.kind != other.target.kind || target.id != other.target.id) {
+      return false;
+    }
+    if (actions.length != other.actions.length) return false;
+    for (var i = 0; i < actions.length; i++) {
+      if (actions[i].runtimeType != other.actions[i].runtimeType) return false;
+    }
+    final a = buildPreview;
+    final b = other.buildPreview;
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.label != b.label || a.total != b.total) return false;
+    if (a.previewCards.length != b.previewCards.length) return false;
+    for (var i = 0; i < a.previewCards.length; i++) {
+      if (a.previewCards[i].id != b.previewCards[i].id) return false;
+    }
+    return true;
+  }
 }
 
 class DropPending {

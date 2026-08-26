@@ -137,6 +137,9 @@ class AppRepo extends ChangeNotifier {
   Timer? _energyTimer;
   int? _shellTabRequest;
   int? get shellTabRequest => _shellTabRequest;
+
+  /// Set when Journey theme unlock offers "Go to profile" tip.
+  bool _pendingProfileThemeTip = false;
   HomeCoinClaim? _pendingHomeCoinClaim;
   HomeCoinClaim? get pendingHomeCoinClaim => _pendingHomeCoinClaim;
   HomeXpClaim? _pendingHomeXpClaim;
@@ -179,6 +182,11 @@ class AppRepo extends ChangeNotifier {
   static const _cardBackMarkKey = 'cardBackMark';
   static const _cardBackTintKey = 'cardBackTint';
   static const _ownedPacksKey = 'ownedPacks';
+  static const _wearJourneyAccessoriesKey = 'wearJourneyAccessories';
+
+  bool _wearJourneyAccessories = true;
+  /// When false, Ace ornaments are hidden everywhere except the trophies popup.
+  bool get wearJourneyAccessories => _wearJourneyAccessories;
 
   static const _appleProviderId = 'apple.com';
 
@@ -432,6 +440,20 @@ class AppRepo extends ChangeNotifier {
     return v;
   }
 
+  /// Offer the one-shot Profile theme tip (Journey unlock → Go to profile).
+  void requestProfileThemeTip() {
+    if (player?.completedProfileTutorial == true) return;
+    _pendingProfileThemeTip = true;
+    notifyListeners();
+  }
+
+  /// Consume a pending Profile theme tip. Returns true once.
+  bool takePendingProfileThemeTip() {
+    if (!_pendingProfileThemeTip) return false;
+    _pendingProfileThemeTip = false;
+    return true;
+  }
+
   void requestOpenJourney() {
     _openJourneyRequest = true;
     notifyListeners();
@@ -682,6 +704,7 @@ class AppRepo extends ChangeNotifier {
       final baseAvatar = themePack(Theme.sage).starterAvatarId;
       player = player!.copyWith(
         completedJourneyTutorial: false,
+        completedProfileTutorial: false,
         avatarId: baseAvatar,
         xp: 0,
       );
@@ -690,6 +713,7 @@ class AppRepo extends ChangeNotifier {
 
     _journeyStoryEpoch += 1;
     _openJourneyRequest = false;
+    _pendingProfileThemeTip = false;
     notifyListeners();
   }
 
@@ -2228,6 +2252,17 @@ class AppRepo extends ChangeNotifier {
       _appTheme,
     );
     AppStyle.cardBackTintId = _cardBackTintId;
+
+    _wearJourneyAccessories =
+        sp.getBool(_wearJourneyAccessoriesKey) ?? true;
+  }
+
+  Future<void> setWearJourneyAccessories(bool wear) async {
+    if (_wearJourneyAccessories == wear) return;
+    _wearJourneyAccessories = wear;
+    notifyListeners();
+    final sp = await SharedPreferences.getInstance();
+    await sp.setBool(_wearJourneyAccessoriesKey, wear);
   }
 
   Future<void> _persistTheme() => _persistLooks();
@@ -2253,6 +2288,7 @@ class AppRepo extends ChangeNotifier {
       _ownedPacksKey,
       _ownedPacks.map((pack) => pack.name).toList(),
     );
+    await sp.setBool(_wearJourneyAccessoriesKey, _wearJourneyAccessories);
   }
 
   Future<void> _persistLooksRemote() async {
@@ -2572,6 +2608,13 @@ class AppRepo extends ChangeNotifier {
   Future<void> completeJourneyTutorial() async {
     if (player == null || player!.completedJourneyTutorial) return;
     player = player!.copyWith(completedJourneyTutorial: true);
+    await _persistPlayer();
+    notifyListeners();
+  }
+
+  Future<void> completeProfileTutorial() async {
+    if (player == null || player!.completedProfileTutorial) return;
+    player = player!.copyWith(completedProfileTutorial: true);
     await _persistPlayer();
     notifyListeners();
   }
@@ -2914,6 +2957,7 @@ class AppRepo extends ChangeNotifier {
     _dailyChallenges = DailyChallengeState.empty(_localDayKey());
     _journeyProgress = JourneyProgress.empty();
     _journeyStoryEpoch += 1;
+    _pendingProfileThemeTip = false;
     _resetLooksInMemory();
     appStatus = AppStatus.notReady;
   }
@@ -2940,6 +2984,7 @@ class AppRepo extends ChangeNotifier {
         avatarId: current.avatarId,
         completedTutorial: current.completedTutorial,
         completedJourneyTutorial: current.completedJourneyTutorial,
+        completedProfileTutorial: current.completedProfileTutorial,
         xp: current.xp,
         ownedPacks: _ownedPacks.map((pack) => pack.name).toList(),
         appTheme: _appTheme.name,
@@ -2968,6 +3013,8 @@ class AppRepo extends ChangeNotifier {
         'completedTutorial': remote['completedTutorial'] ?? false,
         'completedJourneyTutorial':
             remote['completedJourneyTutorial'] ?? false,
+        'completedProfileTutorial':
+            remote['completedProfileTutorial'] ?? false,
         'xp': remote['xp'],
       });
     }
@@ -2996,6 +3043,9 @@ class AppRepo extends ChangeNotifier {
       completedJourneyTutorial:
           (cloud?.completedJourneyTutorial ?? false) ||
           (local?.completedJourneyTutorial ?? false),
+      completedProfileTutorial:
+          (cloud?.completedProfileTutorial ?? false) ||
+          (local?.completedProfileTutorial ?? false),
       xp: _maxInt(cloud?.xp ?? 0, local?.xp ?? 0),
       token: local?.token,
     );

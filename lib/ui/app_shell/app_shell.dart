@@ -265,6 +265,15 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
       }
       return;
     }
+    _selectShellTab(index);
+  }
+
+  /// Switch shell tabs without treating a same-index request as a re-tap.
+  ///
+  /// Used when returning from a Journey match (`shellTabRequest`) so we do not
+  /// call [GamesScreenState.toggleTableDeck] and flip back to the Games table.
+  void _selectShellTab(int index) {
+    if (index == currentIndex) return;
     setState(() => currentIndex = index);
     AppHaptics.selectionClick();
     SoundService.instance.play(GameSound.deal);
@@ -273,6 +282,15 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
     );
+    if (index == 2) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _profileKey.currentState?.onBecameVisible();
+      });
+    } else if (index == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _gamesKey.currentState?.onShellTabVisible();
+      });
+    }
   }
 
   @override
@@ -291,7 +309,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final tab = context.read<AppRepo>().takeShellTabRequest();
-        if (tab != null) _onTabTap(tab);
+        if (tab != null) _selectShellTab(tab);
       });
     }
     _maybeStartHomeCoinCelebration(appRepo);

@@ -70,6 +70,11 @@ class JourneyStageState extends State<JourneyStage>
 
   TableDeck get tableDeck => _tableDeck;
 
+  /// Called when the Games shell tab is focused again.
+  void onShellTabVisible() {
+    _boardKey.currentState?.onShellTabVisible();
+  }
+
   bool get _closing => _swapAnim.status == AnimationStatus.reverse;
 
   JourneyOpenProgress get _open => JourneyTimeline.openProgress(

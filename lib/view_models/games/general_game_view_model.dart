@@ -32,6 +32,7 @@ import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/hand_order.dart';
 import 'package:dominican_casino/view_models/games/rummy_box_layout.dart';
 import 'package:flutter/cupertino.dart' hide Action;
+import 'package:flutter/scheduler.dart';
 import 'package:uuid/uuid.dart';
 
 typedef ActionGuard =
@@ -1503,6 +1504,22 @@ class GeneralGameViewModel extends ChangeNotifier {
   void updateDropHover(Offset global) {
     final source = draggingSource;
     if (source == null) return;
+    _pendingHoverGlobal = global;
+    if (_hoverFrameScheduled) return;
+    _hoverFrameScheduled = true;
+    SchedulerBinding.instance.scheduleFrameCallback((_) {
+      _hoverFrameScheduled = false;
+      final pending = _pendingHoverGlobal;
+      final src = draggingSource;
+      if (pending == null || src == null) return;
+      _applyDropHover(pending, src);
+    });
+  }
+
+  Offset? _pendingHoverGlobal;
+  bool _hoverFrameScheduled = false;
+
+  void _applyDropHover(Offset global, BoardDragSource source) {
     final target = hitTestDropTarget(global, source: source);
     if (target == null) {
       if (dropHover != null) {
@@ -1525,11 +1542,15 @@ class GeneralGameViewModel extends ChangeNotifier {
             target.kind == DropTargetKind.playerHand
         ? null
         : _buildPreviewFor(selection, actions);
-    dropHover = DropHover(
+    final next = DropHover(
       target: target,
       actions: actions,
       buildPreview: preview,
     );
+    // Drag moves fire many times per second — only rebuild the board when
+    // the hovered target / preview actually changes.
+    if (next.sameAs(dropHover)) return;
+    dropHover = next;
     notifyListeners();
   }
 

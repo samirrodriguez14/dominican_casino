@@ -3,6 +3,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_board.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -19,6 +20,10 @@ class JourneyWorldPiles extends StatelessWidget {
     this.revealProgress = 1,
     this.sectionExpand = 1,
     this.pileDeal = 1,
+    this.pileKeys,
+    this.ceremonyWorld,
+    this.ceremonyT,
+    this.ceremonyForceSealed = false,
     this.onWorldTap,
     this.onTopCardTap,
     this.onTopCardPanStart,
@@ -37,6 +42,14 @@ class JourneyWorldPiles extends StatelessWidget {
   final double revealProgress;
   final double sectionExpand;
   final double pileDeal;
+  /// Optional per-world keys for focus / measurement.
+  final Map<JourneyWorld, GlobalKey>? pileKeys;
+  /// World currently playing the theme-unlock ceremony (null = idle).
+  final JourneyWorld? ceremonyWorld;
+  /// Ceremony timeline 0→1 when [ceremonyWorld] is set.
+  final double? ceremonyT;
+  /// Overlay sealed chrome even if the pile is already board-unlocked.
+  final bool ceremonyForceSealed;
   final ValueChanged<JourneyWorld>? onWorldTap;
   final ValueChanged<JourneyCardDef>? onTopCardTap;
   final void Function(JourneyCardDef card, DragStartDetails details)?
@@ -53,23 +66,31 @@ class JourneyWorldPiles extends StatelessWidget {
           Expanded(
             child: _ExpandSlot(
               expand: journeySlotExpand(sectionExpand, i),
-              child: _WorldPile(
-                worldDef: snapshot.worldOf(JourneyWorld.values[i]),
-                active: JourneyWorld.values[i] == activeWorld,
-                selectedCard: selectedCard,
-                ghostCard: ghostCard,
-                revealCard: revealCard,
-                revealProgress: revealProgress,
-                landedDepth: JourneyBoard.challengerLandedDepth(
-                  dealPlan,
-                  pileDeal,
-                  JourneyWorld.values[i],
+              child: KeyedSubtree(
+                key: pileKeys?[JourneyWorld.values[i]],
+                child: _WorldPile(
+                  worldDef: snapshot.worldOf(JourneyWorld.values[i]),
+                  active: JourneyWorld.values[i] == activeWorld,
+                  selectedCard: selectedCard,
+                  ghostCard: ghostCard,
+                  revealCard: revealCard,
+                  revealProgress: revealProgress,
+                  landedDepth: JourneyBoard.challengerLandedDepth(
+                    dealPlan,
+                    pileDeal,
+                    JourneyWorld.values[i],
+                  ),
+                  ceremonyT: ceremonyWorld == JourneyWorld.values[i]
+                      ? ceremonyT
+                      : null,
+                  ceremonyForceSealed: ceremonyWorld == JourneyWorld.values[i] &&
+                      ceremonyForceSealed,
+                  onWorldTap: onWorldTap,
+                  onTopCardTap: onTopCardTap,
+                  onTopCardPanStart: onTopCardPanStart,
+                  onTopCardPanUpdate: onTopCardPanUpdate,
+                  onTopCardPanEnd: onTopCardPanEnd,
                 ),
-                onWorldTap: onWorldTap,
-                onTopCardTap: onTopCardTap,
-                onTopCardPanStart: onTopCardPanStart,
-                onTopCardPanUpdate: onTopCardPanUpdate,
-                onTopCardPanEnd: onTopCardPanEnd,
               ),
             ),
           ),
@@ -108,6 +129,8 @@ class _WorldPile extends StatelessWidget {
     this.ghostCard,
     this.revealCard,
     this.revealProgress = 1,
+    this.ceremonyT,
+    this.ceremonyForceSealed = false,
     this.onWorldTap,
     this.onTopCardTap,
     this.onTopCardPanStart,
@@ -122,6 +145,8 @@ class _WorldPile extends StatelessWidget {
   final JourneyCardDef? revealCard;
   final double revealProgress;
   final int landedDepth;
+  final double? ceremonyT;
+  final bool ceremonyForceSealed;
   final ValueChanged<JourneyWorld>? onWorldTap;
   final ValueChanged<JourneyCardDef>? onTopCardTap;
   final void Function(JourneyCardDef card, DragStartDetails details)?
@@ -139,6 +164,22 @@ class _WorldPile extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = journeyPaletteFor(worldDef.world);
     final theme = AppStyle.theme;
+    final ceremonyActive = ceremonyT != null;
+    final showSealedCeremony =
+        ceremonyActive && (!worldDef.unlocked || ceremonyForceSealed);
+
+    if (showSealedCeremony) {
+      final timeline = JourneyThemeUnlockTimeline(ceremonyT!);
+      return JourneyThemeUnlockTransform(
+        timeline: timeline,
+        child: _CeremonySealedPileSlot(
+          world: worldDef.world,
+          active: active,
+          timeline: timeline,
+        ),
+      );
+    }
+
     if (!worldDef.unlocked) {
       return _MysteryLockedPileSlot(
         active: active,
@@ -287,6 +328,74 @@ class _WorldPile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Sealed pad that shakes, breaks the lock, and reveals the kingdom face.
+class _CeremonySealedPileSlot extends StatelessWidget {
+  const _CeremonySealedPileSlot({
+    required this.world,
+    required this.active,
+    required this.timeline,
+  });
+
+  final JourneyWorld world;
+  final bool active;
+  final JourneyThemeUnlockTimeline timeline;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final label = timeline.pastBoom ? world.label : 'Sealed';
+    return Column(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final height = width / homeCardAspect;
+              final cardH = height.clamp(0.0, constraints.maxHeight);
+              final cardW = cardH * homeCardAspect;
+              return Center(
+                child: SizedBox(
+                  width: cardW,
+                  height: cardH,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Opacity(
+                        opacity: timeline.revealAmount,
+                        child: JourneyThemeRevealFace(
+                          world: world,
+                          active: active,
+                        ),
+                      ),
+                      Opacity(
+                        opacity: timeline.lockOpacity,
+                        child: JourneySealedPad(active: active),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.caption.copyWith(
+            color: timeline.pastBoom
+                ? journeyPaletteFor(world).accent
+                : theme.muted.withValues(alpha: .7),
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+          ),
+        ),
+      ],
     );
   }
 }
