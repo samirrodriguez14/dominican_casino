@@ -145,10 +145,6 @@ class CardMotionController extends ChangeNotifier {
 
   bool _shuffling = false;
 
-  /// Bumps when the in-flight set changes. Card slots listen here so
-  /// [markInFlight] / [clearInFlight] do not rebuild the whole board.
-  final ValueNotifier<int> flightTick = ValueNotifier(0);
-
   bool get isShuffling => _shuffling;
   bool get hasFlights => _inFlight.isNotEmpty || _shuffling;
   bool isInFlight(String cardId) => _inFlight.contains(cardId);
@@ -156,15 +152,15 @@ class CardMotionController extends ChangeNotifier {
   bool anyInFlight(Iterable<PlayingCardModel> cards) =>
       cards.any((c) => isInFlight(c.id));
 
-  void _notifyFlight() {
+  void _notify() {
     if (_disposed) return;
-    flightTick.value++;
+    notifyListeners();
   }
 
   void markInFlight(Iterable<String> ids) {
     if (_disposed) return;
     _inFlight.addAll(ids);
-    _notifyFlight();
+    _notify();
   }
 
   void clearInFlight([Iterable<String>? ids]) {
@@ -174,16 +170,13 @@ class CardMotionController extends ChangeNotifier {
     } else {
       _inFlight.removeAll(ids);
     }
-    _notifyFlight();
+    _notify();
   }
 
   void setShuffling(bool value) {
     if (_disposed || _shuffling == value) return;
     _shuffling = value;
-    // Shuffle toggles are rare — notify ChangeNotifier listeners (board
-    // Offstage) without using flightTick for the whole tree.
-    notifyListeners();
-    _notifyFlight();
+    _notify();
   }
 
   Future<void> run(List<CardFlightRequest> flights) async {
@@ -235,7 +228,6 @@ class CardMotionController extends ChangeNotifier {
     _disposed = true;
     runner = null;
     shuffleRunner = null;
-    flightTick.dispose();
     super.dispose();
   }
 }

@@ -23,14 +23,9 @@ class FlightAwareCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final height = width * heightMultiplyer;
-    // Pass [child] through ListenableBuilder so card faces are not rebuilt
-    // on every markInFlight / clearInFlight — only visibility toggles.
     return ListenableBuilder(
-      listenable: motion.flightTick,
-      // Rebuild card faces when the parent supplies a new [child]; only the
-      // visibility wrapper reacts to flight ticks.
-      child: child,
-      builder: (context, cachedChild) {
+      listenable: motion,
+      builder: (context, _) {
         final inFlight = motion.isInFlight(cardId);
         // Tight size first — GlobalKey measurement uses this box, not the child.
         return SizedBox(
@@ -41,9 +36,9 @@ class FlightAwareCard extends StatelessWidget {
             child: Visibility(
               visible: !inFlight,
               maintainSize: true,
-              maintainState: true,
               maintainAnimation: true,
-              child: cachedChild!,
+              maintainState: true,
+              child: child,
             ),
           ),
         );

@@ -72,7 +72,7 @@ class PlayingAreaStack extends StatelessWidget {
               '${stack.paired ? "P" : ''} ${stack.stackValue}'.trim());
 
     return ListenableBuilder(
-      listenable: motion.flightTick,
+      listenable: motion,
       builder: (context, _) {
         final inFlightN = cards.where(motion.isInFlightCard).length;
         final lockWidth = previewCards != null || inFlightN > 0;

@@ -147,8 +147,6 @@ class _FlightEntry {
   final AnimationController controller;
   FlightSprite? sprite;
 
-  Duration? _lastSync;
-
   void syncDestination() {
     final live = layer.centerOf(flight.toKey);
     if (live != null) end = live;
@@ -157,14 +155,9 @@ class _FlightEntry {
   }
 
   Widget build(BuildContext context) {
-    // Chase destination at ~15Hz — enough for table reflow, cheap enough
-    // that staggered deals don't hammer layout every paint.
-    final elapsed = controller.lastElapsedDuration ?? Duration.zero;
-    final last = _lastSync;
-    if (last == null || (elapsed - last).inMilliseconds >= 66) {
-      syncDestination();
-      _lastSync = elapsed;
-    }
+    // Chase destination every paint so flyers stay locked to live slots
+    // (table reflow / hand fan) — same as main.
+    syncDestination();
     final t = Curves.easeOutCubic.transform(controller.value);
     final p = Offset.lerp(begin, end, t) ?? begin;
     final width = lerpDouble(startWidth, endWidth, t) ?? startWidth;
