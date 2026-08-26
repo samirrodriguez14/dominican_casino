@@ -2,7 +2,6 @@ import 'package:dominican_casino/game_control/game_engine/rummy/rummy_matcher.da
 import 'package:dominican_casino/game_control/game_engine/rummy/rummy_state.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/style/app_theme.dart';
