@@ -540,9 +540,34 @@ class AppRepo extends ChangeNotifier {
         world: world,
         rank: rank,
       );
+      await _queueJourneyUnlockReward(world, rank);
     }
     await _persistJourneyProgress();
     notifyListeners();
+  }
+
+  Future<void> _queueJourneyUnlockReward(
+    JourneyWorld world,
+    JourneyRank rank,
+  ) async {
+    String? unlockedThemeName;
+    if (rank == JourneyRank.ace) {
+      final idx = JourneyWorld.values.indexOf(world);
+      if (idx >= 0 && idx + 1 < JourneyWorld.values.length) {
+        final nextTheme = JourneyWorld.values[idx + 1].themeId;
+        if (!ownsPack(nextTheme)) {
+          _ownedPacks.add(nextTheme);
+          await _persistOwnedPacks();
+        }
+        unlockedThemeName = nextTheme.name;
+      }
+    }
+    _journeyProgress.pendingUnlockReward = JourneyUnlockReward(
+      world: world,
+      rank: rank,
+      avatarId: journeyAvatarId(world, rank),
+      themeId: unlockedThemeName,
+    );
   }
 
   Future<void> clearPendingWinCelebration() async {
@@ -551,6 +576,20 @@ class AppRepo extends ChangeNotifier {
     await _persistJourneyProgress();
     notifyListeners();
   }
+
+  Future<void> clearPendingJourneyUnlockReward() async {
+    if (_journeyProgress.pendingUnlockReward == null) return;
+    _journeyProgress.pendingUnlockReward = null;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// True while coins / energy / XP / Journey unlock rewards still need UI.
+  bool get hasPendingHomeRewardSequence =>
+      pendingHomeCoinClaim != null ||
+      pendingHomeDailyChallengeEnergy.isNotEmpty ||
+      pendingHomeXpClaim != null ||
+      _journeyProgress.pendingUnlockReward != null;
 
   Future<void> undoJourneyDefeat(
     JourneyWorld world,
@@ -625,6 +664,7 @@ class AppRepo extends ChangeNotifier {
         world: pending.world,
         rank: pending.rank,
       );
+      await _queueJourneyUnlockReward(pending.world, pending.rank);
     } else {
       _journeyProgress.pendingLossTaunt = JourneyChallengeRef(
         world: pending.world,
@@ -632,6 +672,7 @@ class AppRepo extends ChangeNotifier {
       );
       _journeyProgress.pendingChallenge = null;
       _journeyProgress.pendingWinCelebration = null;
+      _journeyProgress.pendingUnlockReward = null;
     }
     _openJourneyRequest = true;
     _shellTabRequest = 1;

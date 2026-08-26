@@ -198,6 +198,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                     id: 'waiting',
                     name: 'Waiting',
                     avatarId: null,
+                    avatarAsset: null,
                     score: 0,
                     pendingCoins: 0,
                     roundCoins: 0,
@@ -214,6 +215,7 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                       id: pid,
                       name: _playerLabel(pid),
                       avatarId: _playerAvatarId(pid),
+                      avatarAsset: _playerAvatarAsset(pid),
                       score: totalScores[pid] ?? 0,
                       pendingCoins: gameOver
                           ? gameState.winPotCoins(pid) +
@@ -332,6 +334,12 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     return Map<String, dynamic>.from(raw)['avatarId'] as String?;
   }
 
+  String? _playerAvatarAsset(String pid) {
+    final raw = gameState.playersInfo[pid];
+    if (raw is! Map) return null;
+    return Map<String, dynamic>.from(raw)['avatarAsset'] as String?;
+  }
+
   String _playerLabel(String pid) {
     if (pid == playerId) return 'You';
     final info = Map<String, dynamic>.from(
@@ -434,6 +442,7 @@ class _BoardSpec {
     required this.id,
     required this.name,
     required this.avatarId,
+    required this.avatarAsset,
     required this.score,
     required this.pendingCoins,
     required this.roundCoins,
@@ -450,6 +459,7 @@ class _BoardSpec {
   final String id;
   final String name;
   final String? avatarId;
+  final String? avatarAsset;
   final dynamic score;
   final int pendingCoins;
   final int roundCoins;
@@ -824,6 +834,7 @@ class _AvatarFlipBoardState extends State<_AvatarFlipBoard>
                         key: ValueKey('last-${spec.id}'),
                         theme: theme,
                         avatarId: spec.avatarId,
+                        avatarAsset: spec.avatarAsset,
                         isCasino: spec.isCasino,
                         scoreMap: spec.scoreMap,
                         matchCoins: spec.pendingCoins,
@@ -839,6 +850,7 @@ class _AvatarFlipBoardState extends State<_AvatarFlipBoard>
                       theme: theme,
                       name: spec.name,
                       avatarId: spec.avatarId,
+                      avatarAsset: spec.avatarAsset,
                       score: spec.score,
                       pendingCoins: spec.pendingCoins,
                       roundCoins: spec.roundCoins,
@@ -1133,6 +1145,7 @@ class _ScoreBoardFront extends StatelessWidget {
     required this.theme,
     required this.name,
     required this.avatarId,
+    required this.avatarAsset,
     required this.score,
     required this.pendingCoins,
     required this.roundCoins,
@@ -1148,6 +1161,7 @@ class _ScoreBoardFront extends StatelessWidget {
   final AvatarScoreTheme theme;
   final String name;
   final String? avatarId;
+  final String? avatarAsset;
   final dynamic score;
   final int pendingCoins;
   final int roundCoins;
@@ -1186,6 +1200,7 @@ class _ScoreBoardFront extends StatelessWidget {
               Center(
                 child: PlayerScoreAvatar(
                   avatarId: avatarId,
+                  avatarAsset: avatarAsset,
                   score: score,
                   pendingCoins: 0,
                   size: avatarSize,
@@ -1361,6 +1376,7 @@ class _ScoreBoardBack extends StatefulWidget {
     super.key,
     required this.theme,
     required this.avatarId,
+    required this.avatarAsset,
     required this.isCasino,
     required this.scoreMap,
     required this.matchCoins,
@@ -1374,6 +1390,7 @@ class _ScoreBoardBack extends StatefulWidget {
 
   final AvatarScoreTheme theme;
   final String? avatarId;
+  final String? avatarAsset;
   final bool isCasino;
   final Map<String, dynamic> scoreMap;
   final int matchCoins;
@@ -1486,6 +1503,7 @@ class _ScoreBoardBackState extends State<_ScoreBoardBack> {
               children: [
                 PlayerAvatarView(
                   avatarId: widget.avatarId,
+                  avatarAsset: widget.avatarAsset,
                   size: 26,
                   showBorder: false,
                 ),

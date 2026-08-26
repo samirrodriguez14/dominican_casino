@@ -366,6 +366,7 @@ class _PlayerRow extends StatelessWidget {
         else
           PlayerAvatarView(
             avatarId: seat.avatarId ?? fallbackAvatarId,
+            avatarAsset: seat.avatarAsset,
             size: 22,
             showBorder: false,
           ),

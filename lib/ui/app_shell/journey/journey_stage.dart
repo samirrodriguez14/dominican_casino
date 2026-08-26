@@ -194,6 +194,31 @@ class JourneyStageState extends State<JourneyStage>
     _busy = false;
   }
 
+  /// Jump straight to a fully laid Journey table (no re-deal animation).
+  ///
+  /// Used when returning from a Journey match that already had the board set.
+  Future<void> restoreJourneySettled() async {
+    if (_busy) return;
+    _busy = true;
+    _swapAnim.stop();
+    _swapAnim.value = 1;
+    _peekFan.value = 1;
+    _lastDealSoundIndex = JourneyDealPlan.dealCardCount;
+    _pulsedEatIn = true;
+    setState(() => _tableDeck = TableDeck.journey);
+    widget.onTableDeckChanged?.call(TableDeck.journey);
+
+    await widget.carouselKey.currentState?.collapsePeeks(
+      duration: Duration.zero,
+    );
+    if (!mounted) {
+      _busy = false;
+      return;
+    }
+    await _boardKey.currentState?.reloadFromProgress();
+    if (mounted) _busy = false;
+  }
+
   Future<void> showGames() async {
     if (_tableDeck == TableDeck.games || _busy || _swapAnim.isAnimating) {
       return;

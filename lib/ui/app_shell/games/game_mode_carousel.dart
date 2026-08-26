@@ -96,9 +96,11 @@ class GameModeCarouselState extends State<GameModeCarousel> {
 
   int get frontIndex => _frontIndex;
 
-  Future<void> collapsePeeks() {
+  Future<void> collapsePeeks({Duration? duration}) {
+    final d = duration ?? const Duration(milliseconds: 280);
     return _carouselKey.currentState?.collapseBack(
-          duration: const Duration(milliseconds: 280),
+          duration: d,
+          playSound: d > Duration.zero,
         ) ??
         Future.value();
   }

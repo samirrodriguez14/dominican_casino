@@ -51,36 +51,36 @@ class StoreScreenState extends State<StoreScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
 
-    // Outer padding shrinks the scroll viewport under the floating chrome so
-    // overscroll cannot rubber-band past the top bar / bottom tab (Android).
-    return Padding(
-      padding: EdgeInsets.only(
-        top: shellTopBarHeight(context),
-        bottom: shellBottomNavClearance(context),
+    // Full-bleed ListView so items scroll under the glass tab bar; insets live
+    // in scroll padding so resting content clears chrome without clipping the
+    // viewport. Clamping avoids Android stretch past the edges.
+    return ListView(
+      controller: _scrollController,
+      physics: const ClampingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        shellTopBarHeight(context) + 8,
+        16,
+        shellBottomNavClearance(context),
       ),
-      child: ListView(
-        controller: _scrollController,
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        children: [
-          Text(l10n.store, style: theme.title.copyWith(fontSize: 32)),
-          const SizedBox(height: 8),
-          Text(l10n.noRealMoney, style: theme.body),
-          const SizedBox(height: 28),
-          const _DailySection(),
-          Text(
-            l10n.buyEnergyWithCoins,
-            style: theme.title.copyWith(fontSize: 22),
-          ),
-          const SizedBox(height: 12),
-          _BundleGrid(
-            bundles: energyBundles,
-            onBundleTap: (bundle, origin) =>
-                _buyEnergy(context, bundle, origin),
-          ),
-          const _ThemePackSection(),
-        ],
-      ),
+      children: [
+        Text(l10n.store, style: theme.title.copyWith(fontSize: 32)),
+        const SizedBox(height: 8),
+        Text(l10n.noRealMoney, style: theme.body),
+        const SizedBox(height: 28),
+        const _DailySection(),
+        Text(
+          l10n.buyEnergyWithCoins,
+          style: theme.title.copyWith(fontSize: 22),
+        ),
+        const SizedBox(height: 12),
+        _BundleGrid(
+          bundles: energyBundles,
+          onBundleTap: (bundle, origin) =>
+              _buyEnergy(context, bundle, origin),
+        ),
+        const _ThemePackSection(),
+      ],
     );
   }
 

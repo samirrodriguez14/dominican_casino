@@ -13,6 +13,7 @@ import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/models/daily_challenge.dart';
 import 'package:dominican_casino/ui/widgets/home_coin_celebration.dart';
 import 'package:dominican_casino/ui/widgets/home_energy_celebration.dart';
+import 'package:dominican_casino/ui/widgets/journey_unlock_celebration.dart';
 import 'package:dominican_casino/ui/widgets/xp_player_avatar.dart';
 import 'package:dominican_casino/ui/animations/currency_burst.dart';
 import 'package:dominican_casino/ui/widgets/exp_icon.dart';
@@ -43,6 +44,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   List<DailyChallengeId>? _activeEnergyCelebrationChallengeIds;
   int? _activeEnergyAmount;
   bool _xpBurstRunning = false;
+  bool _journeyUnlockShowing = false;
   String? _listeningPid;
 
   @override
@@ -77,9 +79,11 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (repo.pendingHomeCoinClaim != null ||
         repo.pendingHomeDailyChallengeEnergy.isNotEmpty ||
         repo.pendingHomeXpClaim != null ||
+        repo.journeyProgress.pendingUnlockReward != null ||
         _activeCoinCelebration != null ||
         _activeEnergyAmount != null ||
-        _xpBurstRunning) {
+        _xpBurstRunning ||
+        _journeyUnlockShowing) {
       return;
     }
     final player = repo.player;
@@ -99,14 +103,16 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (pending == null ||
         _activeCoinCelebration != null ||
         _activeEnergyAmount != null ||
-        _xpBurstRunning) {
+        _xpBurstRunning ||
+        _journeyUnlockShowing) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (_activeCoinCelebration != null ||
           _activeEnergyAmount != null ||
-          _xpBurstRunning) {
+          _xpBurstRunning ||
+          _journeyUnlockShowing) {
         return;
       }
       final claim = context.read<AppRepo>().pendingHomeCoinClaim;
@@ -121,7 +127,8 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (repo.pendingHomeCoinClaim != null) return; // coin overlay has priority
     if (_activeCoinCelebration != null ||
         _activeEnergyAmount != null ||
-        _xpBurstRunning) {
+        _xpBurstRunning ||
+        _journeyUnlockShowing) {
       return;
     }
 
@@ -150,12 +157,13 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (repo.pendingHomeCoinClaim != null ||
         repo.pendingHomeDailyChallengeEnergy.isNotEmpty ||
         _activeCoinCelebration != null ||
-        _activeEnergyAmount != null) {
+        _activeEnergyAmount != null ||
+        _journeyUnlockShowing) {
       return;
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _xpBurstRunning) return;
+      if (!mounted || _xpBurstRunning || _journeyUnlockShowing) return;
       final claim = context.read<AppRepo>().pendingHomeXpClaim;
       if (claim == null) return;
       if (context.read<AppRepo>().pendingHomeCoinClaim != null) return;
@@ -192,6 +200,32 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     setState(() => _xpBurstRunning = false);
     _offeredTutorial = false;
     _maybeOfferFirstRun();
+    _maybeStartJourneyUnlockCelebration(context.read<AppRepo>());
+  }
+
+  void _maybeStartJourneyUnlockCelebration(AppRepo repo) {
+    final reward = repo.journeyProgress.pendingUnlockReward;
+    if (reward == null || _journeyUnlockShowing) return;
+    if (repo.pendingHomeCoinClaim != null ||
+        repo.pendingHomeDailyChallengeEnergy.isNotEmpty ||
+        repo.pendingHomeXpClaim != null ||
+        _activeCoinCelebration != null ||
+        _activeEnergyAmount != null ||
+        _xpBurstRunning) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _journeyUnlockShowing) return;
+      final r = context.read<AppRepo>();
+      if (r.journeyProgress.pendingUnlockReward == null) return;
+      if (r.pendingHomeCoinClaim != null ||
+          r.pendingHomeXpClaim != null ||
+          r.pendingHomeDailyChallengeEnergy.isNotEmpty) {
+        return;
+      }
+      setState(() => _journeyUnlockShowing = true);
+    });
   }
 
   @override
@@ -263,6 +297,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _maybeStartHomeCoinCelebration(appRepo);
     _maybeStartHomeEnergyCelebration(appRepo);
     _maybeStartHomeXpBurst(appRepo);
+    _maybeStartJourneyUnlockCelebration(appRepo);
     if (player?.id != _listeningPid) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _syncGameListener();
@@ -377,6 +412,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   _maybeOfferFirstRun();
                   _maybeStartHomeEnergyCelebration(context.read<AppRepo>());
                   _maybeStartHomeXpBurst(context.read<AppRepo>());
+                  _maybeStartJourneyUnlockCelebration(context.read<AppRepo>());
                 },
               ),
             ),
@@ -403,6 +439,26 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   _offeredTutorial = false;
                   _maybeOfferFirstRun();
                   _maybeStartHomeXpBurst(context.read<AppRepo>());
+                  _maybeStartJourneyUnlockCelebration(context.read<AppRepo>());
+                },
+              ),
+            ),
+          if (_journeyUnlockShowing &&
+              appRepo.journeyProgress.pendingUnlockReward != null)
+            Positioned.fill(
+              child: JourneyUnlockCelebrationOverlay(
+                key: ValueKey(
+                  'unlock-${appRepo.journeyProgress.pendingUnlockReward!.world.name}-'
+                  '${appRepo.journeyProgress.pendingUnlockReward!.rank.name}',
+                ),
+                reward: appRepo.journeyProgress.pendingUnlockReward!,
+                onDismissed: () async {
+                  if (!mounted) return;
+                  await context.read<AppRepo>().clearPendingJourneyUnlockReward();
+                  if (!mounted) return;
+                  setState(() => _journeyUnlockShowing = false);
+                  _offeredTutorial = false;
+                  _maybeOfferFirstRun();
                 },
               ),
             ),

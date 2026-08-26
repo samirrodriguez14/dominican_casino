@@ -54,6 +54,57 @@ class JourneyChallengeRef {
   }
 }
 
+/// Theme / avatar unlocks earned from a Journey victory (shown after coins/XP).
+class JourneyUnlockReward {
+  const JourneyUnlockReward({
+    required this.world,
+    required this.rank,
+    this.avatarId,
+    this.themeId,
+  });
+
+  final JourneyWorld world;
+  final JourneyRank rank;
+  /// Newly unlocked Journey face avatar id (`journey_…`).
+  final String? avatarId;
+  /// Newly unlocked play theme (usually the next world after an Ace).
+  final String? themeId;
+
+  bool get hasContent =>
+      (avatarId != null && avatarId!.isNotEmpty) ||
+      (themeId != null && themeId!.isNotEmpty);
+
+  Map<String, dynamic> toJson() => {
+    'world': world.name,
+    'rank': rank.name,
+    if (avatarId != null) 'avatarId': avatarId,
+    if (themeId != null) 'themeId': themeId,
+  };
+
+  static JourneyUnlockReward? fromJson(Map<String, dynamic>? json) {
+    if (json == null) return null;
+    final worldName = json['world'] as String?;
+    final rankName = json['rank'] as String?;
+    if (worldName == null || rankName == null) return null;
+    JourneyWorld? world;
+    JourneyRank? rank;
+    for (final w in JourneyWorld.values) {
+      if (w.name == worldName) world = w;
+    }
+    for (final r in JourneyRank.values) {
+      if (r.name == rankName) rank = r;
+    }
+    if (world == null || rank == null) return null;
+    final reward = JourneyUnlockReward(
+      world: world,
+      rank: rank,
+      avatarId: json['avatarId'] as String?,
+      themeId: json['themeId'] as String?,
+    );
+    return reward.hasContent ? reward : null;
+  }
+}
+
 /// Persisted Journey board progress + pending match/taunt flags.
 class JourneyProgress {
   JourneyProgress({
@@ -61,6 +112,7 @@ class JourneyProgress {
     this.pendingChallenge,
     this.pendingLossTaunt,
     this.pendingWinCelebration,
+    this.pendingUnlockReward,
   }) : defeatedByWorld = {
          for (final e in (defeatedByWorld ?? {}).entries)
            e.key: List<String>.from(e.value),
@@ -99,6 +151,11 @@ class JourneyProgress {
             ? Map<String, dynamic>.from(json['pendingWinCelebration'] as Map)
             : null,
       ),
+      pendingUnlockReward: JourneyUnlockReward.fromJson(
+        json['pendingUnlockReward'] is Map
+            ? Map<String, dynamic>.from(json['pendingUnlockReward'] as Map)
+            : null,
+      ),
     );
   }
 
@@ -107,6 +164,8 @@ class JourneyProgress {
   JourneyChallengeRef? pendingLossTaunt;
   /// Defeated challenger awaiting instruction unlock + next-card reveal.
   JourneyChallengeRef? pendingWinCelebration;
+  /// Avatar / theme unlocks to show after coins & XP.
+  JourneyUnlockReward? pendingUnlockReward;
 
   List<JourneyRank> defeatedRanksFor(JourneyWorld world) {
     final raw = defeatedByWorld[world.name] ?? const <String>[];
@@ -155,6 +214,8 @@ class JourneyProgress {
     if (pendingLossTaunt != null) 'pendingLossTaunt': pendingLossTaunt!.toJson(),
     if (pendingWinCelebration != null)
       'pendingWinCelebration': pendingWinCelebration!.toJson(),
+    if (pendingUnlockReward != null)
+      'pendingUnlockReward': pendingUnlockReward!.toJson(),
   };
 }
 

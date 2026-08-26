@@ -4,6 +4,7 @@ import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/models/journey_instruction.dart';
 import 'package:dominican_casino/models/journey_progress.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
+import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -355,12 +356,30 @@ class JourneyBoardState extends State<JourneyBoard>
       _revealCard = null;
     });
     if (win != null) {
-      await _beginWinCelebration(win);
+      await _awaitHomeRewardsThen(() => _beginWinCelebration(win));
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _maybeShowPendingLossTaunt();
-    });
+    await _awaitHomeRewardsThen(_maybeShowPendingLossTaunt);
+  }
+
+  Future<void> _awaitHomeRewardsThen(Future<void> Function() next) async {
+    final repo = context.read<AppRepo>();
+    if (!repo.hasPendingHomeRewardSequence) {
+      await next();
+      return;
+    }
+
+    void listener() {
+      if (!mounted) {
+        repo.removeListener(listener);
+        return;
+      }
+      if (repo.hasPendingHomeRewardSequence) return;
+      repo.removeListener(listener);
+      next();
+    }
+
+    repo.addListener(listener);
   }
 
   Future<void> _beginWinCelebration(JourneyChallengeRef defeated) async {
@@ -506,8 +525,10 @@ class JourneyBoardState extends State<JourneyBoard>
     if (!mounted) return;
     setState(() => _defeatFlying = null);
     _defeatFlyAnim.value = 0;
-    await _beginWinCelebration(
-      JourneyChallengeRef(world: card.world, rank: card.rank),
+    await _awaitHomeRewardsThen(
+      () => _beginWinCelebration(
+        JourneyChallengeRef(world: card.world, rank: card.rank),
+      ),
     );
   }
 
@@ -615,12 +636,7 @@ class JourneyBoardState extends State<JourneyBoard>
         true,
         botOverride: LocalBotProfile(
           name: card.rank.label,
-          avatarId: switch (card.world) {
-            JourneyWorld.diamonds => 'diamond',
-            JourneyWorld.clubs => 'club',
-            JourneyWorld.hearts => 'heart',
-            JourneyWorld.spades => 'spade',
-          },
+          avatarId: journeyAvatarId(card.world, card.rank),
           avatarAsset: card.avatarAssetPath,
         ),
         onCreated: (gid) => repo.beginJourneyChallenge(

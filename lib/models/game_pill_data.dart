@@ -6,11 +6,13 @@ class GamePillSeat {
   final String id;
   final String name;
   final String? avatarId;
+  final String? avatarAsset;
 
   const GamePillSeat({
     required this.id,
     required this.name,
     this.avatarId,
+    this.avatarAsset,
   });
 
   bool get isOpen =>
@@ -103,6 +105,7 @@ class GamePillData {
         id: entry.key,
         name: (map['name'] as String?) ?? 'Unknown',
         avatarId: map['avatarId'] as String?,
+        avatarAsset: map['avatarAsset'] as String?,
       );
     }).toList();
     if (gameStatus != GameStatus.gameOver) return all;

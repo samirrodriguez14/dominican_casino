@@ -244,7 +244,7 @@ class GamesScreenState extends State<GamesScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (!context.read<AppRepo>().takeOpenJourneyRequest()) return;
-        _journeyKey.currentState?.showJourney();
+        _journeyKey.currentState?.restoreJourneySettled();
       });
     }
     return Padding(

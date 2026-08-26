@@ -41,6 +41,7 @@ class _ThemePackCarouselState extends State<ThemePackCarousel> {
               initialIndex: _frontIndex,
               peekStyle: CardPeekStyle.fan,
               animateBackIn: true,
+              wrap: false,
               widthFactor: 0.70,
               maxCardWidth: 280,
               onIndexChanged: (index) {
