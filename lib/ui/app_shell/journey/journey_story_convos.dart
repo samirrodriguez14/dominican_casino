@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/journey.dart';
+import 'package:dominican_casino/models/avatar_catalog.dart';
 import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/models/tutorial_action.dart';
 import 'package:dominican_casino/models/tutorial_step.dart';
@@ -818,7 +819,7 @@ class JourneyHeartsJackIntroController extends ChangeNotifier
       ];
 }
 
-/// After losing to Hearts Jack: escort to the Queen → Challenge.
+/// After beating Hearts Jack: escort to the Queen → Challenge.
 class JourneyHeartsQueenEscortController extends ChangeNotifier
     with _StoryCoachController {
   static final String jackId =
@@ -831,10 +832,9 @@ class JourneyHeartsQueenEscortController extends ChangeNotifier
         _storyLine(
           step: 0,
           section: 0,
-          speaker: 'Jack',
+          speaker: 'You',
           text: 'Where\'s the King? You cannot break a wager.',
-          who: TutorialSpeaker.guide,
-          avatarId: jackId,
+          who: TutorialSpeaker.player,
         ),
         _storyLine(
           step: 1,
@@ -1135,6 +1135,317 @@ class JourneyHeartsAceOfferController extends ChangeNotifier
           text: 'I\'ll live in the spirit of the card.',
           who: TutorialSpeaker.guide,
           avatarId: kingId,
+          showSkip: false,
+        ),
+      ];
+}
+
+/// Enter Spades briefing → Challenge the Jack.
+class JourneySpadesJackIntroController extends ChangeNotifier
+    with _StoryCoachController {
+  static final String jackId =
+      journeyAvatarId(JourneyWorld.spades, JourneyRank.jack);
+
+  @override
+  List<TutorialStep> get steps => [
+        _storyLine(
+          step: 0,
+          section: 0,
+          speaker: 'You',
+          text:
+              'Younger face. Refugee cloth. Three Aces under the mask. '
+              'Time to look harmless.',
+          who: TutorialSpeaker.player,
+        ),
+        _storyLine(
+          step: 1,
+          section: 0,
+          speaker: 'Jack',
+          text:
+              'Another stray for the camp? Loyalty starts here. You play me — '
+              'and you lose. Prove you know your place.',
+          who: TutorialSpeaker.guide,
+          avatarId: jackId,
+        ),
+        _storyLine(
+          step: 2,
+          section: 0,
+          speaker: 'You',
+          text: '…Deal.',
+          who: TutorialSpeaker.player,
+          showSkip: false,
+        ),
+      ];
+}
+
+/// After losing to Spades Jack: escort to the King → Challenge.
+class JourneySpadesKingEscortController extends ChangeNotifier
+    with _StoryCoachController {
+  static final String jackId =
+      journeyAvatarId(JourneyWorld.spades, JourneyRank.jack);
+  static final String kingId =
+      journeyAvatarId(JourneyWorld.spades, JourneyRank.king);
+
+  @override
+  List<TutorialStep> get steps => [
+        _storyLine(
+          step: 0,
+          section: 0,
+          speaker: 'Jack',
+          text:
+              'Good. You know when to fold. Come — the King will see you now.',
+          who: TutorialSpeaker.guide,
+          avatarId: jackId,
+        ),
+        _storyLine(
+          step: 1,
+          section: 0,
+          speaker: 'Jack',
+          text: 'Your Majesty. A refugee who passed my table.',
+          who: TutorialSpeaker.guide,
+          avatarId: jackId,
+        ),
+        _storyLine(
+          step: 2,
+          section: 1,
+          speaker: 'King',
+          text:
+              'We\'ll play. This time you should not try to lose. '
+              'I need to know if you\'re worth the camp — or just another liar.',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+          showSkip: false,
+        ),
+      ];
+}
+
+/// After beating Spades King: camp origins → lead to the ruins.
+class JourneySpadesCampController extends ChangeNotifier
+    with _StoryCoachController {
+  static final String kingId =
+      journeyAvatarId(JourneyWorld.spades, JourneyRank.king);
+
+  @override
+  List<TutorialStep> get steps => [
+        _storyLine(
+          step: 0,
+          section: 0,
+          speaker: 'King',
+          text: 'You fight like someone who has already lived too many lives.',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 1,
+          section: 0,
+          speaker: 'You',
+          text:
+              'I came for the Ace of Spades. I hold three already. '
+              'They said the Aces would tell me who I am.',
+          who: TutorialSpeaker.player,
+        ),
+        _storyLine(
+          step: 2,
+          section: 1,
+          speaker: 'King',
+          text:
+              'Three Aces… Then you are the thief the Diamonds court screamed about.',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 3,
+          section: 1,
+          speaker: 'You',
+          text: 'I won them fair — mostly. Where is your Queen?',
+          who: TutorialSpeaker.player,
+        ),
+        _storyLine(
+          step: 4,
+          section: 1,
+          speaker: 'King',
+          text: 'Don\'t. Speak. Of. Her.',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 5,
+          section: 2,
+          speaker: 'King',
+          text:
+              '(rage) She was taken by the field — buried with the Ace! '
+              'And you stroll in wearing youth like a costume!',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 6,
+          section: 2,
+          speaker: 'You',
+          text: '(the three Aces pulse — pushing him back)',
+          who: TutorialSpeaker.player,
+        ),
+        _storyLine(
+          step: 7,
+          section: 2,
+          speaker: 'King',
+          text:
+              '…Enough. Calm. If the Aces chose you, maybe you can reach what I cannot.',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 8,
+          section: 3,
+          speaker: 'King',
+          text:
+              'I\'ll take you to where the Ace sleeps. Keep up — and do not drop those cards.',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+          showSkip: false,
+        ),
+      ];
+}
+
+/// Ruins approach: spoken lines after the ruins instruction letter.
+class JourneySpadesRuinsApproachController extends ChangeNotifier
+    with _StoryCoachController {
+  static final String kingId =
+      journeyAvatarId(JourneyWorld.spades, JourneyRank.king);
+
+  @override
+  List<TutorialStep> get steps => [
+        _storyLine(
+          step: 0,
+          section: 0,
+          speaker: 'King',
+          text:
+              'Walk toward it. Do what you did with the Aces. '
+              'The last one is hidden below.',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 1,
+          section: 0,
+          speaker: 'You',
+          text: 'What happened here?',
+          who: TutorialSpeaker.player,
+        ),
+        _storyLine(
+          step: 2,
+          section: 0,
+          speaker: 'King',
+          text: 'Just do as I told you.',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+          showSkip: false,
+        ),
+      ];
+}
+
+/// Ruins climax: Queen reunion → Ace claims you.
+class JourneySpadesRuinsClimaxController extends ChangeNotifier
+    with _StoryCoachController {
+  static final String kingId =
+      journeyAvatarId(JourneyWorld.spades, JourneyRank.king);
+  static final String queenId =
+      journeyAvatarId(JourneyWorld.spades, JourneyRank.queen);
+
+  @override
+  List<TutorialStep> get steps => [
+        _storyLine(
+          step: 0,
+          section: 0,
+          speaker: 'King',
+          text:
+              '(grabbing for your Aces — they refuse him) Give them to me! '
+              'She\'s under there!',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 1,
+          section: 0,
+          speaker: 'King',
+          text:
+              '(lifts you toward the field) Try again. Hold. Longer.',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 2,
+          section: 1,
+          speaker: 'Someone',
+          text: 'STOP!',
+          who: TutorialSpeaker.guide,
+          avatarId: queenId,
+        ),
+        _storyLine(
+          step: 3,
+          section: 1,
+          speaker: 'Someone',
+          text: 'He\'s just a kid.',
+          who: TutorialSpeaker.guide,
+          avatarId: queenId,
+        ),
+        _storyLine(
+          step: 4,
+          section: 1,
+          speaker: 'King',
+          text: 'This can\'t be…',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 5,
+          section: 2,
+          speaker: 'You',
+          text: 'Queen of Spades?',
+          who: TutorialSpeaker.player,
+        ),
+        _storyLine(
+          step: 6,
+          section: 2,
+          speaker: 'King',
+          text: '(runs — hugs her) You\'re alive…',
+          who: TutorialSpeaker.guide,
+          avatarId: kingId,
+        ),
+        _storyLine(
+          step: 7,
+          section: 2,
+          speaker: 'Queen',
+          text:
+              'Oh no… don\'t tell me you have all three Aces with you?',
+          who: TutorialSpeaker.guide,
+          avatarId: queenId,
+          showSkip: false,
+        ),
+      ];
+}
+
+/// After claiming the Spades Ace: field breaks; the other half appears.
+class JourneySpadesFinaleController extends ChangeNotifier
+    with _StoryCoachController {
+  @override
+  List<TutorialStep> get steps => [
+        _storyLine(
+          step: 0,
+          section: 0,
+          speaker: 'You',
+          text:
+              'The fourth Ace settles in your hand — and the magnetic field '
+              'screams. Dust. Mist. Something laughs in the dark.',
+          who: TutorialSpeaker.player,
+        ),
+        _storyLine(
+          step: 1,
+          section: 0,
+          speaker: '???',
+          text: 'Hello! Did you miss me?',
+          who: TutorialSpeaker.guide,
+          avatarId: AvatarCatalog.otherHalfId,
           showSkip: false,
         ),
       ];

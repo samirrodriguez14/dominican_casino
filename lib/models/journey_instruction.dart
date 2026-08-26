@@ -117,34 +117,43 @@ const List<JourneyInstruction> journeyInstructions = [
         'The King gave you his heart and died. You must run to the Spades '
         'kingdom before the Queen finds out.',
   ),
-  // Spades (pages 13–16)
+  // Spades (pages 13–16) — story-driven; Queen/King filler letters skipped.
   JourneyInstruction(
     id: 13,
-    title: 'The Queen awaits',
+    title: 'Refugee briefing',
     body:
-        'Congratulations — you completed the Spades challenge. '
-        'The Queen of Spades now stands open. Face her next.',
+        'The Spades kingdom has fallen into anarchy. Loyalists against rebels.\n'
+        'You must become a refugee and infiltrate the King\'s camp to get his Ace.\n'
+        'With 3 Aces you can change your age — appear younger. You will look '
+        'like a refugee and be sent to prove your loyalty to the crown with the '
+        'Jack of Spades.\n'
+        'The King will not have the answers. The Queen will.',
   ),
   JourneyInstruction(
     id: 14,
-    title: 'The King\'s court',
+    title: 'The ruins',
     body:
-        'The Queen falls. The King tests travelers by strength. '
-        'Prove your strength before his throne.',
+        'You and the King walk out to ruins wrapped in a magnetic field.\n'
+        'He says the Ace is hidden below — walk toward the field and do what '
+        'you did with the Aces.',
   ),
   JourneyInstruction(
     id: 15,
-    title: 'Mastery of Strength',
+    title: 'Hold longer',
     body:
-        'The King is defeated. Claim the Ace of Spades — '
-        'mastery of this kingdom\'s strength.',
+        'As you walk, the magnetic field starts to weaken. The King rises and '
+        'tells you to keep going — but you cannot. The field is too powerful.\n'
+        'He digs the ground. \"Where is she? Where are you?\"\n'
+        'Hold longer… until you cannot hold more, and the magnetic field '
+        'explodes and shoots you back.',
   ),
   JourneyInstruction(
     id: 16,
-    title: 'Four Aces complete',
+    title: 'To be continued',
     body:
-        'The Ace of Spades is yours. All four Aces are complete — '
-        'rest until the next chapter.',
+        'The fourth Ace is yours. The magnetic field is broken — and someone '
+        'who shares your journey has stepped into the light.\n'
+        'Rest here. The next chapter waits.',
   ),
 ];
 
@@ -183,6 +192,8 @@ int journeyUnlockedThrough({
   bool diamondsAceEscapeSeen = true,
   bool clubsAceGiftSeen = true,
   bool heartsAceGiftSeen = true,
+  bool spadesEntered = false,
+  bool spadesFinaleSeen = true,
 }) {
   JourneyCardState? stateOf(JourneyWorld world, JourneyRank rank) =>
       snapshot.worldOf(world).cardOf(rank)?.state;
@@ -196,12 +207,17 @@ int journeyUnlockedThrough({
       final base = _worldInstructionBase(world);
       // Clubs: Jack unlocks court letter; Queen/King letters skipped.
       // Hearts: stay on entrance until Ace gift unlocks Spades.
+      // Spades: entrance (12) then briefing (13) after enter; story skips Q/K.
       if (world == JourneyWorld.clubs) {
         if (defeated(world, JourneyRank.jack)) return base + 1; // 7
         return base; // 6
       }
       if (world == JourneyWorld.hearts) {
         return base; // 8
+      }
+      if (world == JourneyWorld.spades) {
+        if (!spadesEntered) return base; // 12
+        return base + 1; // 13
       }
       if (defeated(world, JourneyRank.king)) return base + 3;
       if (defeated(world, JourneyRank.queen)) return base + 2;
@@ -225,8 +241,12 @@ int journeyUnlockedThrough({
     if (world == JourneyWorld.hearts && !heartsAceGiftSeen) {
       return 8;
     }
+    // Spades Ace claimed — finale letter waits for the cliffhanger.
+    if (world == JourneyWorld.spades && !spadesFinaleSeen) {
+      return 15;
+    }
   }
 
-  // All four Aces claimed.
+  // All four Aces claimed (and finale seen).
   return 16;
 }

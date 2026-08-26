@@ -146,6 +146,12 @@ class JourneyBoardState extends State<JourneyBoard>
   late final JourneyHeartsQueenEscortController _heartsQueenEscort;
   late final JourneyHeartsKingIntroController _heartsKingIntro;
   late final JourneyHeartsAceOfferController _heartsAceOffer;
+  late final JourneySpadesJackIntroController _spadesJackIntro;
+  late final JourneySpadesKingEscortController _spadesKingEscort;
+  late final JourneySpadesCampController _spadesCamp;
+  late final JourneySpadesRuinsApproachController _spadesRuinsApproach;
+  late final JourneySpadesRuinsClimaxController _spadesRuinsClimax;
+  late final JourneySpadesFinaleController _spadesFinale;
 
   JourneyWorld? _themeUnlockWorld;
   bool _themeUnlockForceSealed = false;
@@ -158,6 +164,8 @@ class JourneyBoardState extends State<JourneyBoard>
   bool _pendingClubsJackIntro = false;
   /// After Hearts theme reward, start Hearts Jack court intro.
   bool _pendingHeartsJackIntro = false;
+  /// After Spades theme reward, unlock briefing page 13.
+  bool _pendingSpadesBriefing = false;
   int? _instructionCeremonyPageId;
   bool _instructionCeremonyUnlocked = false;
   bool _instructionCeremonyShowCta = false;
@@ -177,6 +185,18 @@ class JourneyBoardState extends State<JourneyBoard>
   bool _heartsQueenEscortScheduled = false;
   bool _heartsKingIntroScheduled = false;
   bool _heartsAceOfferScheduled = false;
+  bool _spadesJackIntroScheduled = false;
+  bool _spadesKingEscortScheduled = false;
+  bool _spadesCampScheduled = false;
+  bool _spadesRuinsApproachScheduled = false;
+  bool _spadesRuinsClimaxScheduled = false;
+  bool _spadesFinaleScheduled = false;
+  /// After page 14 unlock: wait for Continue before ruins approach.
+  bool _pendingSpadesRuinsApproachContinue = false;
+  /// After page 15 unlock: wait for Continue before ruins climax.
+  bool _pendingSpadesRuinsClimaxContinue = false;
+  /// After page 16 unlock: wait for Continue before dismissing the letter CTA.
+  bool _pendingSpadesFinaleLetterContinue = false;
   bool _sessionTutorialDone = false;
   AppRepo? _repo;
   int _lastLevel = 1;
@@ -232,6 +252,12 @@ class JourneyBoardState extends State<JourneyBoard>
     _heartsQueenEscort = JourneyHeartsQueenEscortController();
     _heartsKingIntro = JourneyHeartsKingIntroController();
     _heartsAceOffer = JourneyHeartsAceOfferController();
+    _spadesJackIntro = JourneySpadesJackIntroController();
+    _spadesKingEscort = JourneySpadesKingEscortController();
+    _spadesCamp = JourneySpadesCampController();
+    _spadesRuinsApproach = JourneySpadesRuinsApproachController();
+    _spadesRuinsClimax = JourneySpadesRuinsClimaxController();
+    _spadesFinale = JourneySpadesFinaleController();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final repo = context.read<AppRepo>();
@@ -283,6 +309,12 @@ class JourneyBoardState extends State<JourneyBoard>
     _heartsQueenEscort.dispose();
     _heartsKingIntro.dispose();
     _heartsAceOffer.dispose();
+    _spadesJackIntro.dispose();
+    _spadesKingEscort.dispose();
+    _spadesCamp.dispose();
+    _spadesRuinsApproach.dispose();
+    _spadesRuinsClimax.dispose();
+    _spadesFinale.dispose();
     super.dispose();
   }
 
@@ -407,6 +439,9 @@ class JourneyBoardState extends State<JourneyBoard>
       if (world == JourneyWorld.hearts) {
         _pendingHeartsJackIntro = true;
       }
+      if (world == JourneyWorld.spades) {
+        _pendingSpadesBriefing = true;
+      }
     });
     _themeUnlockAnim.value = 0;
     return true;
@@ -504,6 +539,16 @@ class JourneyBoardState extends State<JourneyBoard>
       return;
     }
 
+    if (rewardWorld == JourneyWorld.spades && _pendingSpadesBriefing) {
+      _pendingSpadesBriefing = false;
+      await _runInstructionUnlockCeremony(
+        beforeUnlock: 12,
+        afterUnlock: 13,
+        showUnlockCtaAfter: true,
+      );
+      return;
+    }
+
     if (rewardWorld != JourneyWorld.diamonds ||
         !_pendingDiamondsInstructionReveal) {
       return;
@@ -591,9 +636,15 @@ class JourneyBoardState extends State<JourneyBoard>
     _heartsQueenEscort.reset();
     _heartsKingIntro.reset();
     _heartsAceOffer.reset();
+    _spadesJackIntro.reset();
+    _spadesKingEscort.reset();
+    _spadesCamp.reset();
+    _spadesRuinsApproach.reset();
+    _spadesRuinsClimax.reset();
+    _spadesFinale.reset();
     setState(() {
       _worlds = _copyWorlds(_repo!.journeyBoardForLevel());
-      _activeWorld = JourneyWorld.diamonds;
+      _activeWorld = _resumeWorldAfterStoryReset(_repo!.journeyProgress);
       _selected = null;
       _selectedFromDefeated = false;
       _selectStartsFaceDown = false;
@@ -618,6 +669,15 @@ class JourneyBoardState extends State<JourneyBoard>
       _heartsQueenEscortScheduled = false;
       _heartsKingIntroScheduled = false;
       _heartsAceOfferScheduled = false;
+      _spadesJackIntroScheduled = false;
+      _spadesKingEscortScheduled = false;
+      _spadesCampScheduled = false;
+      _spadesRuinsApproachScheduled = false;
+      _spadesRuinsClimaxScheduled = false;
+      _spadesFinaleScheduled = false;
+      _pendingSpadesRuinsApproachContinue = false;
+      _pendingSpadesRuinsClimaxContinue = false;
+      _pendingSpadesFinaleLetterContinue = false;
       _sessionTutorialDone = false;
       _tauntScheduled = false;
       _guideDisplayedUnlock = null;
@@ -627,6 +687,8 @@ class JourneyBoardState extends State<JourneyBoard>
       _themeUnlockRewardWorld = null;
       _pendingDiamondsInstructionReveal = false;
       _pendingClubsJackIntro = false;
+      _pendingHeartsJackIntro = false;
+      _pendingSpadesBriefing = false;
       _instructionCeremonyPageId = null;
       _instructionCeremonyUnlocked = false;
       _instructionCeremonyShowCta = false;
@@ -634,15 +696,49 @@ class JourneyBoardState extends State<JourneyBoard>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _maybeStartCoach();
-      // Soft restart at Diamonds: resume Jack's entrance conversation.
-      final progress = _repo?.journeyProgress;
-      if (progress != null &&
-          progress.diamondsEntered &&
-          !progress.diamondsJackUnlocked &&
-          !progress.diamondsJackIntroSeen) {
-        _startJackIntro();
-      }
+      _resumeStoryAfterSoftRestart();
     });
+  }
+
+  JourneyWorld _resumeWorldAfterStoryReset(JourneyProgress progress) {
+    for (final world in JourneyWorld.values.reversed) {
+      if (progress.hasEntered(world)) return world;
+    }
+    return JourneyWorld.diamonds;
+  }
+
+  void _resumeStoryAfterSoftRestart() {
+    final progress = _repo?.journeyProgress;
+    if (progress == null) return;
+
+    if (progress.hasEntered(JourneyWorld.spades) &&
+        !progress.spadesJackIntroSeen) {
+      setState(() => _activeWorld = JourneyWorld.spades);
+      _runInstructionUnlockCeremony(
+        beforeUnlock: 12,
+        afterUnlock: 13,
+        showUnlockCtaAfter: true,
+      );
+      return;
+    }
+    if (progress.hasEntered(JourneyWorld.hearts) &&
+        !progress.heartsJackIntroSeen) {
+      setState(() => _activeWorld = JourneyWorld.hearts);
+      _startHeartsJackIntro();
+      return;
+    }
+    if (progress.hasEntered(JourneyWorld.clubs) &&
+        !progress.clubsJackIntroSeen) {
+      setState(() => _activeWorld = JourneyWorld.clubs);
+      _startClubsJackIntro();
+      return;
+    }
+    if (progress.diamondsEntered &&
+        !progress.diamondsJackUnlocked &&
+        !progress.diamondsJackIntroSeen) {
+      setState(() => _activeWorld = JourneyWorld.diamonds);
+      _startJackIntro();
+    }
   }
 
   Future<void> _maybeShowPendingLossTaunt() async {
@@ -659,14 +755,21 @@ class JourneyBoardState extends State<JourneyBoard>
           requiredLevel: 1,
           gameMode: journeyGameForRank(taunt.rank),
         );
-    final action = await showJourneyLossTaunt(context, card: card);
+    final action = await showJourneyLossTaunt(
+      context,
+      card: card,
+      message: taunt.world == JourneyWorld.spades &&
+              taunt.rank == JourneyRank.king
+          ? 'I told you not to lose.'
+          : null,
+    );
     if (!mounted) return;
     await repo.clearPendingJourneyLossTaunt();
     _tauntScheduled = false;
     if (!mounted) return;
 
-    if (action == JourneyLossAction.restartDiamonds) {
-      await repo.restartJourneyAtDiamonds();
+    if (action == JourneyLossAction.restartKingdom) {
+      await repo.restartJourneyAtKingdom(card.world);
       return;
     }
 
@@ -1034,6 +1137,355 @@ class JourneyBoardState extends State<JourneyBoard>
     });
   }
 
+  void _startSpadesJackIntro() {
+    if (_spadesJackIntroScheduled ||
+        _spadesJackIntro.isActive ||
+        _spadesJackIntro.isFinished) {
+      return;
+    }
+    _spadesJackIntroScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _spadesJackIntro.start();
+      setState(() {});
+    });
+  }
+
+  void _startSpadesKingEscort() {
+    if (_spadesKingEscortScheduled ||
+        _spadesKingEscort.isActive ||
+        _spadesKingEscort.isFinished) {
+      return;
+    }
+    _spadesKingEscortScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _spadesKingEscort.start();
+      setState(() {});
+    });
+  }
+
+  void _startSpadesCamp() {
+    if (_spadesCampScheduled ||
+        _spadesCamp.isActive ||
+        _spadesCamp.isFinished) {
+      return;
+    }
+    _spadesCampScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _spadesCamp.start();
+      setState(() {});
+    });
+  }
+
+  void _startSpadesRuinsApproach() {
+    if (_spadesRuinsApproachScheduled ||
+        _spadesRuinsApproach.isActive ||
+        _spadesRuinsApproach.isFinished) {
+      return;
+    }
+    _spadesRuinsApproachScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _spadesRuinsApproach.start();
+      setState(() {});
+    });
+  }
+
+  void _startSpadesRuinsClimax() {
+    if (_spadesRuinsClimaxScheduled ||
+        _spadesRuinsClimax.isActive ||
+        _spadesRuinsClimax.isFinished) {
+      return;
+    }
+    _spadesRuinsClimaxScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _spadesRuinsClimax.start();
+      setState(() {});
+    });
+  }
+
+  void _startSpadesFinale() {
+    if (_spadesFinaleScheduled ||
+        _spadesFinale.isActive ||
+        _spadesFinale.isFinished) {
+      return;
+    }
+    _spadesFinaleScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _spadesFinale.start();
+      setState(() {});
+    });
+  }
+
+  Future<void> _onSpadesJackChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markSpadesJackIntroSeen();
+    if (!mounted) return;
+
+    final lockedJack = _snapshot
+        .worldOf(JourneyWorld.spades)
+        .cardOf(JourneyRank.jack);
+    if (lockedJack == null) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideShowUnlockCta = false;
+      _activeWorld = JourneyWorld.spades;
+      _selectStartsFaceDown = true;
+    });
+
+    await _selectCard(
+      lockedJack,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
+    );
+    if (!mounted) return;
+
+    if (!repo.journeyProgress.spadesJackUnlocked) {
+      await repo.unlockSpadesJack();
+      if (!mounted) return;
+    }
+
+    setState(() {
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      _selectStartsFaceDown = false;
+    });
+    final unlocked =
+        _snapshot.worldOf(JourneyWorld.spades).cardOf(JourneyRank.jack);
+    if (unlocked == null) return;
+    setState(() => _selected = unlocked);
+
+    await _promptChallengeMatch(unlocked);
+  }
+
+  Future<void> _onSpadesKingEscortChallenge() async {
+    final repo = context.read<AppRepo>();
+    await repo.markSpadesKingEscortSeen();
+    await repo.clearPendingSpadesKingEscort();
+    if (!mounted) return;
+
+    setState(() {
+      _guideExpanded = false;
+      _guideOpenPage = null;
+      _guideShowUnlockCta = false;
+      _pendingUnlockCard = null;
+      _worlds = _copyWorlds(
+        hydrateJourneyBoard(
+          progress: repo.journeyProgress,
+          playerLevel: repo.experienceProgress.level,
+          deferPendingWin: false,
+        ),
+      );
+      _activeWorld = JourneyWorld.spades;
+    });
+
+    final king =
+        _snapshot.worldOf(JourneyWorld.spades).cardOf(JourneyRank.king);
+    if (king == null) return;
+
+    setState(() {
+      _revealCard = king;
+      _revealAnim.value = 0;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(
+      king,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
+    );
+    if (!mounted) return;
+    await _promptChallengeMatch(king);
+  }
+
+  Future<void> _onSpadesCampComplete() async {
+    final repo = context.read<AppRepo>();
+    await repo.clearPendingSpadesRuins();
+    if (!mounted) return;
+
+    setState(() {
+      _guideDisplayedUnlock = 13;
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+    });
+    await _runInstructionUnlockCeremony(
+      beforeUnlock: 13,
+      afterUnlock: 14,
+      showUnlockCtaAfter: true,
+    );
+    if (!mounted) return;
+    setState(() => _pendingSpadesRuinsApproachContinue = true);
+  }
+
+  Future<void> _onSpadesRuinsApproachComplete() async {
+    setState(() => _guideDisplayedUnlock = 14);
+    await _runInstructionUnlockCeremony(
+      beforeUnlock: 14,
+      afterUnlock: 15,
+      showUnlockCtaAfter: true,
+    );
+    if (!mounted) return;
+    setState(() => _pendingSpadesRuinsClimaxContinue = true);
+  }
+
+  Future<void> _onSpadesRuinsClimaxComplete() async {
+    final repo = context.read<AppRepo>();
+    if (!mounted) return;
+
+    final ace =
+        _snapshot.worldOf(JourneyWorld.spades).cardOf(JourneyRank.ace);
+    if (ace == null) return;
+
+    setState(() {
+      _revealCard = ace;
+      _revealAnim.value = 0;
+      _activeWorld = JourneyWorld.spades;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(
+      ace,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
+    );
+    if (!mounted) return;
+
+    final claim = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(ace.title),
+        content: const Text('Claim the Ace of Spades.'),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Claim'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || claim != true) return;
+
+    await repo.applyJourneyDefeat(
+      JourneyWorld.spades,
+      JourneyRank.ace,
+      celebrate: true,
+    );
+    if (!mounted) return;
+    setState(() {
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      _selected = null;
+      _selectAnim.value = 0;
+      _guideDisplayedUnlock = 15;
+    });
+
+    await _awaitHomeRewardsThen(() async {
+      await repo.clearPendingWinCelebration();
+      if (!mounted) return;
+      setState(() {
+        _pendingUnlockCard = null;
+        _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      });
+      _startSpadesFinale();
+    });
+  }
+
+  Future<void> _onSpadesFinaleComplete() async {
+    final repo = context.read<AppRepo>();
+    await repo.markSpadesFinaleSeen();
+    if (!mounted) return;
+    setState(() {
+      _guideDisplayedUnlock = 15;
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+    });
+    await _runInstructionUnlockCeremony(
+      beforeUnlock: 15,
+      afterUnlock: 16,
+      showUnlockCtaAfter: true,
+    );
+    if (!mounted) return;
+    setState(() => _pendingSpadesFinaleLetterContinue = true);
+  }
+
+  Future<void> _maybeShowSpadesJackCampDenied() async {
+    final repo = context.read<AppRepo>();
+    if (!repo.journeyProgress.pendingSpadesJackCampDenied) return;
+    final jack =
+        _snapshot.worldOf(JourneyWorld.spades).cardOf(JourneyRank.jack) ??
+            const JourneyCardDef(
+              world: JourneyWorld.spades,
+              rank: JourneyRank.jack,
+              state: JourneyCardState.available,
+              requiredLevel: 1,
+              gameMode: GameMode.tresydos,
+            );
+    final action = await showJourneyLossTaunt(
+      context,
+      card: jack,
+      message:
+          'Beating me marks you as trouble. You cannot enter the King\'s camp. '
+          'Try again — and lose like a refugee.',
+    );
+    if (!mounted) return;
+    await repo.clearPendingSpadesJackCampDenied();
+    if (!mounted) return;
+
+    if (action == JourneyLossAction.restartKingdom) {
+      await repo.restartJourneyAtKingdom(JourneyWorld.spades);
+      return;
+    }
+
+    // Replay (default): rematch the Jack.
+    if (action == JourneyLossAction.replay || action == null) {
+      setState(() {
+        _activeWorld = JourneyWorld.spades;
+        _selected = jack;
+      });
+      if (jack.isSelectable) {
+        await _selectCard(jack, fromDefeated: false, skipEquip: true);
+      }
+      if (!mounted) return;
+      await _startJourneyMatch(jack);
+    }
+  }
+
   Future<void> _onKingIntroChallenge() async {
     final repo = context.read<AppRepo>();
     await repo.markDiamondsKingIntroSeen();
@@ -1202,37 +1654,34 @@ class JourneyBoardState extends State<JourneyBoard>
       _guideOpenPage = null;
       _guideShowUnlockCta = false;
       _pendingUnlockCard = null;
+      _worlds = _copyWorlds(
+        hydrateJourneyBoard(
+          progress: repo.journeyProgress,
+          playerLevel: repo.experienceProgress.level,
+          deferPendingWin: false,
+        ),
+      );
       _activeWorld = JourneyWorld.clubs;
     });
 
-    final vm = context.read<GamesViewModel>();
-    await gameEnter(
-      context,
-      vm,
-      GameMode.rummy,
-      true,
-      playerCount: 4,
-      botOverrides: [
-        LocalBotProfile(
-          name: 'King',
-          avatarId: journeyAvatarId(JourneyWorld.clubs, JourneyRank.king),
-        ),
-        LocalBotProfile(
-          name: 'Queen',
-          avatarId: journeyAvatarId(JourneyWorld.clubs, JourneyRank.queen),
-        ),
-        LocalBotProfile(
-          name: 'Jack',
-          avatarId: journeyAvatarId(JourneyWorld.clubs, JourneyRank.jack),
-        ),
-      ],
-      onCreated: (gid) => repo.beginJourneyChallenge(
-        world: JourneyWorld.clubs,
-        rank: JourneyRank.king,
-        gameId: gid,
-        ignoreOutcome: true,
-      ),
+    final king =
+        _snapshot.worldOf(JourneyWorld.clubs).cardOf(JourneyRank.king);
+    if (king == null) return;
+
+    setState(() {
+      _revealCard = king;
+      _revealAnim.value = 0;
+    });
+    await _playRevealIfNeeded();
+    if (!mounted) return;
+    await _selectCard(
+      king,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
     );
+    if (!mounted) return;
+    await _promptChallengeMatch(king);
   }
 
   Future<void> _onClubsAceOfferComplete() async {
@@ -1349,25 +1798,7 @@ class JourneyBoardState extends State<JourneyBoard>
     if (unlocked == null) return;
     setState(() => _selected = unlocked);
 
-    final vm = context.read<GamesViewModel>();
-    final mode = unlocked.gameMode;
-    if (mode == null) return;
-    await gameEnter(
-      context,
-      vm,
-      mode,
-      true,
-      botOverride: LocalBotProfile(
-        name: unlocked.rank.label,
-        avatarId: journeyAvatarId(unlocked.world, unlocked.rank),
-      ),
-      onCreated: (gid) => repo.beginJourneyChallenge(
-        world: JourneyWorld.hearts,
-        rank: JourneyRank.jack,
-        gameId: gid,
-        escortOnLoss: true,
-      ),
-    );
+    await _promptChallengeMatch(unlocked);
   }
 
   Future<void> _onHeartsQueenEscortChallenge() async {
@@ -1440,25 +1871,7 @@ class JourneyBoardState extends State<JourneyBoard>
     if (!mounted) return;
     await _selectCard(king, fromDefeated: false, skipEquip: true);
     if (!mounted) return;
-
-    final vm = context.read<GamesViewModel>();
-    final mode = king.gameMode ?? GameMode.casinoSpeed;
-    await gameEnter(
-      context,
-      vm,
-      mode,
-      true,
-      botOverride: LocalBotProfile(
-        name: king.rank.label,
-        avatarId: journeyAvatarId(king.world, king.rank),
-      ),
-      onCreated: (gid) => repo.beginJourneyChallenge(
-        world: JourneyWorld.hearts,
-        rank: JourneyRank.king,
-        gameId: gid,
-        ignoreOutcome: true,
-      ),
-    );
+    await _promptChallengeMatch(king);
   }
 
   Future<void> _onHeartsAceOfferComplete() async {
@@ -1543,6 +1956,12 @@ class JourneyBoardState extends State<JourneyBoard>
             context.read<AppRepo>().journeyProgress.clubsAceGiftSeen,
         heartsAceGiftSeen:
             context.read<AppRepo>().journeyProgress.heartsAceGiftSeen,
+        spadesEntered: context
+            .read<AppRepo>()
+            .journeyProgress
+            .hasEntered(JourneyWorld.spades),
+        spadesFinaleSeen:
+            context.read<AppRepo>().journeyProgress.spadesFinaleSeen,
       );
 
   bool get _needsFirstJackUnlock {
@@ -1602,13 +2021,41 @@ class JourneyBoardState extends State<JourneyBoard>
         !_heartsKingIntro.isActive;
   }
 
+  /// Page-13 Continue after Spades enter → Jack intro.
+  bool get _showSpadesJackContinueCta {
+    final progress = context.read<AppRepo>().journeyProgress;
+    return progress.hasEntered(JourneyWorld.spades) &&
+        !progress.spadesJackIntroSeen &&
+        !_spadesJackIntro.isActive;
+  }
+
+  /// Page-14 Continue after camp → ruins approach.
+  bool get _showSpadesRuinsApproachContinueCta =>
+      _pendingSpadesRuinsApproachContinue &&
+      !_spadesRuinsApproach.isActive &&
+      !_spadesRuinsApproach.isFinished;
+
+  /// Page-15 Continue after ruins approach → climax.
+  bool get _showSpadesRuinsClimaxContinueCta =>
+      _pendingSpadesRuinsClimaxContinue &&
+      !_spadesRuinsClimax.isActive &&
+      !_spadesRuinsClimax.isFinished;
+
+  /// Page-16 Continue after finale letter reveal.
+  bool get _showSpadesFinaleLetterContinueCta =>
+      _pendingSpadesFinaleLetterContinue;
+
   bool get _showStoryContinueCta =>
       _showJackContinueCta ||
       _showQueenContinueCta ||
       _showKingContinueCta ||
       _showClubsCourtContinueCta ||
       _showHeartsQueenContinueCta ||
-      _showHeartsKingContinueCta;
+      _showHeartsKingContinueCta ||
+      _showSpadesJackContinueCta ||
+      _showSpadesRuinsApproachContinueCta ||
+      _showSpadesRuinsClimaxContinueCta ||
+      _showSpadesFinaleLetterContinueCta;
 
   /// Unlock count shown in the guide (may lag during win celebration).
   int get _guideUnlockCount => _guideDisplayedUnlock ?? _unlockedThrough;
@@ -1728,10 +2175,23 @@ class JourneyBoardState extends State<JourneyBoard>
     _lastLevel = repo.experienceProgress.level;
     final win = repo.journeyProgress.pendingWinCelebration;
     final praise = repo.journeyProgress.pendingReplayPraise;
-    final loss = repo.journeyProgress.pendingLossTaunt;
     final clubsAceOffer = repo.journeyProgress.pendingClubsAceOffer;
     final heartsQueenEscort = repo.journeyProgress.pendingHeartsQueenEscort;
     final heartsAceOffer = repo.journeyProgress.pendingHeartsAceOffer;
+    final spadesCampDenied = repo.journeyProgress.pendingSpadesJackCampDenied;
+    final spadesKingEscort = repo.journeyProgress.pendingSpadesKingEscort;
+    // Legacy saves may still have pendingSpadesKingRetry — fold into loss taunt.
+    if (repo.journeyProgress.pendingSpadesKingRetry &&
+        repo.journeyProgress.pendingLossTaunt == null) {
+      repo.journeyProgress.pendingLossTaunt = const JourneyChallengeRef(
+        world: JourneyWorld.spades,
+        rank: JourneyRank.king,
+      );
+      await repo.clearPendingSpadesKingRetry();
+      if (!mounted) return;
+    }
+    final loss = repo.journeyProgress.pendingLossTaunt;
+    final spadesRuins = repo.journeyProgress.pendingSpadesRuins;
     setState(() {
       _worlds = _copyWorlds(repo.journeyBoardForLevel());
       _selected = null;
@@ -1762,6 +2222,18 @@ class JourneyBoardState extends State<JourneyBoard>
                 world: JourneyWorld.hearts,
                 rank: JourneyRank.king,
               )
+            : null) ??
+        (spadesCampDenied || spadesKingEscort
+            ? const JourneyChallengeRef(
+                world: JourneyWorld.spades,
+                rank: JourneyRank.jack,
+              )
+            : null) ??
+        (spadesRuins
+            ? const JourneyChallengeRef(
+                world: JourneyWorld.spades,
+                rank: JourneyRank.king,
+              )
             : null);
     if (focus != null) {
       _restorePostMatchChallenger(
@@ -1769,7 +2241,10 @@ class JourneyBoardState extends State<JourneyBoard>
         openCarousel: win == null &&
             !clubsAceOffer &&
             !heartsQueenEscort &&
-            !heartsAceOffer,
+            !heartsAceOffer &&
+            !spadesCampDenied &&
+            !spadesKingEscort &&
+            !spadesRuins,
       );
     }
     if (clubsAceOffer) {
@@ -1787,6 +2262,24 @@ class JourneyBoardState extends State<JourneyBoard>
     if (heartsAceOffer) {
       await _awaitHomeRewardsThen(() async {
         _startHeartsAceOffer();
+      });
+      return;
+    }
+    if (spadesCampDenied) {
+      await _awaitHomeRewardsThen(() async {
+        await _maybeShowSpadesJackCampDenied();
+      });
+      return;
+    }
+    if (spadesKingEscort) {
+      await _awaitHomeRewardsThen(() async {
+        _startSpadesKingEscort();
+      });
+      return;
+    }
+    if (spadesRuins) {
+      await _awaitHomeRewardsThen(() async {
+        _startSpadesCamp();
       });
       return;
     }
@@ -1908,6 +2401,8 @@ class JourneyBoardState extends State<JourneyBoard>
       diamondsAceEscapeSeen: repo.journeyProgress.diamondsAceEscapeSeen,
       clubsAceGiftSeen: repo.journeyProgress.clubsAceGiftSeen,
       heartsAceGiftSeen: repo.journeyProgress.heartsAceGiftSeen,
+      spadesEntered: repo.journeyProgress.hasEntered(JourneyWorld.spades),
+      spadesFinaleSeen: repo.journeyProgress.spadesFinaleSeen,
     );
     final beforeUnlock = (afterUnlock - 1).clamp(1, afterUnlock);
 
@@ -2048,6 +2543,50 @@ class JourneyBoardState extends State<JourneyBoard>
         _guideShowUnlockCta = false;
       });
       _startHeartsKingIntro();
+      return;
+    }
+
+    // Spades briefing → Continue → Jack intro.
+    if (_showSpadesJackContinueCta) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+      });
+      _startSpadesJackIntro();
+      return;
+    }
+
+    // Camp letter → Continue → ruins approach.
+    if (_showSpadesRuinsApproachContinueCta) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+        _pendingSpadesRuinsApproachContinue = false;
+      });
+      _startSpadesRuinsApproach();
+      return;
+    }
+
+    // Ruins approach letter → Continue → climax.
+    if (_showSpadesRuinsClimaxContinueCta) {
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+        _pendingSpadesRuinsClimaxContinue = false;
+      });
+      _startSpadesRuinsClimax();
+      return;
+    }
+
+    // Finale letter → Continue (dismiss CTA; keep guide open to read).
+    if (_showSpadesFinaleLetterContinueCta) {
+      setState(() {
+        _guideShowUnlockCta = false;
+        _pendingSpadesFinaleLetterContinue = false;
+      });
       return;
     }
 
@@ -2340,6 +2879,13 @@ class JourneyBoardState extends State<JourneyBoard>
         _activeWorld = JourneyWorld.spades;
         _worlds = _copyWorlds(repo.journeyBoardForLevel());
       });
+      if (!repo.journeyProgress.spadesJackIntroSeen) {
+        await _runInstructionUnlockCeremony(
+          beforeUnlock: 12,
+          afterUnlock: 13,
+          showUnlockCtaAfter: true,
+        );
+      }
       return;
     }
 
@@ -2454,18 +3000,23 @@ class JourneyBoardState extends State<JourneyBoard>
       card.world,
       card.rank,
     );
+    final clubsCourt = _isClubsCourtChallenge(card);
     final outcome = await showCupertinoDialog<String>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: Text(
           alreadyDefeated
               ? 'Replay: ${card.title}'
-              : 'Challenge: ${card.title}',
+              : clubsCourt
+                  ? 'Challenge: Clubs court'
+                  : 'Challenge: ${card.title}',
         ),
         content: Text(
           alreadyDefeated
               ? 'Play ${card.gameLabel} again against this challenger.'
-              : 'Play ${card.gameLabel} against this challenger.',
+              : clubsCourt
+                  ? 'Play Rummy against the King, Queen, and Jack of Clubs.'
+                  : 'Play ${card.gameLabel} against this challenger.',
         ),
         actions: [
           CupertinoDialogAction(
@@ -2516,6 +3067,8 @@ class JourneyBoardState extends State<JourneyBoard>
         _pinTrailToCard(card);
         if (alreadyDefeated) {
           await _resolveReplayWin(card);
+        } else if (_usesStoryChallengeFlags(card)) {
+          await _simulateJourneyChallengeResult(card, won: true);
         } else {
           await _resolveDefeat(card);
         }
@@ -2523,10 +3076,14 @@ class JourneyBoardState extends State<JourneyBoard>
       }
       if (testOutcome == 'lose') {
         _pinTrailToCard(card);
+        if (_usesStoryChallengeFlags(card)) {
+          await _simulateJourneyChallengeResult(card, won: false);
+          return;
+        }
         final action = await showJourneyLossTaunt(context, card: card);
         if (!mounted) return;
-        if (action == JourneyLossAction.restartDiamonds) {
-          await context.read<AppRepo>().restartJourneyAtDiamonds();
+        if (action == JourneyLossAction.restartKingdom) {
+          await context.read<AppRepo>().restartJourneyAtKingdom(card.world);
           return;
         }
         if (action == JourneyLossAction.replay) {
@@ -2540,6 +3097,59 @@ class JourneyBoardState extends State<JourneyBoard>
       _pinTrailToCard(card);
       await _startJourneyMatch(card);
     }
+  }
+
+  bool _isClubsCourtChallenge(JourneyCardDef card) {
+    final progress = context.read<AppRepo>().journeyProgress;
+    return card.world == JourneyWorld.clubs &&
+        card.rank == JourneyRank.king &&
+        progress.clubsCourtIntroSeen &&
+        !progress.isDefeated(JourneyWorld.clubs, JourneyRank.ace);
+  }
+
+  bool _usesStoryChallengeFlags(JourneyCardDef card) {
+    if (_isClubsCourtChallenge(card)) return true;
+    if (card.world == JourneyWorld.hearts && card.rank == JourneyRank.king) {
+      return true;
+    }
+    if (card.world == JourneyWorld.spades &&
+        (card.rank == JourneyRank.jack || card.rank == JourneyRank.king)) {
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _simulateJourneyChallengeResult(
+    JourneyCardDef card, {
+    required bool won,
+  }) async {
+    final repo = context.read<AppRepo>();
+    final progress = repo.journeyProgress;
+    final clubsCourt = card.world == JourneyWorld.clubs &&
+        card.rank == JourneyRank.king &&
+        progress.clubsCourtIntroSeen &&
+        !progress.isDefeated(JourneyWorld.clubs, JourneyRank.ace);
+    final spadesJack =
+        card.world == JourneyWorld.spades && card.rank == JourneyRank.jack;
+    final spadesKing =
+        card.world == JourneyWorld.spades && card.rank == JourneyRank.king;
+    final heartsKing =
+        card.world == JourneyWorld.hearts && card.rank == JourneyRank.king;
+
+    await repo.beginJourneyChallenge(
+      world: card.world,
+      rank: card.rank,
+      gameId: 'test-sim',
+      ignoreOutcome: clubsCourt || heartsKing,
+      escortOnLoss: spadesJack,
+      denyCampOnWin: spadesJack,
+      retryOnLoss: spadesKing,
+    );
+    await repo.noteJourneyChallengeResult(won: won, gameId: 'test-sim');
+    repo.takeOpenJourneyRequest();
+    repo.takeShellTabRequest();
+    if (!mounted) return;
+    await reloadFromProgress();
   }
 
   /// Keep the progress-trail token on [card] after leaving defeated browse.
@@ -2578,10 +3188,54 @@ class JourneyBoardState extends State<JourneyBoard>
 
   /// Launch the Journey match for [card] (Challenge / Replay).
   Future<void> _startJourneyMatch(JourneyCardDef card) async {
-    final mode = card.gameMode;
-    if (mode == null) return;
     final repo = context.read<AppRepo>();
     final vm = context.read<GamesViewModel>();
+    final progress = repo.journeyProgress;
+
+    // Clubs court table (King + Queen + Jack) after the court intro.
+    final clubsCourt = card.world == JourneyWorld.clubs &&
+        card.rank == JourneyRank.king &&
+        progress.clubsCourtIntroSeen &&
+        !progress.isDefeated(JourneyWorld.clubs, JourneyRank.ace);
+    if (clubsCourt) {
+      await gameEnter(
+        context,
+        vm,
+        GameMode.rummy,
+        true,
+        playerCount: 4,
+        botOverrides: [
+          LocalBotProfile(
+            name: 'King',
+            avatarId: journeyAvatarId(JourneyWorld.clubs, JourneyRank.king),
+          ),
+          LocalBotProfile(
+            name: 'Queen',
+            avatarId: journeyAvatarId(JourneyWorld.clubs, JourneyRank.queen),
+          ),
+          LocalBotProfile(
+            name: 'Jack',
+            avatarId: journeyAvatarId(JourneyWorld.clubs, JourneyRank.jack),
+          ),
+        ],
+        onCreated: (gid) => repo.beginJourneyChallenge(
+          world: JourneyWorld.clubs,
+          rank: JourneyRank.king,
+          gameId: gid,
+          ignoreOutcome: true,
+        ),
+      );
+      return;
+    }
+
+    final mode = card.gameMode;
+    if (mode == null) return;
+    final spadesJack =
+        card.world == JourneyWorld.spades && card.rank == JourneyRank.jack;
+    final spadesKing =
+        card.world == JourneyWorld.spades && card.rank == JourneyRank.king;
+    final heartsKing =
+        card.world == JourneyWorld.hearts && card.rank == JourneyRank.king;
     await gameEnter(
       context,
       vm,
@@ -2595,6 +3249,10 @@ class JourneyBoardState extends State<JourneyBoard>
         world: card.world,
         rank: card.rank,
         gameId: gid,
+        escortOnLoss: spadesJack,
+        denyCampOnWin: spadesJack,
+        retryOnLoss: spadesKing,
+        ignoreOutcome: heartsKing,
       ),
     );
   }
@@ -2920,6 +3578,12 @@ class JourneyBoardState extends State<JourneyBoard>
         !_heartsQueenEscort.isActive &&
         !_heartsKingIntro.isActive &&
         !_heartsAceOffer.isActive &&
+        !_spadesJackIntro.isActive &&
+        !_spadesKingEscort.isActive &&
+        !_spadesCamp.isActive &&
+        !_spadesRuinsApproach.isActive &&
+        !_spadesRuinsClimax.isActive &&
+        !_spadesFinale.isActive &&
         !_guideExpanded &&
         _themeUnlockWorld == null;
 
@@ -3160,6 +3824,12 @@ class JourneyBoardState extends State<JourneyBoard>
                           _heartsQueenEscort.isActive ||
                           _heartsKingIntro.isActive ||
                           _heartsAceOffer.isActive ||
+                          _spadesJackIntro.isActive ||
+                          _spadesKingEscort.isActive ||
+                          _spadesCamp.isActive ||
+                          _spadesRuinsApproach.isActive ||
+                          _spadesRuinsClimax.isActive ||
+                          _spadesFinale.isActive ||
                           _guideExpanded,
                       child: Opacity(
                         opacity: centerReveal,
@@ -3557,6 +4227,90 @@ class JourneyBoardState extends State<JourneyBoard>
                   onComplete: () async {
                     _heartsAceOffer.finish();
                     await _onHeartsAceOfferComplete();
+                  },
+                  lastPrimaryLabel: 'Continue',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _spadesJackIntro,
+                  isActive: () => _spadesJackIntro.isActive,
+                  currentStep: () => _spadesJackIntro.currentStep,
+                  stepIndex: () => _spadesJackIntro.stepIndex,
+                  totalSteps: () => _spadesJackIntro.steps.length,
+                  onNext: _spadesJackIntro.next,
+                  onComplete: () async {
+                    _spadesJackIntro.finish();
+                    await _onSpadesJackChallenge();
+                  },
+                  lastPrimaryLabel: 'Challenge',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _spadesKingEscort,
+                  isActive: () => _spadesKingEscort.isActive,
+                  currentStep: () => _spadesKingEscort.currentStep,
+                  stepIndex: () => _spadesKingEscort.stepIndex,
+                  totalSteps: () => _spadesKingEscort.steps.length,
+                  onNext: _spadesKingEscort.next,
+                  onComplete: () async {
+                    _spadesKingEscort.finish();
+                    await _onSpadesKingEscortChallenge();
+                  },
+                  lastPrimaryLabel: 'Challenge',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _spadesCamp,
+                  isActive: () => _spadesCamp.isActive,
+                  currentStep: () => _spadesCamp.currentStep,
+                  stepIndex: () => _spadesCamp.stepIndex,
+                  totalSteps: () => _spadesCamp.steps.length,
+                  onNext: _spadesCamp.next,
+                  onComplete: () async {
+                    _spadesCamp.finish();
+                    await _onSpadesCampComplete();
+                  },
+                  lastPrimaryLabel: 'Continue',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _spadesRuinsApproach,
+                  isActive: () => _spadesRuinsApproach.isActive,
+                  currentStep: () => _spadesRuinsApproach.currentStep,
+                  stepIndex: () => _spadesRuinsApproach.stepIndex,
+                  totalSteps: () => _spadesRuinsApproach.steps.length,
+                  onNext: _spadesRuinsApproach.next,
+                  onComplete: () async {
+                    _spadesRuinsApproach.finish();
+                    await _onSpadesRuinsApproachComplete();
+                  },
+                  lastPrimaryLabel: 'Continue',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _spadesRuinsClimax,
+                  isActive: () => _spadesRuinsClimax.isActive,
+                  currentStep: () => _spadesRuinsClimax.currentStep,
+                  stepIndex: () => _spadesRuinsClimax.stepIndex,
+                  totalSteps: () => _spadesRuinsClimax.steps.length,
+                  onNext: _spadesRuinsClimax.next,
+                  onComplete: () async {
+                    _spadesRuinsClimax.finish();
+                    await _onSpadesRuinsClimaxComplete();
+                  },
+                  lastPrimaryLabel: 'Continue',
+                ),
+
+                JourneyStoryOverlay(
+                  listenable: _spadesFinale,
+                  isActive: () => _spadesFinale.isActive,
+                  currentStep: () => _spadesFinale.currentStep,
+                  stepIndex: () => _spadesFinale.stepIndex,
+                  totalSteps: () => _spadesFinale.steps.length,
+                  onNext: _spadesFinale.next,
+                  onComplete: () async {
+                    _spadesFinale.finish();
+                    await _onSpadesFinaleComplete();
                   },
                   lastPrimaryLabel: 'Continue',
                 ),

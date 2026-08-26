@@ -295,18 +295,27 @@ class _JourneyTrophiesOverlayState extends State<_JourneyTrophiesOverlay>
   bool _pulsed = false;
   bool _revealStarted = false;
   bool _dismissed = false;
+  /// Fly mode: stay fully hidden until spit starts with valid source geometry.
+  bool _holdInvisible = false;
 
   bool get _useFly => widget.sourceKey != null;
 
   @override
   void initState() {
     super.initState();
-    _eat = AnimationController(vsync: this, duration: _openDuration);
+    final fly = widget.sourceKey != null;
+    // Start already "eaten" so the first paint is not a full-size center flash.
+    _eat = AnimationController(
+      vsync: this,
+      duration: _openDuration,
+      value: fly ? 1.0 : 0.0,
+    );
     _reveal = AnimationController(vsync: this, duration: _revealDuration);
     _fade = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 280),
     );
+    _holdInvisible = fly;
     _eat.addListener(_onEatTick);
     WidgetsBinding.instance.addPostFrameCallback((_) => _open());
   }
@@ -321,7 +330,7 @@ class _JourneyTrophiesOverlayState extends State<_JourneyTrophiesOverlay>
   }
 
   void _onEatTick() {
-    if (!_useFly || _pulsed) return;
+    if (!_useFly || _pulsed || _holdInvisible) return;
     final eat = _eat.value;
     // Spit open (eat 1→0): pulse as the card leaves the avatar.
     // Eat close (eat 0→1): pulse as the card is swallowed.
@@ -340,9 +349,18 @@ class _JourneyTrophiesOverlayState extends State<_JourneyTrophiesOverlay>
     if (!mounted) return;
     SoundService.instance.playLayered(GameSound.softCard);
     if (_useFly) {
+      // Wait until the trail token has layout so we don't spit from stage center.
+      for (var i = 0; i < 12; i++) {
+        if (!mounted) return;
+        final size = MediaQuery.sizeOf(context);
+        if (_sourceCenter(size) != null) break;
+        await WidgetsBinding.instance.endOfFrame;
+      }
+      if (!mounted) return;
       _eat.value = 1;
       _fade.value = 1;
       _pulsed = false;
+      setState(() => _holdInvisible = false);
       await _eat.animateTo(0, curve: Curves.easeInOutCubic);
     } else {
       _eat.value = 0;
@@ -413,6 +431,7 @@ class _JourneyTrophiesOverlayState extends State<_JourneyTrophiesOverlay>
         final size = MediaQuery.sizeOf(context);
         final eat = _useFly ? _eat.value : 0.0;
         final source = _sourceCenter(size);
+        final hideFly = _useFly && (_holdInvisible || source == null);
         final delta = (_useFly && source != null)
             ? JourneyTableLayout.flyToTargetDelta(
                 eat: eat,
@@ -425,12 +444,16 @@ class _JourneyTrophiesOverlayState extends State<_JourneyTrophiesOverlay>
         final scale = _useFly
             ? JourneyTimeline.gameScale(eat: eat, closing: !_closing)
             : (0.88 + 0.12 * Curves.easeOutBack.transform(_fade.value));
-        final barrierAlpha = _useFly
-            ? (0.45 * (1.0 - eat).clamp(0.0, 1.0))
-            : (0.45 * _fade.value);
-        final cardOpacity = _useFly
-            ? (eat < 0.92 ? 1.0 : 0.0)
-            : _fade.value;
+        final barrierAlpha = hideFly
+            ? 0.0
+            : _useFly
+                ? (0.45 * (1.0 - eat).clamp(0.0, 1.0))
+                : (0.45 * _fade.value);
+        final cardOpacity = hideFly
+            ? 0.0
+            : _useFly
+                ? (eat < 0.92 ? 1.0 : 0.0)
+                : _fade.value;
 
         return PopScope(
           canPop: false,
@@ -443,7 +466,7 @@ class _JourneyTrophiesOverlayState extends State<_JourneyTrophiesOverlay>
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: SoundService.wrapTap(_dismiss),
+                onTap: hideFly ? null : SoundService.wrapTap(_dismiss),
                 child: ColoredBox(
                   color: CupertinoColors.black.withValues(alpha: barrierAlpha),
                 ),

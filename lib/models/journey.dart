@@ -150,15 +150,32 @@ class JourneyWorldDef {
     return cardOf(next);
   }
 
-  /// Mark [rank] defeated and promote the next card when level allows.
+  /// Mark [rank] defeated and promote the next card on this pile when level allows.
+  ///
+  /// No-op when [rank] is not on this pile (e.g. Spades Queen is story-only).
+  /// Skips missing ranks when choosing who to promote next.
   JourneyWorldDef withDefeat(JourneyRank rank, {int playerLevel = 99}) {
-    final promote = rank.next;
+    if (cardOf(rank) == null) return this;
+    JourneyRank? promote;
+    var past = false;
+    for (final r in JourneyRank.values) {
+      if (!past) {
+        if (r == rank) past = true;
+        continue;
+      }
+      if (cardOf(r) != null) {
+        promote = r;
+        break;
+      }
+    }
     return copyWith(
       cards: [
         for (final c in cards)
           if (c.rank == rank)
             c.copyWith(state: JourneyCardState.defeated)
-          else if (promote != null && c.rank == promote)
+          else if (promote != null &&
+              c.rank == promote &&
+              c.state != JourneyCardState.defeated)
             c.copyWith(
               state: _unlockedStateFor(c, playerLevel),
             )
@@ -284,9 +301,21 @@ class JourneyDisplaySnapshot {
             .cardOf(JourneyRank.jack);
       }
     } else {
-      revealed = nextWorlds
-          .firstWhere((w) => w.world == world)
-          .cardOf(rank.next!);
+      final worldDef = nextWorlds.firstWhere((w) => w.world == world);
+      JourneyRank? revealRank;
+      var past = false;
+      for (final r in JourneyRank.values) {
+        if (!past) {
+          if (r == rank) past = true;
+          continue;
+        }
+        if (worldDef.cardOf(r) != null) {
+          revealRank = r;
+          break;
+        }
+      }
+      revealed =
+          revealRank == null ? null : worldDef.cardOf(revealRank);
     }
 
     return JourneyDefeatResult(
@@ -361,9 +390,9 @@ const journeyBoardSnapshot = JourneyDisplaySnapshot(
     JourneyWorldDef(
       world: JourneyWorld.spades,
       unlocked: false,
+      // Queen is story-only in Spades (ruins dialogue) — not a board challenger.
       cards: [
         _placeholderSpadesJack,
-        _placeholderSpadesQueen,
         _placeholderSpadesKing,
         _placeholderSpadesAce,
       ],
@@ -430,13 +459,6 @@ const _placeholderSpadesJack = JourneyCardDef(
   state: JourneyCardState.mysteryLocked,
   requiredLevel: 1,
   gameMode: GameMode.tresydos,
-);
-const _placeholderSpadesQueen = JourneyCardDef(
-  world: JourneyWorld.spades,
-  rank: JourneyRank.queen,
-  state: JourneyCardState.mysteryLocked,
-  requiredLevel: 1,
-  gameMode: GameMode.rummy,
 );
 const _placeholderSpadesKing = JourneyCardDef(
   world: JourneyWorld.spades,

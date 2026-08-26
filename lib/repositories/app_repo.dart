@@ -540,6 +540,8 @@ class AppRepo extends ChangeNotifier {
     String? gameId,
     bool ignoreOutcome = false,
     bool escortOnLoss = false,
+    bool retryOnLoss = false,
+    bool denyCampOnWin = false,
   }) async {
     _journeyProgress.pendingChallenge = JourneyChallengeRef(
       world: world,
@@ -547,6 +549,8 @@ class AppRepo extends ChangeNotifier {
       gameId: gameId,
       ignoreOutcome: ignoreOutcome,
       escortOnLoss: escortOnLoss,
+      retryOnLoss: retryOnLoss,
+      denyCampOnWin: denyCampOnWin,
     );
     _journeyProgress.pendingLossTaunt = null;
     await _persistJourneyProgress();
@@ -751,6 +755,63 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> markSpadesJackIntroSeen() async {
+    if (_journeyProgress.spadesJackIntroSeen) return;
+    _journeyProgress.spadesJackIntroSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> unlockSpadesJack() async {
+    if (_journeyProgress.spadesJackUnlocked) return;
+    _journeyProgress.markEntered(JourneyWorld.spades);
+    _journeyProgress.spadesJackUnlocked = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markSpadesKingEscortSeen() async {
+    if (_journeyProgress.spadesKingEscortSeen) return;
+    _journeyProgress.spadesKingEscortSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingSpadesJackCampDenied() async {
+    if (!_journeyProgress.pendingSpadesJackCampDenied) return;
+    _journeyProgress.pendingSpadesJackCampDenied = false;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingSpadesKingEscort() async {
+    if (!_journeyProgress.pendingSpadesKingEscort) return;
+    _journeyProgress.pendingSpadesKingEscort = false;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingSpadesKingRetry() async {
+    if (!_journeyProgress.pendingSpadesKingRetry) return;
+    _journeyProgress.pendingSpadesKingRetry = false;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> clearPendingSpadesRuins() async {
+    if (!_journeyProgress.pendingSpadesRuins) return;
+    _journeyProgress.pendingSpadesRuins = false;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  Future<void> markSpadesFinaleSeen() async {
+    if (_journeyProgress.spadesFinaleSeen) return;
+    _journeyProgress.spadesFinaleSeen = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
   Future<void> markClubsAceGiftSeen() async {
     if (_journeyProgress.clubsAceGiftSeen) return;
     _journeyProgress.clubsAceGiftSeen = true;
@@ -864,52 +925,86 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Soft restart: clear kingdom progress but stay in Diamonds for Jack's intro.
+  /// Soft restart: clear progress from [world] onward; keep earlier kingdoms.
   ///
-  /// Keeps XP, tutorials, coins, and the Diamonds theme equipped.
-  Future<void> restartJourneyAtDiamonds() async {
+  /// Keeps XP, tutorials, and coins. Re-enters [world] at its unlocked
+  /// entrance (Jack still locked / intro not seen).
+  Future<void> restartJourneyAtKingdom(JourneyWorld world) async {
     final sp = await SharedPreferences.getInstance();
     await sp.remove('journey_restore_lone_jack_v1');
 
+    final defeated = <String, List<String>>{};
+    // Preserve full clears for every kingdom before the loss world.
+    for (final w in JourneyWorld.values) {
+      if (w == world) break;
+      defeated[w.name] = [
+        for (final r in JourneyRank.values) r.name,
+      ];
+    }
+
+    final priorComplete = {
+      for (final w in JourneyWorld.values)
+        if (w.index < world.index) w.name,
+    };
+    priorComplete.add(world.name);
+
     _journeyProgress = JourneyProgress(
+      defeatedByWorld: defeated,
       diamondsEntered: true,
-      diamondsJackUnlocked: false,
-      diamondsJackIntroSeen: false,
-      diamondsQueenIntroSeen: false,
-      diamondsKingIntroSeen: false,
-      diamondsAceEscapeSeen: false,
-      clubsJackIntroSeen: false,
-      clubsJackUnlocked: false,
-      clubsCourtIntroSeen: false,
-      clubsAceGiftSeen: false,
+      diamondsJackUnlocked: world != JourneyWorld.diamonds,
+      diamondsJackIntroSeen: world != JourneyWorld.diamonds,
+      diamondsQueenIntroSeen: world != JourneyWorld.diamonds,
+      diamondsKingIntroSeen: world != JourneyWorld.diamonds,
+      diamondsAceEscapeSeen: world != JourneyWorld.diamonds,
+      clubsJackIntroSeen: world.index > JourneyWorld.clubs.index,
+      clubsJackUnlocked: world.index > JourneyWorld.clubs.index,
+      clubsCourtIntroSeen: world.index > JourneyWorld.clubs.index,
+      clubsAceGiftSeen: world.index > JourneyWorld.clubs.index,
       pendingClubsAceOffer: false,
       clubsCourtMatchWon: false,
-      heartsJackIntroSeen: false,
-      heartsJackUnlocked: false,
-      heartsQueenEscortSeen: false,
-      heartsKingIntroSeen: false,
-      heartsAceGiftSeen: false,
+      heartsJackIntroSeen: world.index > JourneyWorld.hearts.index,
+      heartsJackUnlocked: world.index > JourneyWorld.hearts.index,
+      heartsQueenEscortSeen: world.index > JourneyWorld.hearts.index,
+      heartsKingIntroSeen: world.index > JourneyWorld.hearts.index,
+      heartsAceGiftSeen: world.index > JourneyWorld.hearts.index,
       pendingHeartsQueenEscort: false,
       pendingHeartsAceOffer: false,
-      enteredWorlds: {JourneyWorld.diamonds.name},
+      spadesJackIntroSeen: false,
+      spadesJackUnlocked: false,
+      spadesKingEscortSeen: false,
+      spadesFinaleSeen: false,
+      pendingSpadesJackCampDenied: false,
+      pendingSpadesKingEscort: false,
+      pendingSpadesKingRetry: false,
+      pendingSpadesRuins: false,
+      enteredWorlds: priorComplete,
     );
+    // Loss world is entered but Jack stays locked until Challenge.
+    _journeyProgress.markEntered(world);
     await _persistJourneyProgress();
 
-    // Drop later-kingdom play themes; keep Diamonds (Casino) equipped.
+    // Drop play themes for kingdoms after the restart point.
     var changed = false;
     for (final pack in themePackCatalog) {
       if (!pack.isPlayLocked) continue;
-      if (pack.id == Theme.casino) continue;
-      if (_ownedPacks.remove(pack.id)) changed = true;
+      final packWorld = journeyWorldForTheme(pack.id);
+      if (packWorld == null) continue;
+      if (packWorld.index > world.index) {
+        if (_ownedPacks.remove(pack.id)) changed = true;
+      }
     }
     if (changed) await _persistOwnedPacks();
-    await unlockAndEquipPack(Theme.casino);
+    await unlockAndEquipPack(world.themeId);
 
     _journeyStoryEpoch += 1;
     _openJourneyRequest = true;
     _shellTabRequest = 1;
     notifyListeners();
   }
+
+  /// Soft restart at Diamonds Jack intro (legacy name for [restartJourneyAtKingdom]).
+  Future<void> restartJourneyAtDiamonds() =>
+      restartJourneyAtKingdom(JourneyWorld.diamonds);
 
   /// Resolve a pending Journey match when leaving a game.
   ///
@@ -950,33 +1045,6 @@ class AppRepo extends ChangeNotifier {
       return true;
     }
 
-    // Hearts Jack: loss escorts to Queen (story). Win is a normal defeat.
-    if (pending.escortOnLoss &&
-        pending.world == JourneyWorld.hearts &&
-        pending.rank == JourneyRank.jack &&
-        !won) {
-      if (!_journeyProgress.isDefeated(
-        JourneyWorld.hearts,
-        JourneyRank.jack,
-      )) {
-        _journeyProgress.recordDefeat(
-          JourneyWorld.hearts,
-          JourneyRank.jack,
-        );
-      }
-      _journeyProgress.pendingChallenge = null;
-      _journeyProgress.pendingLossTaunt = null;
-      _journeyProgress.pendingWinCelebration = null;
-      _journeyProgress.pendingUnlockReward = null;
-      _journeyProgress.pendingReplayPraise = null;
-      _journeyProgress.pendingHeartsQueenEscort = true;
-      _openJourneyRequest = true;
-      _shellTabRequest = 1;
-      await _persistJourneyProgress();
-      notifyListeners();
-      return true;
-    }
-
     // Hearts King: win or lose both lead to the Ace offer (claim later).
     if (pending.ignoreOutcome &&
         pending.world == JourneyWorld.hearts &&
@@ -996,6 +1064,80 @@ class AppRepo extends ChangeNotifier {
       _journeyProgress.pendingWinCelebration = null;
       _journeyProgress.pendingUnlockReward = null;
       _journeyProgress.pendingHeartsAceOffer = true;
+      _openJourneyRequest = true;
+      _shellTabRequest = 1;
+      await _persistJourneyProgress();
+      notifyListeners();
+      return true;
+    }
+
+    // Spades Jack: win denies camp; loss escorts to King.
+    if (pending.world == JourneyWorld.spades &&
+        pending.rank == JourneyRank.jack &&
+        (pending.escortOnLoss || pending.denyCampOnWin)) {
+      _journeyProgress.pendingChallenge = null;
+      _journeyProgress.pendingLossTaunt = null;
+      _journeyProgress.pendingWinCelebration = null;
+      _journeyProgress.pendingUnlockReward = null;
+      _journeyProgress.pendingReplayPraise = null;
+      if (won && pending.denyCampOnWin) {
+        _journeyProgress.pendingSpadesJackCampDenied = true;
+      } else if (!won && pending.escortOnLoss) {
+        if (!_journeyProgress.isDefeated(
+          JourneyWorld.spades,
+          JourneyRank.jack,
+        )) {
+          _journeyProgress.recordDefeat(
+            JourneyWorld.spades,
+            JourneyRank.jack,
+          );
+        }
+        _journeyProgress.pendingSpadesKingEscort = true;
+      }
+      _openJourneyRequest = true;
+      _shellTabRequest = 1;
+      await _persistJourneyProgress();
+      notifyListeners();
+      return true;
+    }
+
+    // Spades King (story match): win → ruins; loss → Replay / Back to Spades.
+    if (pending.world == JourneyWorld.spades &&
+        pending.rank == JourneyRank.king &&
+        pending.retryOnLoss) {
+      _journeyProgress.pendingChallenge = null;
+      _journeyProgress.pendingReplayPraise = null;
+      _journeyProgress.pendingWinCelebration = null;
+      _journeyProgress.pendingUnlockReward = null;
+      _journeyProgress.pendingSpadesKingRetry = false;
+      if (won) {
+        _journeyProgress.pendingLossTaunt = null;
+        if (!_journeyProgress.isDefeated(
+          JourneyWorld.spades,
+          JourneyRank.king,
+        )) {
+          _journeyProgress.recordDefeat(
+            JourneyWorld.spades,
+            JourneyRank.king,
+          );
+        }
+        // Queen appears in story without a board fight.
+        if (!_journeyProgress.isDefeated(
+          JourneyWorld.spades,
+          JourneyRank.queen,
+        )) {
+          _journeyProgress.recordDefeat(
+            JourneyWorld.spades,
+            JourneyRank.queen,
+          );
+        }
+        _journeyProgress.pendingSpadesRuins = true;
+      } else {
+        _journeyProgress.pendingLossTaunt = JourneyChallengeRef(
+          world: pending.world,
+          rank: pending.rank,
+        );
+      }
       _openJourneyRequest = true;
       _shellTabRequest = 1;
       await _persistJourneyProgress();

@@ -19,6 +19,8 @@ class JourneyChallengeRef {
     this.gameId,
     this.ignoreOutcome = false,
     this.escortOnLoss = false,
+    this.retryOnLoss = false,
+    this.denyCampOnWin = false,
   });
 
   final JourneyWorld world;
@@ -26,8 +28,12 @@ class JourneyChallengeRef {
   final String? gameId;
   /// When true, win/loss both complete the story beat (Clubs court / Hearts King).
   final bool ignoreOutcome;
-  /// When true, only a loss advances the story (Hearts Jack → Queen escort).
+  /// When true, only a loss advances the story (Hearts/Spades Jack → escort).
   final bool escortOnLoss;
+  /// When true, a loss prompts Retry instead of the Diamonds loss taunt (Spades King).
+  final bool retryOnLoss;
+  /// When true, a win denies camp access (Spades Jack) instead of trail unlock.
+  final bool denyCampOnWin;
 
   Map<String, dynamic> toJson() => {
     'world': world.name,
@@ -35,6 +41,8 @@ class JourneyChallengeRef {
     if (gameId != null && gameId!.isNotEmpty) 'gameId': gameId,
     if (ignoreOutcome) 'ignoreOutcome': true,
     if (escortOnLoss) 'escortOnLoss': true,
+    if (retryOnLoss) 'retryOnLoss': true,
+    if (denyCampOnWin) 'denyCampOnWin': true,
   };
 
   static JourneyChallengeRef? fromJson(Map<String, dynamic>? json) {
@@ -58,6 +66,8 @@ class JourneyChallengeRef {
       gameId: (gameId != null && gameId.isNotEmpty) ? gameId : null,
       ignoreOutcome: json['ignoreOutcome'] == true,
       escortOnLoss: json['escortOnLoss'] == true,
+      retryOnLoss: json['retryOnLoss'] == true,
+      denyCampOnWin: json['denyCampOnWin'] == true,
     );
   }
 
@@ -67,6 +77,8 @@ class JourneyChallengeRef {
     String? gameId,
     bool? ignoreOutcome,
     bool? escortOnLoss,
+    bool? retryOnLoss,
+    bool? denyCampOnWin,
   }) {
     return JourneyChallengeRef(
       world: world ?? this.world,
@@ -74,6 +86,8 @@ class JourneyChallengeRef {
       gameId: gameId ?? this.gameId,
       ignoreOutcome: ignoreOutcome ?? this.ignoreOutcome,
       escortOnLoss: escortOnLoss ?? this.escortOnLoss,
+      retryOnLoss: retryOnLoss ?? this.retryOnLoss,
+      denyCampOnWin: denyCampOnWin ?? this.denyCampOnWin,
     );
   }
 }
@@ -164,6 +178,14 @@ class JourneyProgress {
     this.heartsAceGiftSeen = false,
     this.pendingHeartsQueenEscort = false,
     this.pendingHeartsAceOffer = false,
+    this.spadesJackIntroSeen = false,
+    this.spadesJackUnlocked = false,
+    this.spadesKingEscortSeen = false,
+    this.spadesFinaleSeen = false,
+    this.pendingSpadesJackCampDenied = false,
+    this.pendingSpadesKingEscort = false,
+    this.pendingSpadesKingRetry = false,
+    this.pendingSpadesRuins = false,
   }) : defeatedByWorld = {
          for (final e in (defeatedByWorld ?? {}).entries)
            e.key: List<String>.from(e.value),
@@ -240,6 +262,14 @@ class JourneyProgress {
       heartsAceGiftSeen: json['heartsAceGiftSeen'] == true,
       pendingHeartsQueenEscort: json['pendingHeartsQueenEscort'] == true,
       pendingHeartsAceOffer: json['pendingHeartsAceOffer'] == true,
+      spadesJackIntroSeen: json['spadesJackIntroSeen'] == true,
+      spadesJackUnlocked: json['spadesJackUnlocked'] == true,
+      spadesKingEscortSeen: json['spadesKingEscortSeen'] == true,
+      spadesFinaleSeen: json['spadesFinaleSeen'] == true,
+      pendingSpadesJackCampDenied: json['pendingSpadesJackCampDenied'] == true,
+      pendingSpadesKingEscort: json['pendingSpadesKingEscort'] == true,
+      pendingSpadesKingRetry: json['pendingSpadesKingRetry'] == true,
+      pendingSpadesRuins: json['pendingSpadesRuins'] == true,
     );
     // Migrate older saves that already beat Diamonds content.
     if (progress.isDefeated(JourneyWorld.diamonds, JourneyRank.jack) ||
@@ -289,6 +319,19 @@ class JourneyProgress {
     if (progress.isDefeated(JourneyWorld.hearts, JourneyRank.ace)) {
       if (json['heartsAceGiftSeen'] == null) {
         progress.heartsAceGiftSeen = true;
+      }
+    }
+    if (progress.isDefeated(JourneyWorld.spades, JourneyRank.jack)) {
+      progress.spadesJackIntroSeen = true;
+      progress.spadesJackUnlocked = true;
+    }
+    if (progress.isDefeated(JourneyWorld.spades, JourneyRank.king) ||
+        progress.isDefeated(JourneyWorld.spades, JourneyRank.ace)) {
+      progress.spadesKingEscortSeen = true;
+    }
+    if (progress.isDefeated(JourneyWorld.spades, JourneyRank.ace)) {
+      if (json['spadesFinaleSeen'] == null) {
+        progress.spadesFinaleSeen = true;
       }
     }
     if (progress.diamondsEntered) {
@@ -349,6 +392,14 @@ class JourneyProgress {
   bool heartsAceGiftSeen;
   bool pendingHeartsQueenEscort;
   bool pendingHeartsAceOffer;
+  bool spadesJackIntroSeen;
+  bool spadesJackUnlocked;
+  bool spadesKingEscortSeen;
+  bool spadesFinaleSeen;
+  bool pendingSpadesJackCampDenied;
+  bool pendingSpadesKingEscort;
+  bool pendingSpadesKingRetry;
+  bool pendingSpadesRuins;
 
   bool hasEntered(JourneyWorld world) {
     if (enteredWorlds.contains(world.name)) return true;
@@ -457,6 +508,14 @@ class JourneyProgress {
     'heartsAceGiftSeen': heartsAceGiftSeen,
     'pendingHeartsQueenEscort': pendingHeartsQueenEscort,
     'pendingHeartsAceOffer': pendingHeartsAceOffer,
+    'spadesJackIntroSeen': spadesJackIntroSeen,
+    'spadesJackUnlocked': spadesJackUnlocked,
+    'spadesKingEscortSeen': spadesKingEscortSeen,
+    'spadesFinaleSeen': spadesFinaleSeen,
+    'pendingSpadesJackCampDenied': pendingSpadesJackCampDenied,
+    'pendingSpadesKingEscort': pendingSpadesKingEscort,
+    'pendingSpadesKingRetry': pendingSpadesKingRetry,
+    'pendingSpadesRuins': pendingSpadesRuins,
     if (enteredWorlds.isNotEmpty) 'enteredWorlds': enteredWorlds.toList(),
   };
 }
@@ -487,11 +546,20 @@ JourneyDisplaySnapshot hydrateJourneyBoard({
   snap = snap.withClubsGates(
     jackUnlocked: progress.clubsJackUnlocked,
     aceClaimed: progress.isDefeated(JourneyWorld.clubs, JourneyRank.ace),
+    courtIntroSeen: progress.clubsCourtIntroSeen,
     playerLevel: playerLevel,
   );
   snap = snap.withHeartsGates(
     jackUnlocked: progress.heartsJackUnlocked,
     aceClaimed: progress.isDefeated(JourneyWorld.hearts, JourneyRank.ace),
+    playerLevel: playerLevel,
+  );
+  snap = snap.withSpadesGates(
+    jackUnlocked: progress.spadesJackUnlocked,
+    aceClaimed: progress.isDefeated(JourneyWorld.spades, JourneyRank.ace),
+    kingAvailable: progress.spadesKingEscortSeen ||
+        progress.pendingSpadesKingRetry ||
+        progress.isDefeated(JourneyWorld.spades, JourneyRank.king),
     playerLevel: playerLevel,
   );
   final defer =
@@ -546,10 +614,12 @@ extension on JourneyDisplaySnapshot {
     );
   }
 
-  /// Clubs Jack stays hidden until Challenge; Queen/King stay locked until Ace gift.
+  /// Clubs Jack stays hidden until Challenge; Queen stays locked until Ace.
+  /// King unlocks after the court intro so the table can be re-challenged.
   JourneyDisplaySnapshot withClubsGates({
     required bool jackUnlocked,
     required bool aceClaimed,
+    bool courtIntroSeen = false,
     int playerLevel = 1,
   }) {
     return JourneyDisplaySnapshot(
@@ -583,6 +653,14 @@ extension on JourneyDisplaySnapshot {
                                 ? JourneyCardState.available
                                 : JourneyCardState.levelLocked,
                           )
+                  else if (c.rank == JourneyRank.king &&
+                      courtIntroSeen &&
+                      c.state != JourneyCardState.defeated)
+                    c.copyWith(
+                      state: playerLevel >= (c.requiredLevel ?? 1)
+                          ? JourneyCardState.available
+                          : JourneyCardState.levelLocked,
+                    )
                   else if (c.state != JourneyCardState.defeated)
                     c.copyWith(state: JourneyCardState.mysteryLocked)
                   else
@@ -640,6 +718,62 @@ extension on JourneyDisplaySnapshot {
     );
   }
 
+  /// Spades Jack stays hidden until Challenge; Ace mystery until claim.
+  /// King stays available once unlocked (escort / retry / defeat).
+  JourneyDisplaySnapshot withSpadesGates({
+    required bool jackUnlocked,
+    required bool aceClaimed,
+    bool kingAvailable = false,
+    int playerLevel = 1,
+  }) {
+    return JourneyDisplaySnapshot(
+      worlds: [
+        for (final w in worlds)
+          if (w.world != JourneyWorld.spades)
+            w
+          else if (!w.unlocked)
+            w
+          else if (!jackUnlocked)
+            w.copyWith(
+              unlocked: true,
+              cards: [
+                for (final c in w.cards)
+                  if (c.state != JourneyCardState.defeated)
+                    c.copyWith(state: JourneyCardState.mysteryLocked)
+                  else
+                    c,
+              ],
+            )
+          else if (!aceClaimed)
+            () {
+              final leveled =
+                  w.copyWith(unlocked: true).withLevelApplied(playerLevel);
+              return leveled.copyWith(
+                cards: [
+                  for (final c in leveled.cards)
+                    if (c.rank == JourneyRank.ace &&
+                        c.state != JourneyCardState.defeated)
+                      c.copyWith(state: JourneyCardState.mysteryLocked)
+                    else if (c.rank == JourneyRank.king &&
+                        c.state != JourneyCardState.defeated)
+                      kingAvailable
+                          ? c.copyWith(
+                              state: playerLevel >= (c.requiredLevel ?? 1)
+                                  ? JourneyCardState.available
+                                  : JourneyCardState.levelLocked,
+                            )
+                          : c.copyWith(state: JourneyCardState.mysteryLocked)
+                    else
+                      c,
+                ],
+              );
+            }()
+          else
+            w.copyWith(unlocked: true).withLevelApplied(playerLevel),
+      ],
+    );
+  }
+
   JourneyDisplaySnapshot withDeferredNext(JourneyChallengeRef defeated) {
     if (defeated.rank == JourneyRank.ace) {
       final idx = JourneyWorld.values.indexOf(defeated.world);
@@ -665,6 +799,8 @@ extension on JourneyDisplaySnapshot {
     }
     final next = defeated.rank.next;
     if (next == null) return this;
+    // Story-only ranks (e.g. Spades Queen) are not on the pile — nothing to defer.
+    if (worldOf(defeated.world).cardOf(next) == null) return this;
     return JourneyDisplaySnapshot(
       worlds: [
         for (final w in worlds)

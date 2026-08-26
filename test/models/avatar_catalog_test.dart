@@ -49,8 +49,15 @@ void main() {
         ),
         isTrue,
       );
+      expect(AvatarCatalog.contains(AvatarCatalog.otherHalfId), isTrue);
       expect(AvatarCatalog.contains('journey_nope_jack'), isFalse);
       expect(AvatarCatalog.contains(null), isFalse);
+    });
+
+    test('other half is a painted placeholder', () {
+      final def = AvatarCatalog.byId(AvatarCatalog.otherHalfId);
+      expect(def.kind, AvatarKind.painted);
+      expect(def.paintedFallbackId, 'moon');
     });
   });
 

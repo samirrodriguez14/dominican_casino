@@ -82,6 +82,9 @@ class AvatarCatalog {
     'leaf',
   ];
 
+  /// Placeholder face for the wanderer's other half (chapter cliffhanger).
+  static const otherHalfId = 'journey_other_half';
+
   static final Map<String, AvatarDef> _byId = () {
     final map = <String, AvatarDef>{};
     for (final id in paintedIds) {
@@ -101,6 +104,10 @@ class AvatarCatalog {
         );
       }
     }
+    map[otherHalfId] = const AvatarDef.painted(
+      id: otherHalfId,
+      paintedFallbackId: 'moon',
+    );
     return map;
   }();
 

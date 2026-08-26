@@ -279,21 +279,20 @@ void main() {
     );
   });
 
-  test('journeyUnlockedThrough continues through Hearts Spades', () {
+  test('journeyUnlockedThrough gates Spades story pages', () {
     var snap = journeyBoardSnapshot;
-    for (final world in [JourneyWorld.diamonds, JourneyWorld.clubs]) {
+    for (final world in [
+      JourneyWorld.diamonds,
+      JourneyWorld.clubs,
+      JourneyWorld.hearts,
+    ]) {
       for (final rank in JourneyRank.values) {
         snap = JourneyDisplaySnapshot(
           worlds: snap.withDefeat(world, rank).worlds,
         );
       }
     }
-    // Hearts Ace claimed + gift seen so Spades progression can run.
-    for (final rank in JourneyRank.values) {
-      snap = JourneyDisplaySnapshot(
-        worlds: snap.withDefeat(JourneyWorld.hearts, rank).worlds,
-      );
-    }
+
     expect(
       journeyUnlockedThrough(
         snapshot: snap,
@@ -302,89 +301,11 @@ void main() {
         diamondsAceEscapeSeen: true,
         clubsAceGiftSeen: true,
         heartsAceGiftSeen: true,
+        spadesEntered: false,
       ),
       12,
     );
 
-    final laterWorlds = [
-      (JourneyWorld.spades, 12),
-    ];
-
-    for (final (world, base) in laterWorlds) {
-      expect(
-        journeyUnlockedThrough(
-          snapshot: snap,
-          tutorialDone: true,
-          diamondsEntered: true,
-          diamondsAceEscapeSeen: true,
-          clubsAceGiftSeen: true,
-          heartsAceGiftSeen: true,
-        ),
-        base,
-        reason: '$world entry page',
-      );
-
-      snap = JourneyDisplaySnapshot(
-        worlds: snap.withDefeat(world, JourneyRank.jack).worlds,
-      );
-      expect(
-        journeyUnlockedThrough(
-          snapshot: snap,
-          tutorialDone: true,
-          diamondsEntered: true,
-          diamondsAceEscapeSeen: true,
-          clubsAceGiftSeen: true,
-          heartsAceGiftSeen: true,
-        ),
-        base + 1,
-      );
-
-      snap = JourneyDisplaySnapshot(
-        worlds: snap.withDefeat(world, JourneyRank.queen).worlds,
-      );
-      expect(
-        journeyUnlockedThrough(
-          snapshot: snap,
-          tutorialDone: true,
-          diamondsEntered: true,
-          diamondsAceEscapeSeen: true,
-          clubsAceGiftSeen: true,
-          heartsAceGiftSeen: true,
-        ),
-        base + 2,
-      );
-
-      snap = JourneyDisplaySnapshot(
-        worlds: snap.withDefeat(world, JourneyRank.king).worlds,
-      );
-      expect(
-        journeyUnlockedThrough(
-          snapshot: snap,
-          tutorialDone: true,
-          diamondsEntered: true,
-          diamondsAceEscapeSeen: true,
-          clubsAceGiftSeen: true,
-          heartsAceGiftSeen: true,
-        ),
-        base + 3,
-      );
-
-      snap = JourneyDisplaySnapshot(
-        worlds: snap.withDefeat(world, JourneyRank.ace).worlds,
-      );
-      expect(
-        journeyUnlockedThrough(
-          snapshot: snap,
-          tutorialDone: true,
-          diamondsEntered: true,
-          diamondsAceEscapeSeen: true,
-          clubsAceGiftSeen: true,
-          heartsAceGiftSeen: true,
-        ),
-        base + 4,
-      );
-    }
-
     expect(
       journeyUnlockedThrough(
         snapshot: snap,
@@ -393,6 +314,60 @@ void main() {
         diamondsAceEscapeSeen: true,
         clubsAceGiftSeen: true,
         heartsAceGiftSeen: true,
+        spadesEntered: true,
+      ),
+      13,
+    );
+
+    // Court defeats do not advance Spades letters past briefing.
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.spades, JourneyRank.jack).worlds,
+    );
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.spades, JourneyRank.queen).worlds,
+    );
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.spades, JourneyRank.king).worlds,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+        heartsAceGiftSeen: true,
+        spadesEntered: true,
+      ),
+      13,
+    );
+
+    snap = JourneyDisplaySnapshot(
+      worlds: snap.withDefeat(JourneyWorld.spades, JourneyRank.ace).worlds,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+        heartsAceGiftSeen: true,
+        spadesEntered: true,
+        spadesFinaleSeen: false,
+      ),
+      15,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+        diamondsAceEscapeSeen: true,
+        clubsAceGiftSeen: true,
+        heartsAceGiftSeen: true,
+        spadesEntered: true,
+        spadesFinaleSeen: true,
       ),
       16,
     );

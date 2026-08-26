@@ -8,16 +8,18 @@ enum JourneyLossAction {
   /// Play the same challenger again; story progress stays.
   replay,
 
-  /// Wipe kingdom progress and return to the Diamonds Jack intro.
-  restartDiamonds,
+  /// Wipe this kingdom (and later ones) and return to its entrance.
+  restartKingdom,
 }
 
-/// Challenger taunt shown after a Journey challenge loss.
+/// Challenger taunt shown after a Journey challenge loss (or Spades Jack camp deny).
 Future<JourneyLossAction?> showJourneyLossTaunt(
   BuildContext context, {
   required JourneyCardDef card,
+  String? message,
 }) {
   final palette = journeyPaletteFor(card.world);
+  final kingdomLabel = card.world.label;
   return showCupertinoDialog<JourneyLossAction>(
     context: context,
     builder: (ctx) {
@@ -51,7 +53,8 @@ Future<JourneyLossAction?> showJourneyLossTaunt(
               ),
               const SizedBox(height: 14),
               Text(
-                'Haha, you didn\'t stand a chance, kiddo. Give me that mask…',
+                message ??
+                    'Haha, you didn\'t stand a chance, kiddo. Give me that mask…',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: palette.text.withValues(alpha: 0.9),
@@ -72,9 +75,9 @@ Future<JourneyLossAction?> showJourneyLossTaunt(
           CupertinoDialogAction(
             isDestructiveAction: true,
             onPressed: SoundService.wrapTap(
-              () => Navigator.of(ctx).pop(JourneyLossAction.restartDiamonds),
+              () => Navigator.of(ctx).pop(JourneyLossAction.restartKingdom),
             ),
-            child: const Text('Back to Diamonds'),
+            child: Text('Back to $kingdomLabel'),
           ),
         ],
       );
