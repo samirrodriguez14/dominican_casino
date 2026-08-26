@@ -12,12 +12,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/game_state.dart';
 
 class FirestoreService extends GameService {
-  final CollectionReference _games = FirebaseFirestore.instance.collection(
-    'games',
-  );
-  final CollectionReference _users = FirebaseFirestore.instance.collection(
-    'users',
-  );
+  final CollectionReference<Map<String, dynamic>> _games =
+      FirebaseFirestore.instance.collection('games');
+  final CollectionReference<Map<String, dynamic>> _users =
+      FirebaseFirestore.instance.collection('users');
 
   /// Vs-Puli matches that could not be written to Firestore (guest with no
   /// anonymous auth, or rules/App Check denials). Persisted on this device.
@@ -324,7 +322,7 @@ class FirestoreService extends GameService {
           .limit(25)
           .get();
       for (final doc in legacy.docs) {
-        final data = Map<String, dynamic>.from(doc.data() as Map);
+        final data = doc.data();
         await _activeGames(
           pid,
         ).doc(doc.id).set(_pillPayload(doc.id, data), SetOptions(merge: true));
@@ -354,11 +352,12 @@ class FirestoreService extends GameService {
     late final StreamSubscription<QuerySnapshot<Map<String, dynamic>>> cloudSub;
     late final StreamSubscription<void> localSub;
 
-    cloudSub = _activeGames(pid).orderBy('updatedAt', descending: true).snapshots().listen(
+    cloudSub = _activeGames(pid).snapshots().listen(
       (snapshot) {
         cloud = snapshot.docs
             .map((d) => GamePillData.fromDoc(d.id, d.data()))
-            .toList();
+            .toList()
+          ..sort(_pillUpdatedAtDesc);
         emit();
       },
       onError: (e, st) {
@@ -405,7 +404,16 @@ class FirestoreService extends GameService {
         snap.docs.map((d) => GamePillData.fromDoc(d.id, d.data())),
       );
     } catch (e) {
-      debugPrint('fetchArchivedGames cloud: $e');
+      debugPrint('fetchArchivedGames cloud (ordered): $e');
+      try {
+        final snap = await _archivedGames(pid).limit(limit * 3).get();
+        cloud.addAll(
+          snap.docs.map((d) => GamePillData.fromDoc(d.id, d.data())),
+        );
+        cloud.sort(_pillUpdatedAtDesc);
+      } catch (e2) {
+        debugPrint('fetchArchivedGames cloud (fallback): $e2');
+      }
     }
 
     final byId = {for (final g in cloud) g.id: g};
@@ -526,9 +534,7 @@ class FirestoreService extends GameService {
   Future<Map<String, dynamic>?> loadUserProfile(String uid) async {
     final snap = await _users.doc(uid).get();
     if (!snap.exists) return null;
-    final data = snap.data();
-    if (data is! Map) return null;
-    return Map<String, dynamic>.from(data);
+    return snap.data();
   }
 
   Future<void> saveWallet({required String uid, required Wallet wallet}) async {
@@ -596,9 +602,7 @@ class FirestoreService extends GameService {
                 return;
               }
               listener.add(
-                GameState.fromMap(
-                  Map<String, dynamic>.from(snap.data() as Map<String, dynamic>),
-                ),
+                GameState.fromMap(snap.data()!),
               );
             },
             onError: listener.addError,
@@ -616,7 +620,7 @@ class FirestoreService extends GameService {
     final local = _localOnly[gid];
     if (local != null) return local;
     final snap = await _games.doc(gid).get();
-    return GameState.fromMap(Map<String, dynamic>.from(snap.data() as Map));
+    return GameState.fromMap(snap.data()!);
   }
 
   Map<String, dynamic> _gamePayload(GameState gState) {
@@ -703,9 +707,7 @@ class FirestoreService extends GameService {
     try {
       final snap = await _games.doc(gameId).get();
       if (snap.exists) {
-        cloudState = GameState.fromMap(
-          Map<String, dynamic>.from(snap.data() as Map),
-        );
+        cloudState = GameState.fromMap(snap.data()!);
       }
     } catch (e) {
       debugPrint('deleteGame load: $e');

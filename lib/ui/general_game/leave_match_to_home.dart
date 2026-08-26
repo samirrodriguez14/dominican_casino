@@ -27,9 +27,9 @@ Future<void> leaveMatchToHome(
           vm.gameState.winnerId!.isNotEmpty &&
           vm.gameState.winnerId == vm.me;
       await repo.noteJourneyChallengeResult(won: won, gameId: gid);
-    } else {
-      await repo.abandonJourneyChallenge(gameId: gid);
     }
+    // In-progress Journey matches keep [pendingChallenge] (with [gameId])
+    // so returning to the same game can still record win/loss on leave.
   }
 
   if (!context.mounted) return;

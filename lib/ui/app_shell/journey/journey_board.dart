@@ -2664,7 +2664,21 @@ class JourneyBoardState extends State<JourneyBoard>
       return;
     }
 
-    await repo.clearPendingWinCelebration();
+    if (next == null) {
+      await repo.clearPendingWinCelebration();
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideDisplayedUnlock = null;
+        _guideShowUnlockCta = false;
+        _pendingUnlockCard = null;
+      });
+      return;
+    }
+
+    final locked = _snapshot.worldOf(next.world).cardOf(next.rank) ?? next;
+    final equipped = await _equipWorld(next.world);
     if (!mounted) return;
 
     setState(() {
@@ -2672,6 +2686,24 @@ class JourneyBoardState extends State<JourneyBoard>
       _guideOpenPage = null;
       _guideDisplayedUnlock = null;
       _guideShowUnlockCta = false;
+      _selectStartsFaceDown = true;
+      if (equipped && next.world != _activeWorld) {
+        _activeWorld = next.world;
+      }
+    });
+
+    await _selectCard(
+      locked,
+      fromDefeated: false,
+      skipEquip: true,
+      allowLocked: true,
+    );
+    if (!mounted) return;
+
+    await repo.clearPendingWinCelebration();
+    if (!mounted) return;
+
+    setState(() {
       _pendingUnlockCard = null;
       _worlds = _copyWorlds(
         hydrateJourneyBoard(
@@ -2680,22 +2712,9 @@ class JourneyBoardState extends State<JourneyBoard>
           deferPendingWin: false,
         ),
       );
+      _selected = _snapshot.worldOf(next.world).cardOf(next.rank) ?? locked;
+      _selectStartsFaceDown = false;
     });
-
-    if (next == null) return;
-    final unlocked = _snapshot.worldOf(next.world).cardOf(next.rank) ?? next;
-    final equipped = await _equipWorld(unlocked.world);
-    if (!mounted) return;
-    setState(() {
-      _revealCard = unlocked;
-      _revealAnim.value = 0;
-      if (equipped && unlocked.world != _activeWorld) {
-        _activeWorld = unlocked.world;
-      }
-    });
-    await _playRevealIfNeeded();
-    if (!mounted) return;
-    await _selectCard(unlocked, fromDefeated: false, skipEquip: true);
   }
 
   JourneyDisplaySnapshot get _snapshot =>

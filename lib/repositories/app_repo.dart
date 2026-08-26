@@ -303,7 +303,7 @@ class AppRepo extends ChangeNotifier {
       player = player!.copyWith(avatarId: resolved);
     }
     notifyListeners();
-    if (avatarChanged) unawaited(_persistPlayerLocal());
+    if (avatarChanged) unawaited(_persistPlayer());
     unawaited(_persistLooks());
   }
 
@@ -391,6 +391,9 @@ class AppRepo extends ChangeNotifier {
       await _loadLocale();
       await _loadTheme();
       player = await _loadPlayer();
+      if (player != null) {
+        await equipPack(_appTheme, avatarId: player!.avatarId);
+      }
       await _loadWallet();
       await _loadJourneyProgress();
       await _reconcileJourneyThemeOwnership();
@@ -995,6 +998,10 @@ class AppRepo extends ChangeNotifier {
     }
     if (changed) await _persistOwnedPacks();
     await unlockAndEquipPack(world.themeId);
+
+    // Dismiss match XP — story restart should not grant the lost run.
+    _pendingHomeXpClaim = null;
+    await _persistHomeXpClaim();
 
     _journeyStoryEpoch += 1;
     _openJourneyRequest = true;
@@ -1991,6 +1998,7 @@ class AppRepo extends ChangeNotifier {
     if (game != null) {
       await refundEntryIfNeeded(game);
     }
+    await abandonJourneyChallenge(gameId: gameId);
     await fs.deleteGame(gameId);
   }
 
@@ -3457,7 +3465,10 @@ class AppRepo extends ChangeNotifier {
     return Player(
       id: uid,
       name: name,
-      avatarId: cloud?.avatarId ?? local?.avatarId ?? Player.defaultAvatarId,
+      avatarId:
+          local?.avatarId ??
+          cloud?.avatarId ??
+          themePack(_appTheme).starterAvatarId,
       completedTutorial:
           (cloud?.completedTutorial ?? false) ||
           (local?.completedTutorial ?? false),

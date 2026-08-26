@@ -120,7 +120,6 @@ class JourneyCoachController extends ChangeNotifier {
           speaker: 'You',
           text: 'How did I get here?',
           who: TutorialSpeaker.player,
-          targetKey: deckKey,
         ),
         _line(
           step: 6,

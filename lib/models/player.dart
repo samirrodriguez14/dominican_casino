@@ -1,5 +1,5 @@
 class Player {
-  static const String defaultAvatarId = 'spade';
+  static const String defaultAvatarId = 'palm';
 
   String id;
   bool completedTutorial;

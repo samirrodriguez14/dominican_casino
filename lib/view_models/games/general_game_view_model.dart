@@ -889,6 +889,14 @@ class GeneralGameViewModel extends ChangeNotifier {
   /// Turn is yours and motion has finished — safe to highlight and act.
   bool get canPlayTurn => isMyTurn && !isAnimating;
 
+  /// Rummy hand/box grouping — local UI only, allowed off-turn.
+  bool get canOrganizeRummy =>
+      gameState.gameMode == GameMode.rummy &&
+      gameState.rummyState != null &&
+      gameState.gameStatus == GameStatus.inProgress &&
+      !isAnimating &&
+      !hasDropPending;
+
   /// A player is actually taking a turn — not dealing, shuffling, or waiting.
   bool get isLiveTurn =>
       inGameAction == InGameAction.noAction &&
@@ -1535,86 +1543,29 @@ class GeneralGameViewModel extends ChangeNotifier {
     final target = hitTestDropTarget(globalCenter, source: source);
     draggingSource = null;
 
-    if (target == null || !canPlayTurn) {
+    if (target == null) {
       dropHover = null;
       dragHandoff = null;
       notifyListeners();
       return false;
     }
 
-    // Rummy: dotted boxes are grouping UI, not engine actions.
-    if (gameState.gameMode == GameMode.rummy &&
-        gameState.rummyState != null &&
+    if (canOrganizeRummy &&
         source.kind == BoardDragKind.handCard &&
         source.card != null) {
-      final pid = me;
-      final rummy = gameState.rummyState!;
-      final cardId = source.card!.id;
+      final organized = await _finishRummyOrganizerDrop(
+        source: source,
+        target: target,
+        globalCenter: globalCenter,
+      );
+      if (organized) return true;
+    }
 
-      final boxedA = rummy.boxAByPid[pid]?.contains(cardId) ?? false;
-      final boxedB = rummy.boxBByPid[pid]?.contains(cardId) ?? false;
-      final isBoxed = boxedA || boxedB;
-
-      if (target.kind == DropTargetKind.rummyBoxA ||
-          target.kind == DropTargetKind.rummyBoxB) {
-        final boxIndex = target.kind == DropTargetKind.rummyBoxA ? 0 : 1;
-        final targetMap = boxIndex == 0 ? rummy.boxAByPid : rummy.boxBByPid;
-        final alreadyInTarget = targetMap[pid]?.contains(cardId) ?? false;
-
-        // If the card is already in this box, do NOT remove+append it.
-        // That would overwrite the reorder done via onHandReorder while
-        // dragging inside the same dotted box.
-        if (!alreadyInTarget) {
-          rummy.boxAByPid[pid]?.removeWhere((id) => id == cardId);
-          rummy.boxBByPid[pid]?.removeWhere((id) => id == cardId);
-
-          targetMap.putIfAbsent(pid, () => []);
-          if (!targetMap[pid]!.contains(cardId)) {
-            targetMap[pid]!.add(cardId);
-          }
-
-          final handoff = dragHandoff;
-          dropHover = null;
-          clearDragHandoff();
-          final endLayout = rummyBoxLayoutForCount(
-            rummyBoxCount(boxIndex: boxIndex),
-          );
-          notifyListeners();
-          await _flyRummyOrganizerMove(
-            card: source.card!,
-            startWidth: handoff?.width ?? rummyHandCardWidth,
-            endWidth: endLayout.cardWidth,
-            fromGlobalCenter: handoff?.globalCenter ?? globalCenter,
-            toSlot: CardSlot.rummyBox,
-          );
-          return true;
-        }
-
-        dropHover = null;
-        clearDragHandoff();
-        notifyListeners();
-        return true;
-      }
-
-      // Unbox only when the card is already boxed.
-      if (target.kind == DropTargetKind.playerHand && isBoxed) {
-        final boxedStartWidth = rummyBoxLayoutForCard(cardId).cardWidth;
-        rummy.boxAByPid[pid]?.removeWhere((id) => id == cardId);
-        rummy.boxBByPid[pid]?.removeWhere((id) => id == cardId);
-
-        final handoff = dragHandoff;
-        dropHover = null;
-        clearDragHandoff();
-        notifyListeners();
-        await _flyRummyOrganizerMove(
-          card: source.card!,
-          startWidth: handoff?.width ?? boxedStartWidth,
-          endWidth: rummyHandCardWidth,
-          fromGlobalCenter: handoff?.globalCenter ?? globalCenter,
-          toSlot: CardSlot.myHand,
-        );
-        return true;
-      }
+    if (!canPlayTurn) {
+      dropHover = null;
+      dragHandoff = null;
+      notifyListeners();
+      return false;
     }
 
     final actions = actionsForDrop(source, target);
@@ -1670,6 +1621,84 @@ class GeneralGameViewModel extends ChangeNotifier {
     selectedCards = [];
     selectedStacks = [];
     notifyListeners();
+  }
+
+  Future<bool> _finishRummyOrganizerDrop({
+    required BoardDragSource source,
+    required DropTarget target,
+    required Offset globalCenter,
+  }) async {
+    final rummy = gameState.rummyState;
+    if (rummy == null || source.card == null) return false;
+
+    final pid = me;
+    final cardId = source.card!.id;
+    final boxedA = rummy.boxAByPid[pid]?.contains(cardId) ?? false;
+    final boxedB = rummy.boxBByPid[pid]?.contains(cardId) ?? false;
+    final isBoxed = boxedA || boxedB;
+
+    if (target.kind == DropTargetKind.rummyBoxA ||
+        target.kind == DropTargetKind.rummyBoxB) {
+      final boxIndex = target.kind == DropTargetKind.rummyBoxA ? 0 : 1;
+      final targetMap = boxIndex == 0 ? rummy.boxAByPid : rummy.boxBByPid;
+      final alreadyInTarget = targetMap[pid]?.contains(cardId) ?? false;
+
+      // If the card is already in this box, do NOT remove+append it.
+      // That would overwrite the reorder done via onHandReorder while
+      // dragging inside the same dotted box.
+      if (!alreadyInTarget) {
+        rummy.boxAByPid[pid]?.removeWhere((id) => id == cardId);
+        rummy.boxBByPid[pid]?.removeWhere((id) => id == cardId);
+
+        targetMap.putIfAbsent(pid, () => []);
+        if (!targetMap[pid]!.contains(cardId)) {
+          targetMap[pid]!.add(cardId);
+        }
+
+        final handoff = dragHandoff;
+        dropHover = null;
+        clearDragHandoff();
+        final endLayout = rummyBoxLayoutForCount(
+          rummyBoxCount(boxIndex: boxIndex),
+        );
+        notifyListeners();
+        await _flyRummyOrganizerMove(
+          card: source.card!,
+          startWidth: handoff?.width ?? rummyHandCardWidth,
+          endWidth: endLayout.cardWidth,
+          fromGlobalCenter: handoff?.globalCenter ?? globalCenter,
+          toSlot: CardSlot.rummyBox,
+        );
+        return true;
+      }
+
+      dropHover = null;
+      clearDragHandoff();
+      notifyListeners();
+      return true;
+    }
+
+    // Unbox only when the card is already boxed.
+    if (target.kind == DropTargetKind.playerHand && isBoxed) {
+      final boxedStartWidth = rummyBoxLayoutForCard(cardId).cardWidth;
+      rummy.boxAByPid[pid]?.removeWhere((id) => id == cardId);
+      rummy.boxBByPid[pid]?.removeWhere((id) => id == cardId);
+
+      final handoff = dragHandoff;
+      dropHover = null;
+      clearDragHandoff();
+      notifyListeners();
+      await _flyRummyOrganizerMove(
+        card: source.card!,
+        startWidth: handoff?.width ?? boxedStartWidth,
+        endWidth: rummyHandCardWidth,
+        fromGlobalCenter: handoff?.globalCenter ?? globalCenter,
+        toSlot: CardSlot.myHand,
+      );
+      return true;
+    }
+
+    return false;
   }
 
   Future<void> _commitDropAction(

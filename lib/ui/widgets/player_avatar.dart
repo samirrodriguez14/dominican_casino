@@ -318,7 +318,7 @@ class AvatarAceOrnaments extends StatelessWidget {
   }
 }
 
-/// Suit-glyph medallion (no full Ace card decode).
+/// Ace challenger card art in a circular medallion (matches trophies popup).
 class _AceSuitMedallion extends StatelessWidget {
   const _AceSuitMedallion({required this.world, required this.size});
 
@@ -335,26 +335,22 @@ class _AceSuitMedallion extends StatelessWidget {
         shape: BoxShape.circle,
         color: palette.surface,
         border: Border.all(
-          color: palette.accent.withValues(alpha: .7),
-          width: 1,
+          color: palette.accent.withValues(alpha: .85),
+          width: 1.4,
         ),
         boxShadow: [
           BoxShadow(
-            color: CupertinoColors.black.withValues(alpha: .35),
-            blurRadius: size * 0.2,
-            offset: Offset(0, size * 0.08),
+            color: CupertinoColors.black.withValues(alpha: .3),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Center(
-        child: Text(
-          world.suitSymbol,
-          style: TextStyle(
-            color: palette.accent,
-            fontSize: size * 0.52,
-            height: 1,
-            fontWeight: FontWeight.w700,
-          ),
+      child: ClipOval(
+        child: Image.asset(
+          world.aceCardAssetPath,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => ColoredBox(color: palette.surface),
         ),
       ),
     );

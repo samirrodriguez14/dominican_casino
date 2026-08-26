@@ -4,6 +4,7 @@ import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/platform_scroll_physics.dart';
 import 'package:dominican_casino/ui/animations/currency_burst.dart';
 import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
@@ -53,10 +54,10 @@ class StoreScreenState extends State<StoreScreen> {
 
     // Full-bleed ListView so items scroll under the glass tab bar; insets live
     // in scroll padding so resting content clears chrome without clipping the
-    // viewport. Clamping avoids Android stretch past the edges.
+    // viewport. Platform physics — bounce on iOS, clamp on Android.
     return ListView(
       controller: _scrollController,
-      physics: const ClampingScrollPhysics(),
+      physics: platformScrollPhysics(),
       padding: EdgeInsets.fromLTRB(
         16,
         shellTopBarHeight(context) + 8,

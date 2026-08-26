@@ -197,9 +197,7 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
     final totalW = layout.totalWidthFor(count);
     final cardH = layout.cardHeight;
 
-    final interactive = vm.canPlayTurn && !vm.hasDropPending;
-    final rummyEnabled =
-        interactive && vm.gameState.gameStatus == GameStatus.inProgress;
+    final rummyOrganizeEnabled = vm.canOrganizeRummy;
     final celebrating = vm.isCelebratingHand(vm.me);
     final draggingId = vm.draggingSource?.id;
     const labelColor = Color(0xFF1A1612);
@@ -236,7 +234,7 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
                           cardH: cardH,
                           boxIndex: boxIndex,
                           draggingId: draggingId,
-                          rummyEnabled: rummyEnabled,
+                          rummyOrganizeEnabled: rummyOrganizeEnabled,
                           celebrating: celebrating,
                         ),
                     ],
@@ -345,7 +343,7 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
     required double cardH,
     required int boxIndex,
     required String? draggingId,
-    required bool rummyEnabled,
+    required bool rummyOrganizeEnabled,
     required bool celebrating,
   }) {
     return AnimatedPositioned(
@@ -358,7 +356,7 @@ class _RummyPlayingAreaState extends State<RummyPlayingArea> {
       top: 0,
       child: BoardDragHandle(
         source: BoardDragSource.hand(card),
-        enabled: rummyEnabled && !vm.isAnimating,
+        enabled: rummyOrganizeEnabled && !vm.isAnimating,
         feedbackWidth: cardW,
         tableFeedbackWidth: GeneralGameViewModel.rummyHandCardWidth,
         onTap: () {},
