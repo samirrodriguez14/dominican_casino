@@ -131,6 +131,7 @@ class _XpPlayerAvatarState extends State<XpPlayerAvatar>
               avatarId: widget.avatarId,
               size: widget.size,
               showBorder: false,
+              showJourneyAces: true,
             ),
             Positioned(
               right: -1,

@@ -43,6 +43,10 @@ enum JourneyWorld {
     JourneyWorld.spades => '♠',
   };
 
+  /// Full Ace challenger card art used as Journey trophy ornaments.
+  String get aceCardAssetPath =>
+      'assets/images/journey/cards_challengers/${name}_ace.png';
+
   /// Persisted [Theme] enum for this world (catalog remap).
   Theme get themeId => switch (this) {
     JourneyWorld.diamonds => Theme.casino,

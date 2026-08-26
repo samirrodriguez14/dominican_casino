@@ -123,6 +123,12 @@ class JourneyWorldDef {
       if (card.state == JourneyCardState.defeated) card,
   ];
 
+  /// Defeated Jack/Queen/King only — Aces become avatar accessories.
+  List<JourneyCardDef> get defeatedRoyals => [
+    for (final card in defeatedCards)
+      if (card.rank != JourneyRank.ace) card,
+  ];
+
   JourneyCardDef? get nextSelectable {
     for (final card in cards) {
       if (card.state == JourneyCardState.available) return card;
@@ -294,7 +300,7 @@ const journeyBoardSnapshot = JourneyDisplaySnapshot(
   worlds: [
     JourneyWorldDef(
       world: JourneyWorld.diamonds,
-      unlocked: true,
+      unlocked: false,
       cards: [
         JourneyCardDef(
           world: JourneyWorld.diamonds,

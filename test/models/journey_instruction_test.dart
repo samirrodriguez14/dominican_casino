@@ -12,22 +12,42 @@ void main() {
     }
   });
 
-  test('journeyUnlockedThrough follows Diamonds defeat chain', () {
-    var snap = journeyBoardSnapshot;
+  test('journeyUnlockedThrough gates Diamonds on enter + tutorial', () {
+    final snap = journeyBoardSnapshot;
     expect(
       journeyUnlockedThrough(snapshot: snap, tutorialDone: false),
       1,
     );
     expect(
-      journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: false,
+      ),
+      1,
+    );
+    expect(
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+      ),
       2,
     );
+  });
+
+  test('journeyUnlockedThrough follows Diamonds defeat chain', () {
+    var snap = journeyBoardSnapshot;
 
     snap = JourneyDisplaySnapshot(
       worlds: snap.withDefeat(JourneyWorld.diamonds, JourneyRank.jack).worlds,
     );
     expect(
-      journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+      ),
       3,
     );
 
@@ -35,7 +55,11 @@ void main() {
       worlds: snap.withDefeat(JourneyWorld.diamonds, JourneyRank.queen).worlds,
     );
     expect(
-      journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+      ),
       4,
     );
 
@@ -43,7 +67,11 @@ void main() {
       worlds: snap.withDefeat(JourneyWorld.diamonds, JourneyRank.king).worlds,
     );
     expect(
-      journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+      ),
       5,
     );
 
@@ -51,7 +79,11 @@ void main() {
       worlds: snap.withDefeat(JourneyWorld.diamonds, JourneyRank.ace).worlds,
     );
     expect(
-      journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+      ),
       6,
     );
   });
@@ -65,7 +97,11 @@ void main() {
       );
     }
     expect(
-      journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+      ),
       6,
     );
 
@@ -77,7 +113,11 @@ void main() {
 
     for (final (world, base) in laterWorlds) {
       expect(
-        journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+        journeyUnlockedThrough(
+          snapshot: snap,
+          tutorialDone: true,
+          diamondsEntered: true,
+        ),
         base,
         reason: '$world entry page',
       );
@@ -86,7 +126,11 @@ void main() {
         worlds: snap.withDefeat(world, JourneyRank.jack).worlds,
       );
       expect(
-        journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+        journeyUnlockedThrough(
+          snapshot: snap,
+          tutorialDone: true,
+          diamondsEntered: true,
+        ),
         base + 1,
       );
 
@@ -94,7 +138,11 @@ void main() {
         worlds: snap.withDefeat(world, JourneyRank.queen).worlds,
       );
       expect(
-        journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+        journeyUnlockedThrough(
+          snapshot: snap,
+          tutorialDone: true,
+          diamondsEntered: true,
+        ),
         base + 2,
       );
 
@@ -102,7 +150,11 @@ void main() {
         worlds: snap.withDefeat(world, JourneyRank.king).worlds,
       );
       expect(
-        journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+        journeyUnlockedThrough(
+          snapshot: snap,
+          tutorialDone: true,
+          diamondsEntered: true,
+        ),
         base + 3,
       );
 
@@ -110,13 +162,21 @@ void main() {
         worlds: snap.withDefeat(world, JourneyRank.ace).worlds,
       );
       expect(
-        journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+        journeyUnlockedThrough(
+          snapshot: snap,
+          tutorialDone: true,
+          diamondsEntered: true,
+        ),
         base + 4,
       );
     }
 
     expect(
-      journeyUnlockedThrough(snapshot: snap, tutorialDone: true),
+      journeyUnlockedThrough(
+        snapshot: snap,
+        tutorialDone: true,
+        diamondsEntered: true,
+      ),
       18,
     );
   });

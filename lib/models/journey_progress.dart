@@ -1,6 +1,16 @@
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 
+/// Jack + Queen + King + Ace across all four kingdoms.
+const journeyTrailStepCount = 16;
+
+/// Global trail index for a world/rank (0…15).
+int journeyTrailStepIndex(JourneyWorld world, JourneyRank rank) {
+  final wi = JourneyWorld.values.indexOf(world).clamp(0, 3);
+  final ri = JourneyRank.values.indexOf(rank).clamp(0, 3);
+  return wi * 4 + ri;
+}
+
 /// Pointer to a Journey challenger (and optional live match id).
 class JourneyChallengeRef {
   const JourneyChallengeRef({
@@ -109,14 +119,19 @@ class JourneyUnlockReward {
 class JourneyProgress {
   JourneyProgress({
     Map<String, List<String>>? defeatedByWorld,
+    Set<String>? enteredWorlds,
     this.pendingChallenge,
     this.pendingLossTaunt,
     this.pendingWinCelebration,
+    this.pendingReplayPraise,
     this.pendingUnlockReward,
+    this.diamondsEntered = false,
+    this.diamondsJackUnlocked = false,
   }) : defeatedByWorld = {
          for (final e in (defeatedByWorld ?? {}).entries)
            e.key: List<String>.from(e.value),
-       };
+       },
+       enteredWorlds = {...?enteredWorlds};
 
   factory JourneyProgress.empty() => JourneyProgress();
 
@@ -134,8 +149,16 @@ class JourneyProgress {
         if (ranks.isNotEmpty) defeated[key.toString()] = ranks;
       });
     }
-    return JourneyProgress(
+    final entered = <String>{};
+    final rawEntered = json['enteredWorlds'];
+    if (rawEntered is List) {
+      for (final item in rawEntered) {
+        if (item is String && item.isNotEmpty) entered.add(item);
+      }
+    }
+    final progress = JourneyProgress(
       defeatedByWorld: defeated,
+      enteredWorlds: entered,
       pendingChallenge: JourneyChallengeRef.fromJson(
         json['pendingChallenge'] is Map
             ? Map<String, dynamic>.from(json['pendingChallenge'] as Map)
@@ -151,21 +174,71 @@ class JourneyProgress {
             ? Map<String, dynamic>.from(json['pendingWinCelebration'] as Map)
             : null,
       ),
+      pendingReplayPraise: JourneyChallengeRef.fromJson(
+        json['pendingReplayPraise'] is Map
+            ? Map<String, dynamic>.from(json['pendingReplayPraise'] as Map)
+            : null,
+      ),
       pendingUnlockReward: JourneyUnlockReward.fromJson(
         json['pendingUnlockReward'] is Map
             ? Map<String, dynamic>.from(json['pendingUnlockReward'] as Map)
             : null,
       ),
+      diamondsEntered: json['diamondsEntered'] == true,
+      diamondsJackUnlocked: json['diamondsJackUnlocked'] == true,
     );
+    // Migrate older saves that already beat Diamonds content.
+    if (progress.isDefeated(JourneyWorld.diamonds, JourneyRank.jack) ||
+        progress.isDefeated(JourneyWorld.diamonds, JourneyRank.ace)) {
+      progress.diamondsEntered = true;
+      progress.diamondsJackUnlocked = true;
+    }
+    if (progress.diamondsEntered) {
+      progress.enteredWorlds.add(JourneyWorld.diamonds.name);
+    }
+    // Any fight in a world counts as having entered that kingdom.
+    for (final world in JourneyWorld.values) {
+      if (progress.defeatedRanksFor(world).isNotEmpty) {
+        progress.enteredWorlds.add(world.name);
+      }
+    }
+    return progress;
   }
 
   final Map<String, List<String>> defeatedByWorld;
+  /// Kingdoms the player has entered (theme unlock + board access for Diamonds).
+  final Set<String> enteredWorlds;
   JourneyChallengeRef? pendingChallenge;
   JourneyChallengeRef? pendingLossTaunt;
   /// Defeated challenger awaiting instruction unlock + next-card reveal.
   JourneyChallengeRef? pendingWinCelebration;
+  /// Replay win: praise dialog only (no journey unlock / instruction).
+  JourneyChallengeRef? pendingReplayPraise;
   /// Avatar / theme unlocks to show after coins & XP.
   JourneyUnlockReward? pendingUnlockReward;
+  /// Player confirmed Enter Diamonds kingdom (theme + world unlocked).
+  bool diamondsEntered;
+  /// Prove-yourself CTA revealed the Diamonds Jack face-up.
+  bool diamondsJackUnlocked;
+
+  bool hasEntered(JourneyWorld world) {
+    if (enteredWorlds.contains(world.name)) return true;
+    if (world == JourneyWorld.diamonds && diamondsEntered) return true;
+    return defeatedRanksFor(world).isNotEmpty;
+  }
+
+  void markEntered(JourneyWorld world) {
+    enteredWorlds.add(world.name);
+    if (world == JourneyWorld.diamonds) diamondsEntered = true;
+  }
+
+  /// Play-locked theme may unlock only after the prior Ace (Diamonds: anytime).
+  bool canUnlockThemeFor(JourneyWorld world) {
+    if (world == JourneyWorld.diamonds) return true;
+    final idx = JourneyWorld.values.indexOf(world);
+    if (idx <= 0) return false;
+    return isDefeated(JourneyWorld.values[idx - 1], JourneyRank.ace);
+  }
 
   List<JourneyRank> defeatedRanksFor(JourneyWorld world) {
     final raw = defeatedByWorld[world.name] ?? const <String>[];
@@ -185,10 +258,28 @@ class JourneyProgress {
     return defeatedRanksFor(world).contains(rank);
   }
 
+  /// Worlds whose Ace has been claimed (avatar suit accessories).
+  Set<JourneyWorld> get defeatedAceWorlds => {
+        for (final world in JourneyWorld.values)
+          if (isDefeated(world, JourneyRank.ace)) world,
+      };
+
+  /// Trail steps completed (Jack–Ace across four kingdoms), 0…16.
+  int get trailStepsCompleted {
+    var n = 0;
+    for (final world in JourneyWorld.values) {
+      n += defeatedRanksFor(world).length;
+    }
+    return n.clamp(0, journeyTrailStepCount);
+  }
+
+  double get trailProgress => trailStepsCompleted / journeyTrailStepCount;
+
   /// Append [rank] for [world] if not already recorded (order preserved).
   void recordDefeat(JourneyWorld world, JourneyRank rank) {
     final list = defeatedByWorld.putIfAbsent(world.name, () => <String>[]);
     if (!list.contains(rank.name)) list.add(rank.name);
+    enteredWorlds.add(world.name);
   }
 
   /// Remove [rank] and any later ranks in that world (progression must stay ordered).
@@ -214,8 +305,13 @@ class JourneyProgress {
     if (pendingLossTaunt != null) 'pendingLossTaunt': pendingLossTaunt!.toJson(),
     if (pendingWinCelebration != null)
       'pendingWinCelebration': pendingWinCelebration!.toJson(),
+    if (pendingReplayPraise != null)
+      'pendingReplayPraise': pendingReplayPraise!.toJson(),
     if (pendingUnlockReward != null)
       'pendingUnlockReward': pendingUnlockReward!.toJson(),
+    'diamondsEntered': diamondsEntered,
+    'diamondsJackUnlocked': diamondsJackUnlocked,
+    if (enteredWorlds.isNotEmpty) 'enteredWorlds': enteredWorlds.toList(),
   };
 }
 
@@ -237,6 +333,11 @@ JourneyDisplaySnapshot hydrateJourneyBoard({
     }
   }
   snap = snap.withLevelApplied(playerLevel);
+  snap = snap.withDiamondsGates(
+    entered: progress.diamondsEntered,
+    jackUnlocked: progress.diamondsJackUnlocked,
+    playerLevel: playerLevel,
+  );
   final defer =
       deferPendingWin ? progress.pendingWinCelebration : null;
   if (defer != null) {
@@ -246,6 +347,49 @@ JourneyDisplaySnapshot hydrateJourneyBoard({
 }
 
 extension on JourneyDisplaySnapshot {
+  /// Apply first-kingdom tutorial gates before the Jack is playable.
+  JourneyDisplaySnapshot withDiamondsGates({
+    required bool entered,
+    required bool jackUnlocked,
+    int playerLevel = 1,
+  }) {
+    return JourneyDisplaySnapshot(
+      worlds: [
+        for (final w in worlds)
+          if (w.world != JourneyWorld.diamonds)
+            w
+          else if (!entered)
+            w.copyWith(
+              unlocked: false,
+              cards: [
+                for (final c in w.cards)
+                  if (c.rank == JourneyRank.jack)
+                    c.copyWith(state: JourneyCardState.levelLocked)
+                  else if (c.state == JourneyCardState.available)
+                    c.copyWith(state: JourneyCardState.levelLocked)
+                  else
+                    c,
+              ],
+            )
+          else if (!jackUnlocked)
+            w.copyWith(
+              unlocked: true,
+              cards: [
+                for (final c in w.cards)
+                  if (c.rank == JourneyRank.jack &&
+                      c.state != JourneyCardState.defeated)
+                    c.copyWith(state: JourneyCardState.levelLocked)
+                  else
+                    c,
+              ],
+            )
+          else
+            // Snapshot starts locked; re-apply level once both gates clear.
+            w.copyWith(unlocked: true).withLevelApplied(playerLevel),
+      ],
+    );
+  }
+
   JourneyDisplaySnapshot withDeferredNext(JourneyChallengeRef defeated) {
     if (defeated.rank == JourneyRank.ace) {
       final idx = JourneyWorld.values.indexOf(defeated.world);

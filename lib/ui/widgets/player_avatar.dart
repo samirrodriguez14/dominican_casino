@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
 class AvatarOption {
   const AvatarOption({
@@ -147,6 +150,8 @@ class PlayerAvatarView extends StatelessWidget {
     this.selected = false,
     this.showBorder = true,
     this.silhouette = false,
+    this.showJourneyAces = false,
+    this.defeatedAces,
   });
 
   final String? avatarId;
@@ -156,6 +161,10 @@ class PlayerAvatarView extends StatelessWidget {
   final bool selected;
   final bool showBorder;
   final bool silhouette;
+  /// When true, shows claimed Journey Ace suit medallions around the disc.
+  final bool showJourneyAces;
+  /// Explicit Ace set; when null and [showJourneyAces], reads [AppRepo].
+  final Set<JourneyWorld>? defeatedAces;
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +176,16 @@ class PlayerAvatarView extends StatelessWidget {
             ? avatarAsset
             : journeyAvatarAssetPath(avatarId));
 
-    return SizedBox(
+    Set<JourneyWorld> aces = defeatedAces ?? const {};
+    if (showJourneyAces && defeatedAces == null) {
+      try {
+        aces = context.watch<AppRepo>().journeyProgress.defeatedAceWorlds;
+      } catch (_) {
+        aces = const {};
+      }
+    }
+
+    final disc = SizedBox(
       width: size,
       height: size,
       child: DecoratedBox(
@@ -205,6 +223,106 @@ class PlayerAvatarView extends StatelessWidget {
                   size: Size.square(size),
                 ),
         ),
+      ),
+    );
+
+    if (!showJourneyAces) return disc;
+
+    final medallion = size * 0.28;
+    Widget corner(JourneyWorld world, {required bool top, required bool bottom, required bool left, required bool right}) {
+      final owned = aces.contains(world);
+      return Positioned(
+        top: top ? -medallion * 0.35 : null,
+        bottom: bottom ? -medallion * 0.35 : null,
+        left: left ? -medallion * 0.35 : null,
+        right: right ? -medallion * 0.35 : null,
+        child: owned
+            ? _AceSuitMedallion(world: world, size: medallion)
+            : _LockedAceSlot(world: world, size: medallion),
+      );
+    }
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          disc,
+          corner(JourneyWorld.diamonds, top: true, bottom: false, left: false, right: false),
+          corner(JourneyWorld.clubs, top: false, bottom: false, left: false, right: true),
+          corner(JourneyWorld.hearts, top: false, bottom: true, left: false, right: false),
+          corner(JourneyWorld.spades, top: false, bottom: false, left: true, right: false),
+        ],
+      ),
+    );
+  }
+}
+
+class _AceSuitMedallion extends StatelessWidget {
+  const _AceSuitMedallion({required this.world, required this.size});
+
+  final JourneyWorld world;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = journeyPaletteFor(world);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: palette.surface,
+        border: Border.all(
+          color: palette.accent.withValues(alpha: .7),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: .35),
+            blurRadius: size * 0.2,
+            offset: Offset(0, size * 0.08),
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: Image.asset(
+          world.aceCardAssetPath,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => ColoredBox(color: palette.surface),
+        ),
+      ),
+    );
+  }
+}
+
+/// Locked Ace corner: no suit glyph — lock only.
+class _LockedAceSlot extends StatelessWidget {
+  const _LockedAceSlot({required this.world, required this.size});
+
+  final JourneyWorld world;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = journeyPaletteFor(world);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFF1A1A1E),
+        border: Border.all(
+          color: palette.accent.withValues(alpha: .28),
+          width: 1,
+        ),
+      ),
+      child: Icon(
+        CupertinoIcons.lock_fill,
+        size: size * 0.42,
+        color: palette.accent.withValues(alpha: .45),
       ),
     );
   }

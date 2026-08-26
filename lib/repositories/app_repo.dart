@@ -322,12 +322,24 @@ class AppRepo extends ChangeNotifier {
   Future<bool> unlockAndEquipPack(Theme id) async {
     final pack = themePack(id);
     if (pack.isCoinLocked) return false;
+    final world = journeyWorldForTheme(id);
     if (!ownsPack(id)) {
-      if (!pack.isPlayLocked && pack.unlock != ThemeUnlockKind.free) {
+      if (pack.isPlayLocked) {
+        if (world == null || !_journeyProgress.canUnlockThemeFor(world)) {
+          return false;
+        }
+      } else if (pack.unlock != ThemeUnlockKind.free) {
         return false;
       }
       _ownedPacks.add(id);
+      if (world != null) _journeyProgress.markEntered(world);
       await _persistOwnedPacks();
+      if (world != null) await _persistJourneyProgress();
+    } else if (world != null && !_journeyProgress.hasEntered(world)) {
+      // Already owned (legacy Ace grant) — entering still marks the kingdom.
+      if (!_journeyProgress.canUnlockThemeFor(world)) return false;
+      _journeyProgress.markEntered(world);
+      await _persistJourneyProgress();
     }
     await equipPack(id);
     return true;
@@ -373,6 +385,7 @@ class AppRepo extends ChangeNotifier {
       player = await _loadPlayer();
       await _loadWallet();
       await _loadJourneyProgress();
+      await _reconcileJourneyThemeOwnership();
       await _persistLooksRemote();
       _ensureEnergyTicker();
       _ensureDailyRewardTicker();
@@ -528,6 +541,13 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> clearPendingReplayPraise() async {
+    if (_journeyProgress.pendingReplayPraise == null) return;
+    _journeyProgress.pendingReplayPraise = null;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
   Future<void> applyJourneyDefeat(
     JourneyWorld world,
     JourneyRank rank, {
@@ -550,23 +570,11 @@ class AppRepo extends ChangeNotifier {
     JourneyWorld world,
     JourneyRank rank,
   ) async {
-    String? unlockedThemeName;
-    if (rank == JourneyRank.ace) {
-      final idx = JourneyWorld.values.indexOf(world);
-      if (idx >= 0 && idx + 1 < JourneyWorld.values.length) {
-        final nextTheme = JourneyWorld.values[idx + 1].themeId;
-        if (!ownsPack(nextTheme)) {
-          _ownedPacks.add(nextTheme);
-          await _persistOwnedPacks();
-        }
-        unlockedThemeName = nextTheme.name;
-      }
-    }
+    // Themes unlock only when the player enters the next kingdom — not on Ace.
     _journeyProgress.pendingUnlockReward = JourneyUnlockReward(
       world: world,
       rank: rank,
       avatarId: journeyAvatarId(world, rank),
-      themeId: unlockedThemeName,
     );
   }
 
@@ -582,6 +590,50 @@ class AppRepo extends ChangeNotifier {
     _journeyProgress.pendingUnlockReward = null;
     await _persistJourneyProgress();
     notifyListeners();
+  }
+
+  /// Enter Diamonds: unlock theme + kingdom, keep Jack face-down until CTA.
+  Future<void> enterDiamondsKingdom() async {
+    if (_journeyProgress.diamondsEntered) {
+      await unlockAndEquipPack(Theme.casino);
+      return;
+    }
+    _journeyProgress.markEntered(JourneyWorld.diamonds);
+    await unlockAndEquipPack(Theme.casino);
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// Prove-yourself CTA: flip the Diamonds Jack face-up.
+  Future<void> unlockDiamondsJack() async {
+    if (_journeyProgress.diamondsJackUnlocked) return;
+    _journeyProgress.markEntered(JourneyWorld.diamonds);
+    _journeyProgress.diamondsJackUnlocked = true;
+    await _persistJourneyProgress();
+    notifyListeners();
+  }
+
+  /// Drop Journey themes granted early (e.g. Ace auto-unlock) until entered.
+  Future<void> _reconcileJourneyThemeOwnership() async {
+    var changed = false;
+    for (final pack in themePackCatalog) {
+      if (!pack.isPlayLocked) continue;
+      final world = journeyWorldForTheme(pack.id);
+      if (world == null || !ownsPack(pack.id)) continue;
+      if (_journeyProgress.hasEntered(world) &&
+          _journeyProgress.canUnlockThemeFor(world)) {
+        continue;
+      }
+      _ownedPacks.remove(pack.id);
+      changed = true;
+    }
+    if (!changed) return;
+    if (!ownsPack(_appTheme)) {
+      await equipPack(Theme.sage);
+    } else {
+      await _persistOwnedPacks();
+      notifyListeners();
+    }
   }
 
   /// True while coins / energy / XP / Journey unlock rewards still need UI.
@@ -657,14 +709,27 @@ class AppRepo extends ChangeNotifier {
     }
 
     if (won) {
+      final alreadyDefeated =
+          _journeyProgress.isDefeated(pending.world, pending.rank);
       _journeyProgress.recordDefeat(pending.world, pending.rank);
       _journeyProgress.pendingChallenge = null;
       _journeyProgress.pendingLossTaunt = null;
-      _journeyProgress.pendingWinCelebration = JourneyChallengeRef(
-        world: pending.world,
-        rank: pending.rank,
-      );
-      await _queueJourneyUnlockReward(pending.world, pending.rank);
+      if (alreadyDefeated) {
+        // Replay: regular match rewards only — no avatar / instruction unlock.
+        _journeyProgress.pendingWinCelebration = null;
+        _journeyProgress.pendingUnlockReward = null;
+        _journeyProgress.pendingReplayPraise = JourneyChallengeRef(
+          world: pending.world,
+          rank: pending.rank,
+        );
+      } else {
+        _journeyProgress.pendingReplayPraise = null;
+        _journeyProgress.pendingWinCelebration = JourneyChallengeRef(
+          world: pending.world,
+          rank: pending.rank,
+        );
+        await _queueJourneyUnlockReward(pending.world, pending.rank);
+      }
     } else {
       _journeyProgress.pendingLossTaunt = JourneyChallengeRef(
         world: pending.world,
@@ -672,6 +737,7 @@ class AppRepo extends ChangeNotifier {
       );
       _journeyProgress.pendingChallenge = null;
       _journeyProgress.pendingWinCelebration = null;
+      _journeyProgress.pendingReplayPraise = null;
       _journeyProgress.pendingUnlockReward = null;
     }
     _openJourneyRequest = true;
@@ -691,6 +757,8 @@ class AppRepo extends ChangeNotifier {
       return;
     }
     _journeyProgress.pendingChallenge = null;
+    _openJourneyRequest = true;
+    _shellTabRequest = 1;
     await _persistJourneyProgress();
     notifyListeners();
   }
@@ -1917,6 +1985,7 @@ class AppRepo extends ChangeNotifier {
       await _persistPlayerLocal();
       await _loadWallet(preferRemote: true);
       await _loadJourneyProgress();
+      await _reconcileJourneyThemeOwnership();
       if (notificationsEnabled) {
         _savedFcmToken = null;
         unawaited(_syncFcmToken());

@@ -119,18 +119,19 @@ class JourneyStageState extends State<JourneyStage>
   void _tickDealSounds() {
     final open = _open;
     final plan = _dealPlan;
-    final challengerN = JourneyDealPlan.challengerCount(plan);
-    final defeatedN = JourneyDealPlan.defeatedCount(plan);
-    final total = plan.isEmpty ? JourneyDealPlan.dealCardCount : plan.length;
+    final challengerPiles = JourneyDealPlan.challengerPileCount(plan);
+    final defeatedPiles = JourneyDealPlan.defeatedPileCount(plan);
+    final total = challengerPiles + defeatedPiles;
+    if (total == 0) return;
 
     var step = -1;
-    if (open.pileDeal > 0.02 && challengerN > 0) {
-      step = (open.pileDeal * challengerN).floor().clamp(0, challengerN - 1);
+    if (open.pileDeal > 0.02 && challengerPiles > 0) {
+      step = (open.pileDeal * challengerPiles).floor().clamp(0, challengerPiles - 1);
     }
-    if (open.defeatedDeal > 0.02 && defeatedN > 0) {
+    if (open.defeatedDeal > 0.02 && defeatedPiles > 0) {
       final dStep =
-          (open.defeatedDeal * defeatedN).floor().clamp(0, defeatedN - 1);
-      step = challengerN + dStep;
+          (open.defeatedDeal * defeatedPiles).floor().clamp(0, defeatedPiles - 1);
+      step = challengerPiles + dStep;
     }
     if (step < 0) {
       if (open.pileDeal <= 0.02) _lastDealSoundIndex = -1;
@@ -194,11 +195,12 @@ class JourneyStageState extends State<JourneyStage>
     _busy = false;
   }
 
-  /// Jump straight to a fully laid Journey table (no re-deal animation).
+  /// Jump straight to a fully laid Journey table (no enter animation).
   ///
   /// Used when returning from a Journey match that already had the board set.
   Future<void> restoreJourneySettled() async {
-    if (_busy) return;
+    // Always honor a return-from-match request, even if a prior swap left
+    // [_busy] true (otherwise the Games carousel stays on the table).
     _busy = true;
     _swapAnim.stop();
     _swapAnim.value = 1;
@@ -272,12 +274,13 @@ class JourneyStageState extends State<JourneyStage>
   bool _showLiveDeck(JourneyOpenProgress open, double gamesOnTable) {
     if (widget.showingGrid) return false;
     final gathering = open.cardGather > 0.01;
-    final dealing = open.pileDeal < 0.995 ||
-        (JourneyDealPlan.defeatedCount(_dealPlan) > 0 &&
+    final entering = open.pileDeal < 0.995 ||
+        (JourneyDealPlan.defeatedPileCount(_dealPlan) > 0 &&
             open.defeatedDeal < 0.995);
     final peeking = open.deckArrive < 0.08 && open.pileDeal < 0.02;
-    return (gathering || gamesOnTable > 0.4 || open.deckArrive > 0.01) &&
-        (gathering || dealing || peeking);
+    final peekOuting = open.deckArrive > 0.01 && open.deckArrive < 0.99;
+    return (gathering || gamesOnTable > 0.4 || peekOuting || entering) &&
+        (gathering || entering || peeking || peekOuting);
   }
 
   @override
@@ -291,7 +294,7 @@ class JourneyStageState extends State<JourneyStage>
         final gathering = open.cardGather > 0.01;
         final hideGames = widget.showingGrid || eat > 0.995;
         final hideJourney = open.cardGather > 0.58 ||
-            (open.deckArrive < 0.02 && open.sectionExpand < 0.02);
+            (open.sectionExpand < 0.02 && open.pileDeal < 0.02);
         final peekLive = _peekInteractive;
 
         return LayoutBuilder(
@@ -337,6 +340,7 @@ class JourneyStageState extends State<JourneyStage>
                 if (_showLiveDeck(open, gamesOnTable))
                   JourneyLiveDeck(
                     dealPlan: _dealPlan,
+                    peekDealPlan: JourneyDealPlan.ensurePeekCards(_dealPlan),
                     deckArrive: open.deckArrive,
                     deckFan: open.deckFan,
                     pileDeal: open.pileDeal,

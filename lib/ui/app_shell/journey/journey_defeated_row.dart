@@ -6,7 +6,7 @@ import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Bottom row: face-up defeated piles (a card lives here XOR in challengers).
+/// Bottom row: face-up defeated royals stacked per kingdom (tap opens center carousel).
 class JourneyDefeatedRow extends StatelessWidget {
   const JourneyDefeatedRow({
     super.key,
@@ -16,7 +16,7 @@ class JourneyDefeatedRow extends StatelessWidget {
     this.defeatedDeal = 1,
     this.hidingCard,
     this.ghostCard,
-    this.onDefeatedTap,
+    this.onDefeatedStackTap,
     this.onDefeatedPanStart,
     this.onDefeatedPanUpdate,
     this.onDefeatedPanEnd,
@@ -27,9 +27,8 @@ class JourneyDefeatedRow extends StatelessWidget {
   final double sectionExpand;
   final double defeatedDeal;
   final JourneyCardDef? hidingCard;
-  /// Dragged card stays in-tree (ghosted) so pan gestures keep working.
   final JourneyCardDef? ghostCard;
-  final ValueChanged<JourneyCardDef>? onDefeatedTap;
+  final ValueChanged<JourneyWorld>? onDefeatedStackTap;
   final void Function(JourneyCardDef card, DragStartDetails details)?
       onDefeatedPanStart;
   final GestureDragUpdateCallback? onDefeatedPanUpdate;
@@ -50,10 +49,11 @@ class JourneyDefeatedRow extends StatelessWidget {
             style: theme.caption.copyWith(
               fontWeight: FontWeight.w700,
               color: theme.muted,
+              fontSize: 11,
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Expanded(
           child: Row(
             children: [
@@ -71,7 +71,7 @@ class JourneyDefeatedRow extends StatelessWidget {
                       ),
                       hidingCard: hidingCard,
                       ghostCard: ghostCard,
-                      onDefeatedTap: onDefeatedTap,
+                      onStackTap: onDefeatedStackTap,
                       onDefeatedPanStart: onDefeatedPanStart,
                       onDefeatedPanUpdate: onDefeatedPanUpdate,
                       onDefeatedPanEnd: onDefeatedPanEnd,
@@ -113,7 +113,7 @@ class _DefeatedPile extends StatelessWidget {
     required this.landedCount,
     this.hidingCard,
     this.ghostCard,
-    this.onDefeatedTap,
+    this.onStackTap,
     this.onDefeatedPanStart,
     this.onDefeatedPanUpdate,
     this.onDefeatedPanEnd,
@@ -123,11 +123,15 @@ class _DefeatedPile extends StatelessWidget {
   final int landedCount;
   final JourneyCardDef? hidingCard;
   final JourneyCardDef? ghostCard;
-  final ValueChanged<JourneyCardDef>? onDefeatedTap;
+  final ValueChanged<JourneyWorld>? onStackTap;
   final void Function(JourneyCardDef card, DragStartDetails details)?
       onDefeatedPanStart;
   final GestureDragUpdateCallback? onDefeatedPanUpdate;
   final GestureDragEndCallback? onDefeatedPanEnd;
+
+  static const _fanDx = 7.0;
+  static const _fanDy = 5.5;
+  static const _cardScale = 0.78;
 
   bool _same(JourneyCardDef? a, JourneyCardDef? b) =>
       a != null &&
@@ -137,73 +141,109 @@ class _DefeatedPile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!worldDef.unlocked) {
+      return AspectRatio(
+        aspectRatio: homeCardAspect,
+        child: FractionallySizedBox(
+          widthFactor: _cardScale,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: const Color(0xFF1A1A1E),
+              border: Border.all(color: const Color(0xFF2E2E34)),
+            ),
+            child: const Center(
+              child: Icon(
+                CupertinoIcons.lock_fill,
+                color: Color(0x66FFFFFF),
+                size: 14,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final palette = journeyPaletteFor(worldDef.world);
-    // Keep ghostCard in the list so the pan detector isn't disposed mid-drag.
     final defeated = [
-      for (final card in worldDef.defeatedCards)
+      for (final card in worldDef.defeatedRoyals)
         if (!_same(card, hidingCard)) card,
     ];
     final showCount = landedCount.clamp(0, defeated.length);
     final visible = defeated.take(showCount).toList();
     final top = visible.isNotEmpty ? visible.last : null;
     final draggingThis = _same(ghostCard, top);
+    final stackCount = visible.length.clamp(0, 3);
 
     return AspectRatio(
       aspectRatio: homeCardAspect,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: palette.cardBorder.withValues(alpha: .4),
-                ),
-                color: palette.background.withValues(alpha: .32),
-              ),
-              child: Center(
-                child: Text(
-                  worldDef.world.suitSymbol,
-                  style: TextStyle(
-                    color: palette.accent.withValues(alpha: .22),
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (visible.isNotEmpty)
-            for (var i = 0; i < visible.length && i < 4; i++)
-              Positioned(
-                left: i * 2.8,
-                top: i * 2.2,
-                right: (visible.length.clamp(1, 4) - 1 - i) * 2.8,
-                bottom: (visible.length.clamp(1, 4) - 1 - i) * 2.2,
-                child: Opacity(
-                  opacity: draggingThis && i == visible.length - 1 ? 0 : 1,
-                  child: GestureDetector(
-                    onTap: draggingThis
-                        ? null
-                        : () => onDefeatedTap?.call(visible[i]),
-                    onPanStart: i == visible.length - 1 &&
-                            top != null &&
-                            onDefeatedPanStart != null
-                        ? (details) => onDefeatedPanStart!(top, details)
-                        : null,
-                    onPanUpdate:
-                        i == visible.length - 1 ? onDefeatedPanUpdate : null,
-                    onPanEnd:
-                        i == visible.length - 1 ? onDefeatedPanEnd : null,
-                    child: JourneyFaceUpCard(
-                      assetPath: visible[i].avatarAssetPath,
-                      world: visible[i].world,
-                      radius: 10,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cardW = constraints.maxWidth * _cardScale;
+          final cardH = cardW / homeCardAspect;
+          return GestureDetector(
+            onTap: visible.isEmpty
+                ? null
+                : () => onStackTap?.call(worldDef.world),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  width: cardW,
+                  height: cardH,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: palette.cardBorder.withValues(alpha: .4),
+                      ),
+                      color: palette.background.withValues(alpha: .32),
+                    ),
+                    child: Center(
+                      child: Text(
+                        worldDef.world.suitSymbol,
+                        style: TextStyle(
+                          color: palette.accent.withValues(alpha: .22),
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-        ],
+                if (visible.isNotEmpty)
+                  for (var i = 0; i < stackCount; i++)
+                    Positioned(
+                      left: i * _fanDx,
+                      top: i * _fanDy,
+                      width: cardW,
+                      height: cardH,
+                      child: Opacity(
+                        opacity: draggingThis && i == stackCount - 1 ? 0 : 1,
+                        child: GestureDetector(
+                          onTap: () => onStackTap?.call(worldDef.world),
+                          onPanStart: i == stackCount - 1 &&
+                                  top != null &&
+                                  onDefeatedPanStart != null
+                              ? (details) => onDefeatedPanStart!(top, details)
+                              : null,
+                          onPanUpdate:
+                              i == stackCount - 1 ? onDefeatedPanUpdate : null,
+                          onPanEnd:
+                              i == stackCount - 1 ? onDefeatedPanEnd : null,
+                          child: JourneyFaceUpCard(
+                            assetPath: visible[i].avatarAssetPath,
+                            world: visible[i].world,
+                            radius: 8,
+                          ),
+                        ),
+                      ),
+                    ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

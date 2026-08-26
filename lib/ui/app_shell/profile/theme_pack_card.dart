@@ -69,6 +69,34 @@ class _ThemePackCardState extends State<ThemePackCard> {
     final packTheme = themeFromEnum(pack.id);
     final owned = repo.ownsPack(pack.id);
     final equipped = repo.appTheme == pack.id;
+    final mysterySealed = !owned && pack.isPlayLocked;
+    if (mysterySealed) {
+      return AspectRatio(
+        aspectRatio: 2.5 / 3.5,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A1E),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFF2E2E34), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: CupertinoColors.black.withValues(alpha: .30),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: const ClipRRect(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+            child: ThemeLockCover(
+              mystery: true,
+              caption: 'Sealed',
+              lockSize: 40,
+            ),
+          ),
+        ),
+      );
+    }
     final tints = tintsForTheme(pack.id);
     final unlocked = repo.unlockedAvatarIdsForTheme(pack.id);
     final locked = repo.lockedAvatarIdsForTheme(pack.id);

@@ -33,7 +33,7 @@ const List<JourneyInstruction> journeyInstructions = [
     title: 'Prove yourself',
     body:
         'To live here you must reach the Queen — but first complete the Jack\'s challenge. '
-        'Drag the face-up card to the center and begin.',
+        'Unlock the next challenger, then drag the face-up card to the center and begin.',
   ),
   JourneyInstruction(
     id: 3,
@@ -175,13 +175,13 @@ int _worldInstructionBase(JourneyWorld world) => switch (world) {
 
 /// How many pages are unlocked for the current session board state.
 ///
-/// Always unlocks page 1. Page 2 unlocks after the Journey coach finishes
-/// (or immediately when [tutorialDone] is already true). Pages 3–6 unlock
-/// as Jack → Queen → King → Ace are cleared in Diamonds. Pages 7–18 unlock
-/// the same way across Clubs, Hearts, and Spades.
+/// Always unlocks page 1. Page 2 unlocks after Diamonds kingdom is entered.
+/// Pages 3–6 unlock as Jack → Queen → King → Ace are cleared in Diamonds.
+/// Pages 7–18 unlock the same way across Clubs, Hearts, and Spades.
 int journeyUnlockedThrough({
   required JourneyDisplaySnapshot snapshot,
   required bool tutorialDone,
+  bool diamondsEntered = false,
 }) {
   JourneyCardState? stateOf(JourneyWorld world, JourneyRank rank) =>
       snapshot.worldOf(world).cardOf(rank)?.state;
@@ -198,7 +198,8 @@ int journeyUnlockedThrough({
       if (defeated(world, JourneyRank.jack)) return base + 1;
       // World available but Jack not yet beaten.
       if (world == JourneyWorld.diamonds) {
-        return tutorialDone ? 2 : 1;
+        if (!tutorialDone || !diamondsEntered) return 1;
+        return 2;
       }
       return base;
     }

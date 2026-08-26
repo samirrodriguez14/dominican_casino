@@ -139,13 +139,17 @@ class _WorldPile extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = journeyPaletteFor(worldDef.world);
     final theme = AppStyle.theme;
+    if (!worldDef.unlocked) {
+      return _MysteryLockedPileSlot(
+        active: active,
+        label: 'Sealed',
+      );
+    }
     final remaining = [
       for (final card in worldDef.pileCards)
         if (!_same(card, selectedCard)) card,
     ];
-    final maxDepth = worldDef.unlocked
-        ? remaining.length.clamp(0, JourneyBoard.cardsPerPile)
-        : JourneyBoard.cardsPerPile;
+    final maxDepth = remaining.length.clamp(0, JourneyBoard.cardsPerPile);
     final showDepth = landedDepth.clamp(0, maxDepth);
     // Deal order for landing; available moved to visual top when present.
     final visible = remaining.take(showDepth).toList();
@@ -158,7 +162,7 @@ class _WorldPile extends StatelessWidget {
         if (card.state == JourneyCardState.available) card,
     ];
     final pile = [...lockedVisible, ...availableVisible];
-    final top = worldDef.unlocked ? worldDef.nextSelectable : null;
+    final top = worldDef.nextSelectable;
     final canPickTop =
         top != null && top.isSelectable && selectedCard == null;
     final draggingThis = _same(ghostCard, top);
@@ -171,10 +175,6 @@ class _WorldPile extends StatelessWidget {
     return GestureDetector(
       onTap: cardVisible && !draggingThis
           ? () {
-              if (!worldDef.unlocked) {
-                onWorldTap?.call(worldDef.world);
-                return;
-              }
               if (canPickTop) {
                 onTopCardTap?.call(top);
               } else if (selectedCard?.world == worldDef.world) {
@@ -232,7 +232,7 @@ class _WorldPile extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (pile.isNotEmpty) ...[
+                          if (pile.isNotEmpty)
                             for (var i = 0; i < pile.length; i++)
                               Positioned(
                                 left: i * 2.2,
@@ -251,9 +251,8 @@ class _WorldPile extends StatelessWidget {
                                       )
                                     : JourneyFaceDownCard(
                                         world: worldDef.world,
-                                        dimmed: !worldDef.unlocked,
+                                        dimmed: false,
                                         highlighted: active &&
-                                            worldDef.unlocked &&
                                             i == pile.length - 1 &&
                                             selectedCard == null &&
                                             !draggingThis &&
@@ -262,15 +261,6 @@ class _WorldPile extends StatelessWidget {
                                         shadow: i == pile.length - 1,
                                       ),
                               ),
-                            if (!worldDef.unlocked)
-                              const Center(
-                                child: Icon(
-                                  CupertinoIcons.lock_fill,
-                                  color: Color(0xD9FFFFFF),
-                                  size: 18,
-                                ),
-                              ),
-                          ],
                         ],
                       ),
                     ),
@@ -287,7 +277,7 @@ class _WorldPile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.caption.copyWith(
-                color: active && worldDef.unlocked && cardVisible
+                color: active && cardVisible
                     ? palette.accent
                     : theme.muted,
                 fontWeight: FontWeight.w700,
@@ -297,6 +287,72 @@ class _WorldPile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Neutral dark locked pad — no suit / world identity.
+class _MysteryLockedPileSlot extends StatelessWidget {
+  const _MysteryLockedPileSlot({
+    required this.active,
+    required this.label,
+  });
+
+  final bool active;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Column(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final height = width / homeCardAspect;
+              final cardH = height.clamp(0.0, constraints.maxHeight);
+              final cardW = cardH * homeCardAspect;
+              return Center(
+                child: SizedBox(
+                  width: cardW,
+                  height: cardH,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: const Color(0xFF1A1A1E),
+                      border: Border.all(
+                        color: active
+                            ? const Color(0xFF4A4A52)
+                            : const Color(0xFF2E2E34),
+                        width: active ? 1.4 : 1.1,
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        CupertinoIcons.lock_fill,
+                        color: Color(0x99FFFFFF),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.caption.copyWith(
+            color: theme.muted.withValues(alpha: .7),
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+          ),
+        ),
+      ],
     );
   }
 }

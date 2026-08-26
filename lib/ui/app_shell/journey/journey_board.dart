@@ -12,12 +12,14 @@ import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_active_stage.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_coach.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_defeated_carousel.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_defeated_row.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_enter_kingdom.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_instruction_deck.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_loss_taunt.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
+import 'package:dominican_casino/ui/app_shell/journey/journey_progress_trail.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_world_piles.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
@@ -27,7 +29,7 @@ import 'package:provider/provider.dart';
 export 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart'
     show JourneyDealPlan, JourneyDealSlot, JourneyOpenProgress;
 
-/// Three-band Journey board: piles / active stage / defeated.
+/// Four-band Journey board: piles / progress trail / active stage / defeated.
 class JourneyBoard extends StatefulWidget {
   const JourneyBoard({
     super.key,
@@ -99,6 +101,9 @@ class JourneyBoardState extends State<JourneyBoard>
   late final AnimationController _defeatFlyAnim;
   late final AnimationController _revealAnim;
   JourneyCardDef? _defeatFlying;
+  /// Override flight target (Ace → trail token); null uses defeated pile.
+  Offset? _defeatFlyTo;
+  double _defeatFlySize = 0;
   JourneyCardDef? _revealCard;
 
   /// Live drag of a pile card toward the center.
@@ -109,6 +114,7 @@ class JourneyBoardState extends State<JourneyBoard>
   final GlobalKey _pilesKey = GlobalKey();
   final GlobalKey _centerKey = GlobalKey();
   final GlobalKey _defeatedKey = GlobalKey();
+  final GlobalKey _trailTokenKey = GlobalKey();
   final GlobalKey _instructionDeckKey = GlobalKey();
   late final JourneyCoachController _coach;
 
@@ -124,6 +130,9 @@ class JourneyBoardState extends State<JourneyBoard>
   int? _guideDisplayedUnlock;
   bool _guideShowUnlockCta = false;
   JourneyCardDef? _pendingUnlockCard;
+  /// Center carousel when browsing a defeated kingdom stack.
+  JourneyWorld? _defeatedCarouselWorld;
+  JourneyRank _defeatedCarouselRank = JourneyRank.queen;
 
   @override
   void initState() {
@@ -259,9 +268,28 @@ class JourneyBoardState extends State<JourneyBoard>
     await repo.clearPendingJourneyLossTaunt();
     _tauntScheduled = false;
     if (!mounted) return;
-    if (card.isSelectable) {
-      await _selectCard(card, fromDefeated: card.state == JourneyCardState.defeated);
+    // Replay losses stay on the board until return-to-progress; don't re-focus.
+    if (card.isSelectable && card.state != JourneyCardState.defeated) {
+      await _selectCard(card, fromDefeated: false);
     }
+  }
+
+  Future<void> _maybeShowReplayPraise() async {
+    if (!mounted) return;
+    final repo = context.read<AppRepo>();
+    final praise = repo.journeyProgress.pendingReplayPraise;
+    if (praise == null) return;
+    final card = _snapshot.worldOf(praise.world).cardOf(praise.rank) ??
+        JourneyCardDef(
+          world: praise.world,
+          rank: praise.rank,
+          state: JourneyCardState.defeated,
+          requiredLevel: 1,
+          gameMode: journeyGameForRank(praise.rank),
+        );
+    await showJourneyReplayPraise(context, card: card);
+    if (!mounted) return;
+    await repo.clearPendingReplayPraise();
   }
 
   @override
@@ -299,7 +327,16 @@ class JourneyBoardState extends State<JourneyBoard>
   int get _unlockedThrough => journeyUnlockedThrough(
         snapshot: _snapshot,
         tutorialDone: _tutorialDoneForUnlocks,
+        diamondsEntered: context.read<AppRepo>().journeyProgress.diamondsEntered,
       );
+
+  bool get _needsFirstJackUnlock {
+    final progress = context.read<AppRepo>().journeyProgress;
+    return progress.diamondsEntered && !progress.diamondsJackUnlocked;
+  }
+
+  bool get _showProveYourselfUnlockCta =>
+      _needsFirstJackUnlock && !_guideShowUnlockCta;
 
   /// Unlock count shown in the guide (may lag during win celebration).
   int get _guideUnlockCount => _guideDisplayedUnlock ?? _unlockedThrough;
@@ -331,6 +368,11 @@ class JourneyBoardState extends State<JourneyBoard>
 
   /// Flip + return the selected challenger to its pile before leaving Journey.
   Future<void> dismissSelectedIfNeeded() async {
+    if (_defeatedCarouselWorld != null) {
+      await _closeDefeatedCarousel();
+      // User chose to keep browsing — don't leave Journey mid-carousel.
+      if (_defeatedCarouselWorld != null) return;
+    }
     if (_selected == null && _selectAnim.value < 0.01) return;
     SoundService.instance.playLayered(GameSound.softCard);
     if (_selectAnim.value > 0.01) {
@@ -348,18 +390,54 @@ class JourneyBoardState extends State<JourneyBoard>
     if (!mounted) return;
     _lastLevel = repo.experienceProgress.level;
     final win = repo.journeyProgress.pendingWinCelebration;
+    final praise = repo.journeyProgress.pendingReplayPraise;
     setState(() {
       _worlds = _copyWorlds(repo.journeyBoardForLevel());
       _selected = null;
       _selectAnim.value = 0;
       _defeatFlying = null;
       _revealCard = null;
+      _defeatedCarouselWorld = null;
     });
     if (win != null) {
+      // Win celebration owns kingdom focus until Unlock next challenger.
       await _awaitHomeRewardsThen(() => _beginWinCelebration(win));
       return;
     }
-    await _awaitHomeRewardsThen(_maybeShowPendingLossTaunt);
+    if (praise != null) {
+      await _awaitHomeRewardsThen(() async {
+        await _maybeShowReplayPraise();
+        await _offerReturnToProgressKingdom();
+      });
+      return;
+    }
+    await _awaitHomeRewardsThen(() async {
+      await _maybeShowPendingLossTaunt();
+      await _offerReturnToProgressKingdom();
+    });
+  }
+
+  /// After a match, trail focuses the frontier — ask to match theme / kingdom.
+  Future<void> _offerReturnToProgressKingdom() async {
+    if (!mounted) return;
+    final progressWorld = _progressKingdom();
+    final repo = context.read<AppRepo>();
+    final themeWorld = journeyWorldForTheme(repo.appTheme);
+    if (_activeWorld == progressWorld && themeWorld == progressWorld) {
+      return;
+    }
+
+    final go = await confirmReturnToProgressKingdom(
+      context,
+      world: progressWorld,
+    );
+    if (!mounted) return;
+    if (!go) return;
+
+    await repo.unlockAndEquipPack(progressWorld.themeId);
+    if (!mounted) return;
+    widget.onWorldThemeEquipped?.call(progressWorld);
+    setState(() => _activeWorld = progressWorld);
   }
 
   Future<void> _awaitHomeRewardsThen(Future<void> Function() next) async {
@@ -400,6 +478,7 @@ class JourneyBoardState extends State<JourneyBoard>
     final afterUnlock = journeyUnlockedThrough(
       snapshot: fullSnap,
       tutorialDone: _tutorialDoneForUnlocks,
+      diamondsEntered: repo.journeyProgress.diamondsEntered,
     );
     final beforeUnlock = (afterUnlock - 1).clamp(1, afterUnlock);
 
@@ -428,6 +507,33 @@ class JourneyBoardState extends State<JourneyBoard>
 
   Future<void> _onUnlockNextChallenger() async {
     final repo = context.read<AppRepo>();
+
+    // First-time Diamonds Jack reveal from Prove yourself.
+    if (_pendingUnlockCard == null && _needsFirstJackUnlock) {
+      await repo.unlockDiamondsJack();
+      if (!mounted) return;
+      setState(() {
+        _guideExpanded = false;
+        _guideOpenPage = null;
+        _guideShowUnlockCta = false;
+        _worlds = _copyWorlds(repo.journeyBoardForLevel());
+        _revealCard = _snapshot
+            .worldOf(JourneyWorld.diamonds)
+            .cardOf(JourneyRank.jack);
+        _revealAnim.value = 0;
+        _activeWorld = JourneyWorld.diamonds;
+      });
+      await _playRevealIfNeeded();
+      if (!mounted) return;
+      final unlocked = _snapshot
+          .worldOf(JourneyWorld.diamonds)
+          .cardOf(JourneyRank.jack);
+      if (unlocked != null) {
+        await _selectCard(unlocked, fromDefeated: false, skipEquip: true);
+      }
+      return;
+    }
+
     final next = _pendingUnlockCard;
     await repo.clearPendingWinCelebration();
     if (!mounted) return;
@@ -466,7 +572,7 @@ class JourneyBoardState extends State<JourneyBoard>
   JourneyDisplaySnapshot get _snapshot =>
       JourneyDisplaySnapshot(worlds: _worlds);
 
-  /// Challengers first, defeated last (bottom of the deal stack).
+  /// Challengers first, defeated last (enter fill order).
   List<JourneyDealSlot> get dealPlan => JourneyBoard.dealPlanFor(_snapshot);
 
   Future<void> equipActiveWorldTheme() async {
@@ -490,14 +596,30 @@ class JourneyBoardState extends State<JourneyBoard>
   }
 
   Future<void> _enterKingdomFromGuide(JourneyWorld world) async {
-    final ok = await _equipWorld(world);
-    if (!ok || !mounted) return;
+    if (world != JourneyWorld.diamonds) {
+      final ok = await _equipWorld(world);
+      if (!ok || !mounted) return;
+      setState(() => _activeWorld = world);
+      return;
+    }
+
+    final repo = context.read<AppRepo>();
+    final currentWorld = journeyWorldForTheme(repo.appTheme);
+    if (currentWorld != JourneyWorld.diamonds) {
+      final go = await confirmEnterKingdom(
+        context,
+        world: JourneyWorld.diamonds,
+      );
+      if (!go || !mounted) return;
+    }
+    await repo.enterDiamondsKingdom();
+    if (!mounted) return;
     setState(() {
-      _activeWorld = world;
-      // After entering Diamonds, nudge to the Jack challenge page if unlocked.
-      if (world == JourneyWorld.diamonds && _guideUnlockCount >= 2) {
-        _guideOpenPage = 1;
-      }
+      _activeWorld = JourneyWorld.diamonds;
+      _worlds = _copyWorlds(repo.journeyBoardForLevel());
+      _guideExpanded = true;
+      _guideOpenPage = 1;
+      _guideShowUnlockCta = false;
     });
   }
 
@@ -506,6 +628,7 @@ class JourneyBoardState extends State<JourneyBoard>
     AppHaptics.heavyImpact();
     setState(() {
       _defeatFlying = card;
+      _defeatFlyTo = null;
       _selected = null;
       _selectFromOverride = null;
     });
@@ -521,9 +644,45 @@ class JourneyBoardState extends State<JourneyBoard>
       _worlds = _copyWorlds(context.read<AppRepo>().journeyBoardForLevel());
       _revealCard = null;
     });
+    // Let the trail token settle on the new step before Ace flight.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    if (card.rank == JourneyRank.ace) {
+      final tokenBox =
+          _trailTokenKey.currentContext?.findRenderObject() as RenderBox?;
+      final boardBox = context.findRenderObject() as RenderBox?;
+      Offset? target;
+      if (tokenBox != null && boardBox != null && tokenBox.hasSize) {
+        final global = tokenBox.localToGlobal(
+          tokenBox.size.center(Offset.zero),
+        );
+        target = boardBox.globalToLocal(global);
+      }
+      setState(() {
+        _defeatFlyTo = target ??
+            Offset(
+              boardBox?.size.width != null
+                  ? boardBox!.size.width *
+                      context
+                          .read<AppRepo>()
+                          .journeyProgress
+                          .trailProgress
+                          .clamp(0.08, 0.92)
+                  : 0,
+              boardBox != null ? boardBox.size.height * 0.26 : 0,
+            );
+        _defeatFlySize = tokenBox?.size.shortestSide != null
+            ? tokenBox!.size.shortestSide * 1.15
+            : 34;
+      });
+    }
     await _defeatFlyAnim.forward(from: 0);
     if (!mounted) return;
-    setState(() => _defeatFlying = null);
+    setState(() {
+      _defeatFlying = null;
+      _defeatFlyTo = null;
+      _defeatFlySize = 0;
+    });
     _defeatFlyAnim.value = 0;
     await _awaitHomeRewardsThen(
       () => _beginWinCelebration(
@@ -535,7 +694,11 @@ class JourneyBoardState extends State<JourneyBoard>
   Future<void> _onChallenge() async {
     final card = _selected;
     if (card == null) return;
+    await _promptChallengeMatch(card);
+  }
 
+  /// Play / Test… / Cancel for a fresh challenge or defeated replay.
+  Future<void> _promptChallengeMatch(JourneyCardDef card) async {
     SoundService.instance.playLayered(GameSound.softCard);
     AppHaptics.mediumImpact();
 
@@ -564,11 +727,23 @@ class JourneyBoardState extends State<JourneyBoard>
       return;
     }
 
+    final alreadyDefeated = context.read<AppRepo>().journeyProgress.isDefeated(
+      card.world,
+      card.rank,
+    );
     final outcome = await showCupertinoDialog<String>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: Text('Challenge: ${card.title}'),
-        content: Text('Play ${card.gameLabel} against this challenger.'),
+        title: Text(
+          alreadyDefeated
+              ? 'Replay: ${card.title}'
+              : 'Challenge: ${card.title}',
+        ),
+        content: Text(
+          alreadyDefeated
+              ? 'Play ${card.gameLabel} again against this challenger.'
+              : 'Play ${card.gameLabel} against this challenger.',
+        ),
         actions: [
           CupertinoDialogAction(
             isDefaultAction: true,
@@ -615,37 +790,74 @@ class JourneyBoardState extends State<JourneyBoard>
       );
       if (!mounted || testOutcome == null) return;
       if (testOutcome == 'defeat') {
-        await _resolveDefeat(card);
+        _pinTrailToCard(card);
+        if (alreadyDefeated) {
+          await _resolveReplayWin(card);
+        } else {
+          await _resolveDefeat(card);
+        }
         return;
       }
       if (testOutcome == 'lose') {
+        _pinTrailToCard(card);
         await showJourneyLossTaunt(context, card: card);
       }
       return;
     }
 
     if (outcome == 'play') {
-      final mode = card.gameMode;
-      if (mode == null) return;
-      final repo = context.read<AppRepo>();
-      final vm = context.read<GamesViewModel>();
-      await gameEnter(
-        context,
-        vm,
-        mode,
-        true,
-        botOverride: LocalBotProfile(
-          name: card.rank.label,
-          avatarId: journeyAvatarId(card.world, card.rank),
-          avatarAsset: card.avatarAssetPath,
-        ),
-        onCreated: (gid) => repo.beginJourneyChallenge(
-          world: card.world,
-          rank: card.rank,
-          gameId: gid,
-        ),
-      );
+      _pinTrailToCard(card);
+      await _startJourneyMatch(card);
     }
+  }
+
+  /// Keep the progress-trail token on [card] after leaving defeated browse.
+  void _pinTrailToCard(JourneyCardDef card) {
+    setState(() {
+      _defeatedCarouselWorld = null;
+      _activeWorld = card.world;
+      _selected = card;
+      _selectedFromDefeated = true;
+      _selectAnim.value = 0;
+      _selectFromOverride = null;
+    });
+  }
+
+  /// Dev / test path: simulate winning a rematch (praise only, no unlocks).
+  Future<void> _resolveReplayWin(JourneyCardDef card) async {
+    final repo = context.read<AppRepo>();
+    await repo.beginJourneyChallenge(
+      world: card.world,
+      rank: card.rank,
+      gameId: 'test-replay',
+    );
+    await repo.noteJourneyChallengeResult(won: true, gameId: 'test-replay');
+    if (!mounted) return;
+    await _maybeShowReplayPraise();
+  }
+
+  /// Launch the Journey match for [card] (Challenge / Replay).
+  Future<void> _startJourneyMatch(JourneyCardDef card) async {
+    final mode = card.gameMode;
+    if (mode == null) return;
+    final repo = context.read<AppRepo>();
+    final vm = context.read<GamesViewModel>();
+    await gameEnter(
+      context,
+      vm,
+      mode,
+      true,
+      botOverride: LocalBotProfile(
+        name: card.rank.label,
+        avatarId: journeyAvatarId(card.world, card.rank),
+        avatarAsset: card.avatarAssetPath,
+      ),
+      onCreated: (gid) => repo.beginJourneyChallenge(
+        world: card.world,
+        rank: card.rank,
+        gameId: gid,
+      ),
+    );
   }
 
   Future<void> _playRevealIfNeeded() async {
@@ -675,6 +887,10 @@ class JourneyBoardState extends State<JourneyBoard>
 
     SoundService.instance.playLayered(GameSound.softCard);
     AppHaptics.mediumImpact();
+
+    if (_defeatedCarouselWorld != null) {
+      setState(() => _defeatedCarouselWorld = null);
+    }
 
     if (_selected?.world == card.world && _selected?.rank == card.rank) {
       await _selectAnim.reverse();
@@ -711,6 +927,97 @@ class JourneyBoardState extends State<JourneyBoard>
     await _selectAnim.forward(from: startProgress.clamp(0.0, 0.85));
   }
 
+  Future<void> _openDefeatedCarousel(JourneyWorld world) async {
+    final def = _snapshot.worldOf(world);
+    if (!def.unlocked || def.defeatedRoyals.isEmpty) {
+      AppHaptics.selectionClick();
+      return;
+    }
+    SoundService.instance.playLayered(GameSound.softCard);
+    AppHaptics.mediumImpact();
+
+    if (_selected != null) {
+      if (_selectAnim.value > 0.05) await _selectAnim.reverse();
+      if (!mounted) return;
+    }
+
+    final ok = await _equipWorld(world);
+    if (!ok || !mounted) return;
+
+    setState(() {
+      _selected = null;
+      _selectFromOverride = null;
+      _selectAnim.value = 0;
+      _activeWorld = world;
+      _defeatedCarouselWorld = world;
+      _defeatedCarouselRank = JourneyDefeatedCarousel.initialFocus(def);
+    });
+  }
+
+  /// Kingdom where the player's frontier challenger currently sits.
+  JourneyWorld _progressKingdom() {
+    for (final world in JourneyWorld.values) {
+      final next = _snapshot.worldOf(world).nextSelectable;
+      if (next != null && next.state == JourneyCardState.available) {
+        return world;
+      }
+    }
+    for (final world in JourneyWorld.values.reversed) {
+      if (_snapshot.worldOf(world).unlocked) return world;
+    }
+    return JourneyWorld.diamonds;
+  }
+
+  /// Close defeated browse and return to the progress kingdom (with confirm).
+  Future<void> _closeDefeatedCarousel() async {
+    if (_defeatedCarouselWorld == null) return;
+    final browsing = _defeatedCarouselWorld!;
+    final progressWorld = _progressKingdom();
+    final repo = context.read<AppRepo>();
+    final themeWorld = journeyWorldForTheme(repo.appTheme);
+    final needsReturn =
+        browsing != progressWorld || themeWorld != progressWorld;
+
+    if (needsReturn) {
+      final go = await confirmReturnToProgressKingdom(
+        context,
+        world: progressWorld,
+      );
+      if (!go || !mounted) return;
+      await repo.unlockAndEquipPack(progressWorld.themeId);
+      if (!mounted) return;
+      widget.onWorldThemeEquipped?.call(progressWorld);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _defeatedCarouselWorld = null;
+      _activeWorld = progressWorld;
+    });
+  }
+
+  /// Trail token milestone from focus, else current frontier challenger.
+  int _trailTokenStep(JourneyProgress progress) {
+    if (_defeatedCarouselWorld != null) {
+      return journeyTrailStepIndex(
+        _defeatedCarouselWorld!,
+        _defeatedCarouselRank,
+      );
+    }
+    if (_selected != null) {
+      return journeyTrailStepIndex(_selected!.world, _selected!.rank);
+    }
+    for (final world in JourneyWorld.values) {
+      final next = _snapshot.worldOf(world).nextSelectable;
+      if (next != null && next.state == JourneyCardState.available) {
+        return journeyTrailStepIndex(next.world, next.rank);
+      }
+    }
+    final done = progress.trailStepsCompleted;
+    if (done <= 0) return 0;
+    return (done - 1).clamp(0, journeyTrailStepCount - 1);
+  }
+
   Future<void> _onWorldTap(JourneyWorld world) async {
     final def = _snapshot.worldOf(world);
     SoundService.instance.playLayered(GameSound.softCard);
@@ -723,6 +1030,7 @@ class JourneyBoardState extends State<JourneyBoard>
     if (!ok || !mounted) return;
     setState(() {
       _activeWorld = world;
+      _defeatedCarouselWorld = null;
       if (_selected != null && _selected!.world != world) {
         _selected = null;
         _selectAnim.value = 0;
@@ -734,8 +1042,8 @@ class JourneyBoardState extends State<JourneyBoard>
   Future<void> _onTopCardTap(JourneyCardDef card) =>
       _selectCard(card, fromDefeated: false);
 
-  Future<void> _onDefeatedTap(JourneyCardDef card) =>
-      _selectCard(card, fromDefeated: true);
+  Future<void> _onDefeatedStackTap(JourneyWorld world) =>
+      _openDefeatedCarousel(world);
 
   void _onCardDragStart(
     JourneyCardDef card, {
@@ -848,8 +1156,11 @@ class JourneyBoardState extends State<JourneyBoard>
     // the pile tree (ghosted) so the pan GestureDetector stays alive.
     final hideChallenger =
         !_selectedFromDefeated ? selected : null;
-    final hideDefeated = _defeatFlying ??
-        (_selectedFromDefeated ? selected : null);
+                // Only hide non-Ace flyers from defeated piles (Aces → trail).
+    final hideDefeated = (_defeatFlying != null &&
+            _defeatFlying!.rank != JourneyRank.ace)
+        ? _defeatFlying
+        : (_selectedFromDefeated ? selected : null);
     final ghostChallenger =
         !_draggingFromDefeated ? _dragging : null;
     final ghostDefeated =
@@ -901,7 +1212,7 @@ class JourneyBoardState extends State<JourneyBoard>
                   child: Column(
                     children: [
                       Expanded(
-                        flex: 22,
+                        flex: 20,
                         child: JourneyCoachPulse(
                           controller: _coach,
                           targetKey: _pilesKey,
@@ -946,9 +1257,17 @@ class JourneyBoardState extends State<JourneyBoard>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      JourneyProgressTrail(
+                        progress: context.watch<AppRepo>().journeyProgress,
+                        tokenStepIndex: _trailTokenStep(
+                          context.watch<AppRepo>().journeyProgress,
+                        ),
+                        activeWorld: _activeWorld,
+                        tokenKey: _trailTokenKey,
+                        height: 52,
+                      ),
                       Expanded(
-                        flex: 52,
+                        flex: 48,
                         child: Opacity(
                           opacity: centerReveal,
                           child: Transform.scale(
@@ -961,6 +1280,7 @@ class JourneyBoardState extends State<JourneyBoard>
                                 child: JourneyActiveStage(
                                   hasAvailableChallenger: hasAvailable,
                                   visible: selected == null &&
+                                      _defeatedCarouselWorld == null &&
                                       selectProgress < 0.05 &&
                                       _defeatFlying == null &&
                                       _dragging == null &&
@@ -971,9 +1291,9 @@ class JourneyBoardState extends State<JourneyBoard>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
                       Expanded(
-                        flex: 26,
+                        flex: 18,
                         child: JourneyCoachPulse(
                           controller: _coach,
                           targetKey: _defeatedKey,
@@ -988,8 +1308,9 @@ class JourneyBoardState extends State<JourneyBoard>
                                   : open.defeatedDeal,
                               hidingCard: hideDefeated,
                               ghostCard: ghostDefeated,
-                              onDefeatedTap:
-                                  interactive ? _onDefeatedTap : null,
+                              onDefeatedStackTap: interactive
+                                  ? _onDefeatedStackTap
+                                  : null,
                               onDefeatedPanStart: interactive
                                   ? (card, details) => _onCardDragStart(
                                         card,
@@ -1055,15 +1376,16 @@ class JourneyBoardState extends State<JourneyBoard>
                         world: _activeWorld,
                         onExpand: _openGuide,
                         onCollapse: _closeGuide,
-                        showUnlockChallengerCta: _guideShowUnlockCta,
+                        showUnlockChallengerCta: _guideShowUnlockCta ||
+                            _showProveYourselfUnlockCta,
                         unlockChallengerLabel: _pendingUnlockCard == null
-                            ? 'Continue'
+                            ? 'Unlock next challenger'
                             : 'Unlock next challenger',
                         onUnlockNextChallenger: _onUnlockNextChallenger,
-                        showEnterKingdomCta: journeyWorldForTheme(
-                              context.read<AppRepo>().appTheme,
-                            ) !=
-                            JourneyWorld.diamonds,
+                        showEnterKingdomCta: !context
+                            .read<AppRepo>()
+                            .journeyProgress
+                            .diamondsEntered,
                         enterKingdomLabel: 'Enter Diamonds kingdom',
                         onEnterKingdom: () =>
                             _enterKingdomFromGuide(JourneyWorld.diamonds),
@@ -1085,8 +1407,9 @@ class JourneyBoardState extends State<JourneyBoard>
                     ),
                   ),
 
-                // Focus from the card's real home (challenger or defeated).
+                // Focus from the card's real home (challenger or defeated drag).
                 if (selected != null &&
+                    _defeatedCarouselWorld == null &&
                     _defeatFlying == null &&
                     selectProgress > 0.01 &&
                     !_guideExpanded)
@@ -1106,15 +1429,44 @@ class JourneyBoardState extends State<JourneyBoard>
                     onDismiss: _onDismissSelected,
                   ),
 
+                if (_defeatedCarouselWorld != null &&
+                    !_guideExpanded &&
+                    _defeatFlying == null)
+                  Positioned.fill(
+                    child: JourneyDefeatedCarousel(
+                      key: ValueKey(_defeatedCarouselWorld!.name),
+                      worldDef: _snapshot.worldOf(_defeatedCarouselWorld!),
+                      focusRank: _defeatedCarouselRank,
+                      onFocusRankChanged: (rank) {
+                        setState(() => _defeatedCarouselRank = rank);
+                      },
+                      onDismiss: () {
+                        _closeDefeatedCarousel();
+                      },
+                      onReplay: (card) async {
+                        // Keep carousel (and trail token) on this challenger
+                        // until Play / Test commits — Cancel leaves focus here.
+                        if (_defeatedCarouselRank != card.rank) {
+                          setState(() => _defeatedCarouselRank = card.rank);
+                        }
+                        await _promptChallengeMatch(card);
+                      },
+                    ),
+                  ),
+
                 if (_defeatFlying != null)
                   _DefeatedTransferCard(
                     card: _defeatFlying!,
                     flight: Curves.easeInOutCubic
                         .transform(_defeatFlyAnim.value),
                     from: centerTarget,
-                    to: defeatedTargets[
-                        JourneyWorld.values.indexOf(_defeatFlying!.world)],
-                    size: centerSize * 0.85,
+                    to: _defeatFlyTo ??
+                        defeatedTargets[
+                            JourneyWorld.values.indexOf(_defeatFlying!.world)],
+                    startSize: centerSize * 0.85,
+                    endSize: _defeatFlyTo != null && _defeatFlySize > 0
+                        ? _defeatFlySize
+                        : centerSize * 0.85,
                   ),
 
                 JourneyCoachOverlay(
@@ -1130,21 +1482,23 @@ class JourneyBoardState extends State<JourneyBoard>
   }
 }
 
-/// Face-up card moving into a defeated pile (one object — never duplicated).
+/// Face-up card moving into a defeated pile or Ace → trail token.
 class _DefeatedTransferCard extends StatelessWidget {
   const _DefeatedTransferCard({
     required this.card,
     required this.flight,
     required this.from,
     required this.to,
-    required this.size,
+    required this.startSize,
+    required this.endSize,
   });
 
   final JourneyCardDef card;
   final double flight;
   final Offset from;
   final Offset to;
-  final double size;
+  final double startSize;
+  final double endSize;
 
   @override
   Widget build(BuildContext context) {
@@ -1156,12 +1510,13 @@ class _DefeatedTransferCard extends StatelessWidget {
       (from.dy < to.dy ? from.dy : to.dy) - 40,
     );
     final pos = JourneyTableLayout.quad(from, mid, to, t);
-    final height = size / homeCardAspect;
+    final drawSize = startSize + (endSize - startSize) * t;
+    final height = drawSize / homeCardAspect;
 
     return Positioned(
-      left: pos.dx - size / 2,
+      left: pos.dx - drawSize / 2,
       top: pos.dy - height / 2,
-      width: size,
+      width: drawSize,
       height: height,
       child: JourneyFaceUpCard(
         assetPath: card.avatarAssetPath,

@@ -18,19 +18,19 @@ class JourneyOpenProgress {
     this.cardGather = 0,
   });
 
-  /// Peek → center for the real card stack.
+  /// Open: peek slides off left (0 at peek → 1 gone). Close: unused fade with shells.
   final double deckArrive;
 
-  /// Stack spread: tight peek (~0.4) → fan out on open → travel to center.
+  /// Stack spread while the peek is still visible (~0.4 tight → fan).
   final double deckFan;
 
-  /// Top + defeated shells expand L→R while the deck moves to center.
+  /// Top + defeated shells expand L→R as the table opens.
   final double sectionExpand;
 
-  /// Challenger cards fly from the deck into top piles.
+  /// Challenger pile groups fly in from off-left onto top piles.
   final double pileDeal;
 
-  /// Defeated cards fly from the deck into defeated piles (after challengers).
+  /// Defeated pile groups fly in from off-left onto bottom piles (after challengers).
   final double defeatedDeal;
 
   /// Close-only: piles exit, then peek deck slides in (0 on table → 1 at peek).
@@ -39,7 +39,7 @@ class JourneyOpenProgress {
   static const settled = JourneyOpenProgress();
 }
 
-/// One card in the open-deal sequence (challengers first, defeated last / bottom).
+/// One card in the open-enter sequence (challengers first, defeated last).
 class JourneyDealSlot {
   const JourneyDealSlot({
     required this.world,
@@ -60,44 +60,60 @@ abstract final class JourneyDealPlan {
   static const cardsPerPile = 4;
   static const dealCardCount = worldCount * cardsPerPile;
 
-  /// Challengers first (deck top), defeated last (deck bottom → dealt after).
+  /// Challengers first, defeated last (enter order: top piles then bottom).
   static List<JourneyDealSlot> forSnapshot(JourneyDisplaySnapshot snap) {
     final challenger = <JourneyDealSlot>[];
     final defeated = <JourneyDealSlot>[];
     for (final world in JourneyWorld.values) {
       final def = snap.worldOf(world);
-      if (!def.unlocked) {
-        for (var d = 0; d < cardsPerPile; d++) {
-          challenger.add(
-            JourneyDealSlot(world: world, toDefeated: false, depthInPile: d),
-          );
-        }
-      } else {
-        final pile = def.pileCards;
-        for (var d = 0; d < pile.length; d++) {
-          challenger.add(
-            JourneyDealSlot(
-              world: world,
-              toDefeated: false,
-              card: pile[d],
-              depthInPile: d,
-            ),
-          );
-        }
-        final fallen = def.defeatedCards;
-        for (var d = 0; d < fallen.length; d++) {
-          defeated.add(
-            JourneyDealSlot(
-              world: world,
-              toDefeated: true,
-              card: fallen[d],
-              depthInPile: d,
-            ),
-          );
-        }
+      // Sealed kingdoms stay empty pads — no cards fly into mystery slots.
+      if (!def.unlocked) continue;
+      final pile = def.pileCards;
+      for (var d = 0; d < pile.length; d++) {
+        challenger.add(
+          JourneyDealSlot(
+            world: world,
+            toDefeated: false,
+            card: pile[d],
+            depthInPile: d,
+          ),
+        );
+      }
+      final fallen = def.defeatedRoyals;
+      for (var d = 0; d < fallen.length; d++) {
+        defeated.add(
+          JourneyDealSlot(
+            world: world,
+            toDefeated: true,
+            card: fallen[d],
+            depthInPile: d,
+          ),
+        );
       }
     }
     return [...challenger, ...defeated];
+  }
+
+  /// Bottom-left peek always needs a visible stack — even before Journey starts.
+  static List<JourneyDealSlot> ensurePeekCards(List<JourneyDealSlot> plan) {
+    if (plan.isNotEmpty) return plan;
+    return const [
+      JourneyDealSlot(
+        world: JourneyWorld.diamonds,
+        toDefeated: false,
+        depthInPile: 0,
+      ),
+      JourneyDealSlot(
+        world: JourneyWorld.diamonds,
+        toDefeated: false,
+        depthInPile: 1,
+      ),
+      JourneyDealSlot(
+        world: JourneyWorld.diamonds,
+        toDefeated: false,
+        depthInPile: 2,
+      ),
+    ];
   }
 
   static int challengerCount(List<JourneyDealSlot> plan) =>
@@ -106,30 +122,94 @@ abstract final class JourneyDealPlan {
   static int defeatedCount(List<JourneyDealSlot> plan) =>
       plan.where((s) => s.toDefeated).length;
 
-  static double _phaseFlight(double phase, int index, int count) {
-    if (count <= 0) return 1;
-    const active = 0.72;
-    final slot = 1.0 / count;
-    final start = index * slot;
-    final end = start + slot * active;
+  /// Unique worlds in plan order (enum order), then reversed for enter LIFO.
+  static List<JourneyWorld> pileEnterOrder(
+    List<JourneyDealSlot> plan, {
+    required bool toDefeated,
+  }) {
+    final seen = <JourneyWorld>{};
+    final seq = <JourneyWorld>[];
+    for (final slot in plan) {
+      if (slot.toDefeated != toDefeated) continue;
+      if (seen.add(slot.world)) seq.add(slot.world);
+    }
+    return seq.reversed.toList();
+  }
+
+  static int challengerPileCount(List<JourneyDealSlot> plan) =>
+      pileEnterOrder(plan, toDefeated: false).length;
+
+  static int defeatedPileCount(List<JourneyDealSlot> plan) =>
+      pileEnterOrder(plan, toDefeated: true).length;
+
+  /// Same stagger as leave gather: piles move as groups (flightLen 0.32).
+  static double pileGroupFlight(double phase, int pileIndex, int pileCount) {
+    if (phase <= 0) return 0;
+    if (phase >= 1) return 1;
+    if (pileCount <= 0) return phase;
+    const flightLen = 0.32;
+    final startSpan = (1.0 - flightLen).clamp(0.05, 1.0);
+    final start =
+        pileCount == 1 ? 0.0 : pileIndex * (startSpan / (pileCount - 1));
+    final end = (start + flightLen).clamp(0.0, 1.0);
     if (phase <= start) return 0;
     if (phase >= end) return 1;
     return ((phase - start) / (end - start)).clamp(0.0, 1.0);
+  }
+
+  static double _flightForWorld(
+    List<JourneyDealSlot> plan,
+    double phase, {
+    required bool toDefeated,
+    required JourneyWorld world,
+  }) {
+    final order = pileEnterOrder(plan, toDefeated: toDefeated);
+    final pileIndex = order.indexOf(world);
+    if (pileIndex < 0) return 1;
+    return pileGroupFlight(phase, pileIndex, order.length);
   }
 
   static double challengerFlight(
     List<JourneyDealSlot> plan,
     double pileDeal,
     int challengerIndex,
-  ) =>
-      _phaseFlight(pileDeal, challengerIndex, challengerCount(plan));
+  ) {
+    var ci = 0;
+    for (final slot in plan) {
+      if (slot.toDefeated) continue;
+      if (ci == challengerIndex) {
+        return _flightForWorld(
+          plan,
+          pileDeal,
+          toDefeated: false,
+          world: slot.world,
+        );
+      }
+      ci++;
+    }
+    return 1;
+  }
 
   static double defeatedFlight(
     List<JourneyDealSlot> plan,
     double defeatedDeal,
     int defeatedIndex,
-  ) =>
-      _phaseFlight(defeatedDeal, defeatedIndex, defeatedCount(plan));
+  ) {
+    var di = 0;
+    for (final slot in plan) {
+      if (!slot.toDefeated) continue;
+      if (di == defeatedIndex) {
+        return _flightForWorld(
+          plan,
+          defeatedDeal,
+          toDefeated: true,
+          world: slot.world,
+        );
+      }
+      di++;
+    }
+    return 1;
+  }
 
   static int challengerLandedDepth(
     List<JourneyDealSlot> plan,
@@ -174,7 +254,7 @@ abstract final class JourneyDealPlan {
 ///
 /// Keep interval numbers here so [JourneyStage] stays orchestration-only.
 abstract final class JourneyTimeline {
-  static const openDuration = Duration(milliseconds: 3200);
+  static const openDuration = Duration(milliseconds: 1600);
   static const closeDuration = Duration(milliseconds: 1450);
   static const peekFanDuration = Duration(milliseconds: 320);
 
@@ -190,12 +270,13 @@ abstract final class JourneyTimeline {
       deckArrive: _deckArrive(t: t, closeC: closeC, closing: closing),
       deckFan: _deckFan(t: t, peekFan: peekFan, closing: closing),
       sectionExpand: _sectionExpand(t: t, closeC: closeC, closing: closing),
+      // Peek exits left first, then shells expand, then piles fly in.
       pileDeal: closing
           ? 1.0
-          : const Interval(0.38, 0.74, curve: Curves.linear).transform(t),
+          : const Interval(0.40, 0.72, curve: Curves.linear).transform(t),
       defeatedDeal: closing
           ? 1.0
-          : const Interval(0.72, 1.0, curve: Curves.linear).transform(t),
+          : const Interval(0.68, 1.0, curve: Curves.linear).transform(t),
       cardGather: closing
           ? const Interval(0.0, 0.9, curve: Curves.linear).transform(closeC)
           : 0.0,
@@ -236,9 +317,12 @@ abstract final class JourneyTimeline {
   }) {
     if (closing) return 0.42;
     final tapFan = Curves.easeOutCubic.transform(peekFan);
+    // Fan on tap / early open; collapse as the peek exits left.
     final openFan =
-        const Interval(0.0, 0.14, curve: Curves.easeOutCubic).transform(t);
-    return 0.38 + 1.1 * math.max(tapFan, openFan);
+        const Interval(0.0, 0.18, curve: Curves.easeOutCubic).transform(t);
+    final hold = 1.0 -
+        const Interval(0.12, 0.30, curve: Curves.easeInCubic).transform(t);
+    return 0.38 + 1.1 * math.max(tapFan, openFan) * hold.clamp(0.0, 1.0);
   }
 
   static double _deckArrive({
@@ -250,8 +334,8 @@ abstract final class JourneyTimeline {
       return 1.0 -
           const Interval(0.0, 0.55, curve: Curves.easeInCubic).transform(closeC);
     }
-    return const Interval(0.12, 0.40, curve: Curves.easeInOutCubic)
-        .transform(t);
+    // Peek slides off left before shells expand (no travel to table center).
+    return const Interval(0.0, 0.30, curve: Curves.easeInCubic).transform(t);
   }
 
   static double _sectionExpand({
@@ -263,7 +347,8 @@ abstract final class JourneyTimeline {
       return 1.0 -
           const Interval(0.0, 0.55, curve: Curves.easeInCubic).transform(closeC);
     }
-    return const Interval(0.14, 0.40, curve: Curves.easeOutCubic).transform(t);
+    // After peek has mostly left.
+    return const Interval(0.28, 0.48, curve: Curves.easeOutCubic).transform(t);
   }
 }
 

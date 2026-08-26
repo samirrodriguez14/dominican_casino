@@ -4,9 +4,57 @@ import 'package:dominican_casino/models/journey_progress.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+JourneyDisplaySnapshot _openDiamondsBoard({int playerLevel = 2}) {
+  return hydrateJourneyBoard(
+    progress: JourneyProgress(
+      diamondsEntered: true,
+      diamondsJackUnlocked: true,
+    ),
+    playerLevel: playerLevel,
+  );
+}
+
 void main() {
+  test('snapshot starts with Diamonds kingdom sealed', () {
+    expect(journeyBoardSnapshot.worldOf(JourneyWorld.diamonds).unlocked, isFalse);
+    expect(
+      journeyBoardSnapshot
+          .worldOf(JourneyWorld.diamonds)
+          .cardOf(JourneyRank.jack)!
+          .state,
+      JourneyCardState.levelLocked,
+    );
+  });
+
+  test('gates: enter unlocks kingdom but keeps Jack face-down', () {
+    final entered = hydrateJourneyBoard(
+      progress: JourneyProgress(diamondsEntered: true),
+      playerLevel: 2,
+    );
+    final diamonds = entered.worldOf(JourneyWorld.diamonds);
+    expect(diamonds.unlocked, isTrue);
+    expect(
+      diamonds.cardOf(JourneyRank.jack)!.state,
+      JourneyCardState.levelLocked,
+    );
+  });
+
+  test('gates: jack unlock flips Jack face-up at level 1', () {
+    final snap = hydrateJourneyBoard(
+      progress: JourneyProgress(
+        diamondsEntered: true,
+        diamondsJackUnlocked: true,
+      ),
+      playerLevel: 1,
+    );
+    expect(
+      snap.worldOf(JourneyWorld.diamonds).cardOf(JourneyRank.jack)!.state,
+      JourneyCardState.available,
+    );
+  });
+
   test('defeat unlocks next rank and Ace unlocks next world', () {
-    var snap = journeyBoardSnapshot.withLevelApplied(2);
+    var snap = _openDiamondsBoard();
 
     expect(
       snap.worldOf(JourneyWorld.diamonds).cardOf(JourneyRank.jack)!.state,
@@ -64,28 +112,28 @@ void main() {
     expect(clubs.cardOf(JourneyRank.jack)!.state, JourneyCardState.available);
   });
 
-  test('level gate unlocks Jack at level 1', () {
-    final snap = journeyBoardSnapshot.withLevelApplied(1);
-    expect(
-      snap.worldOf(JourneyWorld.diamonds).cardOf(JourneyRank.jack)!.state,
-      JourneyCardState.available,
-    );
-  });
-
   test('hydrateJourneyBoard applies defeats then level gate', () {
-    final progress = JourneyProgress.empty()
-      ..recordDefeat(JourneyWorld.diamonds, JourneyRank.jack);
+    final progress = JourneyProgress(
+      diamondsEntered: true,
+      diamondsJackUnlocked: true,
+    )..recordDefeat(JourneyWorld.diamonds, JourneyRank.jack);
     final snap = hydrateJourneyBoard(progress: progress, playerLevel: 1);
     final diamonds = snap.worldOf(JourneyWorld.diamonds);
+    expect(diamonds.unlocked, isTrue);
     expect(diamonds.cardOf(JourneyRank.jack)!.state, JourneyCardState.defeated);
     expect(diamonds.cardOf(JourneyRank.queen)!.state, JourneyCardState.available);
     expect(diamonds.cardOf(JourneyRank.queen)!.gameMode, GameMode.rummy);
   });
 
-  test('journeyGameForRank maps royals to modes', () {
-    expect(journeyGameForRank(JourneyRank.jack), GameMode.tresydos);
-    expect(journeyGameForRank(JourneyRank.queen), GameMode.rummy);
-    expect(journeyGameForRank(JourneyRank.king), GameMode.casinoSpeed);
-    expect(journeyGameForRank(JourneyRank.ace), isNull);
+  test('journey themes unlock only after prior Ace', () {
+    final progress = JourneyProgress.empty();
+    expect(progress.canUnlockThemeFor(JourneyWorld.diamonds), isTrue);
+    expect(progress.canUnlockThemeFor(JourneyWorld.clubs), isFalse);
+    expect(progress.canUnlockThemeFor(JourneyWorld.spades), isFalse);
+
+    progress.recordDefeat(JourneyWorld.hearts, JourneyRank.ace);
+    expect(progress.canUnlockThemeFor(JourneyWorld.spades), isTrue);
+    expect(progress.hasEntered(JourneyWorld.spades), isFalse);
+    expect(progress.hasEntered(JourneyWorld.hearts), isTrue);
   });
 }

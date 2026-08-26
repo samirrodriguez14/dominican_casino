@@ -22,6 +22,7 @@ class PlayerScoreAvatar extends StatelessWidget {
     this.isOpen = false,
     this.turnDeadline,
     this.turnTotal,
+    this.showJourneyAces = false,
   });
 
   final String? avatarId;
@@ -37,6 +38,8 @@ class PlayerScoreAvatar extends StatelessWidget {
   /// Remaining time is drawn as a ring around this seat.
   final DateTime? turnDeadline;
   final Duration? turnTotal;
+  /// Show claimed Journey Ace medallions (local player seats).
+  final bool showJourneyAces;
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +225,7 @@ class PlayerScoreAvatar extends StatelessWidget {
         avatarAsset: avatarAsset,
         size: s,
         showBorder: false,
+        showJourneyAces: showJourneyAces,
       ),
     );
   }

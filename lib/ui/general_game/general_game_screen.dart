@@ -836,6 +836,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                                 isTurn: vm.isSeatTurn(vm.me),
                                 turnDeadline: vm.turnDeadlineFor(vm.me),
                                 turnTotal: vm.turnTotal,
+                                showJourneyAces: true,
                                 onPressed: () {
                                   AppHaptics.mediumImpact();
                                   showGameStatusPopup(context, vm: vm);
@@ -982,6 +983,7 @@ class _SimpleControlBar extends StatelessWidget {
                 ? null
                 : vm.turnDeadlineFor(vm.me),
             turnTotal: vm.tutorialMode ? null : vm.turnTotal,
+            showJourneyAces: true,
             onPressed: () {
               AppHaptics.mediumImpact();
               showGameStatusPopup(context, vm: vm);

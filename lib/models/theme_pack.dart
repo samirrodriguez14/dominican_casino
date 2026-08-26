@@ -1,5 +1,6 @@
 import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
 enum ThemeUnlockKind { free, play, coins }
@@ -89,6 +90,24 @@ List<ThemePack> playLockedPacks(Set<Theme> owned) {
     for (final pack in themePackCatalog)
       if (pack.isPlayLocked && !owned.contains(pack.id)) pack,
   ];
+}
+
+/// Owned packs + at most one sealed "next" Journey theme (progression order).
+List<ThemePack> visibleThemePacksForProfile(Set<Theme> owned) {
+  final ownedPacks = [
+    for (final pack in themePackCatalog)
+      if (owned.contains(pack.id) || pack.unlock == ThemeUnlockKind.free) pack,
+  ];
+  ThemePack? nextSealed;
+  for (final world in JourneyWorld.values) {
+    final pack = themePack(world.themeId);
+    if (!owned.contains(pack.id)) {
+      nextSealed = pack;
+      break;
+    }
+  }
+  if (nextSealed == null) return ownedPacks;
+  return [...ownedPacks, nextSealed];
 }
 
 class CardBackTint {

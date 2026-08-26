@@ -155,7 +155,7 @@ class _CornerPip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            PlayerAvatarView(avatarId: avatarId, size: 40, showBorder: false),
+            PlayerAvatarView(avatarId: avatarId, size: 40, showBorder: false, showJourneyAces: true),
             if (letter != null) ...[
               const SizedBox(height: 4),
               Text(
@@ -241,7 +241,7 @@ class _AvatarButton extends StatelessWidget {
             child: Stack(
               alignment: Alignment.bottomRight,
               children: [
-                PlayerAvatarView(avatarId: avatarId, size: size),
+                PlayerAvatarView(avatarId: avatarId, size: size, showJourneyAces: true),
                 Container(
                   width: 34,
                   height: 34,

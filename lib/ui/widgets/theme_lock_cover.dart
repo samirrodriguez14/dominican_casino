@@ -8,16 +8,19 @@ class ThemeLockCover extends StatelessWidget {
     this.coinCost,
     this.lockSize = 36,
     this.caption,
+    this.mystery = false,
   });
 
   final int? coinCost;
   final double lockSize;
   final String? caption;
+  /// Fully obscure the pack art (Journey sealed theme).
+  final bool mystery;
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: const Color(0x6B000000),
+      color: mystery ? const Color(0xF2141418) : const Color(0x6B000000),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

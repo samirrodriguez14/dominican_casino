@@ -5,7 +5,7 @@ import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Stack pose for the Journey deck (peek and deal are the same object).
+/// Stack pose for the Journey deck (peek and enter share the same object).
 class JourneyDeckLayout {
   /// [fan] ~0.4 tight peek; ~1.4 opened fan before traveling to center.
   static Offset stackOffset(int visualFromBottom, int count, {double fan = 1}) {
@@ -20,7 +20,7 @@ class JourneyDeckLayout {
   }
 }
 
-/// Live Journey deck: peek → fan → deal, and close gather (exit left → peek in).
+/// Live Journey deck: peek → reverse-gather enter, and close gather (exit left → peek in).
 class JourneyLiveDeck extends StatelessWidget {
   const JourneyLiveDeck({
     super.key,
@@ -32,6 +32,7 @@ class JourneyLiveDeck extends StatelessWidget {
     required this.pileTargets,
     required this.defeatedTargets,
     required this.pileCardSize,
+    this.peekDealPlan,
     this.deckFan = 0.4,
     this.cardGather = 0,
     this.onTap,
@@ -40,6 +41,8 @@ class JourneyLiveDeck extends StatelessWidget {
   });
 
   final List<JourneyDealSlot> dealPlan;
+  /// Bottom-left peek stack; defaults to [dealPlan], may include placeholders.
+  final List<JourneyDealSlot>? peekDealPlan;
   final double deckArrive;
   final double deckFan;
   final double pileDeal;
@@ -53,6 +56,9 @@ class JourneyLiveDeck extends StatelessWidget {
   final VoidCallback? onPressStart;
   final bool showLabel;
 
+  List<JourneyDealSlot> get _peekPlan =>
+      peekDealPlan ?? JourneyDealPlan.ensurePeekCards(dealPlan);
+
   static const peekWidth = 78.0;
   static const peekOverflow = 34.0;
   static const peekBottom = 6.0;
@@ -64,7 +70,7 @@ class JourneyLiveDeck extends StatelessWidget {
         stage.height - peekBottom - peekHeight() * 0.5,
       );
 
-  // ── Deal indexing ─────────────────────────────────────────────────────────
+  // ── Enter / leave flight indexing ─────────────────────────────────────────
 
   double _dealFlightAt(int planIndex) {
     final slot = dealPlan[planIndex];
@@ -94,6 +100,9 @@ class JourneyLiveDeck extends StatelessWidget {
     final wi = JourneyWorld.values.indexOf(slot.world);
     return slot.toDefeated ? defeatedTargets[wi] : pileTargets[wi];
   }
+
+  Offset _offLeftFor(JourneyDealSlot slot) =>
+      Offset(-pileCardSize * 1.35, _homeFor(slot).dy);
 
   // ── Gather (close): pile exit → whole peek in ─────────────────────────────
 
@@ -145,13 +154,14 @@ class JourneyLiveDeck extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (cardGather > 0.001) return _buildGather();
-    return _buildDeal();
+    return _buildEnter();
   }
 
   Widget _buildGather() {
     final peek = peekCenter(stageSize);
     final n = dealPlan.length;
-    if (n == 0) return const SizedBox.shrink();
+    final peekPlan = _peekPlan;
+    final peekN = peekPlan.length;
 
     final waiting = <int>[
       for (var j = 0; j < n; j++)
@@ -182,17 +192,17 @@ class JourneyLiveDeck extends StatelessWidget {
             arcLift: 18,
             easeOut: false,
           ),
-        if (peekIn > 0.01)
+        if (peekIn > 0.01 && peekN > 0)
           Opacity(
             opacity: peekIn.clamp(0.0, 1.0),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                for (var i = n - 1; i >= 0; i--)
-                  _restingCard(
-                    planIndex: i,
-                    visualFromBottom: n - 1 - i,
-                    count: n,
+                for (var i = peekN - 1; i >= 0; i--)
+                  _restingPeekCard(
+                    slot: peekPlan[i],
+                    visualFromBottom: peekN - 1 - i,
+                    count: peekN,
                     deckOrigin: deckOrigin,
                     deckCardSize: peekWidth,
                     topMost: i == 0,
@@ -219,66 +229,67 @@ class JourneyLiveDeck extends StatelessWidget {
     );
   }
 
-  Widget _buildDeal() {
+  /// Open: peek slides off left, then pile groups fly in from off-left (leave reverse).
+  Widget _buildEnter() {
     final peek = peekCenter(stageSize);
-    final table = Offset(stageSize.width * 0.5, stageSize.height * 0.46);
-    final deckOrigin = Offset.lerp(peek, table, deckArrive)!;
-    final deckCardSize = peekWidth * (1.0 + 0.28 * deckArrive);
-
-    final remainingAsc = <int>[
-      for (var j = 0; j < dealPlan.length; j++)
-        if (_dealFlightAt(j) <= 0.001) j,
-    ]..sort();
+    final n = dealPlan.length;
+    final peekPlan = _peekPlan;
+    final peekN = peekPlan.length;
+    final peekOut = Curves.easeInCubic.transform(deckArrive.clamp(0.0, 1.0));
+    final offLeftPeek = Offset(-peekWidth * 1.5, peek.dy);
+    // Keep the stack anchored at bottom-left until it exits left.
+    final deckOrigin = Offset.lerp(peek, offLeftPeek, peekOut)!;
 
     final inFlight = <int>[
-      for (var j = 0; j < dealPlan.length; j++)
+      for (var j = 0; j < n; j++)
         if (_dealFlightAt(j) > 0.001 && _dealFlightAt(j) < 0.98) j,
     ];
 
-    if (remainingAsc.isEmpty && inFlight.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final peeking = onTap != null && deckArrive < 0.08 && pileDeal < 0.02;
+    final showPeek = peekN > 0 && peekOut < 0.99 && pileDeal < 0.08;
+    final peekInteractive =
+        onTap != null && deckArrive < 0.08 && pileDeal < 0.02;
     final peekH = peekHeight();
-    final hitW = deckCardSize + 20;
+    final hitW = peekWidth + 20;
     final hitH = peekH + 20;
-    final localOrigin = Offset(hitW / 2, hitH / 2);
 
     final resting = <Widget>[
-      for (var i = remainingAsc.length - 1; i >= 0; i--)
-        _restingCard(
-          planIndex: remainingAsc[i],
-          visualFromBottom: remainingAsc.length - 1 - i,
-          count: remainingAsc.length,
-          deckOrigin: peeking ? localOrigin : deckOrigin,
-          deckCardSize: deckCardSize,
+      for (var i = peekN - 1; i >= 0; i--)
+        _restingPeekCard(
+          slot: peekPlan[i],
+          visualFromBottom: peekN - 1 - i,
+          count: peekN,
+          deckOrigin: Offset(hitW / 2, hitH / 2),
+          deckCardSize: peekWidth,
           topMost: i == 0,
           fan: deckFan,
         ),
     ];
 
+    // Positioned must stay a direct Stack child (Opacity cannot wrap it).
+    final peekStack = Stack(clipBehavior: Clip.none, children: resting);
+    final peekChild = peekInteractive
+        ? _PeekTapTarget(
+            width: hitW,
+            height: hitH,
+            onPressStart: onPressStart,
+            onTap: onTap!,
+            child: peekStack,
+          )
+        : SizedBox(width: hitW, height: hitH, child: peekStack);
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        if (peeking)
+        if (showPeek)
           Positioned(
-            left: peek.dx - hitW / 2,
-            top: peek.dy - hitH / 2,
-            child: _PeekTapTarget(
-              width: hitW,
-              height: hitH,
-              onPressStart: onPressStart,
-              onTap: onTap!,
-              child: Stack(clipBehavior: Clip.none, children: resting),
+            left: deckOrigin.dx - hitW / 2,
+            top: deckOrigin.dy - hitH / 2,
+            child: Opacity(
+              opacity: (1.0 - peekOut * 0.35).clamp(0.0, 1.0),
+              child: peekChild,
             ),
-          )
-        else
-          ...resting,
-        if (showLabel &&
-            deckArrive < 0.08 &&
-            pileDeal < 0.02 &&
-            remainingAsc.isNotEmpty)
+          ),
+        if (showLabel && peekInteractive)
           Positioned(
             left: peek.dx - peekWidth / 2,
             top: peek.dy - peekHeight() / 2,
@@ -315,20 +326,20 @@ class JourneyLiveDeck extends StatelessWidget {
           _FlightCard(
             slot: dealPlan[i],
             flight: _dealFlightAt(i),
-            from: deckOrigin,
+            from: _offLeftFor(dealPlan[i]),
             to: _homeFor(dealPlan[i]),
-            fromSize: deckCardSize,
+            fromSize: pileCardSize * 0.72,
             toSize: pileCardSize * (1.0 - 0.03 * dealPlan[i].depthInPile),
             angleSeed: i,
-            arcLift: 52,
+            arcLift: 18,
             easeOut: true,
           ),
       ],
     );
   }
 
-  Widget _restingCard({
-    required int planIndex,
+  Widget _restingPeekCard({
+    required JourneyDealSlot slot,
     required int visualFromBottom,
     required int count,
     required Offset deckOrigin,
@@ -336,7 +347,6 @@ class JourneyLiveDeck extends StatelessWidget {
     required bool topMost,
     required double fan,
   }) {
-    final slot = dealPlan[planIndex];
     final offset = JourneyDeckLayout.stackOffset(
       visualFromBottom,
       count,
@@ -450,7 +460,7 @@ class _PeekTapTargetState extends State<_PeekTapTarget> {
   }
 }
 
-/// Shared bezier flight used by deal-out and gather-exit.
+/// Shared bezier flight used by reverse-gather enter and gather-exit.
 class _FlightCard extends StatelessWidget {
   const _FlightCard({
     required this.slot,

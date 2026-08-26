@@ -208,7 +208,7 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
   bool get _atMaxFront => _frontIndex >= _maxFront;
 
   bool get _usesFan =>
-      widget.peekStyle == CardPeekStyle.fan && widget.itemCount >= 3;
+      widget.peekStyle == CardPeekStyle.fan && widget.itemCount >= 2;
 
   _CardPose get _peekPose =>
       _CardPose.lerp(_frontRest, _backRest, _reveal.value);

@@ -45,8 +45,10 @@ class ProfileScreenState extends State<ProfileScreen> {
       });
       return;
     }
-    final current = context.read<AppRepo>().appTheme;
-    final index = themePackCatalog.indexWhere((pack) => pack.id == current);
+    final repo = context.read<AppRepo>();
+    final current = repo.appTheme;
+    final packs = visibleThemePacksForProfile(repo.ownedPacks);
+    final index = packs.indexWhere((pack) => pack.id == current);
     setState(() {
       _looksIndex = index < 0 ? 0 : index;
       _looksMode = true;

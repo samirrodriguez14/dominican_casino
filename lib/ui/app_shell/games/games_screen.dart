@@ -118,6 +118,16 @@ class GamesScreenState extends State<GamesScreen>
     if (mounted) setState(() => _flights = const []);
   }
 
+  /// After a Journey match, force the Journey table (not Games carousel/grid).
+  Future<void> _restoreJourneyAfterMatch() async {
+    if (_gridAnim.value > 0.02) {
+      _gridAnim.stop();
+      _gridAnim.value = 0;
+      if (mounted) setState(() => _flights = const []);
+    }
+    await _journeyKey.currentState?.restoreJourneySettled();
+  }
+
   Rect? _toStage(Rect global) {
     final box = _stageKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return null;
@@ -244,7 +254,7 @@ class GamesScreenState extends State<GamesScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (!context.read<AppRepo>().takeOpenJourneyRequest()) return;
-        _journeyKey.currentState?.restoreJourneySettled();
+        _restoreJourneyAfterMatch();
       });
     }
     return Padding(

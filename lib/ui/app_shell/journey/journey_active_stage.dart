@@ -57,7 +57,7 @@ class JourneyActiveStage extends StatelessWidget {
   }
 }
 
-/// One continuous card object: pile → flip → grow → rewards peel to the right.
+/// One continuous card object: pile → flip → grow into focus.
 class JourneyChallengerFocus extends StatelessWidget {
   const JourneyChallengerFocus({
     super.key,
@@ -85,14 +85,9 @@ class JourneyChallengerFocus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 0–0.52: travel + flip + size up
-    // 0.52–0.68: hold at final size
-    // 0.68–1.0: rewards card peels out to the right
+    // 0–0.72: travel + flip + size up; then hold interactive.
     final travel = Curves.easeInOutCubic.transform(
-      (progress / 0.52).clamp(0.0, 1.0),
-    );
-    final peel = Curves.easeOutCubic.transform(
-      ((progress - 0.68) / 0.32).clamp(0.0, 1.0),
+      (progress / 0.72).clamp(0.0, 1.0),
     );
     final mid = Offset(
       (from.dx + to.dx) / 2,
@@ -106,66 +101,36 @@ class JourneyChallengerFocus extends StatelessWidget {
         : Curves.easeOut.transform(
             ((travel - 0.32) / 0.28).clamp(0.0, 1.0),
           );
-    final interactive = progress > 0.92;
+    final interactive = progress > 0.78;
 
     return Positioned(
       left: pos.dx - size / 2,
       top: pos.dy - height / 2,
-      width: size + 28 * peel,
-      height: height + 20 * peel,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Rewards peels from under the challenger toward the right.
-          if (peel > 0.01)
-            Positioned(
-              left: 10 * peel,
-              top: 10 * peel,
-              width: size,
-              height: height,
-              child: Transform.rotate(
-                angle: 0.14 * peel,
-                child: Opacity(
-                  opacity: peel,
-                  child: Transform.scale(
-                    scale: 0.94 + 0.02 * peel,
-                    child: _RewardsFace(card: card),
-                  ),
-                ),
+      width: size,
+      height: height,
+      child: Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()
+          ..setEntry(3, 2, 0.0014)
+          ..rotateY((1 - faceAmount) * 1.55),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Opacity(
+              opacity: (1.0 - faceAmount).clamp(0.0, 1.0),
+              child: JourneyFaceDownCard(world: card.world, radius: 14),
+            ),
+            Opacity(
+              opacity: faceAmount.clamp(0.0, 1.0),
+              child: _ChallengeFace(
+                card: card,
+                showChrome: travel > 0.78,
+                onChallenge: interactive ? onChallenge : null,
+                onDismiss: interactive ? onDismiss : null,
               ),
             ),
-          // Front challenger — same object for the whole motion.
-          Positioned(
-            left: 0,
-            top: 0,
-            width: size,
-            height: height,
-            child: Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.0014)
-                ..rotateY((1 - faceAmount) * 1.55),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Opacity(
-                    opacity: (1.0 - faceAmount).clamp(0.0, 1.0),
-                    child: JourneyFaceDownCard(world: card.world, radius: 14),
-                  ),
-                  Opacity(
-                    opacity: faceAmount.clamp(0.0, 1.0),
-                    child: _ChallengeFace(
-                      card: card,
-                      showChrome: travel > 0.78,
-                      onChallenge: interactive ? onChallenge : null,
-                      onDismiss: interactive ? onDismiss : null,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -320,109 +285,6 @@ class _ChallengeFace extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _RewardsFace extends StatelessWidget {
-  const _RewardsFace({required this.card});
-
-  final JourneyCardDef card;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = journeyPaletteFor(card.world);
-    final theme = AppStyle.theme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette.cardBorder.withValues(alpha: .75)),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.black.withValues(alpha: .25),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'On defeat',
-              style: theme.title.copyWith(
-                fontSize: 17,
-                color: palette.accent,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              card.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.caption.copyWith(
-                color: palette.text.withValues(alpha: .7),
-              ),
-            ),
-            const SizedBox(height: 14),
-            _RewardRow(
-              icon: CupertinoIcons.person_crop_circle,
-              label: 'Avatar unlock',
-              palette: palette,
-            ),
-            const SizedBox(height: 12),
-            _RewardRow(
-              icon: CupertinoIcons.paintbrush,
-              label: '${card.world.label} theme',
-              palette: palette,
-            ),
-            const SizedBox(height: 12),
-            _RewardRow(
-              icon: CupertinoIcons.star,
-              label: card.rank == JourneyRank.ace
-                  ? 'Ace collected'
-                  : 'Journey progress',
-              palette: palette,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RewardRow extends StatelessWidget {
-  const _RewardRow({
-    required this.icon,
-    required this.label,
-    required this.palette,
-  });
-
-  final IconData icon;
-  final String label;
-  final JourneyWorldPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: palette.accent.withValues(alpha: .9)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: palette.text.withValues(alpha: .92),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
