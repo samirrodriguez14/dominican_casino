@@ -481,17 +481,31 @@ class FirestoreService extends GameService {
   }
 
   /// Store FCM token on the user profile — never on game documents.
+  /// Keeps per-platform entries so iOS and Android on the same account both
+  /// receive pushes.
   Future<void> saveUserToken(
     String uid,
     String token,
     String? displayName,
   ) async {
+    final platform = _fcmPlatformKey();
     await _users.doc(uid).set({
       'fcmToken': token,
+      'fcmTokens': {platform: token},
       'displayName': ?displayName,
       'name': ?displayName,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  static String _fcmPlatformKey() {
+    if (kIsWeb) return 'web';
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => 'android',
+      TargetPlatform.iOS => 'ios',
+      TargetPlatform.macOS => 'macos',
+      _ => 'other',
+    };
   }
 
   Future<void> saveUserProfile({

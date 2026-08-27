@@ -21,6 +21,7 @@ import 'package:dominican_casino/services/firestore_service.dart';
 import 'package:dominican_casino/services/notifications_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
@@ -169,7 +170,6 @@ class AppRepo extends ChangeNotifier {
   bool _openJourneyRequest = false;
   bool get openJourneyRequest => _openJourneyRequest;
   StreamSubscription<String>? _fcmTokenSub;
-  String? _savedFcmToken;
   String? _activeGameId;
   Future<void> _activeGameWrite = Future.value();
   Timer? _energyTestTimer;
@@ -2136,12 +2136,12 @@ class AppRepo extends ChangeNotifier {
       );
       return;
     }
-    if (_savedFcmToken == token && current.token == token) return;
-    player = current.copyWith(token: token);
-    await _persistPlayerLocal();
+    if (current.token != token) {
+      player = current.copyWith(token: token);
+      await _persistPlayerLocal();
+    }
     try {
       await fs.saveUserToken(uid, token, player!.name);
-      _savedFcmToken = token;
       developer.log(
         'FCM token saved for $uid …${token.substring(token.length - 6)}',
         name: 'notifications',
@@ -2220,7 +2220,6 @@ class AppRepo extends ChangeNotifier {
       await _loadWallet();
       await _loadJourneyProgress();
       if (notificationsEnabled) {
-        _savedFcmToken = null;
         unawaited(_syncFcmToken());
       }
       notifyListeners();
@@ -2485,7 +2484,6 @@ class AppRepo extends ChangeNotifier {
       await _loadJourneyProgress();
       await _reconcileJourneyThemeOwnership();
       if (notificationsEnabled) {
-        _savedFcmToken = null;
         unawaited(_syncFcmToken());
       }
       notifyListeners();
@@ -2516,7 +2514,6 @@ class AppRepo extends ChangeNotifier {
     }
     await _loadJourneyProgress();
     if (notificationsEnabled) {
-      _savedFcmToken = null;
       unawaited(_syncFcmToken());
     }
     notifyListeners();
@@ -3049,6 +3046,29 @@ class AppRepo extends ChangeNotifier {
     await _syncFcmToken();
     notifyListeners();
     return true;
+  }
+
+  /// Debug: call Cloud Function [testTurn] for an immediate turn-style push.
+  Future<bool> testTurnNotification() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      debugPrint('testTurn failed: no FirebaseAuth user');
+      return false;
+    }
+    try {
+      await ensurePlayableUid();
+      if (notificationsEnabled) await _syncFcmToken();
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('testTurn')
+          .call<Object?>({});
+      final data = result.data;
+      final status = data is Map ? data['result']?.toString() : data?.toString();
+      debugPrint('testTurn: $status');
+      return status == 'sent';
+    } catch (e) {
+      debugPrint('testTurn failed: $e');
+      return false;
+    }
   }
 
   /// Debug: mark energy-full as due so onEnergyFull can send on its next

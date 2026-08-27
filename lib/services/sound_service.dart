@@ -37,11 +37,26 @@ class SoundService extends ChangeNotifier {
     ),
   );
 
-  final AudioPlayer _oneshot = AudioPlayer()..positionUpdater = null;
-  final AudioPlayer _music = AudioPlayer()..positionUpdater = null;
+  /// audioplayers attaches a per-frame [FramePositionUpdater] in [AudioPlayer]'s
+  /// constructor, which spams Android logcat with MediaPlayer getCurrentPosition.
+  /// None of our players need position streams — keep polling disabled.
+  static AudioPlayer _playerWithoutPositionPolling() {
+    final player = AudioPlayer();
+    player.positionUpdater = null;
+    return player;
+  }
+
+  static void _silencePositionPolling(Iterable<AudioPlayer> players) {
+    for (final player in players) {
+      player.positionUpdater = null;
+    }
+  }
+
+  final AudioPlayer _oneshot = _playerWithoutPositionPolling();
+  final AudioPlayer _music = _playerWithoutPositionPolling();
   final List<AudioPlayer> _layers = List.generate(
     cardTickMax,
-    (_) => AudioPlayer()..positionUpdater = null,
+    (_) => _playerWithoutPositionPolling(),
   );
   int _layer = 0;
 
@@ -76,6 +91,7 @@ class SoundService extends ChangeNotifier {
   }
 
   Future<void> load() async {
+    _silencePositionPolling([_oneshot, _music, ..._layers]);
     if (_loaded) return;
     _loaded = true;
     final sp = await SharedPreferences.getInstance();
@@ -96,6 +112,7 @@ class SoundService extends ChangeNotifier {
       await p.setPlayerMode(PlayerMode.lowLatency);
       await p.setAudioContext(_sfxContext);
     }
+    _silencePositionPolling([_oneshot, _music, ..._layers]);
     notifyListeners();
     if (musicEnabled) await startMusic();
   }
@@ -153,10 +170,12 @@ class SoundService extends ChangeNotifier {
     try {
       if (_musicPlaying) {
         await _music.resume();
+        _silencePositionPolling([_music]);
         return;
       }
       await _music.setVolume(musicVolume);
       await _music.play(AssetSource(_musicAsset));
+      _silencePositionPolling([_music]);
       _musicPlaying = true;
     } catch (e) {
       debugPrint('SoundService music: $e');
@@ -190,8 +209,10 @@ class SoundService extends ChangeNotifier {
     final path = _assets[sound];
     if (path == null) return;
     try {
+      _silencePositionPolling([_oneshot]);
       await _oneshot.setVolume(sfxVolume);
       await _oneshot.play(AssetSource(path));
+      _silencePositionPolling([_oneshot]);
     } catch (e) {
       debugPrint('SoundService: $e');
     }
@@ -213,8 +234,10 @@ class SoundService extends ChangeNotifier {
     double volume,
   ) async {
     try {
+      _silencePositionPolling([player]);
       await player.setVolume((volume * sfxVolume).clamp(0, 1));
       await player.play(AssetSource(path));
+      _silencePositionPolling([player]);
     } catch (e) {
       debugPrint('SoundService: $e');
     }

@@ -129,9 +129,10 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
   void _syncActiveGamePresence() {
     if (!mounted) return;
     final lifecycle = WidgetsBinding.instance.lifecycleState;
-    final visible = lifecycle == null ||
-        lifecycle == AppLifecycleState.resumed ||
-        lifecycle == AppLifecycleState.inactive;
+    // Only skip turn pushes while the match is on screen in the foreground.
+    // inactive/paused/background must still receive FCM.
+    final visible =
+        lifecycle == null || lifecycle == AppLifecycleState.resumed;
     final segments = _router.state.uri.pathSegments;
     String? gid;
     if (visible &&

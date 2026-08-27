@@ -35,6 +35,11 @@ export const onTurnChange = onDocumentUpdated("games/{gid}", async (event) => {
   const gameMode =
     typeof after.gameMode === "string" ? after.gameMode : "";
   const copy = _turnCopy();
+  logger.info("Turn change notify", {
+    gid: event.params.gid,
+    nextPid,
+    gameMode,
+  });
   await _sendToUser(nextPid, copy, {
     type: "turn",
     gid: event.params.gid,
@@ -87,6 +92,30 @@ export const testEnergyFull = onCall(
     }
     const result = await _notifyEnergyFull(uid, {force: true});
     return {result};
+  },
+);
+
+/**
+ * Send a turn-style push to the signed-in caller for FCM testing.
+ * @return {{result: string}} sent | skip
+ */
+export const testTurn = onCall(
+  {invoker: "public"},
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "Sign in first");
+    }
+    const gid = typeof request.data?.gid === "string" ?
+      request.data.gid :
+      "test";
+    const copy = _turnCopy();
+    const sent = await _sendToUser(uid, copy, {
+      type: "turn",
+      gid,
+      gameMode: "test",
+    }, {force: true});
+    return {result: sent ? "sent" : "skip"};
   },
 );
 
@@ -166,8 +195,8 @@ async function _notifyEnergyFull(
     return "skip";
   }
 
-  const token = user.fcmToken as string | undefined;
-  if (!token) {
+  const tokens = _collectFcmTokens(user);
+  if (tokens.length === 0) {
     logger.info("No FCM token", {uid});
     return "clear";
   }
@@ -178,68 +207,111 @@ async function _notifyEnergyFull(
 }
 
 /**
- * Send an alert to users/{uid}.fcmToken.
+ * Collect unique FCM registration tokens for a user profile.
+ * @param {Record<string, unknown>|undefined} user users/{uid} data.
+ * @return {string[]} De-duplicated tokens.
+ */
+function _collectFcmTokens(
+  user: Record<string, unknown> | undefined,
+): string[] {
+  if (!user) return [];
+  const out = new Set<string>();
+  const legacy = user.fcmToken;
+  if (typeof legacy === "string" && legacy.length > 0) {
+    out.add(legacy);
+  }
+  const map = user.fcmTokens;
+  if (map && typeof map === "object" && !Array.isArray(map)) {
+    for (const value of Object.values(map as Record<string, unknown>)) {
+      if (typeof value === "string" && value.length > 0) {
+        out.add(value);
+      }
+    }
+  }
+  return [...out];
+}
+
+/**
+ * Send an alert to all of a user's FCM tokens.
  * @param {string} uid Auth uid / users doc id.
  * @param {{title: string, body: string}} copy Notification text.
  * @param {Record<string, string>} data Extra FCM data payload.
- * @return {Promise<boolean>} True when FCM accepted the send.
+ * @param {object=} opts Optional flags.
+ * @param {boolean=} opts.force Skip in-game skip for testing.
+ * @return {Promise<boolean>} True when at least one FCM send succeeded.
  */
 async function _sendToUser(
   uid: string,
   copy: {title: string; body: string},
   data: Record<string, string>,
+  opts?: {force?: boolean},
 ): Promise<boolean> {
+  const force = opts?.force === true;
   const userSnap = await admin.firestore()
     .collection("users").doc(uid).get();
   const user = userSnap.data();
   const viewingGid = user?.activeGameId as string | undefined;
   const targetGid = data.gid;
-  if (targetGid && viewingGid === targetGid) {
+  if (!force && targetGid && viewingGid === targetGid) {
     logger.info("Skip, user viewing game", {uid, gid: targetGid});
     return false;
   }
-  const token = user?.fcmToken as string | undefined;
-  if (!token) {
+  const tokens = _collectFcmTokens(user);
+  if (tokens.length === 0) {
     logger.info("No FCM token", {uid});
     return false;
   }
 
-  try {
-    const messageId = await admin.messaging().send({
-      token,
-      notification: {
-        title: copy.title,
-        body: copy.body,
-      },
-      data,
-      android: {
-        priority: "high",
+  const payloadData: Record<string, string> = {
+    ...data,
+    title: copy.title,
+    body: copy.body,
+  };
+
+  let anySent = false;
+  for (const token of tokens) {
+    try {
+      const messageId = await admin.messaging().send({
+        token,
         notification: {
-          sound: "default",
-          channelId: ANDROID_CHANNEL_ID,
+          title: copy.title,
+          body: copy.body,
         },
-      },
-      apns: {
-        headers: {
-          "apns-push-type": "alert",
-          "apns-priority": "10",
-        },
-        payload: {
-          aps: {
-            alert: {
-              title: copy.title,
-              body: copy.body,
-            },
+        data: payloadData,
+        android: {
+          priority: "high",
+          notification: {
             sound: "default",
-            badge: 1,
+            channelId: ANDROID_CHANNEL_ID,
           },
         },
-      },
-    });
-    logger.info("Push sent", {uid, messageId, type: data.type ?? "turn"});
-    return true;
-  } catch (err) {
-    logger.error("FCM send failed", {uid, err});
-    return false;
+        apns: {
+          headers: {
+            "apns-push-type": "alert",
+            "apns-priority": "10",
+          },
+          payload: {
+            aps: {
+              alert: {
+                title: copy.title,
+                body: copy.body,
+              },
+              sound: "default",
+              badge: 1,
+            },
+          },
+        },
+      });
+      logger.info("Push sent", {
+        uid,
+        messageId,
+        type: data.type ?? "turn",
+        tokenTail: token.slice(-8),
+      });
+      anySent = true;
+    } catch (err) {
+      logger.error("FCM send failed", {uid, tokenTail: token.slice(-8), err});
+    }
   }
+  return anySent;
 }
