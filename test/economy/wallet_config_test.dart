@@ -21,6 +21,25 @@ void main() {
     expect(WalletConfig.potShareForRank(entry, seats, 3), 0);
   });
 
+  test('WalletConfig pot math works for 5–6 players (70/20/10)', () {
+    expect(WalletConfig.potTotal(100, 5), 500);
+    expect(WalletConfig.potShareForRank(100, 5, 1), 350);
+    expect(WalletConfig.potShareForRank(100, 5, 2), 100);
+    expect(WalletConfig.potShareForRank(100, 5, 3), 50);
+    expect(WalletConfig.potShareForRank(100, 5, 4), 0);
+
+    expect(WalletConfig.potTotal(100, 6), 600);
+    expect(WalletConfig.potShareForRank(100, 6, 1), 420);
+    expect(WalletConfig.potShareForRank(100, 6, 2), 120);
+    expect(WalletConfig.potShareForRank(100, 6, 3), 60);
+    expect(WalletConfig.potShareForRank(100, 6, 4), 0);
+
+    expect(WalletConfig.potTotal(50, 6), 300);
+    expect(WalletConfig.potShareForRank(50, 6, 1), 210);
+    expect(WalletConfig.potShareForRank(50, 6, 2), 60);
+    expect(WalletConfig.potShareForRank(50, 6, 3), 30);
+  });
+
   test('WalletConfig stakesFor uses allowNoBet correctly', () {
     expect(
       WalletConfig.stakesFor(allowNoBet: false),

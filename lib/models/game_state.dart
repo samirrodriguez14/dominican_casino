@@ -388,8 +388,8 @@ class GameState {
     if (gameStatus != GameStatus.gameOver) return 0;
     if (!entryPaidBy.contains(pid)) return 0;
 
-    // Rummy / BS: single go-out winner-takes-all.
-    if (gameMode == GameMode.rummy || gameMode == GameMode.bs) {
+    // Rummy (Romir): single go-out winner-takes-all.
+    if (gameMode == GameMode.rummy) {
       final rank = finishRank(pid);
       if (rank == null) return 0;
       if (rank != 1) return 0;

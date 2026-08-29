@@ -1,7 +1,7 @@
 import 'package:dominican_casino/models/avatar_catalog.dart';
 
 /// On-device AI seats for local matches. Distinct names/avatars so a
-/// 4-player Tres y Dos table is not four copies of Pulilo.
+/// multi-seat table is not copies of the same bot.
 class LocalBotProfile {
   const LocalBotProfile({
     required this.name,
@@ -22,10 +22,16 @@ class LocalBotProfile {
 }
 
 class LocalBotRoster {
+  /// Enough unique seats for a 6-player BS table (5 bots + human).
   static const profiles = [
     LocalBotProfile(name: 'Pulilo', avatarId: 'star'),
     LocalBotProfile(name: 'Lila', avatarId: 'moon'),
     LocalBotProfile(name: 'Tico', avatarId: 'palm'),
+    LocalBotProfile(name: 'Nena', avatarId: 'heart'),
+    LocalBotProfile(name: 'Chago', avatarId: 'spade'),
+    LocalBotProfile(name: 'Mango', avatarId: 'sun'),
+    LocalBotProfile(name: 'Coco', avatarId: 'club'),
+    LocalBotProfile(name: 'Yuca', avatarId: 'diamond'),
   ];
 
   static bool isBotName(Object? name) {
@@ -39,6 +45,7 @@ class LocalBotRoster {
     String? avoidAvatarId,
     Set<String>? avoidAvatarIds,
   }) {
+    if (count <= 0) return const [];
     final avoid = <String>{
       if (avoidAvatarId != null && avoidAvatarId.isNotEmpty) avoidAvatarId,
       ...?avoidAvatarIds,
@@ -52,7 +59,13 @@ class LocalBotRoster {
         return ac ? 1 : -1;
       });
     }
-    final n = count.clamp(0, ordered.length);
-    return ordered.take(n).toList();
+    if (count <= ordered.length) {
+      return ordered.take(count).toList();
+    }
+    // Should not need more than [profiles], but cycle safely if asked.
+    return [
+      for (var i = 0; i < count; i++)
+        ordered[i % ordered.length],
+    ];
   }
 }

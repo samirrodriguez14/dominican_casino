@@ -980,24 +980,42 @@ class _SimpleControlBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          PlayerScoreAvatar(
-            key: vm.scoreKey,
-            avatarId: mySeat.avatarId,
-            avatarAsset: mySeat.avatarAsset,
-            defeatedAces: mySeat.defeatedAces,
-            wearJourneyAccessories: mySeat.wearJourneyAccessories,
-            name: vm.player.name,
-            score: vm.gameState.scores[vm.me] ?? 0,
-            pendingCoins: vm.revealedPendingFor(vm.me),
-            isTurn: vm.tutorialMode ? scoreHint : vm.isSeatTurn(vm.me),
-            turnDeadline: vm.tutorialMode
-                ? null
-                : vm.turnDeadlineFor(vm.me),
-            turnTotal: vm.tutorialMode ? null : vm.turnTotal,
-            onPressed: () {
-              AppHaptics.mediumImpact();
-              showGameStatusPopup(context, vm: vm);
-            },
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              PlayerScoreAvatar(
+                key: vm.scoreKey,
+                avatarId: mySeat.avatarId,
+                avatarAsset: mySeat.avatarAsset,
+                defeatedAces: mySeat.defeatedAces,
+                wearJourneyAccessories: mySeat.wearJourneyAccessories,
+                name: vm.player.name,
+                score: vm.gameState.scores[vm.me] ?? 0,
+                pendingCoins: vm.revealedPendingFor(vm.me),
+                isTurn: vm.tutorialMode ? scoreHint : vm.isSeatTurn(vm.me),
+                turnDeadline: vm.tutorialMode
+                    ? null
+                    : vm.turnDeadlineFor(vm.me),
+                turnTotal: vm.tutorialMode ? null : vm.turnTotal,
+                onPressed: () {
+                  AppHaptics.mediumImpact();
+                  showGameStatusPopup(context, vm: vm);
+                },
+              ),
+              if (vm.bsSpeechFor(vm.me) != null)
+                Positioned(
+                  bottom: 72,
+                  child: IgnorePointer(
+                    child: SpeechBubblePopup(
+                      message: vm.bsSpeechFor(vm.me)!.$1,
+                      messageId: '${vm.me}_${vm.bsSpeechFor(vm.me)!.$1}',
+                      tail: ReactionBubbleTail.bottom,
+                      emphasized: vm.bsSpeechFor(vm.me)!.$2,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 14),
           const _PlayerReactionButton(),
@@ -1112,7 +1130,7 @@ class _GameModeChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final showStake = stake != null && stake! > 0;
-    final tableSeats = seats.clamp(2, 4);
+    final tableSeats = seats.clamp(2, 6);
     final jackpot = showStake ? WalletConfig.potTotal(stake!, tableSeats) : 0;
     final winXp = ExperienceConfig.winXp;
     final showExtras = showStake || showWinXp;
@@ -1219,9 +1237,16 @@ void _showPotInfo(
 }) {
   final theme = AppStyle.theme;
   final l10n = AppLocalizations.of(context);
-  final tableSeats = seats.clamp(2, 4);
+  final tableSeats = seats.clamp(2, 6);
   final pot = WalletConfig.potTotal(stake, tableSeats);
   final hasStake = stake > 0;
+  final placeRows = [
+    for (var place = 1; place <= tableSeats; place++)
+      (
+        place: place,
+        amount: WalletConfig.potShareForRank(stake, tableSeats, place),
+      ),
+  ].where((row) => row.amount > 0).toList();
 
   showGeneralDialog<void>(
     context: context,
@@ -1285,15 +1310,11 @@ void _showPotInfo(
                       ],
                     ),
                     const SizedBox(height: 12),
-                    for (var place = 1; place <= tableSeats; place++) ...[
-                      if (place > 1) const SizedBox(height: 6),
+                    for (var i = 0; i < placeRows.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 6),
                       _PotPlaceRow(
-                        label: l10n.coinPayoutPlace(place),
-                        amount: WalletConfig.potShareForRank(
-                          stake,
-                          tableSeats,
-                          place,
-                        ),
+                        label: l10n.coinPayoutPlace(placeRows[i].place),
+                        amount: placeRows[i].amount,
                       ),
                     ],
                   ],

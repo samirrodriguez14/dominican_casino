@@ -173,7 +173,7 @@ class LocalPlayer extends ChangeNotifier {
           for (final botPid in botPids) {
             final call = BsPlayer.maybeCallBluff(botPid, state);
             if (call == null) continue;
-            await Future.delayed(const Duration(milliseconds: 600));
+            await Future.delayed(const Duration(milliseconds: 2500));
             if (_disposed) return false;
             final current = gameRepo.gameState;
             if (current == null ||

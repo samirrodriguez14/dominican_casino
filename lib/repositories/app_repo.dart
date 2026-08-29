@@ -2954,7 +2954,11 @@ class AppRepo extends ChangeNotifier {
     }
     if (local) {
       final seats = maxSeatsFor(mode);
-      final botCount = (seats > 2 ? playerCount.clamp(2, seats) : 2) - 1;
+      final minSeats = mode == GameMode.bs ? 3 : 2;
+      final filled = seats > 2
+          ? playerCount.clamp(minSeats, seats)
+          : 2;
+      final botCount = filled - 1;
       final avoidIds = <String>{
         if (host?.avatarId != null) host!.avatarId!,
         if (botOverride != null) botOverride.avatarId,

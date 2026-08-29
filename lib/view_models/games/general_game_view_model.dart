@@ -1015,6 +1015,29 @@ class GeneralGameViewModel extends ChangeNotifier {
   bool get canCallBluff =>
       outOfTurnActions.any((a) => a is CallBluffAction);
 
+  /// Speech line for a seat during BS claim / Call Bluff beats.
+  /// Returns (message, emphasized) or null.
+  (String, bool)? bsSpeechFor(String pid) {
+    if (gameState.gameMode != GameMode.bs || pid.isEmpty) return null;
+    final bs = gameState.bsState;
+    if (bs == null) return null;
+
+    if (bs.phase == BsPhase.challenge &&
+        bs.lastClaimPid == pid &&
+        bs.lastClaimRank != null &&
+        bs.lastClaimCount > 0) {
+      final rank = bs.lastClaimRank!;
+      final label = bs.lastClaimCount == 1 ? rank : '${rank}s';
+      return ('${bs.lastClaimCount} $label', false);
+    }
+
+    if (bs.challengerPid == pid && bs.wasBluffing != null) {
+      return ('BS!', true);
+    }
+
+    return null;
+  }
+
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
 
   /// Cards shown in the bottom hand fan (excludes Rummy box overlays).
@@ -2877,7 +2900,12 @@ class GeneralGameViewModel extends ChangeNotifier {
       case ZoneType.playerDeck:
         return zone.holderId == myPid ? myDeckKey : oppDeckKey;
       case ZoneType.playerHand:
-        return zone.holderId == myPid ? myHandKey : oppHandKey;
+        if (zone.holderId == myPid) return myHandKey;
+        final holder = zone.holderId;
+        if (holder != null && holder.isNotEmpty) {
+          return oppHandKeyForPid(holder);
+        }
+        return oppHandKey;
       case ZoneType.stack:
         final sid = zone.holderId;
         if (sid != null && sid.isNotEmpty) return keyForStack(sid);
@@ -2886,6 +2914,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   final Map<String, GlobalKey> _celebrationAvatarKeys = {};
+  final Map<String, GlobalKey> _oppHandKeys = {};
 
   /// GlobalKey for the winner's avatar UI.
   /// Uses shared keys for me/opp in 1v1, and per-pid keys for multi-seat games.
@@ -2895,6 +2924,15 @@ class GeneralGameViewModel extends ChangeNotifier {
     return _celebrationAvatarKeys.putIfAbsent(
       pid,
       () => GlobalKey(debugLabel: 'celebrate_$pid'),
+    );
+  }
+
+  /// Per-seat opponent hand anchor (BS and other multi-opp boards).
+  GlobalKey oppHandKeyForPid(String pid) {
+    if (opp != null && pid == opp) return oppHandKey;
+    return _oppHandKeys.putIfAbsent(
+      pid,
+      () => GlobalKey(debugLabel: 'opp_hand_$pid'),
     );
   }
 }

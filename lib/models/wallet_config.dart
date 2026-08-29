@@ -27,10 +27,16 @@ class WalletConfig {
   /// 2-player tables: winner takes the full pot ([entryCost] × seats).
   static const int winPayoutMultiplier = 2;
 
-  /// 3+ player tables: 1st and 2nd split the pot; 3rd and 4th get nothing.
+  /// 3–4 player tables: 1st / 2nd split; others get nothing.
   static const int fieldPayoutMinSeats = 3;
   static const int fieldFirstPercent = 75;
   static const int fieldSecondPercent = 25;
+
+  /// 5+ player tables: 1st / 2nd / 3rd take 70 / 20 / 10.
+  static const int largeFieldMinSeats = 5;
+  static const int largeFirstPercent = 70;
+  static const int largeSecondPercent = 20;
+  static const int largeThirdPercent = 10;
 
   static int potTotal(int entry, int seats) {
     if (entry <= 0 || seats <= 0) return 0;
@@ -44,6 +50,16 @@ class WalletConfig {
     if (pot <= 0) return 0;
     if (seats < fieldPayoutMinSeats) {
       return rank == 1 ? pot : 0;
+    }
+    if (seats >= largeFieldMinSeats) {
+      if (rank == 1) return (pot * largeFirstPercent) ~/ 100;
+      if (rank == 2) return (pot * largeSecondPercent) ~/ 100;
+      if (rank == 3) {
+        final first = (pot * largeFirstPercent) ~/ 100;
+        final second = (pot * largeSecondPercent) ~/ 100;
+        return pot - first - second;
+      }
+      return 0;
     }
     if (rank == 1) return (pot * fieldFirstPercent) ~/ 100;
     if (rank == 2) {

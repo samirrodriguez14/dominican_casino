@@ -264,7 +264,16 @@ class BsOutOfTurnHandler {
         state.winnerId = entry.key;
         state.gameStatus = GameStatus.gameOver;
         state.round.roundStatus = RoundStatus.completed;
-        state.scores[entry.key] = (state.scores[entry.key] ?? 0) + 1;
+        // Rank everyone by remaining hand size so 2nd/3rd pot shares work.
+        // Winner forced highest; fewer leftover cards = better place.
+        for (final handEntry in state.hands.entries) {
+          if (!state.playersInfo.containsKey(handEntry.key)) continue;
+          if (handEntry.key == entry.key) {
+            state.scores[handEntry.key] = 100000;
+          } else {
+            state.scores[handEntry.key] = 1000 - handEntry.value.length;
+          }
+        }
         state.setTurn('');
         return;
       }
