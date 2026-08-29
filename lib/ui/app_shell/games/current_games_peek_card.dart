@@ -2,17 +2,20 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/player_match_stats.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/app_shell/games/current_games_list.dart';
+import 'package:dominican_casino/ui/app_shell/games/current_games_stats_face.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
+import 'package:dominican_casino/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
 /// Peeking playing card in the shell corner. Swipe up to expand; bottom link
-/// flips between current games and history like other playing-card faces.
+/// flips between current games and stats like other playing-card faces.
 class CurrentGamesPeekCard extends StatefulWidget {
   const CurrentGamesPeekCard({super.key});
 
@@ -224,15 +227,16 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
     _syncNudge();
   }
 
-  static Color _faceFor(AppTheme theme, {required bool history}) {
-    return history ? theme.pickerFaceEdge : theme.pickerFaceAlt;
+  static Color _faceFor(AppTheme theme, {required bool stats}) {
+    return stats ? theme.pickerFaceEdge : theme.pickerFaceAlt;
   }
 
-  void _openHistory() {
+  void _openStats() {
     if (!_open || _flip.isAnimating || _expand.isAnimating) return;
     SoundService.instance.playLayered(GameSound.softCard);
     AppHaptics.selectionClick();
     unawaited(context.read<GamesViewModel>().ensureArchivedLoaded());
+    unawaited(context.read<ProfileViewModel>().ensureOpponentStatsLoaded());
     _flip.forward();
   }
 
@@ -248,8 +252,11 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
     final l10n = AppLocalizations.of(context);
     final theme = AppStyle.theme;
     final yourTurnCount = context.watch<GamesViewModel>().yourTurnCount;
-    final currentFace = _faceFor(theme, history: false);
-    final historyFace = _faceFor(theme, history: true);
+    final stats =
+        context.watch<ProfileViewModel>().player?.matchStats ??
+        PlayerMatchStats.empty;
+    final currentFace = _faceFor(theme, stats: false);
+    final statsFace = _faceFor(theme, stats: true);
     final bottomInset = MediaQuery.paddingOf(context);
 
     return LayoutBuilder(
@@ -276,7 +283,7 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
           curve: Curves.easeOut,
         ).transform(t);
         final peekOpacity = (1 - t * 1.8).clamp(0.0, 1.0);
-        final showingHistory = _flip.value >= 0.5;
+        final showingStats = _flip.value >= 0.5;
         final flipT = Curves.easeInOutCubic.transform(
           _flip.value.clamp(0.0, 1.0),
         );
@@ -319,12 +326,12 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
                       transform: Matrix4.identity()
                         ..setEntry(3, 2, 0.0012)
                         ..rotateY(flipAngle),
-                      child: showingHistory
+                      child: showingStats
                           ? Transform(
                               alignment: Alignment.center,
                               transform: Matrix4.identity()..rotateY(math.pi),
                               child: _cardShell(
-                                face: historyFace,
+                                face: statsFace,
                                 theme: theme,
                                 child: _cardInterior(
                                   l10n: l10n,
@@ -333,7 +340,8 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
                                   peekOpacity: peekOpacity,
                                   yourTurnCount: yourTurnCount,
                                   expandT: t,
-                                  history: true,
+                                  stats: true,
+                                  matchStats: stats,
                                 ),
                               ),
                             )
@@ -347,7 +355,8 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
                                 peekOpacity: peekOpacity,
                                 yourTurnCount: yourTurnCount,
                                 expandT: t,
-                                history: false,
+                                stats: false,
+                                matchStats: stats,
                               ),
                             ),
                     ),
@@ -368,7 +377,8 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
     required double peekOpacity,
     required int yourTurnCount,
     required double expandT,
-    required bool history,
+    required bool stats,
+    required PlayerMatchStats matchStats,
   }) {
     return Stack(
       children: [
@@ -381,14 +391,15 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
             child: _faceBody(
               l10n: l10n,
               theme: theme,
-              title: history ? l10n.gameHistory : l10n.currentGames,
-              history: history,
-              flipLabel: history ? l10n.currentGames : l10n.gameHistory,
-              onFlip: history ? _openCurrent : _openHistory,
+              title: stats ? l10n.stats : l10n.currentGames,
+              stats: stats,
+              matchStats: matchStats,
+              flipLabel: stats ? l10n.currentGames : l10n.stats,
+              onFlip: stats ? _openCurrent : _openStats,
             ),
           ),
         ),
-        if (!history)
+        if (!stats)
           Positioned(
             top: 10,
             left: 10,
@@ -415,7 +426,8 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
     required AppLocalizations l10n,
     required AppTheme theme,
     required String title,
-    required bool history,
+    required bool stats,
+    required PlayerMatchStats matchStats,
     required String flipLabel,
     required VoidCallback onFlip,
   }) {
@@ -440,12 +452,21 @@ class _CurrentGamesPeekCardState extends State<CurrentGamesPeekCard>
           ),
         ),
         Expanded(
-          child: CurrentGamesList(
-            history: history,
-            onBeforeEnter: _close,
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-            embeddedInCard: true,
-          ),
+          child: stats
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+                  child: CurrentGamesStatsFace(
+                    theme: theme,
+                    stats: matchStats,
+                    onBeforeEnterHistoryGame: _close,
+                  ),
+                )
+              : CurrentGamesList(
+                  history: false,
+                  onBeforeEnter: _close,
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                  embeddedInCard: true,
+                ),
         ),
         Center(
           child: CupertinoButton(

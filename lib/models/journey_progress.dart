@@ -446,6 +446,12 @@ class JourneyProgress {
           if (isDefeated(world, JourneyRank.ace)) world,
       };
 
+  /// Worlds the player has entered (or begun defeating) — league membership.
+  Set<JourneyWorld> get enteredLeagueWorlds => {
+        for (final world in JourneyWorld.values)
+          if (hasEntered(world)) world,
+      };
+
   /// Trail steps completed (Jack–Ace across four kingdoms), 0…16.
   int get trailStepsCompleted {
     var n = 0;

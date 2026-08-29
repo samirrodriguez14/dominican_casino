@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/player_match_stats.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -10,7 +9,7 @@ import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_progress_trail.dart';
 import 'package:dominican_casino/ui/app_shell/profile/avatar_picker_popup.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_coach.dart';
-import 'package:dominican_casino/ui/app_shell/profile/profile_stats_face.dart';
+import 'package:dominican_casino/ui/app_shell/profile/profile_league_face.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_wallet_cards.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
@@ -29,6 +28,7 @@ class ProfileCard extends StatefulWidget {
     this.identityKey,
     this.walletKey,
     this.looksKey,
+    this.leagueKey,
     this.coach,
   });
 
@@ -36,6 +36,7 @@ class ProfileCard extends StatefulWidget {
   final GlobalKey? identityKey;
   final GlobalKey? walletKey;
   final GlobalKey? looksKey;
+  final GlobalKey? leagueKey;
   final ProfileCoachController? coach;
 
   @override
@@ -70,10 +71,11 @@ class _ProfileCardState extends State<ProfileCard>
     setState(() => _editingCard = value);
   }
 
-  void _toggleStats() {
+  void _toggleLeague() {
     if (_editingCard) return;
     if (_flip.isAnimating) return;
     if (_flip.value < 0.5) {
+      context.read<ProfileViewModel>().ensureLeagueLoaded();
       _flip.forward();
     } else {
       _flip.reverse();
@@ -87,7 +89,6 @@ class _ProfileCardState extends State<ProfileCard>
     final name = vm.player?.name ?? '';
     final avatarId = vm.player?.avatarId;
     final score = AvatarScoreTheme.of(avatarId);
-    final stats = vm.player?.matchStats ?? PlayerMatchStats.empty;
 
     return AspectRatio(
       aspectRatio: homeCardAspect,
@@ -123,10 +124,9 @@ class _ProfileCardState extends State<ProfileCard>
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(18),
                 child: showBack
-                    ? ProfileStatsFace(
-                        stats: stats,
+                    ? ProfileLeagueFace(
                         score: score,
-                        onFlipBack: _toggleStats,
+                        onFlipBack: _toggleLeague,
                       )
                     : _buildFront(
                         repo: repo,
@@ -231,25 +231,28 @@ class _ProfileCardState extends State<ProfileCard>
             Positioned(
               top: 10,
               right: 10,
-              child: _CoachWrap(
-                coach: widget.coach,
-                targetKey: widget.looksKey,
-                bounce: false,
-                child: KeyedSubtree(
-                  key: widget.looksKey,
-                  child: _LooksActionButton(
-                    score: score,
-                    onPressed: widget.onToggleLooks!,
-                  ),
+              child: KeyedSubtree(
+                key: widget.looksKey,
+                child: _LooksActionButton(
+                  score: score,
+                  onPressed: widget.onToggleLooks!,
                 ),
               ),
             ),
           Positioned(
             right: 10,
             bottom: 10,
-            child: _StatsActionButton(
-              score: score,
-              onPressed: SoundService.wrapTap(_toggleStats),
+            child: _CoachWrap(
+              coach: widget.coach,
+              targetKey: widget.leagueKey,
+              bounce: true,
+              child: KeyedSubtree(
+                key: widget.leagueKey,
+                child: _LeagueActionButton(
+                  score: score,
+                  onPressed: SoundService.wrapTap(_toggleLeague),
+                ),
+              ),
             ),
           ),
         ] else
@@ -380,8 +383,8 @@ class _LooksActionButton extends StatelessWidget {
   }
 }
 
-class _StatsActionButton extends StatelessWidget {
-  const _StatsActionButton({required this.score, required this.onPressed});
+class _LeagueActionButton extends StatelessWidget {
+  const _LeagueActionButton({required this.score, required this.onPressed});
 
   final AvatarScoreTheme score;
   final VoidCallback? onPressed;
@@ -403,10 +406,10 @@ class _StatsActionButton extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: Icon(
-          CupertinoIcons.chart_pie_fill,
+          CupertinoIcons.rosette,
           size: 22,
           color: score.ink,
-          semanticLabel: l10n.stats,
+          semanticLabel: l10n.league,
         ),
       ),
     );

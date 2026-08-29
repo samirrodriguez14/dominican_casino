@@ -12,6 +12,16 @@ class ExperienceConfig {
     return 40 + 20 * (level - 1);
   }
 
+  /// Lifetime XP needed to sit at the start of [level] (level ≥ 1).
+  static int totalXpToReachLevel(int level) {
+    if (level <= 1) return 0;
+    var total = 0;
+    for (var l = 1; l < level; l++) {
+      total += xpToAdvance(l);
+    }
+    return total;
+  }
+
   static int xpForMatch({required bool won}) => won ? winXp : lossXp;
 }
 

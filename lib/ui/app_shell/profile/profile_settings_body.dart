@@ -11,6 +11,7 @@ import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
 import 'package:dominican_casino/ui/widgets/apple_mark.dart';
 import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -151,28 +152,52 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                               ),
                             ),
                           ),
-                          const SettingsSectionDivider(),
-                          SettingsSectionLabel(l10n.resetLevelRewards),
-                          const SizedBox(height: 4),
-                          CupertinoButton(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            onPressed: SoundService.wrapTap(
-                              () => _confirmResetLevelRewards(
-                                context,
-                                appRepo,
-                                l10n,
+                          if (kDebugMode) ...[
+                            const SettingsSectionDivider(),
+                            SettingsSectionLabel(l10n.resetLevelRewards),
+                            const SizedBox(height: 4),
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              onPressed: SoundService.wrapTap(
+                                () => _confirmResetLevelRewards(
+                                  context,
+                                  appRepo,
+                                  l10n,
+                                ),
+                              ),
+                              child: Text(
+                                l10n.resetLevelRewards,
+                                style: const TextStyle(
+                                  color: CupertinoColors.destructiveRed,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                            child: Text(
-                              l10n.resetLevelRewards,
-                              style: const TextStyle(
-                                color: CupertinoColors.destructiveRed,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                            const SettingsSectionDivider(),
+                            SettingsSectionLabel(l10n.debugResetLevel),
+                            const SizedBox(height: 4),
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              onPressed: SoundService.wrapTap(
+                                () => _confirmResetLevel(
+                                  context,
+                                  appRepo,
+                                  l10n,
+                                ),
+                              ),
+                              child: Text(
+                                l10n.debugResetLevel,
+                                style: const TextStyle(
+                                  color: CupertinoColors.destructiveRed,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                           const SettingsSectionDivider(),
                           SettingsSectionLabel(l10n.account),
                           const SizedBox(height: 4),
@@ -354,6 +379,33 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     );
     if (go != true || !context.mounted) return;
     await appRepo.resetLevelRewards();
+  }
+
+  Future<void> _confirmResetLevel(
+    BuildContext context,
+    AppRepo appRepo,
+    AppLocalizations l10n,
+  ) async {
+    final go = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.debugResetLevel),
+        content: Text(l10n.debugResetLevelBody),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
+            child: Text(l10n.cancel),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
+            child: Text(l10n.debugResetLevelConfirm),
+          ),
+        ],
+      ),
+    );
+    if (go != true || !context.mounted) return;
+    await appRepo.debugResetLevel();
   }
 
   Future<void> _connectGoogle(

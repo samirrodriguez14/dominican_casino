@@ -174,6 +174,8 @@ class AppLocalizations {
   String get debugTestEnergyPush => isEs
       ? 'Probar aviso de energía'
       : 'Test energy notification';
+  String get debugReachLevel5 =>
+      isEs ? 'Llegar al nivel 5 (debug)' : 'Reach level 5 (debug)';
   String get buyEnergyWithCoins =>
       isEs ? 'Energía por monedas' : 'Energy for coins';
   String get howToPlay => isEs ? 'Cómo jugar' : 'How to play';
@@ -302,6 +304,36 @@ class AppLocalizations {
   String get statsEmpty => isEs
       ? 'Juega partidas para ver tu récord aquí.'
       : 'Play matches to see your record here.';
+  String get league => isEs ? 'Liga' : 'League';
+  String get friends => isEs ? 'Amigos' : 'Friends';
+  String get topOfLeague => isEs ? 'Top de la liga' : 'Top of league';
+  String get topFriends => isEs ? 'Top amigos' : 'Top friends';
+  String yourRank(int rank) => isEs ? 'Tu puesto: #$rank' : 'Your rank: #$rank';
+  String leagueName(String suit) => isEs ? 'Liga $suit' : '$suit League';
+  String get leagueLocked => isEs
+      ? 'Entra al Journey de Diamantes para unirte a la Liga Diamantes.'
+      : 'Enter the Diamonds Journey to join Diamonds League.';
+  String leagueLockedFor(String suit) => isEs
+      ? 'Entra al Journey de $suit para desbloquear esta liga.'
+      : 'Enter the $suit Journey to unlock this league.';
+  String get leagueEmptyFriends => isEs
+      ? 'Juega contra amigos para verlos aquí.'
+      : 'Play friends to see them ranked here.';
+  String get nextLeague => isEs ? 'Próxima liga' : 'Next league';
+  String get previousLeague => isEs ? 'Liga anterior' : 'Previous league';
+  String leagueFinishedRank(int rank) =>
+      isEs ? 'Saliste en #$rank' : 'Finished #$rank';
+  String get leagueFinished => isEs ? 'Completada' : 'Completed';
+  String get leagueWinsLabel => isEs ? 'victorias' : 'wins';
+  String get swipeLeaguesHint => isEs
+      ? 'Desliza para ver otras ligas'
+      : 'Swipe for other leagues';
+  String leagueBadge(String? suit) {
+    if (suit == null || suit.isEmpty) {
+      return isEs ? 'Sin liga' : 'No league';
+    }
+    return leagueName(suit);
+  }
 
   String gameModeName(GameMode mode) {
     return switch (mode) {
@@ -551,8 +583,8 @@ class AppLocalizations {
       isEs ? 'Restablecer Journey' : 'Reset Journey';
 
   String get resetJourneyBody => isEs
-      ? 'Esto reinicia la historia de Journey, el entrenamiento, el XP y vuelve a bloquear temas y avatares desbloqueados. Monedas y energía no cambian.'
-      : 'This resets Journey story progress, training, XP, and locks Journey themes and avatars again. Coins and energy are unchanged.';
+      ? 'Esto reinicia la historia de Journey, el entrenamiento, la liga y vuelve a bloquear temas y avatares del Journey. El nivel, la experiencia, monedas y energía no cambian.'
+      : 'This resets Journey story progress, training, your league, and locks Journey themes and avatars again. Level, XP, coins, and energy are unchanged.';
 
   String get resetJourneyConfirm =>
       isEs ? 'Restablecer' : 'Reset';
@@ -566,6 +598,16 @@ class AppLocalizations {
 
   String get resetLevelRewardsConfirm =>
       isEs ? 'Reiniciar' : 'Restart';
+
+  String get debugResetLevel =>
+      isEs ? 'Reiniciar nivel (debug)' : 'Reset level (debug)';
+
+  String get debugResetLevelBody => isEs
+      ? 'Esto pone la experiencia en 0 y vuelve al nivel 1. Solo para pruebas.'
+      : 'This sets XP to 0 and returns you to level 1. For testing only.';
+
+  String get debugResetLevelConfirm =>
+      isEs ? 'Reiniciar nivel' : 'Reset level';
 
   String googleSignInError(String? code) {
     switch (code) {

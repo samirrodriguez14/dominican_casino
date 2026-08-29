@@ -26,6 +26,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   final GlobalKey _identityKey = GlobalKey();
   final GlobalKey _walletKey = GlobalKey();
   final GlobalKey _looksKey = GlobalKey();
+  final GlobalKey _leagueKey = GlobalKey();
   final GlobalKey _themesKey = GlobalKey();
   final GlobalKey _doneKey = GlobalKey();
 
@@ -42,7 +43,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _coach = ProfileCoachController(looksKey: _looksKey);
+    _coach = ProfileCoachController(leagueKey: _leagueKey);
   }
 
   @override
@@ -103,14 +104,15 @@ class ProfileScreenState extends State<ProfileScreen> {
       _coach.finish();
       return;
     }
-    // Only after Journey theme unlock → "Go to profile".
+    // Only after Journey kingdom unlock → "Go to profile".
     if (!repo.takePendingProfileThemeTip()) return;
     _coachScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      // Same as before: leave looks mode and bring the identity card to front
+      // so the league tip target is on-screen for the tooltip.
       await _ensureProfileCardFront();
       if (!mounted) return;
-      // Let the profile card / looks button lay out before highlighting.
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
       _coach.start();
@@ -192,6 +194,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                             identityKey: _identityKey,
                             walletKey: _walletKey,
                             looksKey: _looksKey,
+                            leagueKey: _leagueKey,
                             coach: _coach,
                           )
                         : const ProfileSettingsBody();

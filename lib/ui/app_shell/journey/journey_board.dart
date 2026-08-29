@@ -399,6 +399,7 @@ class JourneyBoardState extends State<JourneyBoard>
   Future<bool> _runThemeUnlockCeremony(JourneyWorld world) async {
     if (_themeUnlockWorld != null) return false;
     final repo = context.read<AppRepo>();
+    if (!repo.canEnterKingdom(world)) return false;
     final alreadyOwned = repo.ownsPack(world.themeId) &&
         repo.journeyProgress.hasEntered(world);
     if (alreadyOwned) {
@@ -2775,6 +2776,9 @@ class JourneyBoardState extends State<JourneyBoard>
     final repo = context.read<AppRepo>();
     final firstUnlock = !repo.ownsPack(world.themeId) ||
         !repo.journeyProgress.hasEntered(world);
+    if (firstUnlock && !repo.canEnterKingdom(world)) {
+      return false;
+    }
     final currentWorld = journeyWorldForTheme(repo.appTheme);
     if (currentWorld != world) {
       final go = await confirmEnterKingdom(context, world: world);
@@ -2848,6 +2852,7 @@ class JourneyBoardState extends State<JourneyBoard>
 
   Future<void> _enterClubsFromGuide() async {
     final repo = context.read<AppRepo>();
+    if (!repo.canEnterKingdom(JourneyWorld.clubs)) return;
     final currentWorld = journeyWorldForTheme(repo.appTheme);
     if (currentWorld != JourneyWorld.clubs) {
       final go = await confirmEnterKingdom(
@@ -2882,6 +2887,7 @@ class JourneyBoardState extends State<JourneyBoard>
 
   Future<void> _enterHeartsFromGuide() async {
     final repo = context.read<AppRepo>();
+    if (!repo.canEnterKingdom(JourneyWorld.hearts)) return;
     final currentWorld = journeyWorldForTheme(repo.appTheme);
     if (currentWorld != JourneyWorld.hearts) {
       final go = await confirmEnterKingdom(
@@ -2916,6 +2922,7 @@ class JourneyBoardState extends State<JourneyBoard>
 
   Future<void> _enterSpadesFromGuide() async {
     final repo = context.read<AppRepo>();
+    if (!repo.canEnterKingdom(JourneyWorld.spades)) return;
     final currentWorld = journeyWorldForTheme(repo.appTheme);
     if (currentWorld != JourneyWorld.spades) {
       final go = await confirmEnterKingdom(
@@ -3997,7 +4004,8 @@ class JourneyBoardState extends State<JourneyBoard>
                         }(),
                         enterKingdomLabel: () {
                           final j = JourneyL10n.of(context);
-                          final p = context.read<AppRepo>().journeyProgress;
+                          final repo = context.read<AppRepo>();
+                          final p = repo.journeyProgress;
                           if (_coach.isWaitingForLetter) {
                             return j.continueLabel;
                           }
@@ -4007,7 +4015,12 @@ class JourneyBoardState extends State<JourneyBoard>
                                 JourneyRank.ace,
                               ) &&
                               !p.hasEntered(JourneyWorld.spades)) {
-                            return j.enterKingdom(JourneyWorld.spades);
+                            return repo.canEnterKingdom(JourneyWorld.spades)
+                                ? j.enterKingdom(JourneyWorld.spades)
+                                : j.reachLevelToEnter(
+                                    JourneyWorld.spades.requiredLevel,
+                                    JourneyWorld.spades,
+                                  );
                           }
                           if (p.clubsAceGiftSeen &&
                               p.isDefeated(
@@ -4015,7 +4028,12 @@ class JourneyBoardState extends State<JourneyBoard>
                                 JourneyRank.ace,
                               ) &&
                               !p.hasEntered(JourneyWorld.hearts)) {
-                            return j.enterKingdom(JourneyWorld.hearts);
+                            return repo.canEnterKingdom(JourneyWorld.hearts)
+                                ? j.enterKingdom(JourneyWorld.hearts)
+                                : j.reachLevelToEnter(
+                                    JourneyWorld.hearts.requiredLevel,
+                                    JourneyWorld.hearts,
+                                  );
                           }
                           if (p.diamondsAceEscapeSeen &&
                               p.isDefeated(
@@ -4023,12 +4041,18 @@ class JourneyBoardState extends State<JourneyBoard>
                                 JourneyRank.ace,
                               ) &&
                               !p.hasEntered(JourneyWorld.clubs)) {
-                            return j.enterKingdom(JourneyWorld.clubs);
+                            return repo.canEnterKingdom(JourneyWorld.clubs)
+                                ? j.enterKingdom(JourneyWorld.clubs)
+                                : j.reachLevelToEnter(
+                                    JourneyWorld.clubs.requiredLevel,
+                                    JourneyWorld.clubs,
+                                  );
                           }
                           return j.enterKingdom(JourneyWorld.diamonds);
                         }(),
                         onEnterKingdom: () {
-                          final p = context.read<AppRepo>().journeyProgress;
+                          final repo = context.read<AppRepo>();
+                          final p = repo.journeyProgress;
                           if (_coach.isWaitingForLetter) {
                             _closeGuide();
                             return;
@@ -4039,6 +4063,9 @@ class JourneyBoardState extends State<JourneyBoard>
                                 JourneyRank.ace,
                               ) &&
                               !p.hasEntered(JourneyWorld.spades)) {
+                            if (!repo.canEnterKingdom(JourneyWorld.spades)) {
+                              return;
+                            }
                             _enterKingdomFromGuide(JourneyWorld.spades);
                             return;
                           }
@@ -4048,6 +4075,9 @@ class JourneyBoardState extends State<JourneyBoard>
                                 JourneyRank.ace,
                               ) &&
                               !p.hasEntered(JourneyWorld.hearts)) {
+                            if (!repo.canEnterKingdom(JourneyWorld.hearts)) {
+                              return;
+                            }
                             _enterKingdomFromGuide(JourneyWorld.hearts);
                             return;
                           }
@@ -4057,6 +4087,9 @@ class JourneyBoardState extends State<JourneyBoard>
                                 JourneyRank.ace,
                               ) &&
                               !p.hasEntered(JourneyWorld.clubs)) {
+                            if (!repo.canEnterKingdom(JourneyWorld.clubs)) {
+                              return;
+                            }
                             _enterKingdomFromGuide(JourneyWorld.clubs);
                             return;
                           }

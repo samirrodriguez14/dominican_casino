@@ -7,6 +7,22 @@
         { "fieldPath": "isPublic", "order": "ASCENDING" },
         { "fieldPath": "gameStatus", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "publicProfiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "league", "order": "ASCENDING" },
+        { "fieldPath": "wins", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "publicProfiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "league", "order": "ASCENDING" },
+        { "fieldPath": "wins", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

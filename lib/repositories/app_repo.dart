@@ -8,6 +8,7 @@ import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/models/journey_progress.dart';
+import 'package:dominican_casino/models/league.dart';
 import 'package:dominican_casino/models/level_challenge.dart';
 import 'package:dominican_casino/models/level_rewards.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
@@ -351,7 +352,10 @@ class AppRepo extends ChangeNotifier {
       player = player!.copyWith(avatarId: resolved);
     }
     notifyListeners();
-    if (avatarChanged) unawaited(_persistPlayer());
+    if (avatarChanged) {
+      unawaited(_persistPlayer());
+      unawaited(syncPublicProfile());
+    }
     unawaited(_persistLooks());
   }
 
@@ -461,8 +465,10 @@ class AppRepo extends ChangeNotifier {
       }
       await _loadWallet();
       await _loadJourneyProgress();
+      await _loadLeagueExitRanks();
       await _reconcileJourneyThemeOwnership();
       await _persistLooksRemote();
+      unawaited(syncPublicProfile());
       _ensureEnergyTicker();
       _ensureDailyRewardTicker();
       gamesInfo = await loadGames();
@@ -702,6 +708,7 @@ class AppRepo extends ChangeNotifier {
     _journeyProgress.markEntered(JourneyWorld.diamonds);
     await unlockAndEquipPack(Theme.casino);
     await _persistJourneyProgress();
+    await _afterEnteredLeagueWorld(JourneyWorld.diamonds);
     notifyListeners();
   }
 
@@ -711,6 +718,7 @@ class AppRepo extends ChangeNotifier {
     _journeyProgress.markEntered(JourneyWorld.diamonds);
     _journeyProgress.diamondsJackUnlocked = true;
     await _persistJourneyProgress();
+    await _afterEnteredLeagueWorld(JourneyWorld.diamonds);
     notifyListeners();
   }
 
@@ -757,6 +765,7 @@ class AppRepo extends ChangeNotifier {
     _journeyProgress.markEntered(JourneyWorld.clubs);
     _journeyProgress.clubsJackUnlocked = true;
     await _persistJourneyProgress();
+    await _afterEnteredLeagueWorld(JourneyWorld.clubs);
     notifyListeners();
   }
 
@@ -786,6 +795,7 @@ class AppRepo extends ChangeNotifier {
     _journeyProgress.markEntered(JourneyWorld.hearts);
     _journeyProgress.heartsJackUnlocked = true;
     await _persistJourneyProgress();
+    await _afterEnteredLeagueWorld(JourneyWorld.hearts);
     notifyListeners();
   }
 
@@ -836,6 +846,7 @@ class AppRepo extends ChangeNotifier {
     _journeyProgress.markEntered(JourneyWorld.spades);
     _journeyProgress.spadesJackUnlocked = true;
     await _persistJourneyProgress();
+    await _afterEnteredLeagueWorld(JourneyWorld.spades);
     notifyListeners();
   }
 
@@ -889,27 +900,44 @@ class AppRepo extends ChangeNotifier {
   }
 
   /// Enter Clubs after the Diamonds Ace escape (theme + kingdom access).
-  Future<void> enterClubsKingdom() async {
+  Future<bool> enterClubsKingdom() async {
+    if (!canEnterKingdom(JourneyWorld.clubs)) return false;
     _journeyProgress.markEntered(JourneyWorld.clubs);
     await unlockAndEquipPack(JourneyWorld.clubs.themeId);
     await _persistJourneyProgress();
+    await _afterEnteredLeagueWorld(JourneyWorld.clubs);
     notifyListeners();
+    return true;
   }
 
   /// Enter Hearts after the Clubs Ace gift (theme + kingdom access).
-  Future<void> enterHeartsKingdom() async {
+  Future<bool> enterHeartsKingdom() async {
+    if (!canEnterKingdom(JourneyWorld.hearts)) return false;
     _journeyProgress.markEntered(JourneyWorld.hearts);
     await unlockAndEquipPack(JourneyWorld.hearts.themeId);
     await _persistJourneyProgress();
+    await _afterEnteredLeagueWorld(JourneyWorld.hearts);
     notifyListeners();
+    return true;
   }
 
   /// Enter Spades after the Hearts Ace gift (theme + kingdom access).
-  Future<void> enterSpadesKingdom() async {
+  Future<bool> enterSpadesKingdom() async {
+    if (!canEnterKingdom(JourneyWorld.spades)) return false;
     _journeyProgress.markEntered(JourneyWorld.spades);
     await unlockAndEquipPack(JourneyWorld.spades.themeId);
     await _persistJourneyProgress();
+    await _afterEnteredLeagueWorld(JourneyWorld.spades);
     notifyListeners();
+    return true;
+  }
+
+  /// True when Ace/story gates and [JourneyWorld.requiredLevel] are met.
+  bool canEnterKingdom(JourneyWorld world) {
+    return _journeyProgress.canUnlockThemeFor(
+      world,
+      playerLevel: experienceProgress.level,
+    );
   }
 
   /// Drop Journey themes granted early (e.g. Ace auto-unlock) until entered.
@@ -918,12 +946,20 @@ class AppRepo extends ChangeNotifier {
     for (final pack in themePackCatalog) {
       if (!pack.isPlayLocked) continue;
       final world = journeyWorldForTheme(pack.id);
-      if (world == null || !ownsPack(pack.id)) continue;
-      if (_journeyProgress.hasEntered(world) &&
-          _journeyProgress.canUnlockThemeFor(
-            world,
-            playerLevel: experienceProgress.level,
-          )) {
+      if (world == null) continue;
+      final canUnlock = _journeyProgress.canUnlockThemeFor(
+        world,
+        playerLevel: experienceProgress.level,
+      );
+      // Undo early enters that skipped the level gate.
+      if (!canUnlock &&
+          world != JourneyWorld.diamonds &&
+          _journeyProgress.hasEntered(world)) {
+        _journeyProgress.enteredWorlds.remove(world.name);
+        changed = true;
+      }
+      if (!ownsPack(pack.id)) continue;
+      if (_journeyProgress.hasEntered(world) && canUnlock) {
         continue;
       }
       _ownedPacks.remove(pack.id);
@@ -936,6 +972,8 @@ class AppRepo extends ChangeNotifier {
       await _persistOwnedPacks();
       notifyListeners();
     }
+    await _persistJourneyProgress();
+    unawaited(syncPublicProfile());
   }
 
   /// True while coins / energy / XP / Journey unlock rewards still need UI.
@@ -954,9 +992,9 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Wipe Journey story: defeats, coach training, play-locked themes, and XP.
+  /// Wipe Journey story: defeats, coach training, play-locked themes, and league.
   ///
-  /// Leaves coins, energy, casino tutorial, and account data intact.
+  /// Leaves coins, energy, XP/level, casino tutorial, and account data intact.
   Future<void> resetJourneyProgress() async {
     _journeyProgress = JourneyProgress.empty();
     await _persistJourneyProgress();
@@ -977,11 +1015,13 @@ class AppRepo extends ChangeNotifier {
     _recordedStatsGameIds.clear();
     _matchStatsBackfillAttempted = false;
     _remoteMatchStatsInitialized = false;
+    _leagueExitRanks = {};
     final uid = FirebaseAuth.instance.currentUser?.uid ?? player?.id;
     if (uid != null) {
       await sp.remove(_homeXpClaimPrefsKey(uid));
       await sp.remove(_claimedXpGamesPrefsKey(uid));
       await sp.remove(_recordedStatsGamesPrefsKey(uid));
+      await sp.remove(_leagueExitRanksPrefsKey(uid));
     }
 
     if (player != null) {
@@ -990,7 +1030,6 @@ class AppRepo extends ChangeNotifier {
         completedJourneyTutorial: false,
         completedProfileTutorial: false,
         avatarId: baseAvatar,
-        xp: 0,
       );
       await _persistPlayer();
     }
@@ -998,6 +1037,7 @@ class AppRepo extends ChangeNotifier {
     _journeyStoryEpoch += 1;
     _openJourneyRequest = false;
     _pendingProfileThemeTip = false;
+    unawaited(syncPublicProfile());
     notifyListeners();
   }
 
@@ -1079,6 +1119,7 @@ class AppRepo extends ChangeNotifier {
     _journeyStoryEpoch += 1;
     _openJourneyRequest = true;
     _shellTabRequest = 1;
+    unawaited(syncPublicProfile());
     notifyListeners();
   }
 
@@ -1757,10 +1798,24 @@ class AppRepo extends ChangeNotifier {
   }
 
   /// Clears claimed level rewards so they can be claimed again (testing).
+  /// Dev-only — no-ops in release/profile builds.
   Future<void> resetLevelRewards() async {
+    if (!kDebugMode) return;
     _claimedLevelRewards.clear();
     notifyListeners();
     await _persistClaimedLevelRewards();
+  }
+
+  /// Sets XP back to 0 (level 1). Dev-only — no-ops in release/profile builds.
+  Future<void> debugResetLevel() async {
+    if (!kDebugMode) return;
+    final current = player;
+    if (current == null) return;
+    if (current.xp == 0) return;
+    player = current.copyWith(xp: 0);
+    await _persistPlayer();
+    unawaited(syncPublicProfile());
+    notifyListeners();
   }
 
   String _levelChallengesPrefsKey(String uid) => 'level_challenges_$uid';
@@ -2478,6 +2533,7 @@ class AppRepo extends ChangeNotifier {
     player = current.copyWith(matchStats: after);
     await _persistRecordedStatsGames();
     await _persistPlayer();
+    unawaited(syncPublicProfile());
     notifyListeners();
     unawaited(_recordOpponentStats(game, me));
   }
@@ -2792,8 +2848,20 @@ class AppRepo extends ChangeNotifier {
     final levelAfter = experienceProgress.level;
     if (levelAfter > levelBefore) {
       _noteKingdomsUnlockedByLevel(fromLevel: levelBefore, toLevel: levelAfter);
+      unawaited(syncPublicProfile());
     }
     notifyListeners();
+  }
+
+  /// Debug: grant enough XP to reach at least level 5 (Clubs kingdom gate).
+  Future<void> debugReachLevel5() async {
+    if (!kDebugMode) return;
+    final current = player;
+    if (current == null) return;
+    final need = ExperienceConfig.totalXpToReachLevel(5);
+    final delta = need - current.xp;
+    if (delta <= 0) return;
+    await grantXp(delta);
   }
 
   /// When level catches up after a prior Ace, open Journey so the player can enter.
@@ -2819,6 +2887,118 @@ class AppRepo extends ChangeNotifier {
 
   ExperienceProgress get experienceProgress =>
       ExperienceProgress.fromTotal(player?.xp ?? 0);
+
+  /// Highest suit league for an entered kingdom, or null before Diamonds enter.
+  JourneyWorld? get currentLeague => highestUnlockedLeague(
+        enteredWorlds: _journeyProgress.enteredLeagueWorlds,
+      );
+
+  /// Next league to unlock (Diamonds when none), or null after Spades.
+  JourneyWorld? get nextLeagueTarget => nextLeagueToUnlock(
+        enteredWorlds: _journeyProgress.enteredLeagueWorlds,
+      );
+
+  /// Rank when leaving each prior league (`diamonds` → 3, …).
+  Map<String, int> _leagueExitRanks = {};
+
+  Map<String, int> get leagueExitRanks => Map.unmodifiable(_leagueExitRanks);
+
+  int? exitRankFor(JourneyWorld world) => _leagueExitRanks[world.name];
+
+  String _leagueExitRanksPrefsKey(String uid) => 'league_exit_ranks_$uid';
+
+  Future<void> _loadLeagueExitRanks() async {
+    final uid = _currentUid;
+    if (uid == null) {
+      _leagueExitRanks = {};
+      return;
+    }
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_leagueExitRanksPrefsKey(uid));
+      final local = <String, int>{};
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          for (final e in decoded.entries) {
+            final v = e.value;
+            if (v is num) local[e.key.toString()] = v.toInt();
+          }
+        }
+      }
+      Map<String, int> cloud = {};
+      try {
+        final profile = await fs.loadPublicProfile(uid);
+        cloud = profile?.leagueExitRanks ?? {};
+      } catch (_) {}
+      _leagueExitRanks = {...cloud, ...local};
+      if (_leagueExitRanks.isNotEmpty) {
+        await _persistLeagueExitRanksLocal();
+      }
+    } catch (e) {
+      developer.log('AppRepo._loadLeagueExitRanks: $e');
+      _leagueExitRanks = {};
+    }
+  }
+
+  Future<void> _persistLeagueExitRanksLocal() async {
+    final uid = _currentUid;
+    if (uid == null) return;
+    try {
+      final sp = await SharedPreferences.getInstance();
+      await sp.setString(
+        _leagueExitRanksPrefsKey(uid),
+        jsonEncode(_leagueExitRanks),
+      );
+    } catch (e) {
+      developer.log('AppRepo._persistLeagueExitRanksLocal: $e');
+    }
+  }
+
+  /// Snapshot rank in [leaving] before promoting out of that league.
+  Future<void> _snapshotExitRankBeforeLeaving(JourneyWorld leaving) async {
+    if (_leagueExitRanks.containsKey(leaving.name)) return;
+    if (!_journeyProgress.hasEntered(leaving)) return;
+    final wins = player?.matchStats.wins ?? 0;
+    var rank = 1;
+    try {
+      rank = await fs.fetchLeagueRank(league: leaving, wins: wins);
+    } catch (_) {
+      rank = 1;
+    }
+    _leagueExitRanks = {..._leagueExitRanks, leaving.name: rank};
+    await _persistLeagueExitRanksLocal();
+  }
+
+  /// After marking a world entered, record prior exit rank + sync leaderboard.
+  Future<void> _afterEnteredLeagueWorld(JourneyWorld world) async {
+    if (world.index > 0) {
+      await _snapshotExitRankBeforeLeaving(JourneyWorld.values[world.index - 1]);
+    }
+    unawaited(syncPublicProfile());
+  }
+
+  /// Upsert leaderboard-safe `publicProfiles/{uid}` from local journey + stats.
+  Future<void> syncPublicProfile() async {
+    final current = player;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (current == null || uid == null || current.id != uid) return;
+    try {
+      await fs.upsertPublicProfile(
+        uid: uid,
+        profile: PublicProfile(
+          uid: uid,
+          name: current.name,
+          avatarId: current.avatarId,
+          wins: current.matchStats.wins,
+          league: currentLeague,
+          leagueExitRanks: _leagueExitRanks,
+        ),
+      );
+    } catch (e) {
+      developer.log('AppRepo.syncPublicProfile: $e');
+    }
+  }
 
   Future<bool> buyEnergyWithCoins({
     required int energy,
@@ -4038,6 +4218,7 @@ class AppRepo extends ChangeNotifier {
       if (player!.token != null) {
         unawaited(_saveFcmToken(player!.token!));
       }
+      unawaited(syncPublicProfile());
       notifyListeners();
       return true;
     } catch (e) {
@@ -4052,6 +4233,7 @@ class AppRepo extends ChangeNotifier {
       if (!unlockedAvatarIdsForTheme().contains(avatarId)) return false;
       player = player!.copyWith(avatarId: avatarId);
       await _persistPlayer();
+      unawaited(syncPublicProfile());
       notifyListeners();
       return true;
     } catch (e) {

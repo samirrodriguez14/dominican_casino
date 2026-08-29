@@ -7,11 +7,11 @@ import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-/// Short first-visit tip for the Profile theme picker.
+/// Short first-visit tip for the Profile leagues button.
 class ProfileCoachController extends ChangeNotifier {
-  ProfileCoachController({required this.looksKey});
+  ProfileCoachController({required this.leagueKey});
 
-  final GlobalKey looksKey;
+  final GlobalKey leagueKey;
 
   int _step = 0;
   bool _active = false;
@@ -25,11 +25,11 @@ class ProfileCoachController extends ChangeNotifier {
         TutorialStep(
           step: 0,
           section: 0,
-          title: 'Your themes',
+          title: 'Your leagues',
           description:
-              'Here you can select your theme. '
-              'Unlock more through your Journey.',
-          targetKey: looksKey,
+              'Tap here to see your league standings and friends. '
+              'Enter Journey kingdoms to climb into new leagues.',
+          targetKey: leagueKey,
           promptClearance: 52,
           blockGameInteraction: true,
           allowedActions: const <TutorialAction>[],

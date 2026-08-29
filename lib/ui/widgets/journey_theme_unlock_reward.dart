@@ -5,7 +5,7 @@ import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
-/// Post-ceremony reward: theme unlocked, with Go to profile or Continue.
+/// Post-ceremony reward: theme + league unlocked, with Go to profile or Continue.
 class JourneyThemeUnlockRewardOverlay extends StatefulWidget {
   const JourneyThemeUnlockRewardOverlay({
     super.key,
@@ -110,48 +110,38 @@ class _JourneyThemeUnlockRewardOverlayState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          j.themeUnlocked,
+                          j.themeAndLeagueUnlocked,
+                          textAlign: TextAlign.center,
                           style: theme.title.copyWith(
-                            fontSize: 22,
+                            fontSize: 20,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          j.worldThemeUnlocked(widget.world),
+                          j.worldThemeAndLeagueUnlocked(widget.world),
                           textAlign: TextAlign.center,
                           style: theme.mutedText,
                         ),
                         const SizedBox(height: 18),
-                        Container(
-                          width: 72,
-                          height: 96,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: palette.background,
-                            border: Border.all(color: palette.accent, width: 1.4),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [palette.surface, palette.background],
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _RewardBadge(
+                              symbol: widget.world.suitSymbol,
+                              label: j.worldThemeLabel(widget.world),
+                              palette: palette,
+                              theme: theme,
                             ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            widget.world.suitSymbol,
-                            style: TextStyle(
-                              color: palette.accent,
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
+                            const SizedBox(width: 14),
+                            _RewardBadge(
+                              symbol: widget.world.suitSymbol,
+                              label: j.worldLeagueLabel(widget.world),
+                              palette: palette,
+                              theme: theme,
+                              league: true,
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          j.worldThemeLabel(widget.world),
-                          style: theme.body.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                          ],
                         ),
                         const SizedBox(height: 18),
                         CupertinoButton(
@@ -198,6 +188,73 @@ class _JourneyThemeUnlockRewardOverlayState
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RewardBadge extends StatelessWidget {
+  const _RewardBadge({
+    required this.symbol,
+    required this.label,
+    required this.palette,
+    required this.theme,
+    this.league = false,
+  });
+
+  final String symbol;
+  final String label;
+  final JourneyWorldPalette palette;
+  final AppTheme theme;
+  final bool league;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 64,
+          height: league ? 64 : 84,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(league ? 999 : 12),
+            color: palette.background,
+            border: Border.all(color: palette.accent, width: 1.4),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [palette.surface, palette.background],
+            ),
+          ),
+          alignment: Alignment.center,
+          child: league
+              ? Icon(
+                  CupertinoIcons.rosette,
+                  color: palette.accent,
+                  size: 28,
+                )
+              : Text(
+                  symbol,
+                  style: TextStyle(
+                    color: palette.accent,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 120,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.body.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

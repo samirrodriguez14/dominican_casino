@@ -157,13 +157,14 @@ class GamePill extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: _PlayerRow(
                             seat: seat,
-                            fallbackAvatarId: seat.id == myPid
-                                ? myAvatarId
-                                : null,
                             place: ranks[seat.id],
                             coinsMade: isGameOver
                                 ? game.coinsMade(seat.id)
                                 : 0,
+                            // Always show the player's current look for their seat.
+                            avatarOverride: seat.id == myPid
+                                ? myAvatarId
+                                : null,
                           ),
                         ),
                       ),
@@ -358,13 +359,13 @@ class _ModeBadge extends StatelessWidget {
 class _PlayerRow extends StatelessWidget {
   const _PlayerRow({
     required this.seat,
-    this.fallbackAvatarId,
+    this.avatarOverride,
     this.place,
     this.coinsMade = 0,
   });
 
   final GamePillSeat seat;
-  final String? fallbackAvatarId;
+  final String? avatarOverride;
   final int? place;
   final int coinsMade;
 
@@ -386,8 +387,8 @@ class _PlayerRow extends StatelessWidget {
           Icon(CupertinoIcons.person_fill, size: 22, color: theme.muted)
         else
           PlayerAvatarView(
-            avatarId: seat.avatarId ?? fallbackAvatarId,
-            avatarAsset: seat.avatarAsset,
+            avatarId: avatarOverride ?? seat.avatarId,
+            avatarAsset: avatarOverride != null ? null : seat.avatarAsset,
             size: 22,
             showBorder: false,
             showJourneyAces: seat.defeatedAces.isNotEmpty,

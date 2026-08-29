@@ -49,6 +49,21 @@ service cloud.firestore {
       }
     }
 
+    // Leaderboard-safe profile fields (no FCM / wallet secrets).
+    match /publicProfiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly([
+          'name',
+          'avatarId',
+          'wins',
+          'league',
+          'leagueExitRanks',
+          'updatedAt',
+        ]);
+      allow delete: if isSelf(uid);
+    }
+
     // Match documents. Authenticated clients may still write full state
     // until server-side applyMove ships — but anonymous guests cannot.
     match /games/{gid} {

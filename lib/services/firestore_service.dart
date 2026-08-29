@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_reaction.dart';
+import 'package:dominican_casino/models/league.dart';
 import 'package:dominican_casino/models/opponent_match_stats.dart';
 import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/services/game_service.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/game_state.dart';
@@ -17,6 +20,8 @@ class FirestoreService extends GameService {
       FirebaseFirestore.instance.collection('games');
   final CollectionReference<Map<String, dynamic>> _users =
       FirebaseFirestore.instance.collection('users');
+  final CollectionReference<Map<String, dynamic>> _publicProfiles =
+      FirebaseFirestore.instance.collection('publicProfiles');
 
   /// Vs-Puli matches that could not be written to Firestore (guest with no
   /// anonymous auth, or rules/App Check denials). Persisted on this device.
@@ -597,6 +602,101 @@ class FirestoreService extends GameService {
     ];
     final last = snap.docs.isEmpty ? null : snap.docs.last;
     return (items: items, lastDoc: last);
+  }
+
+  /// All head-to-head rows (paged internally) for friends / league faces.
+  Future<List<OpponentMatchStats>> fetchAllOpponentStats(String uid) async {
+    final out = <OpponentMatchStats>[];
+    DocumentSnapshot? cursor;
+    while (true) {
+      final page = await fetchOpponentStats(
+        uid,
+        limit: 40,
+        startAfter: cursor,
+      );
+      out.addAll(page.items);
+      if (page.items.length < 40 || page.lastDoc == null) break;
+      cursor = page.lastDoc;
+    }
+    return out;
+  }
+
+  Future<void> upsertPublicProfile({
+    required String uid,
+    required PublicProfile profile,
+  }) async {
+    final data = <String, dynamic>{
+      ...profile.toJson(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (profile.league == null) {
+      data['league'] = FieldValue.delete();
+    }
+    await _publicProfiles.doc(uid).set(data, SetOptions(merge: true));
+  }
+
+  Future<PublicProfile?> loadPublicProfile(String uid) async {
+    final snap = await _publicProfiles.doc(uid).get();
+    if (!snap.exists) return null;
+    return PublicProfile.fromDoc(snap.id, snap.data() ?? {});
+  }
+
+  /// Top [limit] players in [league] by career wins.
+  Future<List<PublicProfile>> fetchLeagueTop(
+    JourneyWorld league, {
+    int limit = 5,
+  }) async {
+    try {
+      final snap = await _publicProfiles
+          .where('league', isEqualTo: league.name)
+          .orderBy('wins', descending: true)
+          .limit(limit)
+          .get();
+      return [
+        for (final doc in snap.docs) PublicProfile.fromDoc(doc.id, doc.data()),
+      ];
+    } catch (e) {
+      debugPrint('fetchLeagueTop: $e');
+      return const [];
+    }
+  }
+
+  /// 1-based rank among players in [league] (wins strictly greater than [wins]).
+  Future<int> fetchLeagueRank({
+    required JourneyWorld league,
+    required int wins,
+  }) async {
+    try {
+      final snap = await _publicProfiles
+          .where('league', isEqualTo: league.name)
+          .where('wins', isGreaterThan: wins)
+          .count()
+          .get();
+      return leagueRankFromHigherWinCount(snap.count ?? 0);
+    } catch (e) {
+      debugPrint('fetchLeagueRank: $e');
+      return 1;
+    }
+  }
+
+  Future<Map<String, PublicProfile>> fetchPublicProfiles(
+    Iterable<String> uids,
+  ) async {
+    final ids = uids.where((id) => id.isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return {};
+    final out = <String, PublicProfile>{};
+    // Firestore getAll / whereIn capped at 10–30; chunk at 10.
+    for (var i = 0; i < ids.length; i += 10) {
+      final chunk = ids.sublist(i, math.min(i + 10, ids.length));
+      final snaps = await Future.wait([
+        for (final id in chunk) _publicProfiles.doc(id).get(),
+      ]);
+      for (final snap in snaps) {
+        if (!snap.exists) continue;
+        out[snap.id] = PublicProfile.fromDoc(snap.id, snap.data() ?? {});
+      }
+    }
+    return out;
   }
 
   Future<void> deleteUserProfile(String uid) async {

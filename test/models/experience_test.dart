@@ -19,6 +19,13 @@ void main() {
       expect(ExperienceConfig.xpToAdvance(3), 80);
       expect(ExperienceConfig.xpToAdvance(10), 220);
     });
+
+    test('total XP to reach level 5 is cumulative thresholds', () {
+      // 40+60+80+100
+      expect(ExperienceConfig.totalXpToReachLevel(5), 280);
+      expect(ExperienceProgress.fromTotal(280).level, 5);
+      expect(ExperienceConfig.totalXpToReachLevel(1), 0);
+    });
   });
 
   group('ExperienceProgress', () {

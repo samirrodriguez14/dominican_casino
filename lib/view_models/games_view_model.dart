@@ -14,27 +14,43 @@ import 'package:flutter/cupertino.dart';
 class GamesViewModel extends ChangeNotifier {
   final AppRepo _appRepo;
   String? _listenPid;
+  String? _listenAvatarId;
+  String? _listenName;
 
   GamesViewModel({required AppRepo appRepo}) : _appRepo = appRepo {
+    _listenPid = _appRepo.player?.id;
+    _listenAvatarId = _appRepo.player?.avatarId;
+    _listenName = _appRepo.player?.name;
     _appRepo.addListener(_onRepo);
   }
 
   void _onRepo() {
     final uid = _appRepo.player?.id;
-    if (uid == _listenPid) return;
-    final switchingUser = _listenPid != null;
-    _listenPid = uid;
-    if (!switchingUser) return;
-    _stopActiveSubscription();
-    currentGames = const [];
-    previousGames = const [];
-    _historyVisible = historyPageSize;
-    _archivedHasMore = true;
-    _archivedCursor = null;
-    _archivedLoaded = false;
-    loading = uid != null;
-    error = null;
-    notifyListeners();
+    final avatarId = _appRepo.player?.avatarId;
+    final name = _appRepo.player?.name;
+    final userChanged = uid != _listenPid;
+    final lookChanged =
+        avatarId != _listenAvatarId || name != _listenName;
+    _listenAvatarId = avatarId;
+    _listenName = name;
+    if (userChanged) {
+      final switchingUser = _listenPid != null;
+      _listenPid = uid;
+      if (switchingUser) {
+        _stopActiveSubscription();
+        currentGames = const [];
+        previousGames = const [];
+        _historyVisible = historyPageSize;
+        _archivedHasMore = true;
+        _archivedCursor = null;
+        _archivedLoaded = false;
+        loading = uid != null;
+        error = null;
+      }
+    }
+    if (userChanged || lookChanged) {
+      notifyListeners();
+    }
   }
 
   List<GameInfo> get gamesInfo => _appRepo.gamesInfo;

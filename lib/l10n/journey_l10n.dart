@@ -46,6 +46,8 @@ class JourneyL10n {
   String get claim => t('Claim', 'Reclamar');
   String get play => t('Play', 'Jugar');
   String get themeUnlocked => t('Theme unlocked', 'Tema desbloqueado');
+  String get themeAndLeagueUnlocked =>
+      t('Theme & League unlocked', 'Tema y liga desbloqueados');
   String get goToProfile => t('Go to profile', 'Ir al perfil');
   String get unlocked => t('Unlocked', 'Desbloqueado');
   String get newRewardsFromVictory =>
@@ -63,6 +65,11 @@ class JourneyL10n {
   String enterKingdom(JourneyWorld world) => t(
         'Enter ${worldLabel(world)} kingdom',
         'Entrar al reino de ${worldLabel(world)}',
+      );
+
+  String reachLevelToEnter(int level, JourneyWorld world) => t(
+        'Reach level $level to enter ${worldLabel(world)}',
+        'Llega al nivel $level para entrar a ${worldLabel(world)}',
       );
 
   String enteringKingdomTitle(JourneyWorld world) => t(
@@ -178,8 +185,18 @@ class JourneyL10n {
         'Desbloqueaste el tema de ${worldLabel(world)}.',
       );
 
+  String worldThemeAndLeagueUnlocked(JourneyWorld world) => t(
+        'You unlocked the ${worldLabel(world)} theme and joined '
+        '${worldLabel(world)} League.',
+        'Desbloqueaste el tema de ${worldLabel(world)} y te uniste a '
+        'la Liga ${worldLabel(world)}.',
+      );
+
   String worldThemeLabel(JourneyWorld world) =>
       t('${worldLabel(world)} theme', 'Tema de ${worldLabel(world)}');
+
+  String worldLeagueLabel(JourneyWorld world) =>
+      t('${worldLabel(world)} League', 'Liga ${worldLabel(world)}');
 
   /// Localized instruction letters (same ids as English catalog).
   List<JourneyInstruction> get instructions =>
