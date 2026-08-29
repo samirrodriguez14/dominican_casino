@@ -5,6 +5,7 @@ import 'package:dominican_casino/models/experience.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/profile/level_rewards_popup.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
 import 'package:dominican_casino/ui/widgets/exp_icon.dart';
@@ -45,6 +46,10 @@ class _ProfileWalletPillsState extends State<ProfileWalletPills> {
   void _openStore() {
     AppHaptics.mediumImpact();
     goToStoreTab(context);
+  }
+
+  void _openLevelRewards() {
+    showLevelRewardsPopup(context);
   }
 
   @override
@@ -91,6 +96,7 @@ class _ProfileWalletPillsState extends State<ProfileWalletPills> {
               value: '${xpProgress.xpInLevel}',
               subtitle: '/ ${xpProgress.xpToNext}',
               scoreTheme: widget.scoreTheme,
+              onPressed: _openLevelRewards,
             ),
             if (widget.trailing != null) ...[
               const SizedBox(width: 8),

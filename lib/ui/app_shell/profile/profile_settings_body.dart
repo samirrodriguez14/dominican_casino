@@ -152,6 +152,28 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
                             ),
                           ),
                           const SettingsSectionDivider(),
+                          SettingsSectionLabel(l10n.resetLevelRewards),
+                          const SizedBox(height: 4),
+                          CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            onPressed: SoundService.wrapTap(
+                              () => _confirmResetLevelRewards(
+                                context,
+                                appRepo,
+                                l10n,
+                              ),
+                            ),
+                            child: Text(
+                              l10n.resetLevelRewards,
+                              style: const TextStyle(
+                                color: CupertinoColors.destructiveRed,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SettingsSectionDivider(),
                           SettingsSectionLabel(l10n.account),
                           const SizedBox(height: 4),
                           CupertinoButton(
@@ -305,6 +327,33 @@ class _ProfileSettingsBodyState extends State<ProfileSettingsBody>
     );
     if (go != true || !context.mounted) return;
     await appRepo.resetJourneyProgress();
+  }
+
+  Future<void> _confirmResetLevelRewards(
+    BuildContext context,
+    AppRepo appRepo,
+    AppLocalizations l10n,
+  ) async {
+    final go = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.resetLevelRewards),
+        content: Text(l10n.resetLevelRewardsBody),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
+            child: Text(l10n.cancel),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
+            child: Text(l10n.resetLevelRewardsConfirm),
+          ),
+        ],
+      ),
+    );
+    if (go != true || !context.mounted) return;
+    await appRepo.resetLevelRewards();
   }
 
   Future<void> _connectGoogle(

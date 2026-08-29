@@ -348,6 +348,13 @@ class AppLocalizations {
   String get joinGame => isEs ? 'Unirse a partida' : 'Join Game';
   String get enterGameId => isEs ? 'ID de la partida' : 'Enter Game ID';
   String get cancel => isEs ? 'Cancelar' : 'Cancel';
+  String get levelRewardsTitle =>
+      isEs ? 'Recompensas de nivel' : 'Level rewards';
+  String levelLabel(int n) => isEs ? 'Nivel $n' : 'Level $n';
+  String get claim => isEs ? 'Reclamar' : 'Claim';
+  String get claimed => isEs ? 'Reclamado' : 'Claimed';
+  String reachLevelToUnlock(int n) =>
+      isEs ? 'Alcanza el nivel $n para desbloquear' : 'Reach level $n to unlock';
   String get join => isEs ? 'Unirse' : 'Join';
   String get notificationsRationale => isEs
       ? 'Te avisamos cuando sea tu turno en una partida con amigos.'
@@ -411,6 +418,16 @@ class AppLocalizations {
 
   String get resetJourneyConfirm =>
       isEs ? 'Restablecer' : 'Reset';
+
+  String get resetLevelRewards =>
+      isEs ? 'Reiniciar recompensas' : 'Restart rewards';
+
+  String get resetLevelRewardsBody => isEs
+      ? 'Esto marca todas las recompensas de nivel como no reclamadas para que puedas probarlas de nuevo. No quita monedas ni energía ya otorgadas.'
+      : 'This marks all level rewards as unclaimed so you can test claiming again. Coins and energy already granted are not removed.';
+
+  String get resetLevelRewardsConfirm =>
+      isEs ? 'Reiniciar' : 'Restart';
 
   String googleSignInError(String? code) {
     switch (code) {

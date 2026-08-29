@@ -32,13 +32,17 @@ class XpPlayerAvatar extends StatefulWidget {
 
 class _XpPlayerAvatarState extends State<XpPlayerAvatar>
     with TickerProviderStateMixin {
+  static const _nudgeDuration = Duration(milliseconds: 2400);
+
   late final AnimationController _pulse;
   late final AnimationController _ring;
+  late final AnimationController _rewardBounce;
   double _shownProgress = 0;
   double _fromProgress = 0;
   double _toProgress = 0;
   int _shownLevel = 1;
   bool _hydrated = false;
+  bool _rewardBounceRunning = false;
 
   @override
   void initState() {
@@ -56,13 +60,48 @@ class _XpPlayerAvatarState extends State<XpPlayerAvatar>
           _shownProgress = _fromProgress + (_toProgress - _fromProgress) * t;
         });
       });
+    _rewardBounce = AnimationController(
+      vsync: this,
+      duration: _nudgeDuration,
+    );
   }
 
   @override
   void dispose() {
     _pulse.dispose();
     _ring.dispose();
+    _rewardBounce.dispose();
     super.dispose();
+  }
+
+  /// Same decaying sine hops as [CurrentGamesPeekCard] nudge.
+  static double _nudgeLift(double t) {
+    final ms = t * _nudgeDuration.inMilliseconds;
+    const hops = <(double, double, double)>[
+      (0, 294, 1.00),
+      (294, 510, 0.52),
+      (510, 686, 0.28),
+      (686, 823, 0.12),
+    ];
+    for (final h in hops) {
+      if (ms >= h.$1 && ms < h.$2) {
+        final local = (ms - h.$1) / (h.$2 - h.$1);
+        return h.$3 * math.sin(local * math.pi);
+      }
+    }
+    return 0;
+  }
+
+  void _syncRewardBounce(bool hasUnclaimed) {
+    if (hasUnclaimed && !_rewardBounceRunning) {
+      _rewardBounceRunning = true;
+      _rewardBounce.repeat(min: 0, max: 1, period: _nudgeDuration);
+    } else if (!hasUnclaimed && _rewardBounceRunning) {
+      _rewardBounceRunning = false;
+      _rewardBounce
+        ..stop()
+        ..value = 0;
+    }
   }
 
   void _syncProgress(ExperienceProgress progress) {
@@ -87,6 +126,7 @@ class _XpPlayerAvatarState extends State<XpPlayerAvatar>
   Widget build(BuildContext context) {
     final repo = context.watch<AppRepo>();
     final progress = repo.experienceProgress;
+    final hasUnclaimed = repo.hasUnclaimedLevelRewards;
     if (!_hydrated) {
       _hydrated = true;
       _shownLevel = progress.level;
@@ -98,22 +138,35 @@ class _XpPlayerAvatarState extends State<XpPlayerAvatar>
         if (mounted) _syncProgress(snap);
       });
     }
-
     final theme = AppStyle.theme;
     final ringPad = (widget.size * 0.14).clamp(4.0, 6.0);
     final outer = widget.size + ringPad * 2;
     final badgeSize = (widget.size * 0.42).clamp(14.0, 18.0);
+    final alertSize = (widget.size * 0.32).clamp(10.0, 13.0);
+
+    if (hasUnclaimed != _rewardBounceRunning) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncRewardBounce(hasUnclaimed);
+      });
+    }
 
     return SizedBox(
       key: XpPlayerAvatar.targetKey,
       width: outer,
       height: outer,
       child: AnimatedBuilder(
-        animation: _pulse,
+        animation: Listenable.merge([_pulse, _rewardBounce]),
         builder: (context, child) {
           final t = Curves.easeOut.transform(_pulse.value.clamp(0.0, 1.0));
-          final scale = 1.0 + (1.0 - t) * 0.08;
-          return Transform.scale(scale: scale, child: child);
+          final pulseScale = 1.0 + (1.0 - t) * 0.08;
+          final nudge = hasUnclaimed ? _nudgeLift(_rewardBounce.value) : 0.0;
+          return Transform.translate(
+            offset: Offset(0, -10 * nudge),
+            child: Transform.scale(
+              scale: pulseScale * (1 + 0.05 * nudge),
+              child: child,
+            ),
+          );
         },
         child: Stack(
           clipBehavior: Clip.none,
@@ -171,6 +224,30 @@ class _XpPlayerAvatarState extends State<XpPlayerAvatar>
                 ),
               ),
             ),
+            if (hasUnclaimed)
+              Positioned(
+                left: -2,
+                top: -2,
+                child: Container(
+                  width: alertSize,
+                  height: alertSize,
+                  decoration: BoxDecoration(
+                    color: theme.danger,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.background,
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.danger.withValues(alpha: 0.45),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

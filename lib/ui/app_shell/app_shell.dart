@@ -8,6 +8,7 @@ import 'package:dominican_casino/ui/app_shell/games/current_games_peek_card.dart
 import 'package:dominican_casino/ui/app_shell/games/games_screen.dart';
 import 'package:dominican_casino/ui/app_shell/games/welcome_tutorial_popup.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
+import 'package:dominican_casino/ui/app_shell/profile/level_rewards_popup.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_screen.dart';
 import 'package:dominican_casino/ui/app_shell/store/store_screen.dart';
 import 'package:dominican_casino/ui/widgets/currency_bar.dart';
@@ -395,7 +396,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       child: _ShellIdentity(
                         avatarId: player?.avatarId,
                         name: displayName,
-                        onTap: () => _onTabTap(2),
+                        onTap: () => showLevelRewardsPopup(context),
                       ),
                     ),
                   ],

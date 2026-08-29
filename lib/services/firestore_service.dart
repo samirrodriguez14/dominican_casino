@@ -582,6 +582,16 @@ class FirestoreService extends GameService {
     }, SetOptions(merge: true));
   }
 
+  Future<void> saveClaimedLevelRewards({
+    required String uid,
+    required List<int> levels,
+  }) async {
+    await _users.doc(uid).set({
+      'claimedLevelRewards': levels,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
 
   @override
   Stream<GameState?> streamGame(String gameId) {

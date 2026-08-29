@@ -8,6 +8,7 @@ import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/models/journey_progress.dart';
+import 'package:dominican_casino/models/level_rewards.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
@@ -37,6 +38,8 @@ enum AppStatus { notReady, appReady, inGame, appError }
 enum GoogleAuthStatus { success, canceled, failed }
 
 enum DeleteAccountResult { success, canceled, failed }
+
+enum LevelRewardClaimResult { claimed, alreadyClaimed, locked, missing }
 
 class GoogleAuthResult {
   const GoogleAuthResult.success(this.suggestedName)
@@ -162,6 +165,8 @@ class AppRepo extends ChangeNotifier {
   DateTime? get lastDailyClaimAt => _lastDailyClaimAt;
   DailyChallengeState _dailyChallenges = DailyChallengeState.empty('');
   DailyChallengeState get dailyChallengesState => _dailyChallenges;
+  final Set<int> _claimedLevelRewards = {};
+  Set<int> get claimedLevelRewards => Set.unmodifiable(_claimedLevelRewards);
   JourneyProgress _journeyProgress = JourneyProgress.empty();
   JourneyProgress get journeyProgress => _journeyProgress;
   /// Bumped when Journey story/progress is wiped so UI can remount coach/board.
@@ -1278,6 +1283,7 @@ class AppRepo extends ChangeNotifier {
       _walletUid = null;
       _lastDailyClaimAt = null;
       _dailyChallenges = DailyChallengeState.empty(_localDayKey());
+      _claimedLevelRewards.clear();
       return;
     }
 
@@ -1320,6 +1326,11 @@ class AppRepo extends ChangeNotifier {
         remote: remote,
         preferRemote: preferRemote,
       );
+      await _loadClaimedLevelRewards(
+        uid,
+        remote: remote,
+        preferRemote: preferRemote,
+      );
     } finally {
       _walletPersistPaused = false;
     }
@@ -1332,6 +1343,7 @@ class AppRepo extends ChangeNotifier {
     await _loadHomeDailyChallengeEnergyClaim(uid);
     await _cacheDailyClaimLocal(uid);
     await _cacheDailyChallengesLocal(uid);
+    await _cacheClaimedLevelRewardsLocal(uid);
   }
 
   String _dailyClaimPrefsKey(String uid) => 'daily_claim_$uid';
@@ -1568,6 +1580,121 @@ class AppRepo extends ChangeNotifier {
     }
     await _persistDailyChallenges();
     return DailyChallengeClaimResult.claimed;
+  }
+
+  String _claimedLevelRewardsPrefsKey(String uid) =>
+      'claimed_level_rewards_$uid';
+
+  static Set<int> _parseClaimedLevelRewards(dynamic raw) {
+    final out = <int>{};
+    if (raw is! List) return out;
+    for (final item in raw) {
+      final n = item is int
+          ? item
+          : (item is num ? item.toInt() : int.tryParse('$item'));
+      if (n != null && n >= 1 && n <= maxLevelRewardLevel) out.add(n);
+    }
+    return out;
+  }
+
+  Future<void> _loadClaimedLevelRewards(
+    String uid, {
+    Map<String, dynamic>? remote,
+    required bool preferRemote,
+  }) async {
+    final remoteClaimed = _parseClaimedLevelRewards(
+      remote?['claimedLevelRewards'],
+    );
+    var localClaimed = <int>{};
+    if (!preferRemote) {
+      localClaimed = await _loadClaimedLevelRewardsPrefs(uid);
+    }
+    _claimedLevelRewards
+      ..clear()
+      ..addAll(remoteClaimed)
+      ..addAll(localClaimed);
+  }
+
+  Future<Set<int>> _loadClaimedLevelRewardsPrefs(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_claimedLevelRewardsPrefsKey(uid));
+      if (raw == null || raw.isEmpty) return {};
+      final decoded = jsonDecode(raw);
+      return _parseClaimedLevelRewards(decoded);
+    } catch (e) {
+      developer.log('AppRepo.loadClaimedLevelRewards: $e');
+      return {};
+    }
+  }
+
+  Future<void> _cacheClaimedLevelRewardsLocal(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final levels = _claimedLevelRewards.toList()..sort();
+      await sp.setString(
+        _claimedLevelRewardsPrefsKey(uid),
+        jsonEncode(levels),
+      );
+    } catch (e) {
+      developer.log('AppRepo.cacheClaimedLevelRewards: $e');
+    }
+  }
+
+  Future<void> _persistClaimedLevelRewards() async {
+    final uid = _walletUid;
+    if (uid == null) return;
+    await _cacheClaimedLevelRewardsLocal(uid);
+    try {
+      final levels = _claimedLevelRewards.toList()..sort();
+      await fs.saveClaimedLevelRewards(uid: uid, levels: levels);
+    } catch (e) {
+      developer.log('AppRepo.saveClaimedLevelRewards: $e');
+    }
+  }
+
+  bool isLevelRewardClaimed(int level) => _claimedLevelRewards.contains(level);
+
+  bool canClaimLevelReward(int level) {
+    return isLevelRewardClaimable(
+      level: level,
+      playerLevel: experienceProgress.level,
+      claimed: _claimedLevelRewards,
+    );
+  }
+
+  int get unclaimedLevelRewardCount => unclaimedLevelRewardLevels(
+    playerLevel: experienceProgress.level,
+    claimed: _claimedLevelRewards,
+  ).length;
+
+  bool get hasUnclaimedLevelRewards => unclaimedLevelRewardCount > 0;
+
+  Future<LevelRewardClaimResult> claimLevelReward(int level) async {
+    final def = rewardForLevel(level);
+    if (def == null) return LevelRewardClaimResult.missing;
+    if (_claimedLevelRewards.contains(level)) {
+      return LevelRewardClaimResult.alreadyClaimed;
+    }
+    if (experienceProgress.level < level) {
+      return LevelRewardClaimResult.locked;
+    }
+    _claimedLevelRewards.add(level);
+    notifyListeners();
+    if (def.isEnergy) {
+      await grantEnergy(def.amount);
+    } else {
+      await grantCoins(def.amount);
+    }
+    await _persistClaimedLevelRewards();
+    return LevelRewardClaimResult.claimed;
+  }
+
+  /// Clears claimed level rewards so they can be claimed again (testing).
+  Future<void> resetLevelRewards() async {
+    _claimedLevelRewards.clear();
+    notifyListeners();
+    await _persistClaimedLevelRewards();
   }
 
   Future<void> noteDailyChallengeProgress({
