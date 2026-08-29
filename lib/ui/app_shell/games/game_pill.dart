@@ -308,6 +308,7 @@ class _ModeBadge extends StatelessWidget {
       GameMode.tresydos => 'Tres y Dos',
       GameMode.rummy => 'Rummy',
       GameMode.robaito => 'Robaito',
+      GameMode.bs => 'BS',
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

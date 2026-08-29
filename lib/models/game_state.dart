@@ -8,6 +8,7 @@ import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 
 import 'package:dominican_casino/game_control/game_engine/rummy/rummy_state.dart';
+import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
 
 import 'playing_card_model.dart';
 
@@ -18,11 +19,22 @@ GameStatus gameStatusFrom(String? s) {
   return GameStatus.values.firstWhere((g) => g.name == s);
 }
 
-enum GameMode { tresydos, rummy, casino, casinoSpeed, robaito }
+enum GameMode { tresydos, rummy, casino, casinoSpeed, robaito, bs }
 
-/// Friend tables stay open until Start. Tres y Dos sits 2–4; Casino is heads-up.
-int maxSeatsFor(GameMode mode) =>
-    mode == GameMode.tresydos || mode == GameMode.rummy ? 4 : 2;
+/// Friend tables stay open until Start. Tres/Rummy 2–4; BS 3–6; Casino heads-up.
+int maxSeatsFor(GameMode mode) {
+  switch (mode) {
+    case GameMode.bs:
+      return 6;
+    case GameMode.tresydos:
+    case GameMode.rummy:
+      return 4;
+    case GameMode.casino:
+    case GameMode.casinoSpeed:
+    case GameMode.robaito:
+      return 2;
+  }
+}
 
 GameMode gameModeFrom(String? s) {
   switch (s) {
@@ -36,6 +48,8 @@ GameMode gameModeFrom(String? s) {
       return GameMode.rummy;
     case 'robaito':
       return GameMode.robaito;
+    case 'bs':
+      return GameMode.bs;
     default:
       return GameMode.casino;
   }
@@ -53,6 +67,8 @@ String gameModeTo(GameMode s) {
       return 'rummy';
     case GameMode.robaito:
       return 'robaito';
+    case GameMode.bs:
+      return 'bs';
   }
 }
 
@@ -130,6 +146,9 @@ class GameState {
   /// Rummy-specific persisted state (contract + the card-id overlay per box).
   RummyState? rummyState;
 
+  /// BS-specific persisted state (pile claim + challenge window).
+  BsState? bsState;
+
   /// UTC instant when the current seat's action clock expires.
   /// Shared on the match so every client can render it.
   DateTime? turnDeadline;
@@ -170,6 +189,7 @@ class GameState {
     Map<String, int>? roundSpecialCoins,
     Map<String, int>? roundViraoCoins,
     this.rummyState,
+    this.bsState,
     List<String>? tableOrder,
     Map<String, List<PlayingCardModel>>? lastTakes,
     this.turnDeadline,
@@ -368,8 +388,8 @@ class GameState {
     if (gameStatus != GameStatus.gameOver) return 0;
     if (!entryPaidBy.contains(pid)) return 0;
 
-    // Rummy (Romir): single go-out winner-takes-all.
-    if (gameMode == GameMode.rummy) {
+    // Rummy / BS: single go-out winner-takes-all.
+    if (gameMode == GameMode.rummy || gameMode == GameMode.bs) {
       final rank = finishRank(pid);
       if (rank == null) return 0;
       if (rank != 1) return 0;
@@ -550,6 +570,7 @@ class GameState {
     'roundSpecialCoins': roundSpecialCoins,
     'roundViraoCoins': roundViraoCoins,
     'rummyState': rummyState?.toJson(),
+    'bsState': bsState?.toJson(),
     'turnDeadline': turnDeadline?.toUtc().toIso8601String(),
     'turnDurationSeconds': turnDurationSeconds,
   };
@@ -622,6 +643,10 @@ class GameState {
     final rummyState = rummyStateRaw is Map
         ? RummyState.fromJson(Map<String, dynamic>.from(rummyStateRaw))
         : null;
+    final bsStateRaw = m['bsState'];
+    final bsState = bsStateRaw is Map
+        ? BsState.fromJson(Map<String, dynamic>.from(bsStateRaw))
+        : null;
     return GameState(
       gameStatus: gameStatus,
       gameMode: gameMode,
@@ -668,6 +693,7 @@ class GameState {
       roundSpecialCoins: _intMap(m['roundSpecialCoins']),
       roundViraoCoins: _intMap(m['roundViraoCoins']),
       rummyState: rummyState,
+      bsState: bsState,
       turnDeadline: _dateTime(m['turnDeadline']),
       turnDurationSeconds: _speedTurnSeconds(m['turnDurationSeconds']),
     );

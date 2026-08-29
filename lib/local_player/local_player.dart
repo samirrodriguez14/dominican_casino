@@ -5,9 +5,11 @@ import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/game_registry.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/local_player/bs_player.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
 import 'package:dominican_casino/local_player/tresdos_player.dart';
 import 'package:dominican_casino/local_player/rummy_player.dart';
+import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
@@ -165,6 +167,26 @@ class LocalPlayer extends ChangeNotifier {
           return true;
         }
 
+        // BS challenge: a bot may Call Bluff while the window is open.
+        if (state.gameMode == GameMode.bs &&
+            state.bsState?.phase == BsPhase.challenge) {
+          for (final botPid in botPids) {
+            final call = BsPlayer.maybeCallBluff(botPid, state);
+            if (call == null) continue;
+            await Future.delayed(const Duration(milliseconds: 600));
+            if (_disposed) return false;
+            final current = gameRepo.gameState;
+            if (current == null ||
+                current.bsState?.phase != BsPhase.challenge) {
+              return false;
+            }
+            final next = engine.performOutOfTurnAction(current, call);
+            await _persist(next);
+            return true;
+          }
+          return false;
+        }
+
         if (!_isOurBot(state.currentTurnPlayerId)) return false;
         pid = state.currentTurnPlayerId!;
 
@@ -174,6 +196,13 @@ class LocalPlayer extends ChangeNotifier {
             bestAction = await TresdosPlayer.tresdosBestAction(pid, state);
           case GameMode.rummy:
             bestAction = await RummyPlayer.rummyBestAction(pid, state);
+          case GameMode.bs:
+            final (action, selection) = BsPlayer.bsBestAction(pid, state);
+            bestAction = PossibleSelection(
+              playAction: action,
+              cardSelection: selection,
+              scoreValue: 1,
+            );
           default:
             bestAction = await CasinoPlayer.casinoBestAction(pid, state);
         }

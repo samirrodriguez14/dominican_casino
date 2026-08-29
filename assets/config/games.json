@@ -104,6 +104,27 @@
         "Collect the most cards",
         "Highest count wins"
       ]
+    },
+    {
+      "id": "bs",
+      "title": "BS",
+      "subtitle": "Bluff your way to an empty hand",
+      "description": "Play 1–4 cards face-down and claim a rank. Others have a few seconds to call BS. First to empty their hand wins. About 5–10 minutes · 3–6 players.",
+      "players": {
+        "min": 3,
+        "max": 6,
+        "label": "3–6 Players"
+      },
+      "icon": "app_fill",
+      "aiSupported": false,
+      "enabled": true,
+      "themeColor": "#DC2626",
+      "rules": [
+        "Deal the whole deck around",
+        "Play 1–4 cards face-down and claim a rank",
+        "Others may Call BS within seconds",
+        "First empty hand wins"
+      ]
     }
   ]
 }

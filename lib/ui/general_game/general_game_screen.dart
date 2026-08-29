@@ -24,6 +24,7 @@ import 'package:dominican_casino/ui/animations/flight_layer.dart';
 import 'package:dominican_casino/ui/animations/shuffle_animator.dart';
 import 'package:dominican_casino/ui/app_shell/games/account_setup_popup.dart';
 import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
+import 'package:dominican_casino/ui/general_game/areas/bs_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/rummy_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
@@ -941,6 +942,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       case GameMode.casino:
       case GameMode.casinoSpeed:
         return const SimpleCasinoPlayingArea();
+      case GameMode.bs:
+        return const BsPlayingArea();
       case GameMode.robaito:
     }
     return null;

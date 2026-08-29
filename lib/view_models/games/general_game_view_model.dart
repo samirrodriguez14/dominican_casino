@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:math';
 
 import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
+import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_rules_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/tresydos/handlers/tres_dos_game_state_handler.dart';
@@ -258,12 +259,12 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   void _syncTurnClock() {
     if (_disposed) return;
-    if (!_sharedTurnClockLive) {
+    if (!_sharedTurnClockLive && !_bsChallengeClockLive) {
       _cancelTurnClock();
       return;
     }
 
-    if (!isAnimating) {
+    if (!isAnimating && _sharedTurnClockLive) {
       _maybePersistTurnClock();
     }
 
@@ -289,6 +290,11 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   void _onTurnTick() {
     if (_disposed) return;
+    if (_bsChallengeClockLive) {
+      _maybeAcceptBsClaimOnTimeout();
+      notifyListeners();
+      return;
+    }
     if (!_sharedTurnClockLive) {
       _cancelTurnClock();
       notifyListeners();
@@ -308,6 +314,24 @@ class GeneralGameViewModel extends ChangeNotifier {
       _maybeAutoPlayOnTurnTimeout().whenComplete(() {
         if (!_disposed) _turnAutoplayInFlight = false;
       });
+    }
+  }
+
+  Future<void> _maybeAcceptBsClaimOnTimeout() async {
+    if (tutorialMode || isAnimating || _turnAutoplayInFlight) return;
+    final bs = gameState.bsState;
+    if (bs == null || bs.phase != BsPhase.challenge) return;
+    final deadline = bs.challengeDeadline;
+    if (deadline == null || deadline.isAfter(DateTime.now().toUtc())) return;
+    if (bs.challengerPid != null) return;
+
+    _turnAutoplayInFlight = true;
+    try {
+      await performOutOfTurnAction(AcceptClaimAction(performedById: me));
+    } catch (e) {
+      developer.log('bs accept claim timeout Error $e');
+    } finally {
+      if (!_disposed) _turnAutoplayInFlight = false;
     }
   }
 
@@ -932,13 +956,34 @@ class GeneralGameViewModel extends ChangeNotifier {
   int _playHandSizeFor(GameMode mode) => switch (mode) {
     GameMode.tresydos => 6,
     GameMode.rummy => 8,
+    GameMode.bs => 0,
     _ => 0,
   };
 
-  Duration get turnTotal => gameState.turnDuration;
+  Duration get turnTotal {
+    final bs = gameState.bsState;
+    if (bs != null &&
+        bs.phase == BsPhase.challenge &&
+        bs.challengeDeadline != null) {
+      return BsState.challengeWindow;
+    }
+    return gameState.turnDuration;
+  }
 
   DateTime? turnDeadlineFor(String pid) {
     if (tutorialMode || pid.isEmpty) return null;
+
+    final bs = gameState.bsState;
+    if (bs != null &&
+        bs.phase == BsPhase.challenge &&
+        bs.challengeDeadline != null) {
+      // Bottom-center avatar: show challenge clock when local seat can Call Bluff.
+      if (pid == me && me != bs.lastClaimPid) {
+        return bs.challengeDeadline;
+      }
+      return null;
+    }
+
     if (!_sharedTurnClockLive) return null;
     if (gameState.currentTurnPlayerId != pid) return null;
     return gameState.turnDeadline;
@@ -952,6 +997,23 @@ class GeneralGameViewModel extends ChangeNotifier {
       gameState.round.roundStatus == RoundStatus.playing &&
       (gameState.currentTurnPlayerId ?? '').isNotEmpty &&
       !gameState.isLocalBotPid(gameState.currentTurnPlayerId);
+
+  bool get _bsChallengeClockLive {
+    if (tutorialMode) return false;
+    if (gameState.gameMode != GameMode.bs) return false;
+    if (gameState.gameStatus != GameStatus.inProgress) return false;
+    final bs = gameState.bsState;
+    return bs != null &&
+        bs.phase == BsPhase.challenge &&
+        bs.challengeDeadline != null &&
+        bs.challengerPid == null;
+  }
+
+  List<OutOfTurnAction> get outOfTurnActions =>
+      gameEngine.getOutOfTurnActions(gameState, me);
+
+  bool get canCallBluff =>
+      outOfTurnActions.any((a) => a is CallBluffAction);
 
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
 
@@ -1867,6 +1929,64 @@ class GeneralGameViewModel extends ChangeNotifier {
   List<PlayAction> get possiblePlayActions =>
       gameEngine.getAvailableActions(gameState, cardSelection);
 
+  Future<void> performOutOfTurnAction(OutOfTurnAction action) async {
+    if (isAnimating || _disposed) return;
+    isAnimating = true;
+    try {
+      final progressFrom = DailyChallengeGameSnap.of(gameState, me);
+      final next = gameEngine.performOutOfTurnAction(gameState, action);
+      final events = List<CardMoveEvent>.from(next.cardMoveEvents);
+      final settlement = List<CardMoveEvent>.from(next.settlementEvents);
+
+      if (!tutorialMode) {
+        for (final e in [...events, ...settlement]) {
+          gameRepo.lastPlayedIds.add(e.id);
+        }
+        await Future.wait([
+          gameRepo.fs.updateGame(next),
+          _commitStateWithMotion(
+            next,
+            events,
+            settlementEvents: settlement,
+            progressFrom: progressFrom,
+          ),
+        ]);
+      } else {
+        await _commitStateWithMotion(
+          next,
+          events,
+          settlementEvents: settlement,
+          progressFrom: progressFrom,
+        );
+      }
+      if (next.gameStatus == GameStatus.gameOver) {
+        SoundService.instance.play(GameSound.win);
+      }
+      selectedCard = null;
+      selectedCards = [];
+    } catch (e) {
+      developer.log('performOutOfTurnAction Error $e');
+      SoundService.instance.play(GameSound.illegal);
+    } finally {
+      if (!_disposed) {
+        isAnimating = false;
+        _syncTurnClock();
+        _syncWinCelebration();
+        notifyListeners();
+        _drainPendingRepoSync();
+      }
+    }
+  }
+
+  Future<void> performClaimPlay(List<PlayingCardModel> cards, String rank) async {
+    final action = ClaimPlayAction(
+      cards: cards,
+      claimedRank: rank,
+      performedById: me,
+    );
+    await performPlayAction(action);
+  }
+
   Future<void> performPlayAction(PlayAction action) async {
     if (isAnimating || _disposed) return;
     if (!_guardHumanPlay(action)) return;
@@ -2461,6 +2581,23 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (!_canPerform(TutorialAction.selectHandCard, cardId: card.id)) {
       return;
     }
+
+    // BS: multi-select up to 4 hand cards via selectedCards.
+    if (gameState.gameMode == GameMode.bs) {
+      selectedCard = null;
+      if (selectedCards.any((c) => c.id == card.id)) {
+        selectedCards = selectedCards.where((c) => c.id != card.id).toList();
+      } else if (selectedCards.length < 4) {
+        selectedCards = [...selectedCards, card];
+      } else {
+        SoundService.instance.play(GameSound.illegal);
+        return;
+      }
+      SoundService.instance.play(GameSound.softCard);
+      notifyListeners();
+      return;
+    }
+
     if (selectedCard == card) {
       selectedCard = null;
     } else {

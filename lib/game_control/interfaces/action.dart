@@ -154,3 +154,31 @@ class PairAndTakeCardsAction extends PlayAction {
     required super.performedById,
   });
 }
+
+/// BS: play 1–4 hand cards face-down and announce a claimed rank.
+class ClaimPlayAction extends PlayAction {
+  List<PlayingCardModel> cards;
+  String claimedRank;
+
+  ClaimPlayAction({
+    required this.cards,
+    required this.claimedRank,
+    required super.performedById,
+  });
+}
+
+/// Actions available when it is not necessarily the acting seat's turn
+/// (e.g. Call Bluff during a challenge window).
+abstract class OutOfTurnAction {
+  String performedById;
+  OutOfTurnAction({required this.performedById});
+}
+
+class CallBluffAction extends OutOfTurnAction {
+  CallBluffAction({required super.performedById});
+}
+
+/// Accept a claim after the challenge window expires with no Call Bluff.
+class AcceptClaimAction extends OutOfTurnAction {
+  AcceptClaimAction({required super.performedById});
+}

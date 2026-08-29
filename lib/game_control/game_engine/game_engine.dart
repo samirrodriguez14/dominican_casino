@@ -50,11 +50,24 @@ abstract class GameEngine {
     String pid,
   );
 
+  /// Reactive moves available when it is not necessarily [pid]'s turn
+  /// (e.g. Call Bluff). Default: none.
+  List<OutOfTurnAction> getOutOfTurnActions(GameState state, String pid) =>
+      const [];
+
+  ValidateResult validateOutOfTurn(GameState state, OutOfTurnAction action) =>
+      ValidateResult.failure('Out-of-turn actions not supported');
+
+  /// Mutates and returns state. Does not write to the network.
+  GameState performOutOfTurnAction(GameState state, OutOfTurnAction action) {
+    throw UnsupportedError('Out-of-turn actions not supported');
+  }
+
   /// When the minimum seats are filled and the game has not started, callers
   /// should set [GameStatus.readyToStart] and persist (not inside getters).
   /// Tres y Dos can still accept more friends until Start.
   bool shouldMarkReadyToStart(GameState gameState) {
-    const minPlayers = 2;
+    final minPlayers = gameState.gameMode == GameMode.bs ? 3 : 2;
     if (gameState.gameStatus == GameStatus.inProgress ||
         gameState.gameStatus == GameStatus.gameOver) {
       return false;

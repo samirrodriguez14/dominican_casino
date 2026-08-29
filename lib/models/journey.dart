@@ -46,6 +46,7 @@ String journeyGameModeLabel(GameMode? mode) => switch (mode) {
   GameMode.casinoSpeed => 'Casino Speed',
   GameMode.casino => 'Casino',
   GameMode.robaito => 'Robaito',
+  GameMode.bs => 'BS',
   null => '',
 };
 

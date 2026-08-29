@@ -1,0 +1,33 @@
+{
+  "title": "How to Play",
+  "sections": [
+    {
+      "title": "General Info",
+      "description": "Bluff your way to an empty hand. Call BS on suspicious claims.",
+      "facts": [
+        {"label": "Time", "value": "5–10 min"},
+        {"label": "Players", "value": "3–6"},
+        {"label": "Card deck", "value": "Standard (all dealt)"},
+        {"label": "Win", "value": "First empty hand"}
+      ]
+    },
+    {
+      "title": "Game Rules",
+      "body": [
+        "On your turn, play 1–4 cards face-down and announce a rank (for example, 3 tens).",
+        "Other players have a few seconds to Call BS.",
+        "If you were honest, the challenger takes the pile. If you bluffed, you take the pile.",
+        "If nobody calls, the pile stays and play continues.",
+        "First player to empty their hand wins."
+      ]
+    },
+    {
+      "title": "Strategy Tips",
+      "body": [
+        "Bluff when others are low on cards.",
+        "Save matching ranks for clean plays when challenged.",
+        "Watch who empties first — Call BS when it matters."
+      ]
+    }
+  ]
+}

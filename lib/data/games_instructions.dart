@@ -15,5 +15,9 @@ const gamesData = {
   "robaito":
       "Capture cards from the table that match the value."
       "Steal other players Stack."
-      "The player with more cards at the end wins!"
+      "The player with more cards at the end wins!",
+  "bs":
+      "Play 1–4 cards face-down and claim a rank. "
+      "Others can Call BS within seconds. "
+      "First empty hand wins.",
 };

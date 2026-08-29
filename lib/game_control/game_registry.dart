@@ -1,3 +1,4 @@
+import 'package:dominican_casino/game_control/game_engine/bs/bs_game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/game_engine/rummy/rummy_game_engine.dart';
@@ -13,6 +14,7 @@ class GameRegistry {
     GameMode.casinoSpeed,
     GameMode.tresydos,
     GameMode.rummy,
+    GameMode.bs,
   };
 
   static bool isPlayable(GameMode mode) => playableModes.contains(mode);
@@ -38,6 +40,8 @@ class GameRegistry {
         return 'Rummy (Romir)';
       case GameMode.robaito:
         return 'Robaito';
+      case GameMode.bs:
+        return 'BS';
     }
   }
 
@@ -54,6 +58,8 @@ class GameRegistry {
         return 'go-out on the contract in 1 round';
       case GameMode.robaito:
         return 'collecting the most cards';
+      case GameMode.bs:
+        return 'emptying your hand first';
     }
   }
 
@@ -72,6 +78,8 @@ class GameRegistry {
         return GameMode.rummy;
       case 'robaito':
         return GameMode.robaito;
+      case 'bs':
+        return GameMode.bs;
       default:
         return null;
     }
@@ -86,6 +94,8 @@ class GameRegistry {
         return TresDosGameEngine();
       case GameMode.rummy:
         return RummyGameEngine();
+      case GameMode.bs:
+        return BsGameEngine();
       case GameMode.robaito:
         return null;
     }
@@ -98,6 +108,7 @@ class GameRegistry {
   }
 
   /// Deal parameters: (cardsPerPlayer, table, redealPlayer, redealTable).
+  /// BS deals the full deck in its own handler — counts are unused.
   static (int, int, int, int) dealCounts(GameMode mode) {
     switch (mode) {
       case GameMode.casino:
@@ -108,6 +119,7 @@ class GameRegistry {
       case GameMode.rummy:
         return (7, 1, 0, 1);
       case GameMode.robaito:
+      case GameMode.bs:
         return (0, 0, 0, 0);
     }
   }

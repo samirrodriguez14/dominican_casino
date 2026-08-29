@@ -189,6 +189,7 @@ String actionLabel(PlayAction action) {
   final name = action.runtimeType.toString();
   switch (name) {
     case 'PlayCardAction':
+    case 'ClaimPlayAction':
       return 'Play';
     case 'TakeCardAction':
       return 'Take';

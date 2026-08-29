@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
@@ -141,7 +142,10 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
     required bool holdFlat,
     required bool celebrating,
   }) {
-    final selected = vm.selectedCard == card && draggingId != card.id;
+    final selected = (vm.gameState.gameMode == GameMode.bs
+            ? vm.selectedCards.any((c) => c.id == card.id)
+            : vm.selectedCard == card) &&
+        draggingId != card.id;
     final t = count == 1 ? 0.0 : (index - mid) / mid;
     final angle = holdFlat || celebrating ? 0.0 : t * _edgeAngle;
     final arcDrop = holdFlat || celebrating ? 0.0 : t.abs() * 8;

@@ -29,6 +29,7 @@ class GameModeCard extends StatelessWidget {
       GameMode.tresydos => theme.pickerFaceAlt,
       GameMode.rummy => theme.pickerFaceAlt,
       GameMode.robaito => theme.pickerFaceEdge,
+      GameMode.bs => theme.pickerFaceEdge,
     };
   }
 
@@ -169,6 +170,7 @@ class GameModeCard extends StatelessWidget {
   Color _suitColor(AppTheme theme) {
     return switch (mode) {
       GameMode.tresydos => theme.suitRed,
+      GameMode.bs => theme.suitRed,
       GameMode.casino ||
       GameMode.casinoSpeed ||
       GameMode.robaito ||
@@ -192,6 +194,7 @@ class _ModeMark extends StatelessWidget {
       GameMode.tresydos => '♦',
       GameMode.rummy => '♥',
       GameMode.robaito => '♣',
+      GameMode.bs => 'B',
     };
     return Text(
       glyph,

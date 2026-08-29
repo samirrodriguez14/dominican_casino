@@ -2924,7 +2924,8 @@ class AppRepo extends ChangeNotifier {
         mode == GameMode.casino ||
         mode == GameMode.casinoSpeed ||
         mode == GameMode.tresydos ||
-        mode == GameMode.rummy;
+        mode == GameMode.rummy ||
+        mode == GameMode.bs;
     final stake = WalletConfig.isAllowedStake(entryCost, allowNoBet: allowNoBet)
         ? entryCost
         : WalletConfig.entryCost;

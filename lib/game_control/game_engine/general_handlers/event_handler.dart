@@ -35,8 +35,44 @@ class EventHandler {
         return generateAddAndTakeCardsEvent(a);
       case PairAndTakeCardsAction a:
         return generatePairAndTakeCardsEvent(a);
+      case ClaimPlayAction a:
+        return generateClaimPlayEvents(a);
     }
     return [];
+  }
+
+  static List<CardMoveEvent> generateClaimPlayEvents(ClaimPlayAction a) {
+    final from = Zone(type: ZoneType.playerHand, holderId: a.performedById);
+    final to = Zone(type: ZoneType.table, holderId: ZoneType.table.name);
+    return [
+      for (final card in a.cards)
+        CardMoveEvent(
+          id: _uuid.v4().substring(0, 8),
+          from: from,
+          to: to,
+          card: card,
+          performedBy: a.performedById,
+        ),
+    ];
+  }
+
+  static List<CardMoveEvent> generatePileToHandEvents({
+    required List<PlayingCardModel> cards,
+    required String receiverId,
+    required String performedBy,
+  }) {
+    final from = Zone(type: ZoneType.table, holderId: ZoneType.table.name);
+    final to = Zone(type: ZoneType.playerHand, holderId: receiverId);
+    return [
+      for (final card in cards)
+        CardMoveEvent(
+          id: _uuid.v4().substring(0, 8),
+          from: from,
+          to: to,
+          card: card,
+          performedBy: performedBy,
+        ),
+    ];
   }
 
   /// -----------PLAY ACTIONS EVENTS----------- ///

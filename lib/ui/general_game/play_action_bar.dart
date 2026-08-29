@@ -3,6 +3,7 @@ import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/general_game/bs_claim_rank_picker.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_hint_pulse.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
@@ -25,7 +26,10 @@ class PlayActionBar extends StatelessWidget {
     final pending = vm.dropPending;
     final actions = pending?.actions ?? vm.possiblePlayActions;
     final choosing = pending != null;
-    final showChips = choosing || (vm.canPlayTurn && actions.isNotEmpty);
+    final outOfTurn = vm.outOfTurnActions;
+    final callBluff = outOfTurn.whereType<CallBluffAction>().firstOrNull;
+    final showPlayChips = choosing || (vm.canPlayTurn && actions.isNotEmpty);
+    final showChips = showPlayChips || callBluff != null;
     final roundPlaying =
         vm.gameState.round.roundStatus == RoundStatus.playing;
     final idleHint = context.select<TutorialViewModel, String?>(
@@ -52,8 +56,9 @@ class PlayActionBar extends StatelessWidget {
           showChips
               ? _ActionChipRow(
                   vm: vm,
-                  actions: actions,
+                  actions: showPlayChips ? actions : const [],
                   choosing: choosing,
+                  callBluff: callBluff,
                 )
               : Center(
                   child: idleHint != null
@@ -105,11 +110,34 @@ class _ActionChipRow extends StatelessWidget {
     required this.vm,
     required this.actions,
     required this.choosing,
+    this.callBluff,
   });
 
   final GeneralGameViewModel vm;
   final List<PlayAction> actions;
   final bool choosing;
+  final CallBluffAction? callBluff;
+
+  Future<void> _onPlayTap(BuildContext context, PlayAction action) async {
+    if (action is ClaimPlayAction) {
+      final cards = action.cards.isNotEmpty
+          ? action.cards
+          : vm.selectedCards;
+      if (cards.isEmpty) return;
+      final rank = await showBsClaimRankPicker(
+        context,
+        cardCount: cards.length,
+      );
+      if (rank == null || !context.mounted) return;
+      await vm.performClaimPlay(cards, rank);
+      return;
+    }
+    if (choosing) {
+      vm.commitDropPending(action);
+    } else {
+      vm.performPlayAction(action);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +156,16 @@ class _ActionChipRow extends StatelessWidget {
                     child: _DismissPlayButton(onTap: vm.cancelDropPending),
                   ),
                 ],
+                if (callBluff != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _ActionChipButton(
+                      label: 'Call BS',
+                      icon: CupertinoIcons.exclamationmark_bubble_fill,
+                      primary: true,
+                      onTap: () => vm.performOutOfTurnAction(callBluff!),
+                    ),
+                  ),
                 for (var index = 0; index < actions.length; index++)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -144,14 +182,8 @@ class _ActionChipRow extends StatelessWidget {
                             child: _ActionChipButton(
                               label: actionLabel(actions[index]),
                               icon: actionIcon(actions[index]),
-                              primary: index == 0,
-                              onTap: () {
-                                if (choosing) {
-                                  vm.commitDropPending(actions[index]);
-                                } else {
-                                  vm.performPlayAction(actions[index]);
-                                }
-                              },
+                              primary: index == 0 && callBluff == null,
+                              onTap: () => _onPlayTap(context, actions[index]),
                             ),
                           ),
                         );
@@ -340,6 +372,7 @@ IconData actionIcon(PlayAction action) {
   final name = action.runtimeType.toString();
   switch (name) {
     case 'PlayCardAction':
+    case 'ClaimPlayAction':
       return CupertinoIcons.arrow_up_circle_fill;
     case 'TakeCardAction':
       return CupertinoIcons.arrow_down_circle_fill;

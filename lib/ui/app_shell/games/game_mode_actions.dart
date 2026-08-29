@@ -25,7 +25,8 @@ bool _allowsNoBet(GameMode mode) =>
     mode == GameMode.casino ||
     mode == GameMode.casinoSpeed ||
     mode == GameMode.tresydos ||
-    mode == GameMode.rummy;
+    mode == GameMode.rummy ||
+    mode == GameMode.bs;
 
 void showJoinGameDialog(BuildContext context, String mode) {
   final TextEditingController controller = TextEditingController();
@@ -167,6 +168,7 @@ String _modeTitle(GamesViewModel vm, GameMode mode) {
     GameMode.tresydos => 'Tres y Dos',
     GameMode.rummy => 'Rummy',
     GameMode.robaito => 'Robaito',
+    GameMode.bs => 'BS',
   };
 }
 
@@ -288,18 +290,18 @@ class _PlayerCountPicker extends StatelessWidget {
   const _PlayerCountPicker({
     required this.selected,
     required this.onChanged,
+    this.options = const [2, 3, 4],
   });
 
   final int selected;
   final ValueChanged<int> onChanged;
-
-  static const _options = [2, 3, 4];
+  final List<int> options;
 
   IconData _iconFor(int count) {
     return switch (count) {
       2 => CupertinoIcons.person_2_fill,
       3 => CupertinoIcons.group_solid,
-      _ => CupertinoIcons.person_2,
+      _ => CupertinoIcons.group_solid,
     };
   }
 
@@ -308,14 +310,14 @@ class _PlayerCountPicker extends StatelessWidget {
     final theme = AppStyle.theme;
     return Row(
       children: [
-        for (var i = 0; i < _options.length; i++) ...[
+        for (var i = 0; i < options.length; i++) ...[
           if (i > 0) const SizedBox(width: 6),
           Expanded(
             child: _PlayerCountChip(
-              count: _options[i],
-              icon: _iconFor(_options[i]),
-              selected: selected == _options[i],
-              onTap: () => onChanged(_options[i]),
+              count: options[i],
+              icon: _iconFor(options[i]),
+              selected: selected == options[i],
+              onTap: () => onChanged(options[i]),
               theme: theme,
             ),
           ),
@@ -609,15 +611,27 @@ class _EnterGamePopup extends StatefulWidget {
 class _EnterGamePopupState extends State<_EnterGamePopup> {
   int _stake = WalletConfig.entryCost;
   _PlayPath _path = _PlayPath.puli;
-  int _playerCount = 2;
+  late int _playerCount;
   int _turnSeconds = WalletConfig.defaultSpeedTurnSeconds;
 
+  @override
+  void initState() {
+    super.initState();
+    _playerCount = widget.mode == GameMode.bs ? 3 : 2;
+  }
+
+  bool get _multiSeatMode =>
+      widget.mode == GameMode.tresydos ||
+      widget.mode == GameMode.rummy ||
+      widget.mode == GameMode.bs;
+
   void _start() {
-    final playerCount =
-        (widget.mode == GameMode.tresydos || widget.mode == GameMode.rummy) &&
-                _path == _PlayPath.puli
-        ? _playerCount
-        : 2;
+    final playerCount = switch (widget.mode) {
+      GameMode.bs => _playerCount.clamp(3, 6),
+      GameMode.tresydos || GameMode.rummy when _path == _PlayPath.puli =>
+        _playerCount,
+      _ => 2,
+    };
     final turnDurationSeconds = widget.mode == GameMode.casinoSpeed
         ? _turnSeconds
         : WalletConfig.defaultSpeedTurnSeconds;
@@ -647,9 +661,11 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
     final energy = WalletConfig.energyCostFor(mode.name);
     final joining = _path == _PlayPath.join;
     final showPlayerCount =
-        (mode == GameMode.tresydos || mode == GameMode.rummy) &&
-            _path == _PlayPath.puli;
+        (_multiSeatMode && _path == _PlayPath.puli) ||
+        (widget.mode == GameMode.bs && _path == _PlayPath.puli);
     final showTurnClock = mode == GameMode.casinoSpeed && !joining;
+    final countOptions =
+        mode == GameMode.bs ? const [3, 4, 5, 6] : const [2, 3, 4];
 
     return Center(
       child: Material(
@@ -686,10 +702,10 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
                 _PathPicker(
                   selected: _path,
                   onChanged: (path) => setState(() => _path = path),
-                  friendIcon: mode == GameMode.tresydos || mode == GameMode.rummy
+                  friendIcon: _multiSeatMode
                       ? CupertinoIcons.group_solid
                       : CupertinoIcons.person_2_fill,
-                  friendTitle: mode == GameMode.tresydos || mode == GameMode.rummy
+                  friendTitle: _multiSeatMode
                       ? l10n.playFriendsChip
                       : l10n.playFriendChip,
                 ),
@@ -707,6 +723,7 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
                   const SizedBox(height: 14),
                   _PlayerCountPicker(
                     selected: _playerCount,
+                    options: countOptions,
                     onChanged: (value) => setState(() => _playerCount = value),
                   ),
                 ],
@@ -852,6 +869,7 @@ Future<InstructionsData> loadInstructions(GameMode mode) async {
     GameMode.robaito => 'assets/config/robaito_instructions.json',
     GameMode.casino => 'assets/config/casino_instructions.json',
     GameMode.casinoSpeed => 'assets/config/casino_speed_instructions.json',
+    GameMode.bs => 'assets/config/bs_instructions.json',
   };
   final raw = await rootBundle.loadString(path);
   return InstructionsData.fromJson(jsonDecode(raw));
