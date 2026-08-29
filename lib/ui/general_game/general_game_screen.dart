@@ -929,7 +929,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                           );
                         },
                       ),
-                      if (vm.gameState.gameMode == GameMode.bs)
+                      if (vm.gameState.gameMode != GameMode.robaito)
                         Positioned.fill(
                           child: BsTurnTokenOverlay(stackKey: _gameStackKey),
                         ),
@@ -1066,22 +1066,31 @@ class _PlayerReactionButtonState extends State<_PlayerReactionButton> {
     return OverlayPortal(
       controller: _overlay,
       overlayChildBuilder: (context) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: CompositedTransformFollower(
-            link: _layerLink,
-            showWhenUnlinked: false,
-            targetAnchor: Alignment.topRight,
-            followerAnchor: Alignment.bottomRight,
-            offset: const Offset(0, -4),
-            child: GameReactionPicker(
-              onSelected: (emoji) {
-                AppHaptics.lightImpact();
-                _setOpen(false);
-                vm.sendReaction(emoji);
-              },
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _setOpen(false),
+                // Transparent scrim so taps outside the picker dismiss it.
+                child: const ColoredBox(color: Color(0x00000000)),
+              ),
             ),
-          ),
+            CompositedTransformFollower(
+              link: _layerLink,
+              showWhenUnlinked: false,
+              targetAnchor: Alignment.topRight,
+              followerAnchor: Alignment.bottomRight,
+              offset: const Offset(0, -4),
+              child: GameReactionPicker(
+                onSelected: (emoji) {
+                  AppHaptics.lightImpact();
+                  _setOpen(false);
+                  vm.sendReaction(emoji);
+                },
+              ),
+            ),
+          ],
         );
       },
       child: CompositedTransformTarget(

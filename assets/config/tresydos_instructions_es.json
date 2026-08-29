@@ -1,0 +1,48 @@
+{
+    "title": "Cómo jugar",
+    "sections": [
+        {
+            "title": "Información general",
+            "description": "Un juego rápido de emparejar. El primero en hacer 3 + 2 gana la ronda.",
+            "facts": [
+                {"label": "Tiempo", "value": "5–7 min"},
+                {"label": "Jugadores", "value": "2–4"},
+                {"label": "Baraja", "value": "Estándar"},
+                {"label": "Se empareja por", "value": "Rango, no palo"},
+                {"label": "Victoria", "value": "Primero en 3 rondas"}
+            ]
+        },
+        {
+            "title": "Reglas del juego",
+            "body": [
+                "Roba y descarta en tu turno.",
+                "Gana una ronda con un grupo de 3 y un grupo de 2, de rangos distintos."
+            ],
+            "cardGroups": [
+                {
+                    "label": "Grupo de 3",
+                    "cards": [
+                        {"rank": "7", "suit": "♠"},
+                        {"rank": "7", "suit": "♥"},
+                        {"rank": "7", "suit": "♦"}
+                    ]
+                },
+                {
+                    "label": "Grupo de 2",
+                    "cards": [
+                        {"rank": "K", "suit": "♣"},
+                        {"rank": "K", "suit": "♠"}
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "Consejos de estrategia",
+            "body": [
+                "Fíjate en las cartas que descartan los demás.",
+                "Mantén combinaciones flexibles mientras armas tus grupos.",
+                "Evita revelar qué rango estás juntando."
+            ]
+        }
+    ]
+}

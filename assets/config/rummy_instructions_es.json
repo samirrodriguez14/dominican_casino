@@ -1,0 +1,38 @@
+{
+  "title": "Cómo jugar",
+  "sections": [
+    {
+      "title": "Información general",
+      "facts": [
+        { "label": "Tiempo", "value": "5–7 min" },
+        { "label": "Jugadores", "value": "2–4" },
+        { "label": "Condición de victoria", "value": "Salir con el contrato en 1 ronda" }
+      ]
+    },
+    {
+      "title": "El contrato (cajas A y B)",
+      "body": [
+        "Al empezar la partida, se te reparte un contrato aleatorio de 7 cartas.",
+        "Tu objetivo es arrastrar cartas a las dos cajas punteadas para que los grupos cumplan el contrato.",
+        "Para ganar, las cartas en las cajas deben cumplir el contrato y cubrir las 7 cartas (las sobrantes no cuentan)."
+      ]
+    },
+    {
+      "title": "Tu turno (Robar → Cajas → Descartar)",
+      "body": [
+        "Toma una carta (del mazo o del descarte).",
+        "Con 8 cartas en la mano, arrastra las que quieras a la Caja A y la Caja B.",
+        "Descarta hasta quedar con 7 cartas.",
+        "Si la Caja A + la Caja B cumplen el contrato (usando las 7 cartas), ganas de inmediato."
+      ]
+    },
+    {
+      "title": "Consejos de estrategia",
+      "body": [
+        "Intenta armar los grupos en cuanto robes cartas que encajen con el contrato.",
+        "Si ves posible salir, concéntrate en completar exactamente los grupos requeridos.",
+        "Evita poner en las cajas cartas que te impidan formar el contrato completo."
+      ]
+    }
+  ]
+}

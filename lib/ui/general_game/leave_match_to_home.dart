@@ -16,6 +16,11 @@ Future<void> leaveMatchToHome(
   if (!context.mounted) return;
 
   final repo = context.read<AppRepo>();
+  if (!vm.tutorialMode) {
+    await repo.noteLevelChallengeMatchProgress(vm.gameState, vm.me);
+  }
+  if (!context.mounted) return;
+
   final pending = repo.journeyProgress.pendingChallenge;
   final gid = vm.gid;
   if (pending != null &&

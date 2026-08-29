@@ -126,7 +126,7 @@ class _XpPlayerAvatarState extends State<XpPlayerAvatar>
   Widget build(BuildContext context) {
     final repo = context.watch<AppRepo>();
     final progress = repo.experienceProgress;
-    final hasUnclaimed = repo.hasUnclaimedLevelRewards;
+    final hasUnclaimed = repo.hasUnclaimedLevelRewardsOrChallenges;
     if (!_hydrated) {
       _hydrated = true;
       _shownLevel = progress.level;

@@ -8,6 +8,7 @@ import 'package:dominican_casino/models/game_info.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/models/journey_progress.dart';
+import 'package:dominican_casino/models/level_challenge.dart';
 import 'package:dominican_casino/models/level_rewards.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/player.dart';
@@ -41,6 +42,14 @@ enum GoogleAuthStatus { success, canceled, failed }
 enum DeleteAccountResult { success, canceled, failed }
 
 enum LevelRewardClaimResult { claimed, alreadyClaimed, locked, missing }
+
+enum LevelChallengeClaimResult {
+  claimed,
+  alreadyClaimed,
+  incomplete,
+  locked,
+  missing,
+}
 
 class GoogleAuthResult {
   const GoogleAuthResult.success(this.suggestedName)
@@ -171,6 +180,9 @@ class AppRepo extends ChangeNotifier {
   DailyChallengeState get dailyChallengesState => _dailyChallenges;
   final Set<int> _claimedLevelRewards = {};
   Set<int> get claimedLevelRewards => Set.unmodifiable(_claimedLevelRewards);
+
+  LevelChallengeState _levelChallenges = LevelChallengeState.empty();
+  LevelChallengeState get levelChallengesState => _levelChallenges;
   JourneyProgress _journeyProgress = JourneyProgress.empty();
   JourneyProgress get journeyProgress => _journeyProgress;
   /// Bumped when Journey story/progress is wiped so UI can remount coach/board.
@@ -586,6 +598,7 @@ class AppRepo extends ChangeNotifier {
     _journeyProgress.pendingLossTaunt = null;
     await _persistJourneyProgress();
     notifyListeners();
+    await noteLevelChallengeJourneyStarted();
   }
 
   Future<void> clearPendingJourneyChallenge() async {
@@ -1060,6 +1073,15 @@ class AppRepo extends ChangeNotifier {
       return false;
     }
 
+    if (won) {
+      unawaited(
+        noteLevelChallengeJourneyWin(
+          world: pending.world.name,
+          rank: pending.rank.name,
+        ),
+      );
+    }
+
     // Clubs court table: win or lose both lead to the Ace offer dialogue.
     // Ace is claimed later — do not award it here.
     if (pending.ignoreOutcome &&
@@ -1292,6 +1314,7 @@ class AppRepo extends ChangeNotifier {
       _lastDailyClaimAt = null;
       _dailyChallenges = DailyChallengeState.empty(_localDayKey());
       _claimedLevelRewards.clear();
+      _levelChallenges = LevelChallengeState.empty();
       return;
     }
 
@@ -1339,6 +1362,11 @@ class AppRepo extends ChangeNotifier {
         remote: remote,
         preferRemote: preferRemote,
       );
+      await _loadLevelChallenges(
+        uid,
+        remote: remote,
+        preferRemote: preferRemote,
+      );
     } finally {
       _walletPersistPaused = false;
     }
@@ -1352,6 +1380,8 @@ class AppRepo extends ChangeNotifier {
     await _cacheDailyClaimLocal(uid);
     await _cacheDailyChallengesLocal(uid);
     await _cacheClaimedLevelRewardsLocal(uid);
+    await _cacheLevelChallengesLocal(uid);
+    await _syncLevelChallengesFromKnownProgress();
   }
 
   String _dailyClaimPrefsKey(String uid) => 'daily_claim_$uid';
@@ -1705,6 +1735,400 @@ class AppRepo extends ChangeNotifier {
     await _persistClaimedLevelRewards();
   }
 
+  String _levelChallengesPrefsKey(String uid) => 'level_challenges_$uid';
+
+  Future<void> _loadLevelChallenges(
+    String uid, {
+    Map<String, dynamic>? remote,
+    required bool preferRemote,
+  }) async {
+    Map<String, dynamic>? remoteMap;
+    final rawRemote = remote?['levelChallenges'];
+    if (rawRemote is Map) {
+      remoteMap = Map<String, dynamic>.from(rawRemote);
+    }
+    final remoteState = LevelChallengeState.fromJson(remoteMap);
+    LevelChallengeState localState = LevelChallengeState.empty();
+    if (!preferRemote) {
+      localState = await _loadLevelChallengesPrefs(uid);
+    }
+    _levelChallenges = mergeLevelChallengeStates(remoteState, localState);
+  }
+
+  Future<LevelChallengeState> _loadLevelChallengesPrefs(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_levelChallengesPrefsKey(uid));
+      if (raw == null || raw.isEmpty) return LevelChallengeState.empty();
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return LevelChallengeState.empty();
+      return LevelChallengeState.fromJson(Map<String, dynamic>.from(decoded));
+    } catch (e) {
+      developer.log('AppRepo.loadLevelChallenges: $e');
+      return LevelChallengeState.empty();
+    }
+  }
+
+  Future<void> _cacheLevelChallengesLocal(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      await sp.setString(
+        _levelChallengesPrefsKey(uid),
+        jsonEncode(_levelChallenges.toJson()),
+      );
+    } catch (e) {
+      developer.log('AppRepo.cacheLevelChallenges: $e');
+    }
+  }
+
+  Future<void> _persistLevelChallenges() async {
+    final uid = _walletUid;
+    if (uid == null) return;
+    await _cacheLevelChallengesLocal(uid);
+    try {
+      await fs.saveLevelChallenges(uid: uid, data: _levelChallenges.toJson());
+    } catch (e) {
+      developer.log('AppRepo.saveLevelChallenges: $e');
+    }
+  }
+
+  int levelChallengeProgress(LevelChallengeId id) =>
+      _levelChallenges.countFor(id);
+
+  bool isLevelChallengeClaimed(LevelChallengeId id) =>
+      _levelChallenges.isClaimed(id);
+
+  bool canClaimLevelChallenge(LevelChallengeDef def) {
+    return _levelChallenges.canClaim(def, experienceProgress.level);
+  }
+
+  int get unclaimedLevelChallengeCount => unclaimedLevelChallenges(
+        playerLevel: experienceProgress.level,
+        counts: _levelChallenges.counts,
+        claimed: _levelChallenges.claimed,
+      ).length;
+
+  bool get hasUnclaimedLevelChallenges => unclaimedLevelChallengeCount > 0;
+
+  /// Avatar badge: passive level rewards or claimable level challenges.
+  bool get hasUnclaimedLevelRewardsOrChallenges =>
+      hasUnclaimedLevelRewards || hasUnclaimedLevelChallenges;
+
+  Future<LevelChallengeClaimResult> claimLevelChallenge(
+    LevelChallengeId id,
+  ) async {
+    final def = levelChallengeById(id);
+    if (def == null) return LevelChallengeClaimResult.missing;
+    if (_levelChallenges.isClaimed(id)) {
+      return LevelChallengeClaimResult.alreadyClaimed;
+    }
+    if (experienceProgress.level < def.unlockLevel) {
+      return LevelChallengeClaimResult.locked;
+    }
+    if (!_levelChallenges.isComplete(def)) {
+      return LevelChallengeClaimResult.incomplete;
+    }
+    _levelChallenges.claimed.add(id.name);
+    notifyListeners();
+    if (def.xpReward > 0) await grantXp(def.xpReward);
+    if (def.coinReward > 0) await grantCoins(def.coinReward);
+    await _persistLevelChallenges();
+    return LevelChallengeClaimResult.claimed;
+  }
+
+  /// Clears level challenge progress/claims (testing).
+  Future<void> resetLevelChallenges() async {
+    _levelChallenges = LevelChallengeState.empty();
+    notifyListeners();
+    await _persistLevelChallenges();
+  }
+
+  Future<void> debugTweakLevelChallenge(LevelChallengeId id) async {
+    if (!kDebugMode) return;
+    final def = levelChallengeById(id);
+    if (def == null) return;
+    if (_levelChallenges.isClaimed(id)) {
+      _levelChallenges.claimed.remove(id.name);
+      _levelChallenges.counts[id.name] = 0;
+    } else {
+      _levelChallenges.counts[id.name] = def.goal;
+    }
+    await _persistLevelChallenges();
+    notifyListeners();
+  }
+
+  /// Credits [id] once per [eventId]. Returns true when progress changed.
+  Future<bool> _creditLevelChallenge(
+    LevelChallengeId id,
+    String eventId, {
+    int by = 1,
+  }) async {
+    if (eventId.isEmpty || by <= 0) return false;
+    if (_levelChallenges.credited.contains(eventId)) return false;
+    final def = levelChallengeById(id);
+    if (def == null) return false;
+
+    _levelChallenges.credited.add(eventId);
+    final cur = _levelChallenges.counts[id.name] ?? 0;
+    if (cur >= def.goal) return false;
+    _levelChallenges.counts[id.name] = (cur + by).clamp(0, def.goal);
+    return true;
+  }
+
+  Future<void> _persistIfLevelChallengesChanged(bool changed) async {
+    if (!changed) return;
+    notifyListeners();
+    await _persistLevelChallenges();
+  }
+
+  /// Backfill from already-known player/journey state after wallet load.
+  Future<void> _syncLevelChallengesFromKnownProgress() async {
+    var changed = false;
+    if (player?.completedTutorial == true) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.completeTutorial,
+            'tutorial:done',
+          ) ||
+          changed;
+    }
+    if (_journeyProgress.enteredWorlds.isNotEmpty ||
+        _journeyProgress.pendingChallenge != null ||
+        _journeyProgress.trailStepsCompleted > 0) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.startJourney,
+            'journey:started',
+          ) ||
+          changed;
+    }
+    final defeats = _journeyProgress.trailStepsCompleted;
+    if (defeats >= 1) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.defeatJourneyOnce,
+            'journey:defeat:backfill:1',
+          ) ||
+          changed;
+    }
+    if (defeats >= 2) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.defeatJourneyTwice,
+            'journey:defeat:backfill:1',
+          ) ||
+          changed;
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.defeatJourneyTwice,
+            'journey:defeat:backfill:2',
+          ) ||
+          changed;
+    }
+    await _persistIfLevelChallengesChanged(changed);
+  }
+
+  Future<void> noteLevelChallengeTutorialComplete() async {
+    final changed = await _creditLevelChallenge(
+      LevelChallengeId.completeTutorial,
+      'tutorial:done',
+    );
+    await _persistIfLevelChallengesChanged(changed);
+  }
+
+  Future<void> noteLevelChallengeOnlineMatchStarted({
+    required String gameId,
+  }) async {
+    if (gameId.isEmpty) return;
+    final changed = await _creditLevelChallenge(
+      LevelChallengeId.playOnlineMatch,
+      'online:$gameId',
+    );
+    await _persistIfLevelChallengesChanged(changed);
+  }
+
+  Future<void> noteLevelChallengeJourneyStarted() async {
+    final changed = await _creditLevelChallenge(
+      LevelChallengeId.startJourney,
+      'journey:started',
+    );
+    await _persistIfLevelChallengesChanged(changed);
+  }
+
+  Future<void> noteLevelChallengeJourneyWin({
+    required String world,
+    required String rank,
+  }) async {
+    final key = '$world:$rank';
+    var changed = await _creditLevelChallenge(
+      LevelChallengeId.defeatJourneyOnce,
+      'journey:defeat:$key',
+    );
+    changed =
+        await _creditLevelChallenge(
+          LevelChallengeId.defeatJourneyTwice,
+          'journey:defeat:$key',
+        ) ||
+        changed;
+    await _persistIfLevelChallengesChanged(changed);
+  }
+
+  Future<void> noteLevelChallengeReactionSent({
+    required String reactionId,
+  }) async {
+    if (reactionId.isEmpty) return;
+    final changed = await _creditLevelChallenge(
+      LevelChallengeId.sendReaction,
+      'reaction:$reactionId',
+    );
+    await _persistIfLevelChallengesChanged(changed);
+  }
+
+  /// TyD round score bumps (same events as daily `tydRounds`).
+  Future<void> noteLevelChallengeTydRound({
+    required String gameId,
+    required int score,
+  }) async {
+    if (gameId.isEmpty || score <= 0) return;
+    final changed = await _creditLevelChallenge(
+      LevelChallengeId.tydRoundsThree,
+      'tyd:$gameId:$score',
+    );
+    await _persistIfLevelChallengesChanged(changed);
+  }
+
+  /// Match-end progress for play/win/coin/stake challenges.
+  Future<void> noteLevelChallengeMatchProgress(
+    GameState game,
+    String me,
+  ) async {
+    if (me.isEmpty || !game.playersInfo.containsKey(me)) return;
+    if (game.gameStatus != GameStatus.gameOver) return;
+
+    var changed = false;
+    final gid = game.id;
+    final winner = game.winnerId;
+    final won =
+        winner != null && winner.isNotEmpty && winner == me;
+    final coins = game.coinsToClaim(me);
+    final casino =
+        game.gameMode == GameMode.casino ||
+        game.gameMode == GameMode.casinoSpeed;
+
+    changed =
+        await _creditLevelChallenge(
+          LevelChallengeId.playAnyMatch,
+          'play:$gid',
+        ) ||
+        changed;
+
+    if (casino) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.playCasinoMatch,
+            'casino:$gid',
+          ) ||
+          changed;
+    }
+    if (game.gameMode == GameMode.tresydos) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.playTresYDos,
+            'tydPlay:$gid',
+          ) ||
+          changed;
+    }
+    if (game.gameMode == GameMode.rummy || game.gameMode == GameMode.bs) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.playRummyOrBs,
+            'rummyBs:$gid',
+          ) ||
+          changed;
+    }
+    if (game.entryCost >= 100) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.playStake100,
+            'stake100:$gid',
+          ) ||
+          changed;
+    }
+    if (!game.isLocalBot) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.playOnlineMatch,
+            'online:$gid',
+          ) ||
+          changed;
+    }
+
+    if (won) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.winTwoMatches,
+            'win:$gid',
+          ) ||
+          changed;
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.winThreeMatches,
+            'win:$gid',
+          ) ||
+          changed;
+      if (casino) {
+        changed =
+            await _creditLevelChallenge(
+              LevelChallengeId.winCasinoMatch,
+              'winCasino:$gid',
+            ) ||
+            changed;
+      }
+      if (game.isLocalBot) {
+        changed =
+            await _creditLevelChallenge(
+              LevelChallengeId.winVsPuli,
+              'winPuli:$gid',
+            ) ||
+            changed;
+      } else {
+        changed =
+            await _creditLevelChallenge(
+              LevelChallengeId.winOnlineMatch,
+              'winOnline:$gid',
+            ) ||
+            changed;
+      }
+    }
+
+    if (coins >= 100) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.win100CoinsSingle,
+            'coins100:$gid',
+          ) ||
+          changed;
+    }
+    if (casino && coins >= 200) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.win200CasinoCoins,
+            'coinsCasino200:$gid',
+          ) ||
+          changed;
+    }
+    if (coins >= 300) {
+      changed =
+          await _creditLevelChallenge(
+            LevelChallengeId.win300CoinsSingle,
+            'coins300:$gid',
+          ) ||
+          changed;
+    }
+
+    await _persistIfLevelChallengesChanged(changed);
+  }
+
   Future<void> noteDailyChallengeProgress({
     required DailyChallengeGameSnap prev,
     required GameState next,
@@ -1720,12 +2144,16 @@ class AppRepo extends ChangeNotifier {
       if (newScore > oldScore) {
         for (var score = oldScore + 1; score <= newScore; score++) {
           final eventId = 'tyd:${next.id}:$score';
-          if (_dailyChallenges.credited.contains(eventId)) continue;
-          _dailyChallenges.credited.add(eventId);
-          final cur =
-              _dailyChallenges.counts[DailyChallengeId.tydRounds.name] ?? 0;
-          _dailyChallenges.counts[DailyChallengeId.tydRounds.name] = cur + 1;
-          changed = true;
+          if (!_dailyChallenges.credited.contains(eventId)) {
+            _dailyChallenges.credited.add(eventId);
+            final cur =
+                _dailyChallenges.counts[DailyChallengeId.tydRounds.name] ?? 0;
+            _dailyChallenges.counts[DailyChallengeId.tydRounds.name] = cur + 1;
+            changed = true;
+          }
+          unawaited(
+            noteLevelChallengeTydRound(gameId: next.id, score: score),
+          );
         }
       }
     }
@@ -3230,6 +3658,9 @@ class AppRepo extends ChangeNotifier {
       } catch (_) {}
       rethrow;
     }
+    if (!local) {
+      unawaited(noteLevelChallengeOnlineMatchStarted(gameId: gid));
+    }
     return gid;
   }
 
@@ -3331,6 +3762,7 @@ class AppRepo extends ChangeNotifier {
     if (player == null || player!.completedTutorial) return;
     player = player!.copyWith(completedTutorial: true);
     await _persistPlayer();
+    await noteLevelChallengeTutorialComplete();
     notifyListeners();
   }
 
@@ -3645,6 +4077,8 @@ class AppRepo extends ChangeNotifier {
     await sp.remove(_homeDailyChallengeEnergyPrefsKey(uid));
     await sp.remove(_dailyClaimPrefsKey(uid));
     await sp.remove(_dailyChallengesPrefsKey(uid));
+    await sp.remove(_claimedLevelRewardsPrefsKey(uid));
+    await sp.remove(_levelChallengesPrefsKey(uid));
     await sp.remove(_journeyProgressPrefsKey(uid));
   }
 
@@ -3666,6 +4100,8 @@ class AppRepo extends ChangeNotifier {
           key.startsWith('claimed_xp_games_') ||
           key.startsWith('daily_claim_') ||
           key.startsWith('daily_challenges_') ||
+          key.startsWith('claimed_level_rewards_') ||
+          key.startsWith('level_challenges_') ||
           key.startsWith('journey_progress_')) {
         await sp.remove(key);
       }
@@ -3687,6 +4123,8 @@ class AppRepo extends ChangeNotifier {
     _pendingHomeDailyChallengeEnergy = {};
     _lastDailyClaimAt = null;
     _dailyChallenges = DailyChallengeState.empty(_localDayKey());
+    _claimedLevelRewards.clear();
+    _levelChallenges = LevelChallengeState.empty();
     _journeyProgress = JourneyProgress.empty();
     _journeyStoryEpoch += 1;
     _pendingProfileThemeTip = false;

@@ -62,10 +62,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                 );
               }
               final celebrating = vm.isCelebratingHand(vm.me);
-              final nudgeSelect = vm.gameState.gameMode == GameMode.bs &&
-                  vm.isSeatTurn(vm.me) &&
-                  vm.selectedCards.isEmpty &&
-                  !celebrating;
+              final nudgeSelect = vm.isSeatTurn(vm.me) && !celebrating;
               final count = fanCards.length;
               final totalHandCount = vm.myHandCards.length;
               final scale = HandFanLayout.visualScale(celebrating: celebrating);

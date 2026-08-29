@@ -630,6 +630,9 @@ class _RummyTopOpponentRow extends StatelessWidget {
                   builder: (context, constraints) {
                     if (cards.isEmpty) return const SizedBox.shrink();
                     return Center(
+                      key: oppId.isEmpty
+                          ? null
+                          : vm.oppHandKeyForPid(oppId),
                       child: _RummyOpponentFan(
                         cards: cards,
                         groupA: groups.$1,
@@ -718,6 +721,7 @@ class _RummySideSeat extends StatelessWidget {
           Offstage(
             offstage: vm.motion.isShuffling,
             child: SizedBox(
+              key: vm.oppHandKeyForPid(oppId),
               width: maxHandWidth,
               height: layoutH,
               child: LayoutBuilder(
@@ -924,9 +928,14 @@ class _RummyOpponentFan extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         scale: scale,
         child: WinningHandWave(
-          active: celebrating,
+          active: celebrating || highlightTurn,
           index: index,
-          amplitude: waveAmplitude,
+          amplitude: highlightTurn && !celebrating ? 5 : waveAmplitude,
+          glow: celebrating,
+          pulse: highlightTurn && !celebrating,
+          period: highlightTurn && !celebrating
+              ? const Duration(milliseconds: 1600)
+              : const Duration(milliseconds: 1200),
           child: FlightAwareCard(
             key: vm.keyForCard(card.id, CardSlot.oppHand),
             motion: vm.motion,

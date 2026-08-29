@@ -1,0 +1,55 @@
+{
+    "title": "Cómo jugar",
+    "sections": [
+        {
+            "title": "Información general",
+            "description": "Captura cartas y roba montones. Termina con la mayor cantidad de cartas.",
+            "facts": [
+                {"label": "Jugadores", "value": "2"},
+                {"label": "Condición de victoria", "value": "Más cartas capturadas"}
+            ]
+        },
+        {
+            "title": "Cartas",
+            "body": [
+                "Captura emparejando por rango.",
+                "Las figuras solo emparejan con su propio rango.",
+                "Los montones pertenecen a los jugadores y se pueden robar."
+            ]
+        },
+        {
+            "title": "Reglas del juego",
+            "body": [
+                "En tu turno, juega una carta de tu mano.",
+                "Si tu carta coincide con una carta en la mesa, la capturas.",
+                "Si tu carta coincide con el valor del montón de otro jugador, le robas ese montón.",
+                "Si no hay captura ni robo posible, la carta se queda en la mesa.",
+                "Los jugadores siguen turnándose hasta jugar todas las cartas."
+            ]
+        },
+        {
+            "title": "Robar montones",
+            "body": [
+                "Los montones de los jugadores siguen vulnerables al robo.",
+                "Una carta que coincida puede tomar el control del montón de un oponente.",
+                "Los montones grandes valen mucho, pero llaman la atención."
+            ]
+        },
+        {
+            "title": "Ganar la ronda",
+            "body": [
+                "Al terminar la ronda, los jugadores cuentan sus cartas capturadas.",
+                "Gana la ronda quien tenga más cartas.",
+                "Varios robos exitosos pueden marcar la diferencia."
+            ]
+        },
+        {
+            "title": "Consejos de estrategia",
+            "body": [
+                "Presta atención a las cartas ya jugadas.",
+                "Protege los montones valiosos cuando puedas.",
+                "A veces guardar una carta para un robo es mejor que capturar de inmediato."
+            ]
+        }
+    ]
+}

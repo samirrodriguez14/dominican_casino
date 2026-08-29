@@ -1,0 +1,126 @@
+{
+    "title": "Cómo jugar",
+    "sections": [
+        {
+            "title": "Información general",
+            "description": "Un juego de captura de cartas, pero no te quedes sin tiempo.",
+            "facts": [
+                {"label": "Tiempo", "value": "2–5 min"},
+                {"label": "Jugadores", "value": "2"},
+                {"label": "Condición de victoria", "value": "Mayor puntuación tras 1 ronda"},
+                {"label": "Desempate", "value": "Más monedas; si no, otra ronda"}
+            ]
+        },
+        {
+            "title": "Cartas",
+            "showCardsFirst": true,
+            "body": [
+                "Las cartas numéricas usan su valor facial.",
+                "Un As puede capturar otro As, o cualquier grupo que sume 14."
+            ],
+            "specialCards": [
+                {
+                    "rank": "K",
+                    "suit": "♠",
+                    "label": "Rey",
+                    "points": "K = 13"
+                },
+                {
+                    "rank": "Q",
+                    "suit": "♥",
+                    "label": "Reina",
+                    "points": "Q = 12"
+                },
+                {
+                    "rank": "J",
+                    "suit": "♣",
+                    "label": "Jota",
+                    "points": "J = 11"
+                },
+                {
+                    "rank": "A",
+                    "suit": "♦",
+                    "label": "As",
+                    "points": "A = 1 o 14"
+                }
+            ]
+        },
+        {
+            "title": "Reglas del juego",
+            "body": [
+                "En tu turno, juega una carta de tu mano.",
+                "Si la carta coincide con una carta o el valor de un montón en la mesa, puede capturarlos.",
+                "También se pueden combinar cartas en montones.",
+                "Los montones solo se capturan con una carta que coincida con el valor del montón."
+            ]
+        },
+        {
+            "title": "Puntuación",
+            "facts": [
+                {"label": "Más cartas", "value": "+3 carta"},
+                {"label": "Más espadas", "value": "+1 pi"},
+                {"label": "Cada As", "value": "+1"},
+                {"label": "2♠", "value": "+1"},
+                {"label": "10♦", "value": "+2"},
+                {"label": "Viraos", "value": "Se suman por separado"}
+            ],
+            "specialCards": [
+                {
+                    "rank": "A",
+                    "suit": "♠",
+                    "label": "As",
+                    "points": "+1 cada uno"
+                },
+                {
+                    "rank": "2",
+                    "suit": "♠",
+                    "label": "Dos de espadas",
+                    "points": "+1"
+                },
+                {
+                    "rank": "10",
+                    "suit": "♦",
+                    "label": "Diez de diamantes",
+                    "points": "+2"
+                }
+            ]
+        },
+        {
+            "title": "Monedas",
+            "facts": [
+                {"label": "Tomar 6+", "value": "Monedas = cartas tomadas"},
+                {"label": "Especiales", "value": "Se pagan al capturar"},
+                {"label": "Viraos", "value": "Monedas extra al final de la ronda"},
+                {"label": "Empate en puntos", "value": "Gana quien tenga más monedas"}
+            ],
+            "specialCards": [
+                {
+                    "rank": "A",
+                    "suit": "♠",
+                    "label": "As",
+                    "points": "+1 moneda cada uno"
+                },
+                {
+                    "rank": "2",
+                    "suit": "♠",
+                    "label": "Dos de espadas",
+                    "points": "+1 moneda"
+                },
+                {
+                    "rank": "10",
+                    "suit": "♦",
+                    "label": "Diez de diamantes",
+                    "points": "+2 monedas"
+                }
+            ]
+        },
+        {
+            "title": "Victoria",
+            "body": [
+                "Tras una ronda completa, gana la partida el jugador con más puntos.",
+                "Si hay empate en puntos, gana quien haya ganado más monedas en esa ronda.",
+                "Si también hay empate en monedas, se reparte otra ronda y se repite hasta que alguien gane."
+            ]
+        }
+    ]
+}

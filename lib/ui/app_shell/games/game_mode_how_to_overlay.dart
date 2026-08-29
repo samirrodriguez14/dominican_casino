@@ -170,7 +170,10 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
 
   Future<void> _load() async {
     try {
-      final data = await loadInstructions(widget.mode);
+      final data = await loadInstructions(
+        widget.mode,
+        locale: Localizations.localeOf(context),
+      );
       if (!mounted) return;
       setState(() => _sections = data.sections);
       WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -1,4 +1,5 @@
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/level_challenge.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Minimal bilingual strings (en / es). Default language is English.
@@ -369,11 +370,81 @@ class AppLocalizations {
   String get cancel => isEs ? 'Cancelar' : 'Cancel';
   String get levelRewardsTitle =>
       isEs ? 'Recompensas de nivel' : 'Level rewards';
+  String get levelChallengesTitle =>
+      isEs ? 'Desafíos de nivel' : 'Level challenges';
+  String get levelRewardsTab => isEs ? 'Recompensas' : 'Rewards';
+  String get levelChallengesTab => isEs ? 'Desafíos' : 'Challenges';
   String levelLabel(int n) => isEs ? 'Nivel $n' : 'Level $n';
   String get claim => isEs ? 'Reclamar' : 'Claim';
   String get claimed => isEs ? 'Reclamado' : 'Claimed';
   String reachLevelToUnlock(int n) =>
       isEs ? 'Alcanza el nivel $n para desbloquear' : 'Reach level $n to unlock';
+  String levelChallengeProgress(int current, int goal) => '$current/$goal';
+
+  String levelChallengeTitle(LevelChallengeId id) {
+    switch (id) {
+      case LevelChallengeId.completeTutorial:
+        return isEs ? 'Completa el tutorial' : 'Complete the tutorial';
+      case LevelChallengeId.playAnyMatch:
+        return isEs ? 'Juega cualquier partida' : 'Play any match';
+      case LevelChallengeId.playCasinoMatch:
+        return isEs ? 'Juega una partida de Casino' : 'Play a Casino match';
+      case LevelChallengeId.playOnlineMatch:
+        return isEs
+            ? 'Inicia o únete a una partida con un amigo'
+            : 'Start or join an online match with a friend';
+      case LevelChallengeId.winCasinoMatch:
+        return isEs ? 'Gana una partida de Casino' : 'Win a Casino match';
+      case LevelChallengeId.startJourney:
+        return isEs ? 'Empieza Journey' : 'Start Journey';
+      case LevelChallengeId.playTresYDos:
+        return isEs ? 'Juega Tres y Dos' : 'Play Tres y Dos';
+      case LevelChallengeId.winVsPuli:
+        return isEs ? 'Gana una partida contra Puli' : 'Win a match vs Puli';
+      case LevelChallengeId.win100CoinsSingle:
+        return isEs
+            ? 'Gana 100+ monedas en una partida'
+            : 'Win 100+ coins in a single match';
+      case LevelChallengeId.defeatJourneyOnce:
+        return isEs
+            ? 'Derrota a un retador de Journey'
+            : 'Defeat a Journey challenger';
+      case LevelChallengeId.winOnlineMatch:
+        return isEs
+            ? 'Gana una partida en línea'
+            : 'Win an online (friend) match';
+      case LevelChallengeId.playRummyOrBs:
+        return isEs ? 'Juega Rummy o BS' : 'Play Rummy or BS';
+      case LevelChallengeId.winTwoMatches:
+        return isEs ? 'Gana 2 partidas' : 'Win 2 matches';
+      case LevelChallengeId.playStake100:
+        return isEs
+            ? 'Juega con apuesta de 100+'
+            : 'Play a match with stake ≥ 100';
+      case LevelChallengeId.win200CasinoCoins:
+        return isEs
+            ? 'Gana 200+ monedas en Casino'
+            : 'Win 200+ coins in a Casino match';
+      case LevelChallengeId.tydRoundsThree:
+        return isEs
+            ? 'Completa 3 rondas de Tres y Dos'
+            : 'Complete 3 TyD rounds';
+      case LevelChallengeId.defeatJourneyTwice:
+        return isEs
+            ? 'Derrota a 2 retadores de Journey'
+            : 'Defeat 2 Journey challengers';
+      case LevelChallengeId.sendReaction:
+        return isEs
+            ? 'Envía una reacción en una partida'
+            : 'Send a reaction in a match';
+      case LevelChallengeId.winThreeMatches:
+        return isEs ? 'Gana 3 partidas' : 'Win 3 matches';
+      case LevelChallengeId.win300CoinsSingle:
+        return isEs
+            ? 'Gana 300+ monedas en una partida'
+            : 'Win 300+ coins in a single match';
+    }
+  }
   String get join => isEs ? 'Unirse' : 'Join';
   String get notificationsRationale => isEs
       ? 'Te avisamos cuando sea tu turno en una partida con amigos.'

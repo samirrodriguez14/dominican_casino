@@ -871,6 +871,8 @@ class GeneralGameViewModel extends ChangeNotifier {
         if (deckKey.currentContext != null) return deckKey;
         return tableKey;
       }
+      // Keep the slot key even if unmounted — endOfFrame + syncDestination
+      // will pick it up once the discard card is laid out.
       return loose;
     }
 
@@ -889,8 +891,10 @@ class GeneralGameViewModel extends ChangeNotifier {
           e.card.id,
           pid == me ? CardSlot.myHand : CardSlot.oppHand,
         );
-        // Opp badges (and any unmounted hand slot) only keep a key on the
-        // top card — fall back to the hand zone so the flyer still moves.
+        // Fan games mount every hand card next frame — keep the slot GlobalKey
+        // so CardFlightAnimator can chase it after endOfFrame.
+        // BS opp badges only key the top card; use the hand zone there.
+        if (gameState.gameMode != GameMode.bs) return slot;
         if (slot.currentContext != null) return slot;
         return keyForZone(e.to);
       }
@@ -2890,6 +2894,11 @@ class GeneralGameViewModel extends ChangeNotifier {
         LocalPlayer.ensureAttached(gameRepo, gameState);
       }
       notifyListeners();
+      if (!tutorialMode && !gameState.isLocalBot) {
+        unawaited(
+          appRepo.noteLevelChallengeOnlineMatchStarted(gameId: gameState.id),
+        );
+      }
       return JoinGameResult.ok;
     } catch (e) {
       developer.log("GameViewModel.joiningGame Error: $e");
@@ -3228,6 +3237,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     });
     notifyListeners();
     if (tutorialMode) return;
+    unawaited(appRepo.noteLevelChallengeReactionSent(reactionId: reaction.id));
     try {
       await gameRepo.fs.sendReaction(gid: gid, reaction: reaction);
     } catch (e) {

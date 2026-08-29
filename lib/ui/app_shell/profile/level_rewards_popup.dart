@@ -1,5 +1,6 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/experience.dart';
+import 'package:dominican_casino/models/level_challenge.dart';
 import 'package:dominican_casino/models/level_rewards.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
@@ -23,6 +24,10 @@ Future<void> showLevelRewardsPopup(BuildContext context) {
 /// Highest level at the top of the list, level 1 at the bottom.
 final List<LevelRewardDef> _roadmapLevels = levelRewards.reversed.toList();
 
+final List<int> _challengeLevels = levelChallengeUnlockLevelsReversed();
+
+enum _PopupTab { rewards, challenges }
+
 class LevelRewardsPopupCard extends StatefulWidget {
   const LevelRewardsPopupCard({super.key});
 
@@ -32,13 +37,28 @@ class LevelRewardsPopupCard extends StatefulWidget {
 
 class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
   final ScrollController _scroll = ScrollController();
+  final Map<int, GlobalKey> _challengeLevelKeys = {
+    for (final level in _challengeLevels) level: GlobalKey(),
+  };
   static const double _rowExtent = 76;
   bool _claiming = false;
+  _PopupTab _tab = _PopupTab.rewards;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final repo = context.read<AppRepo>();
+      if (repo.hasUnclaimedLevelChallenges && !repo.hasUnclaimedLevelRewards) {
+        setState(() => _tab = _PopupTab.challenges);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scrollToFocus();
+        });
+        return;
+      }
+      _scrollToFocus();
+    });
   }
 
   @override
@@ -49,6 +69,10 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
 
   void _scrollToFocus() {
     if (!mounted || !_scroll.hasClients) return;
+    if (_tab == _PopupTab.challenges) {
+      _scrollToRecentChallengeLevel();
+      return;
+    }
     final repo = context.read<AppRepo>();
     final level = repo.experienceProgress.level;
     var focusIndex = _roadmapLevels.length - 1;
@@ -67,7 +91,35 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
     _scroll.jumpTo(target);
   }
 
-  Future<void> _claim(LevelRewardDef def, Offset? origin) async {
+  void _scrollToRecentChallengeLevel() {
+    final repo = context.read<AppRepo>();
+    final focusLevel =
+        repo.experienceProgress.level.clamp(1, maxLevelChallengeLevel);
+    final key = _challengeLevelKeys[focusLevel];
+    final ctx = key?.currentContext;
+    if (ctx == null) {
+      // List may not be laid out yet (e.g. just switched tabs).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _tab != _PopupTab.challenges) return;
+        final retry = _challengeLevelKeys[focusLevel]?.currentContext;
+        if (retry != null) {
+          Scrollable.ensureVisible(
+            retry,
+            alignment: 0.05,
+            duration: Duration.zero,
+          );
+        }
+      });
+      return;
+    }
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.05,
+      duration: Duration.zero,
+    );
+  }
+
+  Future<void> _claimReward(LevelRewardDef def, Offset? origin) async {
     if (_claiming) return;
     final repo = context.read<AppRepo>();
     if (!repo.canClaimLevelReward(def.level)) return;
@@ -100,6 +152,34 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
     }
   }
 
+  Future<void> _claimChallenge(LevelChallengeDef def, Offset? origin) async {
+    if (_claiming) return;
+    final repo = context.read<AppRepo>();
+    if (!repo.canClaimLevelChallenge(def)) return;
+
+    _claiming = true;
+    setState(() {});
+    try {
+      AppHaptics.mediumImpact();
+      final to = CurrencyBar.centerOf(CurrencyBar.coinsChipKey);
+      if (origin != null && to != null && mounted && def.coinReward > 0) {
+        await CurrencyBurst.play(
+          context: context,
+          from: origin,
+          to: to,
+          icon: coinIcon,
+          color: AppStyle.theme.turnHighlight,
+          count: def.coinReward.clamp(5, 12),
+        );
+      }
+      if (!mounted) return;
+      await repo.claimLevelChallenge(def.id);
+    } finally {
+      _claiming = false;
+      if (mounted) setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
@@ -109,6 +189,9 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
     final nextLocked = progress.level < maxLevelRewardLevel
         ? progress.level + 1
         : null;
+    final title = _tab == _PopupTab.rewards
+        ? l10n.levelRewardsTitle
+        : l10n.levelChallengesTitle;
 
     return Container(
       width: 340,
@@ -132,7 +215,7 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            l10n.levelRewardsTitle,
+            title,
             textAlign: TextAlign.center,
             style: theme.title.copyWith(
               fontSize: 22,
@@ -140,42 +223,70 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
             ),
           ),
           const SizedBox(height: 12),
+          _TabBar(
+            tab: _tab,
+            rewardBadge: repo.unclaimedLevelRewardCount,
+            challengeBadge: repo.unclaimedLevelChallengeCount,
+            onChanged: (tab) {
+              setState(() => _tab = tab);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _scrollToFocus();
+              });
+            },
+          ),
+          const SizedBox(height: 12),
           Flexible(
-            child: ListView.builder(
-              controller: _scroll,
-              itemExtent: _rowExtent,
-              itemCount: _roadmapLevels.length,
-              padding: const EdgeInsets.only(bottom: 4),
-              itemBuilder: (context, index) {
-                final def = _roadmapLevels[index];
-                final claimed = repo.isLevelRewardClaimed(def.level);
-                final claimable = repo.canClaimLevelReward(def.level);
-                final locked = !claimed && !claimable;
-                final emphasizeNext =
-                    locked && nextLocked != null && def.level == nextLocked;
-                final isCurrent = def.level == progress.level;
-                // Path above connects this node to the higher level above.
-                final pathAboveReached = def.level < progress.level;
-                // Path below connects to the lower level under this node.
-                final pathBelowReached = def.level <= progress.level;
-                return _RoadmapRow(
-                  def: def,
-                  claimed: claimed,
-                  claimable: claimable,
-                  locked: locked,
-                  emphasizeNext: emphasizeNext,
-                  isCurrent: isCurrent,
-                  claimBusy: _claiming,
-                  showTopLine: index > 0,
-                  showBottomLine: index < _roadmapLevels.length - 1,
-                  topLineReached: pathAboveReached,
-                  bottomLineReached: pathBelowReached,
-                  onClaim: claimable && !_claiming
-                      ? (origin) => _claim(def, origin)
-                      : null,
-                );
-              },
-            ),
+            child: _tab == _PopupTab.rewards
+                ? ListView.builder(
+                    controller: _scroll,
+                    itemExtent: _rowExtent,
+                    itemCount: _roadmapLevels.length,
+                    padding: const EdgeInsets.only(bottom: 4),
+                    itemBuilder: (context, index) {
+                      final def = _roadmapLevels[index];
+                      final claimed = repo.isLevelRewardClaimed(def.level);
+                      final claimable = repo.canClaimLevelReward(def.level);
+                      final locked = !claimed && !claimable;
+                      final emphasizeNext =
+                          locked && nextLocked != null && def.level == nextLocked;
+                      final isCurrent = def.level == progress.level;
+                      final pathAboveReached = def.level < progress.level;
+                      final pathBelowReached = def.level <= progress.level;
+                      return _RoadmapRow(
+                        def: def,
+                        claimed: claimed,
+                        claimable: claimable,
+                        locked: locked,
+                        emphasizeNext: emphasizeNext,
+                        isCurrent: isCurrent,
+                        claimBusy: _claiming,
+                        showTopLine: index > 0,
+                        showBottomLine: index < _roadmapLevels.length - 1,
+                        topLineReached: pathAboveReached,
+                        bottomLineReached: pathBelowReached,
+                        onClaim: claimable && !_claiming
+                            ? (origin) => _claimReward(def, origin)
+                            : null,
+                      );
+                    },
+                  )
+                : ListView(
+                    controller: _scroll,
+                    padding: const EdgeInsets.only(bottom: 4),
+                    children: [
+                      for (final level in _challengeLevels)
+                        KeyedSubtree(
+                          key: _challengeLevelKeys[level],
+                          child: _ChallengeLevelBlock(
+                            level: level,
+                            playerLevel: progress.level,
+                            claimBusy: _claiming,
+                            onClaim: (def, origin) =>
+                                _claimChallenge(def, origin),
+                          ),
+                        ),
+                    ],
+                  ),
           ),
           const SizedBox(height: 8),
           _CurrentLevelFooter(progress: progress),
@@ -188,6 +299,324 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TabBar extends StatelessWidget {
+  const _TabBar({
+    required this.tab,
+    required this.rewardBadge,
+    required this.challengeBadge,
+    required this.onChanged,
+  });
+
+  final _PopupTab tab;
+  final int rewardBadge;
+  final int challengeBadge;
+  final ValueChanged<_PopupTab> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+
+    Widget chip(_PopupTab value, String label, int badge) {
+      final selected = tab == value;
+      return Expanded(
+        child: CupertinoButton(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          minimumSize: Size.zero,
+          onPressed: SoundService.wrapTap(() => onChanged(value)),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? theme.xp.withValues(alpha: 0.18)
+                      : theme.background.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: selected
+                        ? theme.xp.withValues(alpha: 0.5)
+                        : theme.border.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: theme.caption.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: selected ? theme.xp : theme.muted,
+                  ),
+                ),
+              ),
+              if (badge > 0)
+                Positioned(
+                  top: -4,
+                  right: 6,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 16),
+                    height: 16,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: theme.danger,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      badge > 9 ? '9+' : '$badge',
+                      style: const TextStyle(
+                        color: Color(0xFFFFFFFF),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        chip(_PopupTab.rewards, l10n.levelRewardsTab, rewardBadge),
+        const SizedBox(width: 8),
+        chip(_PopupTab.challenges, l10n.levelChallengesTab, challengeBadge),
+      ],
+    );
+  }
+}
+
+class _ChallengeLevelBlock extends StatelessWidget {
+  const _ChallengeLevelBlock({
+    required this.level,
+    required this.playerLevel,
+    required this.claimBusy,
+    required this.onClaim,
+  });
+
+  final int level;
+  final int playerLevel;
+  final bool claimBusy;
+  final void Function(LevelChallengeDef def, Offset? origin) onClaim;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    final repo = context.watch<AppRepo>();
+    final defs = levelChallengesForLevel(level);
+    final unlocked = playerLevel >= level;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
+              l10n.levelLabel(level),
+              style: theme.caption.copyWith(
+                fontWeight: FontWeight.w800,
+                color: unlocked ? theme.xp : theme.muted,
+              ),
+            ),
+          ),
+          for (final def in defs)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _ChallengeRow(
+                def: def,
+                progress: repo.levelChallengeProgress(def.id),
+                claimed: repo.isLevelChallengeClaimed(def.id),
+                claimable: repo.canClaimLevelChallenge(def),
+                locked: !unlocked,
+                claimBusy: claimBusy,
+                onClaim: claimBusy
+                    ? null
+                    : (origin) => onClaim(def, origin),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChallengeRow extends StatelessWidget {
+  const _ChallengeRow({
+    required this.def,
+    required this.progress,
+    required this.claimed,
+    required this.claimable,
+    required this.locked,
+    required this.claimBusy,
+    this.onClaim,
+  });
+
+  final LevelChallengeDef def;
+  final int progress;
+  final bool claimed;
+  final bool claimable;
+  final bool locked;
+  final bool claimBusy;
+  final void Function(Offset? origin)? onClaim;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    final opacity = claimed ? 0.55 : 1.0;
+    final capped = progress.clamp(0, def.goal);
+
+    return Opacity(
+      opacity: opacity,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: claimable
+              ? theme.xp.withValues(alpha: 0.10)
+              : theme.background.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: claimable
+                ? theme.xp.withValues(alpha: 0.45)
+                : theme.border.withValues(alpha: 0.45),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    locked
+                        ? l10n.reachLevelToUnlock(def.unlockLevel)
+                        : l10n.levelChallengeTitle(def.id),
+                    style: theme.caption.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      height: 1.25,
+                      color: locked ? theme.muted : theme.textPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (claimed)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        CupertinoIcons.checkmark_circle_fill,
+                        size: 16,
+                        color: theme.muted,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        l10n.claimed,
+                        style: theme.caption.copyWith(
+                          color: theme.muted,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )
+                else if (locked)
+                  Icon(
+                    CupertinoIcons.lock_fill,
+                    size: 16,
+                    color: theme.muted,
+                  )
+                else if (claimable)
+                  Builder(
+                    builder: (buttonContext) {
+                      final enabled = onClaim != null && !claimBusy;
+                      return CupertinoButton(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        minimumSize: Size.zero,
+                        color: enabled
+                            ? theme.xp
+                            : theme.muted.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(999),
+                        onPressed: enabled
+                            ? SoundService.wrapTap(() {
+                                final box = buttonContext.findRenderObject()
+                                    as RenderBox?;
+                                final origin = box == null || !box.hasSize
+                                    ? null
+                                    : box.localToGlobal(
+                                        box.size.center(Offset.zero),
+                                      );
+                                onClaim!(origin);
+                              })
+                            : null,
+                        child: Text(
+                          l10n.claim,
+                          style: theme.caption.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: enabled
+                                ? const Color(0xFF1A1224)
+                                : theme.muted,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+            if (!locked) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(CupertinoIcons.star_fill, size: 14, color: theme.xp),
+                  const SizedBox(width: 3),
+                  Text(
+                    '+${def.xpReward}',
+                    style: theme.caption.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: theme.xp,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Icon(coinIcon, size: 14, color: theme.turnHighlight),
+                  const SizedBox(width: 3),
+                  Text(
+                    '+${def.coinReward}',
+                    style: theme.caption.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: theme.turnHighlight,
+                    ),
+                  ),
+                  if (!claimed && !claimable) ...[
+                    const Spacer(),
+                    Text(
+                      l10n.levelChallengeProgress(capped, def.goal),
+                      style: theme.caption.copyWith(
+                        color: theme.muted,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

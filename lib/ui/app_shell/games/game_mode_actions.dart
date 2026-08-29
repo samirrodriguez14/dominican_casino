@@ -862,15 +862,34 @@ Future<void> gameEnter(
   }
 }
 
-Future<InstructionsData> loadInstructions(GameMode mode) async {
-  final path = switch (mode) {
-    GameMode.tresydos => 'assets/config/tresydos_instructions.json',
-    GameMode.rummy => 'assets/config/rummy_instructions.json',
-    GameMode.robaito => 'assets/config/robaito_instructions.json',
-    GameMode.casino => 'assets/config/casino_instructions.json',
-    GameMode.casinoSpeed => 'assets/config/casino_speed_instructions.json',
-    GameMode.bs => 'assets/config/bs_instructions.json',
+String _instructionsAssetPath(GameMode mode, {required bool isEs}) {
+  final base = switch (mode) {
+    GameMode.tresydos => 'assets/config/tresydos_instructions',
+    GameMode.rummy => 'assets/config/rummy_instructions',
+    GameMode.robaito => 'assets/config/robaito_instructions',
+    GameMode.casino => 'assets/config/casino_instructions',
+    GameMode.casinoSpeed => 'assets/config/casino_speed_instructions',
+    GameMode.bs => 'assets/config/bs_instructions',
   };
-  final raw = await rootBundle.loadString(path);
-  return InstructionsData.fromJson(jsonDecode(raw));
+  return isEs ? '${base}_es.json' : '$base.json';
+}
+
+Future<InstructionsData> loadInstructions(
+  GameMode mode, {
+  Locale? locale,
+}) async {
+  final isEs = locale?.languageCode == 'es';
+  final enPath = _instructionsAssetPath(mode, isEs: false);
+  if (!isEs) {
+    final raw = await rootBundle.loadString(enPath);
+    return InstructionsData.fromJson(jsonDecode(raw));
+  }
+  final esPath = _instructionsAssetPath(mode, isEs: true);
+  try {
+    final raw = await rootBundle.loadString(esPath);
+    return InstructionsData.fromJson(jsonDecode(raw));
+  } catch (_) {
+    final raw = await rootBundle.loadString(enPath);
+    return InstructionsData.fromJson(jsonDecode(raw));
+  }
 }

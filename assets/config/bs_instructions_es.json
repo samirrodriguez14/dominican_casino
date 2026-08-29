@@ -1,0 +1,34 @@
+{
+  "title": "Cómo jugar",
+  "sections": [
+    {
+      "title": "Información general",
+      "description": "Bluffea hasta vaciar tu mano. Di BS cuando una declaración sea sospechosa.",
+      "facts": [
+        {"label": "Tiempo", "value": "5–10 min"},
+        {"label": "Jugadores", "value": "3–6"},
+        {"label": "Baraja", "value": "Estándar (todas repartidas)"},
+        {"label": "Victoria", "value": "Primera mano vacía"}
+      ]
+    },
+    {
+      "title": "Reglas del juego",
+      "body": [
+        "En tu turno, juega 1–4 cartas boca abajo y anuncia un rango (por ejemplo, 3 dieces).",
+        "Los demás jugadores tienen unos segundos para decir BS.",
+        "Si eras honesto, el retador se lleva el montón. Si bluffeaste, te llevas el montón tú.",
+        "Si nadie dice BS, el montón se queda y el juego continúa.",
+        "Gana el primer jugador que vacíe su mano.",
+        "Las manos sobrantes se puntúan por rango facial: As vale 1 (antes del 2), hasta Rey = 13."
+      ]
+    },
+    {
+      "title": "Consejos de estrategia",
+      "body": [
+        "Bluffea cuando los demás tengan pocas cartas.",
+        "Guarda rangos coincidentes para jugadas limpias si te retan.",
+        "Fíjate quién vacía primero — di BS cuando importe."
+      ]
+    }
+  ]
+}

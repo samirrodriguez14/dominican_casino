@@ -1,29 +1,25 @@
-import 'dart:convert';
-
+import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
 import 'package:dominican_casino/ui/home/home_instruction_card.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 class InstructionsScreen extends StatelessWidget {
   const InstructionsScreen({super.key});
 
-  Future<InstructionsData> _loadInstructions() async {
-    final raw = await rootBundle.loadString(
-      'assets/config/casino_instructions.json',
-    );
-    return InstructionsData.fromJson(jsonDecode(raw));
-  }
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context);
+
     return CupertinoPageScaffold(
       backgroundColor: AppStyle.theme.background,
       navigationBar: CupertinoNavigationBar(
-        middle: const Text("Instructions"),
+        middle: Text(l10n.instructions),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: SoundService.wrapTap(() => context.go('/home')),
@@ -32,7 +28,7 @@ class InstructionsScreen extends StatelessWidget {
       ),
       child: SafeArea(
         child: FutureBuilder<InstructionsData>(
-          future: _loadInstructions(),
+          future: loadInstructions(GameMode.casino, locale: locale),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
               return const Center(child: CupertinoActivityIndicator());

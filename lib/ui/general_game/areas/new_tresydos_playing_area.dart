@@ -371,6 +371,7 @@ class _CompactSideSeat extends StatelessWidget {
           Offstage(
             offstage: vm.motion.isShuffling,
             child: SizedBox(
+              key: oppId.isEmpty ? null : vm.oppHandKeyForPid(oppId),
               width: _CompactSideSeat.maxHandWidth,
               height: layoutH,
               child: LayoutBuilder(
@@ -390,6 +391,7 @@ class _CompactSideSeat extends StatelessWidget {
                   final gap = layout.gap;
                   final handW = layout.totalWidth(cards.length);
                   final handH = layout.cardHeight;
+                  final turnPulse = highlightTurn && !celebrating;
                   return OverflowBox(
                     alignment: overlayAlign,
                     minWidth: handW,
@@ -406,9 +408,14 @@ class _CompactSideSeat extends StatelessWidget {
                             Positioned(
                               left: i * gap,
                               child: WinningHandWave(
-                                active: celebrating,
+                                active: celebrating || turnPulse,
                                 index: i,
-                                amplitude: 3,
+                                amplitude: turnPulse ? 5 : 3,
+                                glow: celebrating,
+                                pulse: turnPulse,
+                                period: turnPulse
+                                    ? const Duration(milliseconds: 1600)
+                                    : const Duration(milliseconds: 1200),
                                 child: FlightAwareCard(
                                   key: vm.keyForCard(
                                     cards[i].id,

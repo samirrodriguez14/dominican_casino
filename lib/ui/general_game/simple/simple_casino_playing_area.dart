@@ -384,6 +384,9 @@ class _SimpleOpponentRowHost extends StatelessWidget {
     final vm = context.watch<GeneralGameViewModel>();
     return SimpleOpponentRow(
       oppId: vm.oppIds.isNotEmpty ? vm.oppIds.first : '',
+      avatarKeyOverride: vm.oppIds.isNotEmpty
+          ? vm.celebrationAvatarKeyForPid(vm.oppIds.first)
+          : null,
     );
   }
 }
@@ -425,7 +428,9 @@ class SimpleOpponentRow extends StatelessWidget {
         children: [
           Center(
             child: SizedBox(
-              key: vm.oppHandKey,
+              key: oppId.isEmpty
+                  ? vm.oppHandKey
+                  : vm.oppHandKeyForPid(oppId),
               height: rowHeight,
               width: double.infinity,
               child: Offstage(
@@ -448,6 +453,7 @@ class SimpleOpponentRow extends StatelessWidget {
                   final gap = layout.gap;
                   final fanCardWidth = layout.cardWidth;
                   final totalWidth = layout.totalWidth(count);
+                  final turnPulse = highlightTurn && !celebrating;
                   return Center(
                     child: SizedBox(
                       width: totalWidth,
@@ -466,9 +472,14 @@ class SimpleOpponentRow extends StatelessWidget {
                                 duration: const Duration(milliseconds: 180),
                                 scale: scale,
                                 child: WinningHandWave(
-                                  active: celebrating,
+                                  active: celebrating || turnPulse,
                                   index: i,
-                                  amplitude: 3.5,
+                                  amplitude: turnPulse ? 5 : 3.5,
+                                  glow: celebrating,
+                                  pulse: turnPulse,
+                                  period: turnPulse
+                                      ? const Duration(milliseconds: 1600)
+                                      : const Duration(milliseconds: 1200),
                                   child: FlightAwareCard(
                                   key: vm.keyForCard(
                                     cards[i].id,

@@ -604,6 +604,16 @@ class FirestoreService extends GameService {
     }, SetOptions(merge: true));
   }
 
+  Future<void> saveLevelChallenges({
+    required String uid,
+    required Map<String, dynamic> data,
+  }) async {
+    await _users.doc(uid).set({
+      'levelChallenges': data,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
 
   @override
   Stream<GameState?> streamGame(String gameId) {
