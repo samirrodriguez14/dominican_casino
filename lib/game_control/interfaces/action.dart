@@ -23,6 +23,7 @@ import 'package:dominican_casino/game_control/interfaces/zone.dart';
 enum InGameAction {
   start,
   share,
+  invite,
   deal,
   dealSame,
   setReady,

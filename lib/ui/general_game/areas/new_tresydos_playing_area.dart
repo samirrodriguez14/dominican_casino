@@ -305,23 +305,26 @@ class _CompactSideSeat extends StatelessWidget {
     }
 
     final waiting = oppId.isEmpty;
-    final highlightTurn = !waiting && vm.isSeatTurn(oppId);
-    final cards = waiting
+    final invited = !waiting && vm.isPendingInviteSeat(oppId);
+    final highlightTurn = !waiting && !invited && vm.isSeatTurn(oppId);
+    final cards = waiting || invited
         ? const <PlayingCardModel>[]
         : (vm.gameState.hands[oppId] ?? []);
     final seat = waiting ? const GameSeatLook() : vm.seatLook(oppId);
-    final celebrating = !waiting && vm.isCelebratingHand(oppId);
+    final celebrating = !waiting && !invited && vm.isCelebratingHand(oppId);
     final preferredCardWidth = celebrating
         ? _CompactSideSeat.winCardWidth
         : _CompactSideSeat.cardWidth;
-    final name = waiting
-        ? AppLocalizations.of(context).openSeat
-        : ((vm.gameState.playersInfo[oppId] is Map
-                ? (vm.gameState.playersInfo[oppId] as Map)['name'] as String?
-                : null) ??
-            'Rival');
-    final score = waiting ? 0 : (vm.gameState.scores[oppId] ?? 0);
-    final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
+    final l10n = AppLocalizations.of(context);
+    final name = vm.opponentDisplayName(
+      oppId,
+      openLabel: l10n.openSeat,
+      invitedFallback: l10n.invited,
+    );
+    final score = waiting || invited ? 0 : (vm.gameState.scores[oppId] ?? 0);
+    final incoming = !waiting &&
+            !invited &&
+            vm.incomingReaction?.fromPid == oppId
         ? vm.incomingReaction
         : null;
     const layoutH = _CompactSideSeat.cardWidth * 1.4;

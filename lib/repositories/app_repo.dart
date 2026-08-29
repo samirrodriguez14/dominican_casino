@@ -11,8 +11,11 @@ import 'package:dominican_casino/models/journey_progress.dart';
 import 'package:dominican_casino/models/level_challenge.dart';
 import 'package:dominican_casino/models/level_rewards.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
+import 'package:dominican_casino/models/opponent_match_stats.dart';
 import 'package:dominican_casino/models/player.dart';
 import 'package:dominican_casino/models/player_match_stats.dart';
+import 'package:dominican_casino/models/game_pill_data.dart';
+import 'package:dominican_casino/models/quick_match_prefs.dart';
 import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/models/wallet.dart';
@@ -141,6 +144,11 @@ class AppRepo extends ChangeNotifier {
   final Uuid _uuid = const Uuid();
   Locale _locale = const Locale('en');
   Locale get locale => _locale;
+
+  QuickMatchPrefs _quickMatchPrefs = QuickMatchPrefs.defaults;
+  QuickMatchPrefs get quickMatchPrefs => _quickMatchPrefs;
+
+  static const _quickMatchPrefsKey = 'quick_match_prefs_v1';
   bool notificationsEnabled = false;
   AuthorizationStatus notificationStatus = AuthorizationStatus.notDetermined;
   Wallet _wallet = Wallet.starter();
@@ -417,6 +425,13 @@ class AppRepo extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setQuickMatchPrefs(QuickMatchPrefs prefs) async {
+    _quickMatchPrefs = prefs;
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_quickMatchPrefsKey, prefs.encode());
+    notifyListeners();
+  }
+
   Future<void>? _loadFuture;
 
   /// Idempotent — safe to call from main and HomeScreen.
@@ -429,6 +444,7 @@ class AppRepo extends ChangeNotifier {
     try {
       await _ensureAnonymousAuth();
       await _loadLocale();
+      await _loadQuickMatchPrefs();
       await _loadTheme();
       player = await _loadPlayer();
       if (player != null) {
@@ -2451,6 +2467,170 @@ class AppRepo extends ChangeNotifier {
     await _persistRecordedStatsGames();
     await _persistPlayer();
     notifyListeners();
+    unawaited(_recordOpponentStats(game, me));
+  }
+
+  /// Head-to-head bumps for each human opponent in a finished online match.
+  Future<void> _recordOpponentStats(GameState game, String me) async {
+    if (game.isLocalBot) return;
+    final won = game.winnerId == me;
+    final place = game.finishRank(me);
+    final modeName = game.gameMode.name;
+    final playedAt = DateTime.now().toUtc();
+    for (final entry in game.playersInfo.entries) {
+      final oppId = entry.key;
+      if (oppId == me || game.isLocalBotPid(oppId)) continue;
+      final raw = entry.value;
+      final seat = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : <String, dynamic>{};
+      try {
+        final existing = await fs.loadOpponentStats(uid: me, opponentUid: oppId);
+        final base = existing ??
+            OpponentMatchStats(opponentUid: oppId);
+        final next = base.recordResult(
+          modeName: modeName,
+          won: won,
+          place: place,
+          name: seat['name'] as String?,
+          avatarId: seat['avatarId'] as String?,
+          avatarAsset: seat['avatarAsset'] as String?,
+          playedAt: playedAt,
+        );
+        await fs.saveOpponentStats(uid: me, stats: next);
+      } catch (e) {
+        developer.log('AppRepo.recordOpponentStats $oppId: $e');
+      }
+    }
+  }
+
+  /// Create a rematch from a finished game or history pill.
+  ///
+  /// AI games start immediately with the same bot looks when possible.
+  /// Friends games seed [GameState.invitedPlayers] and push invites.
+  Future<String> rematchFromGame({
+    required GameMode mode,
+    required bool local,
+    required Map<String, dynamic> priorPlayersInfo,
+    List<String>? priorBotPlayerIds,
+    int entryCost = WalletConfig.entryCost,
+    int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
+    int? playerCount,
+  }) async {
+    final me = player?.id ?? '';
+    final botOverrides = <LocalBotProfile>[];
+    if (local) {
+      final botIds = priorBotPlayerIds ??
+          [
+            for (final e in priorPlayersInfo.entries)
+              if (e.key != me &&
+                  e.value is Map &&
+                  LocalBotRoster.isBotName(
+                    (e.value as Map)['name'],
+                  ))
+                e.key,
+          ];
+      for (final botId in botIds) {
+        final raw = priorPlayersInfo[botId];
+        if (raw is! Map) continue;
+        final map = Map<String, dynamic>.from(raw);
+        final name = map['name'] as String?;
+        final avatarId = map['avatarId'] as String?;
+        if (name == null || avatarId == null) continue;
+        botOverrides.add(
+          LocalBotProfile(
+            name: name,
+            avatarId: avatarId,
+            avatarAsset: map['avatarAsset'] as String?,
+          ),
+        );
+      }
+    }
+
+    final filled = playerCount ??
+        (local
+            ? (1 + (botOverrides.isNotEmpty
+                ? botOverrides.length
+                : (priorPlayersInfo.length - 1).clamp(1, 5)))
+            : 2);
+
+    final gid = await createNewGame(
+      mode,
+      me,
+      local,
+      playerCount: filled.clamp(2, maxSeatsFor(mode)),
+      entryCost: entryCost,
+      turnDurationSeconds: turnDurationSeconds,
+      botOverrides: botOverrides.isEmpty ? null : botOverrides,
+    );
+
+    if (!local) {
+      final invites = <String, dynamic>{};
+      for (final entry in priorPlayersInfo.entries) {
+        final oppId = entry.key;
+        if (oppId == me) continue;
+        final raw = entry.value;
+        if (raw is! Map) continue;
+        final map = Map<String, dynamic>.from(raw);
+        if (LocalBotRoster.isBotName(map['name'])) continue;
+        invites[oppId] = {
+          'id': oppId,
+          if (map['name'] != null) 'name': map['name'],
+          if (map['avatarId'] != null) 'avatarId': map['avatarId'],
+          if (map['avatarAsset'] != null) 'avatarAsset': map['avatarAsset'],
+          if (map['defeatedAces'] != null) 'defeatedAces': map['defeatedAces'],
+          if (map['wearJourneyAccessories'] != null)
+            'wearJourneyAccessories': map['wearJourneyAccessories'],
+        };
+      }
+      if (invites.isNotEmpty) {
+        final game = await fs.loadGame(gid);
+        game.invitedPlayers = invites;
+        await fs.updateGame(game);
+        unawaited(sendGameInvites(gid));
+      }
+    }
+    return gid;
+  }
+
+  Future<String> rematchFromPill(GamePillData pill) async {
+    return rematchFromGame(
+      mode: pill.gameMode,
+      local: pill.isLocalBot,
+      priorPlayersInfo: pill.playersInfo,
+      entryCost: pill.entryCost,
+    );
+  }
+
+  Future<String> rematchFromState(GameState state) async {
+    return rematchFromGame(
+      mode: state.gameMode,
+      local: state.isLocalBot,
+      priorPlayersInfo: state.playersInfo,
+      priorBotPlayerIds: state.botPlayerIds,
+      entryCost: state.entryCost,
+      turnDurationSeconds: state.turnDurationSeconds,
+      playerCount: state.playersInfo.length,
+    );
+  }
+
+  /// Ask Cloud Functions to push invite notifications for pending seats.
+  Future<bool> sendGameInvites(String gid) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    try {
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('sendGameInvites')
+          .call(<String, dynamic>{'gid': gid});
+      final data = result.data;
+      if (data is Map && data['result'] != null) {
+        debugPrint('sendGameInvites: ${data['result']}');
+      }
+      return true;
+    } catch (e) {
+      developer.log('AppRepo.sendGameInvites: $e');
+      return false;
+    }
   }
 
   String _recordedStatsGamesPrefsKey(String uid) =>
@@ -3531,6 +3711,13 @@ class AppRepo extends ChangeNotifier {
     _locale = const Locale('en');
   }
 
+  Future<void> _loadQuickMatchPrefs() async {
+    final sp = await SharedPreferences.getInstance();
+    _quickMatchPrefs =
+        QuickMatchPrefs.tryDecode(sp.getString(_quickMatchPrefsKey)) ??
+        QuickMatchPrefs.defaults;
+  }
+
   Future<String> createNewGame(
     GameMode mode,
     String pid,
@@ -3540,6 +3727,7 @@ class AppRepo extends ChangeNotifier {
     int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
     LocalBotProfile? botOverride,
     List<LocalBotProfile>? botOverrides,
+    bool isPublic = false,
   }) async {
     final existingAuth = FirebaseAuth.instance.currentUser;
     if (local && existingAuth == null) {
@@ -3582,6 +3770,7 @@ class AppRepo extends ChangeNotifier {
     GameState gameState = GameState.create(gid, pid, mode);
     gameState.entryCost = stake;
     gameState.entryPaidBy = [pid];
+    gameState.isPublic = !local && isPublic;
     if (mode == GameMode.casinoSpeed) {
       gameState.turnDurationSeconds =
           WalletConfig.isAllowedSpeedTurn(turnDurationSeconds)
@@ -3633,10 +3822,17 @@ class AppRepo extends ChangeNotifier {
       if (botPids.isNotEmpty) {
         gameState.gameStatus = GameStatus.readyToStart;
       }
+    } else if (gameState.isPublic) {
+      final seats = maxSeatsFor(mode);
+      final minSeats = mode == GameMode.bs ? 3 : 2;
+      gameState.targetSeats = seats > 2
+          ? playerCount.clamp(minSeats, seats)
+          : 2;
     }
     debugPrint(
       'createNewGame uid=$pid controller=${gameState.controllerId} '
-      'auth=${FirebaseAuth.instance.currentUser?.uid} local=$local',
+      'auth=${FirebaseAuth.instance.currentUser?.uid} local=$local '
+      'public=${gameState.isPublic} seats=${gameState.targetSeats}',
     );
     gid = await fs.newCreateGame(gameState);
     var spentEnergy = false;

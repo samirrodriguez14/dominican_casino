@@ -48,6 +48,109 @@ export const onTurnChange = onDocumentUpdated("games/{gid}", async (event) => {
 });
 
 /**
+ * Notify the match host when a new human joins playersInfo.
+ */
+export const onPlayerJoined = onDocumentUpdated(
+  "games/{gid}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+
+    const beforeInfo = _playersInfoMap(before.playersInfo);
+    const afterInfo = _playersInfoMap(after.playersInfo);
+    const joined = Object.keys(afterInfo).filter((id) => !beforeInfo[id]);
+    if (joined.length === 0) return;
+
+    const hostId =
+      typeof after.controllerId === "string" ? after.controllerId : "";
+    if (!hostId) return;
+
+    const gameMode =
+      typeof after.gameMode === "string" ? after.gameMode : "";
+    const gid = event.params.gid;
+
+    for (const joinerId of joined) {
+      if (joinerId === hostId) continue;
+      if (_isBotPid(after, joinerId)) continue;
+      const seat = afterInfo[joinerId];
+      const fromName =
+        seat && typeof seat.name === "string" && seat.name.length > 0 ?
+          seat.name :
+          "A player";
+      const copy = _playerJoinedCopy(fromName);
+      logger.info("Player joined notify", {gid, hostId, joinerId, fromName});
+      await _sendToUser(hostId, copy, {
+        type: "player_joined",
+        gid,
+        gameMode,
+        fromName,
+      });
+    }
+  },
+);
+
+/**
+ * Host-only: push invite notifications to pending invitedPlayers.
+ * @return {{result: string, sent: number}}
+ */
+export const sendGameInvites = onCall(
+  {invoker: "public"},
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "Sign in first");
+    }
+    const gid = typeof request.data?.gid === "string" ?
+      request.data.gid :
+      "";
+    if (!gid) {
+      throw new HttpsError("invalid-argument", "gid required");
+    }
+
+    const snap = await admin.firestore().collection("games").doc(gid).get();
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "Game not found");
+    }
+    const game = snap.data() ?? {};
+    if (game.controllerId !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "Only the host can send invites",
+      );
+    }
+
+    const playersInfo = _playersInfoMap(game.playersInfo);
+    const invited = _playersInfoMap(game.invitedPlayers);
+    const pending = Object.keys(invited).filter((id) => !playersInfo[id]);
+    if (pending.length === 0) {
+      return {result: "none", sent: 0};
+    }
+
+    const gameMode =
+      typeof game.gameMode === "string" ? game.gameMode : "";
+    const hostSeat = playersInfo[uid];
+    const fromName =
+      hostSeat && typeof hostSeat.name === "string" && hostSeat.name.length > 0 ?
+        hostSeat.name :
+        "Someone";
+    const copy = _inviteCopy(fromName);
+
+    let sent = 0;
+    for (const inviteeId of pending) {
+      const ok = await _sendToUser(inviteeId, copy, {
+        type: "invite",
+        gid,
+        gameMode,
+        fromName,
+      });
+      if (ok) sent += 1;
+    }
+    return {result: sent > 0 ? "sent" : "skip", sent};
+  },
+);
+
+/**
  * When energyFullAt is due, tell that player their bar is full.
  * energyFullAt is written by the client from wallet regen math.
  */
@@ -135,12 +238,57 @@ function _isBotPid(
 }
 
 /**
+ * @param {unknown} raw playersInfo or invitedPlayers map.
+ * @return {Record<string, {name?: string}>}
+ */
+function _playersInfoMap(
+  raw: unknown,
+): Record<string, {name?: string}> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, {name?: string}> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof key !== "string" || key.length === 0) continue;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const name = (value as {name?: unknown}).name;
+      out[key] = {
+        name: typeof name === "string" ? name : undefined,
+      };
+    } else {
+      out[key] = {};
+    }
+  }
+  return out;
+}
+
+/**
  * @return {{title: string, body: string}} Turn alert copy.
  */
 function _turnCopy(): {title: string; body: string} {
   return {
     title: "Your turn",
     body: "It's your turn to play",
+  };
+}
+
+/**
+ * @param {string} fromName Host display name.
+ * @return {{title: string, body: string}} Invite copy.
+ */
+function _inviteCopy(fromName: string): {title: string; body: string} {
+  return {
+    title: "Game invite",
+    body: `${fromName} invited you to a rematch`,
+  };
+}
+
+/**
+ * @param {string} fromName Joiner display name.
+ * @return {{title: string, body: string}} Player-joined copy.
+ */
+function _playerJoinedCopy(fromName: string): {title: string; body: string} {
+  return {
+    title: "Player joined",
+    body: `${fromName} joined your match`,
   };
 }
 

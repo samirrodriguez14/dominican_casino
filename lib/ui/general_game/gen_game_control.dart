@@ -1,5 +1,6 @@
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/services/share_invite.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -30,10 +31,28 @@ class _GenGameControlState extends State<GenGameControl> {
           return const SizedBox.shrink();
         }
 
-        return Container(
-          constraints: const BoxConstraints(minWidth: 148),
-          decoration: AppStyle.theme.raisedSurfaceBox(),
-          child: _buildInGameActionButton(context, vm, vm.inGameAction),
+        final status = vm.gameState.gameStatus;
+        final showShareBeside = !vm.gameState.isLocalBot &&
+            (status == GameStatus.waitingForPlayers ||
+                status == GameStatus.readyToStart);
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (showShareBeside && vm.inGameAction != InGameAction.share) ...[
+              _ShareSideButton(
+                gameId: vm.gid,
+                gameMode: vm.gameState.gameMode.name,
+              ),
+              const SizedBox(width: 10),
+            ],
+            Container(
+              constraints: const BoxConstraints(minWidth: 148),
+              decoration: AppStyle.theme.raisedSurfaceBox(),
+              child: _buildInGameActionButton(context, vm, vm.inGameAction),
+            ),
+          ],
         );
       },
     );
@@ -70,7 +89,8 @@ class _GenGameControlState extends State<GenGameControl> {
               color: enabled ? theme.textPrimary : theme.muted,
             ),
           ),
-          if (inGameAction == InGameAction.share)
+          if (inGameAction == InGameAction.share ||
+              inGameAction == InGameAction.invite)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text('ID: ${vm.gameState.id}', style: theme.caption),
@@ -101,6 +121,8 @@ class _GenGameControlState extends State<GenGameControl> {
           gameId: vm.gid,
           gameMode: vm.gameState.gameMode.name,
         );
+      case InGameAction.invite:
+        return () => vm.sendPendingInvites();
       case InGameAction.exit:
         return () => leaveMatchToHome(buttonContext, vm);
       case InGameAction.waiting:
@@ -116,6 +138,8 @@ class _GenGameControlState extends State<GenGameControl> {
         return l10n.actionStart;
       case InGameAction.share:
         return l10n.actionShare;
+      case InGameAction.invite:
+        return l10n.actionInvite;
       case InGameAction.deal:
         return l10n.actionDeal;
       case InGameAction.dealSame:
@@ -139,6 +163,8 @@ class _GenGameControlState extends State<GenGameControl> {
         return CupertinoIcons.play_fill;
       case InGameAction.share:
         return CupertinoIcons.share;
+      case InGameAction.invite:
+        return CupertinoIcons.person_badge_plus;
       case InGameAction.deal:
       case InGameAction.dealSame:
         return CupertinoIcons.square_stack_fill;
@@ -153,5 +179,58 @@ class _GenGameControlState extends State<GenGameControl> {
       case InGameAction.exit:
         return CupertinoIcons.square_arrow_left;
     }
+  }
+}
+
+class _ShareSideButton extends StatelessWidget {
+  const _ShareSideButton({
+    required this.gameId,
+    required this.gameMode,
+  });
+
+  final String gameId;
+  final String gameMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    return Builder(
+      builder: (buttonContext) {
+        return CupertinoButton(
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
+          onPressed: SoundService.wrapTap(
+            () => shareGameInvite(
+              context: buttonContext,
+              gameId: gameId,
+              gameMode: gameMode,
+            ),
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: theme.raisedSurfaceBox(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  CupertinoIcons.share,
+                  size: 22,
+                  color: theme.turnHighlight,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.actionShare,
+                  style: theme.caption.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

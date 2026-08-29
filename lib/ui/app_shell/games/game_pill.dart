@@ -19,6 +19,8 @@ class GamePill extends StatelessWidget {
     this.onInfo,
     this.onDelete,
     this.onShare,
+    this.onRematch,
+    this.onInvite,
   });
 
   final GamePillData game;
@@ -30,6 +32,8 @@ class GamePill extends StatelessWidget {
   final VoidCallback? onInfo;
   final VoidCallback? onDelete;
   final void Function(BuildContext buttonContext)? onShare;
+  final VoidCallback? onRematch;
+  final VoidCallback? onInvite;
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +48,14 @@ class GamePill extends StatelessWidget {
         : l10n.timeAgo(game.updatedAt!);
     final ranks = isGameOver ? game.finishRanks() : const <String, int>{};
     final actions = <Widget>[
+      if (onRematch != null)
+        _PillIconButton(
+          icon: CupertinoIcons.arrow_2_squarepath,
+          color: theme.textPrimary,
+          background: theme.textPrimary.withValues(alpha: .14),
+          embeddedInCard: embeddedInCard,
+          onPressed: onRematch,
+        ),
       if (onPlay != null)
         _PillIconButton(
           icon: CupertinoIcons.play_fill,
@@ -59,6 +71,14 @@ class GamePill extends StatelessWidget {
           background: theme.textPrimary.withValues(alpha: .14),
           embeddedInCard: embeddedInCard,
           onPressed: onInfo,
+        ),
+      if (waiting && onInvite != null)
+        _PillIconButton(
+          icon: CupertinoIcons.person_badge_plus,
+          color: theme.textPrimary,
+          background: theme.textPrimary.withValues(alpha: .14),
+          embeddedInCard: embeddedInCard,
+          onPressed: onInvite,
         ),
       if (waiting && onShare != null)
         Builder(

@@ -102,6 +102,10 @@ class GameState {
   String extraPointsHolderId;
   String lastTookCardId;
   final Map<String, dynamic> playersInfo;
+
+  /// Soft-reserved seats for rematch/invite targets (not paid, not in turn order).
+  Map<String, dynamic> invitedPlayers;
+
   String? winnerId;
   Round round;
 
@@ -156,6 +160,13 @@ class GameState {
   /// Per-turn seconds for Casino Speed (5 / 10 / 25). Ignored for other modes.
   int turnDurationSeconds;
 
+  /// When true, Quick Play can discover and join this waiting room.
+  bool isPublic;
+
+  /// Intended table size for public (and seat-capped) rooms. Null = mode max /
+  /// classic friends lobby (ready at mode minimum).
+  int? targetSeats;
+
   GameState({
     required this.gameStatus,
     required this.gameMode,
@@ -177,6 +188,7 @@ class GameState {
     required this.round,
     required this.winnerId,
     required this.playersInfo,
+    Map<String, dynamic>? invitedPlayers,
     this.isLocalBot = false,
     this.botPlayerId,
     List<String>? botPlayerIds,
@@ -194,7 +206,10 @@ class GameState {
     Map<String, List<PlayingCardModel>>? lastTakes,
     this.turnDeadline,
     int? turnDurationSeconds,
-  }) : settlementEvents = settlementEvents ?? [],
+    this.isPublic = false,
+    this.targetSeats,
+  }) : invitedPlayers = invitedPlayers ?? {},
+       settlementEvents = settlementEvents ?? [],
        tableOrder = tableOrder ?? [],
        entryCost = entryCost ?? WalletConfig.entryCost,
        entryPaidBy = entryPaidBy ?? [],
@@ -235,6 +250,26 @@ class GameState {
 
   bool isLocalBotPid(String? pid) =>
       pid != null && pid.isNotEmpty && localBotPids.contains(pid);
+
+  /// Invitees that have not joined [playersInfo] yet.
+  List<String> get pendingInviteIds => [
+        for (final id in invitedPlayers.keys)
+          if (!playersInfo.containsKey(id)) id,
+      ];
+
+  bool get hasPendingInvites => pendingInviteIds.isNotEmpty;
+
+  bool isPendingInvite(String? pid) =>
+      pid != null &&
+      pid.isNotEmpty &&
+      invitedPlayers.containsKey(pid) &&
+      !playersInfo.containsKey(pid);
+
+  Map<String, dynamic>? invitedSeatMap(String pid) {
+    final raw = invitedPlayers[pid];
+    if (raw is! Map) return null;
+    return Map<String, dynamic>.from(raw);
+  }
 
   Duration get turnDuration => gameMode == GameMode.casinoSpeed
       ? Duration(seconds: turnDurationSeconds)
@@ -355,6 +390,15 @@ class GameState {
 
   int get maxSeats => maxSeatsFor(gameMode);
 
+  /// Seat cap for joining: public [targetSeats] when set, else mode max.
+  int get joinSeatCap {
+    final target = targetSeats;
+    if (target != null && target > 0) {
+      return target.clamp(1, maxSeats);
+    }
+    return maxSeats;
+  }
+
   /// Highest score first; [winnerId] is always listed first when set.
   List<String> rankedPlayerIds() {
     final ids = playersInfo.keys.toList();
@@ -454,6 +498,7 @@ class GameState {
       cardMoveEvents: [],
       settlementEvents: [],
       playersInfo: {},
+      invitedPlayers: {},
       winnerId: "",
       round: round,
       entryCost: WalletConfig.entryCost,
@@ -563,6 +608,7 @@ class GameState {
     'hands': hands.map((k, v) => MapEntry(k, v.map((c) => c.toMap()).toList())),
     'scores': scores,
     'playersInfo': playersInfo,
+    'invitedPlayers': invitedPlayers,
     'playersDeck': playersDeck.map(
       (k, v) => MapEntry(k, v.map((c) => c.toMap()).toList()),
     ),
@@ -589,6 +635,8 @@ class GameState {
     'bsState': bsState?.toJson(),
     'turnDeadline': turnDeadline?.toUtc().toIso8601String(),
     'turnDurationSeconds': turnDurationSeconds,
+    'isPublic': isPublic,
+    'targetSeats': ?targetSeats,
   };
 
   static GameState fromMap(Map<String, dynamic> m) {
@@ -682,6 +730,7 @@ class GameState {
       lastTakes: lastTakes,
       lastTookCardId: (m['lastTookCardId'] as String?) ?? '',
       playersInfo: Map<String, dynamic>.from(m['playersInfo'] ?? {}),
+      invitedPlayers: Map<String, dynamic>.from(m['invitedPlayers'] ?? {}),
       winnerId: m['winnerId'] as String?,
       extraPoints: (m['extraPoints'] as num?)?.toInt() ?? 0,
       extraPointsHolderId: (m['extraPointsHolderId'] as String?) ?? '',
@@ -712,6 +761,8 @@ class GameState {
       bsState: bsState,
       turnDeadline: _dateTime(m['turnDeadline']),
       turnDurationSeconds: _speedTurnSeconds(m['turnDurationSeconds']),
+      isPublic: m['isPublic'] == true,
+      targetSeats: (m['targetSeats'] as num?)?.toInt(),
     );
   }
 

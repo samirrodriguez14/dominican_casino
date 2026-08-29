@@ -47,6 +47,7 @@ class GamesViewModel extends ChangeNotifier {
     int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
     LocalBotProfile? botOverride,
     List<LocalBotProfile>? botOverrides,
+    bool isPublic = false,
   }) async {
     try {
       final gid = await _appRepo.createNewGame(
@@ -58,8 +59,9 @@ class GamesViewModel extends ChangeNotifier {
         turnDurationSeconds: turnDurationSeconds,
         botOverride: botOverride,
         botOverrides: botOverrides,
+        isPublic: isPublic,
       );
-      debugPrint('newGame $gid local=$local');
+      debugPrint('newGame $gid local=$local public=$isPublic');
       return gid;
     } on InsufficientFundsException {
       rethrow;
@@ -68,6 +70,34 @@ class GamesViewModel extends ChangeNotifier {
       rethrow;
     }
   }
+
+  Future<String?> rematchFromPill(GamePillData pill) async {
+    try {
+      final gid = await _appRepo.rematchFromPill(pill);
+      debugPrint('rematchFromPill $gid local=${pill.isLocalBot}');
+      return gid;
+    } on InsufficientFundsException {
+      rethrow;
+    } catch (e) {
+      debugPrint('Error rematchFromPill $e');
+      rethrow;
+    }
+  }
+
+  Future<String?> rematchFromState(GameState state) async {
+    try {
+      final gid = await _appRepo.rematchFromState(state);
+      debugPrint('rematchFromState $gid local=${state.isLocalBot}');
+      return gid;
+    } on InsufficientFundsException {
+      rethrow;
+    } catch (e) {
+      debugPrint('Error rematchFromState $e');
+      rethrow;
+    }
+  }
+
+  Future<bool> sendGameInvites(String gid) => _appRepo.sendGameInvites(gid);
 
   Future<void> deleteGame(String gameId) async {
     await _appRepo.deleteGame(gameId);

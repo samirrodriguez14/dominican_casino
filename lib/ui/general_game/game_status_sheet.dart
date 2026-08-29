@@ -7,6 +7,7 @@ import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:dominican_casino/ui/general_game/leave_match_to_home.dart';
 import 'package:dominican_casino/ui/general_game/match_coin_payout.dart';
@@ -321,6 +322,13 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                       onPressed: () => _openRules(context, vm),
                     ),
                     const SizedBox(width: 8),
+                    if (gameState.gameStatus == GameStatus.gameOver) ...[
+                      _StatusIconButton(
+                        icon: CupertinoIcons.arrow_2_squarepath,
+                        onPressed: () => _handleRematch(context, vm),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     _StatusHomeButton(
                       onPressed: () async {
                         Navigator.of(context).pop();
@@ -432,6 +440,14 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     if (!context.mounted) return;
     Navigator.of(context).pop();
     await leaveMatchToHome(context, vm);
+  }
+
+  Future<void> _handleRematch(
+    BuildContext context,
+    GeneralGameViewModel vm,
+  ) async {
+    Navigator.of(context).pop();
+    await rematchEnter(context, state: vm.gameState);
   }
 
   Future<bool?> _confirmResignGame(BuildContext context) {

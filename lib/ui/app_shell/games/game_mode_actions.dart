@@ -5,6 +5,7 @@ import 'dart:developer' as developer;
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
+import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
@@ -28,9 +29,10 @@ bool _allowsNoBet(GameMode mode) =>
     mode == GameMode.rummy ||
     mode == GameMode.bs;
 
-void showJoinGameDialog(BuildContext context, String mode) {
+void showJoinGameDialog(BuildContext context, [String? modeHint]) {
   final TextEditingController controller = TextEditingController();
   final l10n = AppLocalizations.of(context);
+  final repo = context.read<AppRepo>();
 
   showCupertinoDialog(
     context: context,
@@ -42,9 +44,7 @@ void showJoinGameDialog(BuildContext context, String mode) {
           child: Column(
             children: [
               Text(
-                l10n.joinCostsEnergy(
-                  WalletConfig.energyCostFor(mode),
-                ),
+                l10n.playJoinByIdHint,
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 10),
@@ -63,12 +63,36 @@ void showJoinGameDialog(BuildContext context, String mode) {
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
-            onPressed: SoundService.wrapTap(() {
+            onPressed: SoundService.wrapTap(() async {
               final gameId = controller.text.trim();
+              if (gameId.isEmpty) return;
               Navigator.pop(context);
-              if (gameId.isNotEmpty) {
-                context.go(GameRoutes.game(gameId: gameId, gameMode: mode));
+              final state = await repo.fs.tryLoadGame(gameId);
+              if (!context.mounted) return;
+              if (state == null) {
+                await showCupertinoDialog<void>(
+                  context: context,
+                  builder: (ctx) => CupertinoAlertDialog(
+                    title: Text(l10n.gameNotFound),
+                    actions: [
+                      CupertinoDialogAction(
+                        isDefaultAction: true,
+                        onPressed: SoundService.wrapTap(
+                          () => Navigator.pop(ctx),
+                        ),
+                        child: Text(l10n.back),
+                      ),
+                    ],
+                  ),
+                );
+                return;
               }
+              if (!await ensureGoogleForOnlinePlay(context)) return;
+              if (!context.mounted) return;
+              final modeName = modeHint ?? state.gameMode.name;
+              context.go(
+                GameRoutes.game(gameId: state.id, gameMode: modeName),
+              );
             }),
             child: Text(l10n.join, style: AppStyle.theme.title),
           ),
@@ -109,6 +133,7 @@ void showEnterGameDialog(
             entryCost: entryCost,
             playerCount: playerCount,
             turnDurationSeconds: turnDurationSeconds,
+            isPublic: false,
           );
         },
         onPuli:
@@ -128,11 +153,25 @@ void showEnterGameDialog(
             turnDurationSeconds: turnDurationSeconds,
           );
         },
-        onJoin: () async {
+        onPublic:
+            (
+              entryCost, {
+              int playerCount = 2,
+              int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
+            }) async {
           if (!await ensureGoogleForOnlinePlay(context)) return;
           if (!context.mounted) return;
           Navigator.pop(dialogContext);
-          showJoinGameDialog(context, mode.name);
+          gameEnter(
+            context,
+            vm,
+            mode,
+            false,
+            entryCost: entryCost,
+            playerCount: playerCount,
+            turnDurationSeconds: turnDurationSeconds,
+            isPublic: true,
+          );
         },
         gameTitle: _modeTitle(vm, mode),
       );
@@ -192,15 +231,6 @@ class _PathPicker extends StatelessWidget {
       children: [
         Expanded(
           child: _PathChip(
-            icon: friendIcon,
-            label: friendTitle,
-            selected: selected == _PlayPath.friend,
-            onTap: () => onChanged(_PlayPath.friend),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: _PathChip(
             icon: CupertinoIcons.bolt_fill,
             label: l10n.playPuliChip,
             selected: selected == _PlayPath.puli,
@@ -210,10 +240,19 @@ class _PathPicker extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: _PathChip(
-            icon: CupertinoIcons.number,
-            label: l10n.join,
-            selected: selected == _PlayPath.join,
-            onTap: () => onChanged(_PlayPath.join),
+            icon: friendIcon,
+            label: friendTitle,
+            selected: selected == _PlayPath.friend,
+            onTap: () => onChanged(_PlayPath.friend),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _PathChip(
+            icon: CupertinoIcons.globe,
+            label: l10n.playPublicChip,
+            selected: selected == _PlayPath.publicPath,
+            onTap: () => onChanged(_PlayPath.publicPath),
           ),
         ),
       ],
@@ -585,7 +624,7 @@ class _EnterGamePopup extends StatefulWidget {
     required this.gameTitle,
     required this.onFriend,
     required this.onPuli,
-    required this.onJoin,
+    required this.onPublic,
   });
 
   final GameMode mode;
@@ -602,7 +641,12 @@ class _EnterGamePopup extends StatefulWidget {
     required int turnDurationSeconds,
   })
   onPuli;
-  final VoidCallback onJoin;
+  final void Function(
+    int entryCost, {
+    required int playerCount,
+    required int turnDurationSeconds,
+  })
+  onPublic;
 
   @override
   State<_EnterGamePopup> createState() => _EnterGamePopupState();
@@ -628,7 +672,8 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
   void _start() {
     final playerCount = switch (widget.mode) {
       GameMode.bs => _playerCount.clamp(3, 6),
-      GameMode.tresydos || GameMode.rummy when _path == _PlayPath.puli =>
+      GameMode.tresydos || GameMode.rummy
+          when _path == _PlayPath.puli || _path == _PlayPath.publicPath =>
         _playerCount,
       _ => 2,
     };
@@ -648,8 +693,12 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
           playerCount: playerCount,
           turnDurationSeconds: turnDurationSeconds,
         );
-      case _PlayPath.join:
-        widget.onJoin();
+      case _PlayPath.publicPath:
+        widget.onPublic(
+          _stake,
+          playerCount: playerCount,
+          turnDurationSeconds: turnDurationSeconds,
+        );
     }
   }
 
@@ -659,11 +708,12 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
     final l10n = AppLocalizations.of(context);
     final mode = widget.mode;
     final energy = WalletConfig.energyCostFor(mode.name);
-    final joining = _path == _PlayPath.join;
     final showPlayerCount =
-        (_multiSeatMode && _path == _PlayPath.puli) ||
-        (widget.mode == GameMode.bs && _path == _PlayPath.puli);
-    final showTurnClock = mode == GameMode.casinoSpeed && !joining;
+        (_multiSeatMode &&
+            (_path == _PlayPath.puli || _path == _PlayPath.publicPath)) ||
+        (widget.mode == GameMode.bs &&
+            (_path == _PlayPath.puli || _path == _PlayPath.publicPath));
+    final showTurnClock = mode == GameMode.casinoSpeed;
     final countOptions =
         mode == GameMode.bs ? const [3, 4, 5, 6] : const [2, 3, 4];
 
@@ -709,16 +759,14 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
                       ? l10n.playFriendsChip
                       : l10n.playFriendChip,
                 ),
-                if (!joining) ...[
-                  const SizedBox(height: 14),
-                  _StakePicker(
-                    stakes: WalletConfig.stakesFor(
-                      allowNoBet: _allowsNoBet(mode),
-                    ),
-                    selected: _stake,
-                    onChanged: (value) => setState(() => _stake = value),
+                const SizedBox(height: 14),
+                _StakePicker(
+                  stakes: WalletConfig.stakesFor(
+                    allowNoBet: _allowsNoBet(mode),
                   ),
-                ],
+                  selected: _stake,
+                  onChanged: (value) => setState(() => _stake = value),
+                ),
                 if (showPlayerCount) ...[
                   const SizedBox(height: 14),
                   _PlayerCountPicker(
@@ -748,19 +796,17 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
                       '$energy',
                       style: theme.title.copyWith(fontSize: 14),
                     ),
-                    if (!joining) ...[
-                      const SizedBox(width: 14),
-                      Icon(
-                        coinIcon,
-                        size: 14,
-                        color: theme.turnHighlight,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$_stake',
-                        style: theme.title.copyWith(fontSize: 14),
-                      ),
-                    ],
+                    const SizedBox(width: 14),
+                    Icon(
+                      coinIcon,
+                      size: 14,
+                      color: theme.turnHighlight,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_stake',
+                      style: theme.title.copyWith(fontSize: 14),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -772,7 +818,7 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
                     borderRadius: BorderRadius.circular(14),
                     onPressed: SoundService.wrapTap(_start),
                     child: Text(
-                      joining ? l10n.join : l10n.startGame,
+                      l10n.startGame,
                       style: theme.title.copyWith(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -798,7 +844,7 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
   }
 }
 
-enum _PlayPath { friend, puli, join }
+enum _PlayPath { friend, puli, publicPath }
 
 Future<void> gameEnter(
   BuildContext context,
@@ -808,6 +854,7 @@ Future<void> gameEnter(
   int playerCount = 2,
   int entryCost = WalletConfig.entryCost,
   int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
+  bool isPublic = false,
   Future<void> Function(String gameId)? onCreated,
   LocalBotProfile? botOverride,
   List<LocalBotProfile>? botOverrides,
@@ -833,6 +880,7 @@ Future<void> gameEnter(
       turnDurationSeconds: turnDurationSeconds,
       botOverride: botOverride,
       botOverrides: botOverrides,
+      isPublic: isPublic,
     );
     if (gid != null) {
       if (onCreated != null) unawaited(onCreated(gid));
@@ -844,6 +892,71 @@ Future<void> gameEnter(
     }
   } catch (e, st) {
     developer.log('gameEnter: $e', stackTrace: st);
+    if (!context.mounted) return;
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.couldNotStartGame),
+        content: Text(l10n.tryAgain),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
+            child: Text(l10n.back),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Rematch from history or game-over. Friends path requires Google.
+Future<void> rematchEnter(
+  BuildContext context, {
+  GamePillData? pill,
+  GameState? state,
+  Future<void> Function()? beforeNavigate,
+}) async {
+  assert(pill != null || state != null);
+  final mode = pill?.gameMode ?? state!.gameMode;
+  final local = pill?.isLocalBot ?? state!.isLocalBot;
+  final entryCost = pill?.entryCost ?? state!.entryCost;
+  if (mode == GameMode.robaito) return;
+
+  if (!local && !await ensureGoogleForOnlinePlay(context)) return;
+  if (!context.mounted) return;
+
+  final vm = context.read<GamesViewModel>();
+  final repo = context.read<AppRepo>();
+  final router = GoRouter.of(context);
+  final l10n = AppLocalizations.of(context);
+
+  if (!repo.canAffordEnergy(mode)) {
+    await showInsufficientFundsDialog(context, energy: true);
+    return;
+  }
+  if (!repo.canAffordStake(entryCost)) {
+    await showInsufficientFundsDialog(context, energy: false);
+    return;
+  }
+
+  try {
+    final gid = pill != null
+        ? await vm.rematchFromPill(pill)
+        : await vm.rematchFromState(state!);
+    if (gid == null) return;
+    if (beforeNavigate != null) await beforeNavigate();
+    if (!context.mounted) {
+      router.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
+      return;
+    }
+    router.go(GameRoutes.game(gameId: gid, gameMode: mode.name));
+  } on InsufficientFundsException catch (e) {
+    if (context.mounted) {
+      await showInsufficientFundsDialog(context, energy: e.energy);
+    }
+  } catch (e, st) {
+    developer.log('rematchEnter: $e', stackTrace: st);
     if (!context.mounted) return;
     await showCupertinoDialog<void>(
       context: context,

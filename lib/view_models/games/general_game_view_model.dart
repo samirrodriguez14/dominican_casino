@@ -84,6 +84,10 @@ class GeneralGameViewModel extends ChangeNotifier {
   /// Edge-detect local turn for [GameSound.yourTurn] (armed after load).
   bool _turnSfxArmed = false;
 
+  /// Once the local seat selects/drags a card this turn, stop the idle
+  /// bounce + haptic until the turn passes and returns.
+  bool _touchedCardsThisTurn = false;
+
   GameReaction? outgoingReaction;
   GameReaction? incomingReaction;
   StreamSubscription<GameReaction?>? _reactionSub;
@@ -662,6 +666,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       round: next.round,
       winnerId: next.winnerId,
       playersInfo: Map<String, dynamic>.from(next.playersInfo),
+      invitedPlayers: Map<String, dynamic>.from(next.invitedPlayers),
       isLocalBot: next.isLocalBot,
       botPlayerId: next.botPlayerId,
       botPlayerIds: List<String>.from(next.botPlayerIds),
@@ -1144,8 +1149,12 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   String get me => player.id;
 
-  /// Avatar + Journey accessories for a seated player (live for [me]).
+  /// Avatar + Journey accessories for a seated or invited player.
   GameSeatLook seatLook(String pid) {
+    if (gameState.isPendingInvite(pid)) {
+      final info = gameState.invitedSeatMap(pid) ?? {};
+      return GameSeatLook.fromMap(info);
+    }
     final info = Map<String, dynamic>.from(gameState.playersInfo[pid] ?? {});
     if (pid == me) {
       final look = AvatarLook.fromId(player.avatarId);
@@ -1181,6 +1190,10 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   bool isSeatTurn(String pid) =>
       pid.isNotEmpty && isLiveTurn && gameState.currentTurnPlayerId == pid;
+
+  /// Idle “your turn” hand bounce + haptic: live turn, and no card touch yet.
+  bool get shouldNudgeYourTurn =>
+      isSeatTurn(me) && !_touchedCardsThisTurn;
 
   /// Tres y Dos: still need to draw or take before playing a card back.
   bool get needsTakeHint =>
@@ -1477,6 +1490,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     _preserveMyHandOrder(incoming);
     gameState = incoming;
     _rememberMyHandOrder();
+    _syncTurnCardTouchGate(prevTurnPid: prevTurn);
     if (_turnSfxArmed) {
       _maybePlayYourTurnSfx(fromPid: prevTurn);
     }
@@ -1497,6 +1511,25 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   void _armYourTurnSfx() {
     _turnSfxArmed = true;
+    _syncTurnCardTouchGate(prevTurnPid: null);
+  }
+
+  void _syncTurnCardTouchGate({required String? prevTurnPid}) {
+    final toPid = gameState.currentTurnPlayerId;
+    if (toPid != me) {
+      _touchedCardsThisTurn = false;
+      return;
+    }
+    // Fresh turn for local seat — allow nudge again.
+    if (prevTurnPid != me) {
+      _touchedCardsThisTurn = false;
+    }
+  }
+
+  void _noteTurnCardInteraction() {
+    if (_touchedCardsThisTurn) return;
+    if (!isSeatTurn(me)) return;
+    _touchedCardsThisTurn = true;
   }
 
   /// Re-apply this player's fan order onto [incoming].
@@ -1579,6 +1612,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     }
     draggingSource = source;
     dropHover = null;
+    _noteTurnCardInteraction();
     notifyListeners();
     return true;
   }
@@ -2314,7 +2348,16 @@ class GeneralGameViewModel extends ChangeNotifier {
         : null;
   }
 
-  List<String> get oppIds => sortIds(me).sublist(1);
+  List<String> get oppIds {
+    final seated = sortIds(me);
+    final seatedOpps = seated.length > 1 ? seated.sublist(1) : <String>[];
+    if (!showOpenSeats) return seatedOpps;
+    final pending = [
+      for (final id in gameState.pendingInviteIds)
+        if (id != me) id,
+    ];
+    return [...seatedOpps, ...pending];
+  }
 
   List<String> sortIds(String pid) {
     final players = gameState.playersInfo.keys.toList();
@@ -2334,6 +2377,32 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     return sortedPlayers;
   }
+
+  Future<void> sendPendingInvites() async {
+    if (gameState.isLocalBot || !gameState.hasPendingInvites) return;
+    await appRepo.sendGameInvites(gameState.id);
+  }
+
+  /// Label for an opponent seat: open, invited pending, or seated name.
+  String opponentDisplayName(
+    String oppId, {
+    required String openLabel,
+    required String invitedFallback,
+  }) {
+    if (oppId.isEmpty) return openLabel;
+    if (gameState.isPendingInvite(oppId)) {
+      return (gameState.invitedSeatMap(oppId)?['name'] as String?) ??
+          invitedFallback;
+    }
+    final raw = gameState.playersInfo[oppId];
+    if (raw is Map) {
+      final name = raw['name'] as String?;
+      if (name != null && name.isNotEmpty) return name;
+    }
+    return 'Rival';
+  }
+
+  bool isPendingInviteSeat(String oppId) => gameState.isPendingInvite(oppId);
 
   int get oppExtraPoints =>
       opp == gameState.extraPointsHolderId ? gameState.extraPoints : 0;
@@ -2854,7 +2923,7 @@ class GeneralGameViewModel extends ChangeNotifier {
             gameState.gameStatus == GameStatus.gameOver) {
           return JoinGameResult.failed;
         }
-        if (gameState.playersInfo.length >= gameState.maxSeats) {
+        if (gameState.playersInfo.length >= gameState.joinSeatCap) {
           return JoinGameResult.failed;
         }
       }
@@ -2885,6 +2954,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       }
 
       gameState.playersInfo[player.id] = appRepo.buildGameSeat(player);
+      gameState.invitedPlayers.remove(player.id);
       if (gameEngine.shouldMarkReadyToStart(gameState) &&
           gameState.gameStatus == GameStatus.waitingForPlayers) {
         gameState.gameStatus = GameStatus.readyToStart;
@@ -3012,6 +3082,8 @@ class GeneralGameViewModel extends ChangeNotifier {
       return;
     }
 
+    _noteTurnCardInteraction();
+
     // BS: multi-select up to 4 hand cards via selectedCards.
     if (gameState.gameMode == GameMode.bs) {
       selectedCard = null;
@@ -3039,6 +3111,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   void selectCardToTake(PlayingCardModel? card) {
     if (isAnimating || !isMyTurn) return;
+    _noteTurnCardInteraction();
     if (selectedCards.contains(card)) {
       selectedCards = [];
     } else {
@@ -3070,6 +3143,7 @@ class GeneralGameViewModel extends ChangeNotifier {
 
   void selectCardToStack(PlayingCardModel card) {
     if (isAnimating || !isMyTurn) return;
+    _noteTurnCardInteraction();
     final nextIds = selectedCards.contains(card)
         ? selectedCards.where((c) => c.id != card.id).map((c) => c.id).toList()
         : [...selectedCards.map((c) => c.id), card.id];
@@ -3096,6 +3170,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     if (!_canPerform(TutorialAction.selectStack, stackId: stack.id)) {
       return;
     }
+    _noteTurnCardInteraction();
     if (selectedStacks.contains(stack)) {
       selectedStacks.remove(stack);
     } else {

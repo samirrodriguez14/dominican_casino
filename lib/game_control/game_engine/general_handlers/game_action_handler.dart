@@ -131,6 +131,9 @@ class GameActionHandler {
   static InGameAction getInGameAction(GameState gameState, String pid) {
     switch (gameState.gameStatus) {
       case GameStatus.waitingForPlayers:
+        if (gameState.hasPendingInvites && gameState.controllerId == pid) {
+          return InGameAction.invite;
+        }
         return InGameAction.share;
 
       case GameStatus.readyToStart:

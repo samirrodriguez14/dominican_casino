@@ -44,6 +44,9 @@ service cloud.firestore {
       match /archivedGames/{gid} {
         allow read, write: if isSelf(uid);
       }
+      match /opponentStats/{opponentUid} {
+        allow read, write: if isSelf(uid);
+      }
     }
 
     // Match documents. Authenticated clients may still write full state

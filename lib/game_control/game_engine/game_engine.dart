@@ -65,7 +65,8 @@ abstract class GameEngine {
 
   /// When the minimum seats are filled and the game has not started, callers
   /// should set [GameStatus.readyToStart] and persist (not inside getters).
-  /// Tres y Dos can still accept more friends until Start.
+  /// Public rooms with [GameState.targetSeats] wait until that count; friends
+  /// lobbies still ready at the mode minimum (host Start).
   bool shouldMarkReadyToStart(GameState gameState) {
     final minPlayers = gameState.gameMode == GameMode.bs ? 3 : 2;
     if (gameState.gameStatus == GameStatus.inProgress ||
@@ -73,7 +74,10 @@ abstract class GameEngine {
       return false;
     }
     final joined = gameState.playersInfo.keys.where((k) => k.isNotEmpty);
-    return joined.length >= minPlayers &&
+    final needed = gameState.targetSeats != null
+        ? gameState.joinSeatCap
+        : minPlayers;
+    return joined.length >= needed &&
         joined.length <= maxSeatsFor(gameState.gameMode);
   }
 }

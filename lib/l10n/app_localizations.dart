@@ -21,7 +21,37 @@ class AppLocalizations {
   bool get isEs => locale.languageCode == 'es';
 
   String get appTitle => isEs ? 'Casino Dominicano' : 'Dominican Casino';
-  String get joinById => isEs ? 'Unirse por ID' : 'Join by ID';
+  String get joinById => isEs ? 'Unirse por #ID' : 'Join by #ID';
+  String get quickPlay => isEs ? 'Partida rápida' : 'Quick Match';
+  String get playPublicChip => isEs ? 'Público' : 'Public';
+  String get playPublicHint => isEs
+      ? 'Mesa abierta para el juego rápido'
+      : 'Open table for Quick Play';
+  String get edit => isEs ? 'Editar' : 'Edit';
+  String get quickMatchPrefsTitle =>
+      isEs ? 'Preferencias de juego rápido' : 'Quick Play preferences';
+  String get quickMatchGames => isEs ? 'Juegos' : 'Games';
+  String get quickMatchAnyGame => isEs ? 'Cualquiera' : 'Any';
+  String get quickMatchAnyGameDetail =>
+      isEs ? 'Cualquier juego' : 'Any game';
+  String quickMatchMoreGames(int n) => '+$n';
+  String get quickMatchMaxStake =>
+      isEs ? 'Apuesta máxima' : 'Max stake';
+  String quickMatchMaxCoins(int n) =>
+      isEs ? 'máx. $n monedas' : 'max $n coins';
+  String get quickMatchPlayers =>
+      isEs ? 'Máx. jugadores' : 'Max players';
+  String quickMatchMaxPlayersDetail(int n) =>
+      isEs ? 'máx. $n jugadores' : 'max $n players';
+  String get quickMatchSearching =>
+      isEs ? 'Buscando partida…' : 'Searching for a match…';
+  String quickMatchSecondsLeft(int n) =>
+      isEs ? '$n s restantes' : '$n s left';
+  String get quickMatchNoMatches =>
+      isEs ? 'No se encontraron partidas' : 'No matches found';
+  String get quickMatchStart => isEs ? 'Buscar' : 'Search';
+  String get gameNotFound =>
+      isEs ? 'No se encontró esa partida' : 'Game not found';
   String get play => isEs ? 'Jugar' : 'Play';
   String get playHowPrompt =>
       isEs ? '¿Cómo quieres jugar?' : 'How do you want to play?';
@@ -154,6 +184,14 @@ class AppLocalizations {
   String get actionStart => isEs ? 'Empezar' : 'Start';
   String get startGame => isEs ? 'Empezar partida' : 'Start game';
   String get actionShare => isEs ? 'Compartir' : 'Share';
+  String get actionInvite => isEs ? 'Invitar' : 'Invite';
+  String get rematch => isEs ? 'Revancha' : 'Rematch';
+  String get invited => isEs ? 'Invitado' : 'Invited';
+  String get vsPlayers => isEs ? 'Contra jugadores' : 'Vs players';
+  String get vsPlayersEmpty => isEs
+      ? 'Juega contra amigos para ver tu récord aquí.'
+      : 'Play friends to see your head-to-head record here.';
+  String recordShort(int wins, int losses) => '$wins–$losses';
   String get actionDeal => isEs ? 'Repartir' : 'Deal';
   String get actionDealAgain => isEs ? 'Repartir de nuevo' : 'Deal again';
   String get actionReady => isEs ? 'Listo' : 'Ready';

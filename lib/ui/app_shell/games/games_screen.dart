@@ -4,10 +4,13 @@ import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_grid.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
+import 'package:dominican_casino/ui/app_shell/games/quick_play_dialog.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_stage.dart';
 import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
 import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
@@ -331,20 +334,27 @@ class GamesScreenState extends State<GamesScreen>
                   left: 0,
                   right: 0,
                   bottom: 8,
-                  child: Center(
-                    child: CupertinoButton(
-                      padding: const EdgeInsets.all(8),
-                      minimumSize: Size.zero,
-                      onPressed: SoundService.wrapTap(toggleGrid),
-                      child: Icon(
-                        gridOn
-                            ? CupertinoIcons.rectangle_stack
-                            : CupertinoIcons.square_grid_2x2,
-                        size: 22,
-                        color: theme.textPrimary,
-                        semanticLabel: gridOn ? 'Stacked view' : 'Grid view',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _GamesMatchActions(
+                        onQuickPlay: () => showQuickPlayDialog(context),
+                        onJoinById: () => showJoinGameDialog(context),
                       ),
-                    ),
+                      CupertinoButton(
+                        padding: const EdgeInsets.all(8),
+                        minimumSize: Size.zero,
+                        onPressed: SoundService.wrapTap(toggleGrid),
+                        child: Icon(
+                          gridOn
+                              ? CupertinoIcons.rectangle_stack
+                              : CupertinoIcons.square_grid_2x2,
+                          size: 22,
+                          color: theme.textPrimary,
+                          semanticLabel: gridOn ? 'Stacked view' : 'Grid view',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
             ],
@@ -375,6 +385,70 @@ class GamesScreenState extends State<GamesScreen>
           compact: rect.width < 180,
           showActions: false,
         ),
+      ),
+    );
+  }
+}
+
+class _GamesMatchActions extends StatelessWidget {
+  const _GamesMatchActions({
+    required this.onQuickPlay,
+    required this.onJoinById,
+  });
+
+  final VoidCallback onQuickPlay;
+  final VoidCallback onJoinById;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 48),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+            color: theme.turnHighlight,
+            borderRadius: BorderRadius.circular(14),
+            onPressed: SoundService.wrapTap(onQuickPlay),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  CupertinoIcons.bolt,
+                  size: 18,
+                  color: theme.background,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  l10n.quickPlay,
+                  style: theme.title.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: theme.background,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          CupertinoButton(
+            padding: const EdgeInsets.only(top: 10, bottom: 0),
+            minimumSize: Size.zero,
+            onPressed: SoundService.wrapTap(onJoinById),
+            child: Text(
+              l10n.joinById,
+              style: theme.body.copyWith(
+                fontSize: 13,
+                color: theme.muted,
+                decoration: TextDecoration.underline,
+                decorationColor: theme.muted,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

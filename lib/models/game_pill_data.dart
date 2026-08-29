@@ -39,6 +39,8 @@ class GamePillData {
   final int entryCost;
   final Map<String, int> scores;
   final Map<String, int> pendingCoins;
+  final bool isLocalBot;
+  final List<String> invitedPlayerIds;
 
   GamePillData({
     required this.id,
@@ -51,8 +53,16 @@ class GamePillData {
     this.entryCost = WalletConfig.entryCost,
     Map<String, int>? scores,
     Map<String, int>? pendingCoins,
+    this.isLocalBot = false,
+    List<String>? invitedPlayerIds,
   })  : scores = scores ?? const {},
-        pendingCoins = pendingCoins ?? const {};
+        pendingCoins = pendingCoins ?? const {},
+        invitedPlayerIds = List<String>.from(invitedPlayerIds ?? const []);
+
+  bool get hasPendingInvites {
+    if (invitedPlayerIds.isEmpty) return false;
+    return invitedPlayerIds.any((id) => !playersInfo.containsKey(id));
+  }
 
   factory GamePillData.fromDoc(String id, Map<String, dynamic> data) {
     return GamePillData(
@@ -66,6 +76,9 @@ class GamePillData {
       entryCost: (data['entryCost'] as num?)?.toInt() ?? WalletConfig.entryCost,
       scores: _intMap(data['scores']),
       pendingCoins: _intMap(data['pendingCoins']),
+      isLocalBot: data['isLocalBot'] == true,
+      invitedPlayerIds: _stringList(data['invitedPlayerIds']) ??
+          _invitedIdsFromMap(data['invitedPlayers']),
     );
   }
 
@@ -81,6 +94,9 @@ class GamePillData {
       entryCost: (json['entryCost'] as num?)?.toInt() ?? WalletConfig.entryCost,
       scores: _intMap(json['scores']),
       pendingCoins: _intMap(json['pendingCoins']),
+      isLocalBot: json['isLocalBot'] == true,
+      invitedPlayerIds: _stringList(json['invitedPlayerIds']) ??
+          _invitedIdsFromMap(json['invitedPlayers']),
     );
   }
 
@@ -96,6 +112,8 @@ class GamePillData {
       'entryCost': entryCost,
       'scores': scores,
       'pendingCoins': pendingCoins,
+      'isLocalBot': isLocalBot,
+      if (invitedPlayerIds.isNotEmpty) 'invitedPlayerIds': invitedPlayerIds,
     };
   }
 
@@ -240,5 +258,18 @@ class GamePillData {
     return raw.map(
       (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0),
     );
+  }
+
+  static List<String>? _stringList(dynamic raw) {
+    if (raw is! List) return null;
+    return raw
+        .map((e) => e.toString())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  static List<String> _invitedIdsFromMap(dynamic raw) {
+    if (raw is! Map) return const [];
+    return raw.keys.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
   }
 }

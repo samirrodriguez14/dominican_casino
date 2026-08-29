@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
@@ -125,14 +126,19 @@ class OpponentIdentityChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
     final theme = AppStyle.theme;
+    final l10n = AppLocalizations.of(context);
     final waiting = oppId.isEmpty;
+    final invited = !waiting && vm.isPendingInviteSeat(oppId);
     final seat = waiting ? const GameSeatLook() : vm.seatLook(oppId);
-    final name = waiting ? 'Waiting...' : ((vm.gameState.playersInfo[oppId] is Map
-            ? (vm.gameState.playersInfo[oppId] as Map)['name'] as String?
-            : null) ??
-        'Rival');
-    final score = waiting ? 0 : (vm.gameState.scores[oppId] ?? 0);
-    final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
+    final name = vm.opponentDisplayName(
+      oppId,
+      openLabel: 'Waiting...',
+      invitedFallback: l10n.invited,
+    );
+    final score = waiting || invited ? 0 : (vm.gameState.scores[oppId] ?? 0);
+    final incoming = !waiting &&
+            !invited &&
+            vm.incomingReaction?.fromPid == oppId
         ? vm.incomingReaction
         : null;
 

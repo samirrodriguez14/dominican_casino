@@ -4,6 +4,7 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/services/share_invite.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_pill.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/view_models/games_view_model.dart';
@@ -113,12 +114,18 @@ class _CurrentGamePill extends StatelessWidget {
       embeddedInCard: embeddedInCard,
       onOpen: history ? null : enter,
       onPlay: history ? null : enter,
+      onRematch: history
+          ? () => rematchEnter(context, pill: game)
+          : null,
       onInfo: history ? () => _showGameStatus(context, vm, game) : null,
       onDelete: () async {
         final ok = await vm.confirmDelete(context, game.id);
         if (!ok) return;
         await vm.deleteGame(game.id);
       },
+      onInvite: !history && waiting && game.hasPendingInvites
+          ? () => vm.sendGameInvites(game.id)
+          : null,
       onShare: !history && waiting
           ? (buttonContext) => shareGameInvite(
               context: buttonContext,

@@ -544,15 +544,18 @@ class _OpponentScoreChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
     final waiting = oppId.isEmpty;
+    final invited = !waiting && vm.isPendingInviteSeat(oppId);
     final seat = waiting ? const GameSeatLook() : vm.seatLook(oppId);
-    final name = waiting
-        ? AppLocalizations.of(context).openSeat
-        : ((vm.gameState.playersInfo[oppId] is Map
-                ? (vm.gameState.playersInfo[oppId] as Map)['name'] as String?
-                : null) ??
-            'Rival');
-    final score = waiting ? 0 : (vm.gameState.scores[oppId] ?? 0);
-    final incoming = !waiting && vm.incomingReaction?.fromPid == oppId
+    final l10n = AppLocalizations.of(context);
+    final name = vm.opponentDisplayName(
+      oppId,
+      openLabel: l10n.openSeat,
+      invitedFallback: l10n.invited,
+    );
+    final score = waiting || invited ? 0 : (vm.gameState.scores[oppId] ?? 0);
+    final incoming = !waiting &&
+            !invited &&
+            vm.incomingReaction?.fromPid == oppId
         ? vm.incomingReaction
         : null;
 

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_reaction.dart';
+import 'package:dominican_casino/models/opponent_match_stats.dart';
 import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/services/game_service.dart';
@@ -553,6 +554,51 @@ class FirestoreService extends GameService {
     }, SetOptions(merge: true));
   }
 
+  CollectionReference<Map<String, dynamic>> _opponentStats(String uid) {
+    return _users.doc(uid).collection('opponentStats');
+  }
+
+  Future<OpponentMatchStats?> loadOpponentStats({
+    required String uid,
+    required String opponentUid,
+  }) async {
+    final snap = await _opponentStats(uid).doc(opponentUid).get();
+    if (!snap.exists) return null;
+    return OpponentMatchStats.fromDoc(snap.id, snap.data() ?? {});
+  }
+
+  Future<void> saveOpponentStats({
+    required String uid,
+    required OpponentMatchStats stats,
+  }) async {
+    await _opponentStats(uid).doc(stats.opponentUid).set({
+      ...stats.toJson(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Paginated head-to-head rows ordered by most recent match.
+  Future<({List<OpponentMatchStats> items, DocumentSnapshot? lastDoc})>
+      fetchOpponentStats(
+    String uid, {
+    int limit = 10,
+    DocumentSnapshot? startAfter,
+  }) async {
+    Query<Map<String, dynamic>> query = _opponentStats(uid)
+        .orderBy('lastPlayedAt', descending: true)
+        .limit(limit);
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+    final snap = await query.get();
+    final items = [
+      for (final doc in snap.docs)
+        OpponentMatchStats.fromDoc(doc.id, doc.data()),
+    ];
+    final last = snap.docs.isEmpty ? null : snap.docs.last;
+    return (items: items, lastDoc: last);
+  }
+
   Future<void> deleteUserProfile(String uid) async {
     await _users.doc(uid).delete();
   }
@@ -666,7 +712,43 @@ class FirestoreService extends GameService {
     final local = _localOnly[gid];
     if (local != null) return local;
     final snap = await _games.doc(gid).get();
-    return GameState.fromMap(snap.data()!);
+    final data = snap.data();
+    if (data == null) {
+      throw StateError('Game not found: $gid');
+    }
+    return GameState.fromMap(data);
+  }
+
+  /// Returns null when the doc is missing (Join by ID).
+  Future<GameState?> tryLoadGame(String gid) async {
+    try {
+      return await loadGame(gid);
+    } catch (e) {
+      debugPrint('tryLoadGame $gid: $e');
+      return null;
+    }
+  }
+
+  /// Live public lobbies waiting for players (Quick Play).
+  Stream<List<GameState>> listenPublicWaitingGames() {
+    return _games
+        .where('isPublic', isEqualTo: true)
+        .where('gameStatus', isEqualTo: GameStatus.waitingForPlayers.name)
+        .snapshots()
+        .map((snap) {
+          final out = <GameState>[];
+          for (final doc in snap.docs) {
+            try {
+              final data = Map<String, dynamic>.from(doc.data());
+              data['id'] = data['id'] ?? doc.id;
+              final state = GameState.fromMap(data);
+              if (!state.isLocalBot) out.add(state);
+            } catch (e) {
+              debugPrint('listenPublicWaitingGames ${doc.id}: $e');
+            }
+          }
+          return out;
+        });
   }
 
   Map<String, dynamic> _gamePayload(GameState gState) {

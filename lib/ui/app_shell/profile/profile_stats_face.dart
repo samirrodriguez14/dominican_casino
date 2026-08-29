@@ -2,13 +2,17 @@ import 'dart:math' as math;
 
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
+import 'package:dominican_casino/models/opponent_match_stats.dart';
 import 'package:dominican_casino/models/player_match_stats.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:dominican_casino/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
-/// Back face of the profile identity card: career W/L chart + mode breakdown.
-class ProfileStatsFace extends StatelessWidget {
+/// Back face of the profile identity card: career W/L chart + mode breakdown
+/// + paginated head-to-head records.
+class ProfileStatsFace extends StatefulWidget {
   const ProfileStatsFace({
     super.key,
     required this.stats,
@@ -30,12 +34,30 @@ class ProfileStatsFace extends StatelessWidget {
   ];
 
   @override
+  State<ProfileStatsFace> createState() => _ProfileStatsFaceState();
+}
+
+class _ProfileStatsFaceState extends State<ProfileStatsFace> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<ProfileViewModel>().ensureOpponentStatsLoaded();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final profileVm = context.watch<ProfileViewModel>();
+    final score = widget.score;
+    final stats = widget.stats;
     final modesWithGames = [
-      for (final mode in _modeOrder)
+      for (final mode in ProfileStatsFace._modeOrder)
         if (stats.modeStats(mode.name).gamesPlayed > 0) mode,
     ];
+    final opponents = profileVm.opponentStats;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
@@ -55,7 +77,7 @@ class ProfileStatsFace extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              if (stats.isEmpty)
+              if (stats.isEmpty && opponents.isEmpty)
                 Expanded(
                   child: Center(
                     child: Padding(
@@ -73,74 +95,226 @@ class ProfileStatsFace extends StatelessWidget {
                     ),
                   ),
                 )
-              else ...[
+              else
                 Expanded(
-                  flex: 5,
-                  child: Row(
+                  child: ListView(
+                    padding: EdgeInsets.only(bottom: 52),
+                    physics: const BouncingScrollPhysics(),
                     children: [
-                      Expanded(
-                        child: _WinLossDonut(
-                          wins: stats.wins,
-                          losses: stats.losses,
-                          score: score,
+                      if (!stats.isEmpty) ...[
+                        SizedBox(
+                          height: 120,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _WinLossDonut(
+                                  wins: stats.wins,
+                                  losses: stats.losses,
+                                  score: score,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _StatNumber(
+                                    label: l10n.wins,
+                                    value: stats.wins,
+                                    color: score.foreground,
+                                    ink: score.ink,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _StatNumber(
+                                    label: l10n.losses,
+                                    value: stats.losses,
+                                    color: score.muted,
+                                    ink: score.ink,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (modesWithGames.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          for (final mode in modesWithGames) ...[
+                            _ModeBarRow(
+                              label: l10n.gameModeName(mode),
+                              wins: stats.modeStats(mode.name).wins,
+                              losses: stats.modeStats(mode.name).losses,
+                              score: score,
+                            ),
+                            const SizedBox(height: 6),
+                          ],
+                        ],
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.vsPlayers,
+                        style: TextStyle(
+                          color: score.ink,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _StatNumber(
-                            label: l10n.wins,
-                            value: stats.wins,
-                            color: score.foreground,
-                            ink: score.ink,
+                      const SizedBox(height: 8),
+                      if (opponents.isEmpty && !profileVm.opponentStatsLoading)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            l10n.vsPlayersEmpty,
+                            style: TextStyle(
+                              color: score.muted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          const SizedBox(height: 12),
-                          _StatNumber(
-                            label: l10n.losses,
-                            value: stats.losses,
-                            color: score.muted,
-                            ink: score.ink,
-                          ),
+                        )
+                      else
+                        for (final row in opponents) ...[
+                          _OpponentRecordRow(stats: row, score: score),
+                          const SizedBox(height: 8),
                         ],
-                      ),
+                      if (profileVm.opponentStatsLoading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Center(child: CupertinoActivityIndicator()),
+                        )
+                      else if (profileVm.opponentStatsHasMore &&
+                          opponents.isNotEmpty)
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          minimumSize: Size.zero,
+                          onPressed: SoundService.wrapTap(
+                            profileVm.loadMoreOpponentStats,
+                          ),
+                          child: Text(
+                            l10n.loadMore,
+                            style: TextStyle(
+                              color: score.ink,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-                if (modesWithGames.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Expanded(
-                    flex: 4,
-                    child: ListView.separated(
-                      padding: EdgeInsets.zero,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: modesWithGames.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 6),
-                      itemBuilder: (context, index) {
-                        final mode = modesWithGames[index];
-                        final modeStats = stats.modeStats(mode.name);
-                        return _ModeBarRow(
-                          label: l10n.gameModeName(mode),
-                          wins: modeStats.wins,
-                          losses: modeStats.losses,
-                          score: score,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ],
-              const SizedBox(height: 44),
             ],
           ),
           Positioned(
             right: 0,
             bottom: 0,
-            child: _FlipBackButton(score: score, onPressed: onFlipBack),
+            child: _FlipBackButton(
+              score: score,
+              onPressed: widget.onFlipBack,
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OpponentRecordRow extends StatefulWidget {
+  const _OpponentRecordRow({
+    required this.stats,
+    required this.score,
+  });
+
+  final OpponentMatchStats stats;
+  final AvatarScoreTheme score;
+
+  @override
+  State<_OpponentRecordRow> createState() => _OpponentRecordRowState();
+}
+
+class _OpponentRecordRowState extends State<_OpponentRecordRow> {
+  bool _expanded = false;
+
+  static const _modeOrder = ProfileStatsFace._modeOrder;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final stats = widget.stats;
+    final score = widget.score;
+    final look = stats.seatLook;
+    final modes = [
+      for (final mode in _modeOrder)
+        if (stats.modeStats(mode.name).gamesPlayed > 0) mode,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CupertinoButton(
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
+          onPressed: modes.isEmpty
+              ? null
+              : SoundService.wrapTap(() {
+                  setState(() => _expanded = !_expanded);
+                }),
+          child: Row(
+            children: [
+              PlayerAvatarView(
+                avatarId: look.avatarId,
+                avatarAsset: look.avatarAsset,
+                size: 32,
+                showBorder: false,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  stats.name ?? 'Rival',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: score.ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                l10n.recordShort(stats.wins, stats.losses),
+                style: TextStyle(
+                  color: score.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (modes.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Icon(
+                  _expanded
+                      ? CupertinoIcons.chevron_up
+                      : CupertinoIcons.chevron_down,
+                  size: 12,
+                  color: score.muted,
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (_expanded) ...[
+          const SizedBox(height: 6),
+          for (final mode in modes) ...[
+            Padding(
+              padding: const EdgeInsets.only(left: 40),
+              child: _ModeBarRow(
+                label: l10n.gameModeName(mode),
+                wins: stats.modeStats(mode.name).wins,
+                losses: stats.modeStats(mode.name).losses,
+                score: score,
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
+        ],
+      ],
     );
   }
 }
