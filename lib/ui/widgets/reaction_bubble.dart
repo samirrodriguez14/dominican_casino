@@ -66,18 +66,19 @@ class SpeechBubble extends StatelessWidget {
         ? theme.turnHighlight
         : theme.border.withValues(alpha: .55);
     final fg = emphasized ? theme.background : theme.textPrimary;
+    // Claims and Call BS both need to read instantly across the table.
     final body = ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 140),
+      constraints: const BoxConstraints(maxWidth: 168),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           color: fill,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: stroke, width: emphasized ? 1.6 : 1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: stroke, width: emphasized ? 2 : 1.4),
           boxShadow: [
             BoxShadow(
               color: CupertinoColors.black.withValues(alpha: .32),
-              blurRadius: 12,
+              blurRadius: 16,
               offset: const Offset(0, 4),
             ),
           ],
@@ -86,10 +87,11 @@ class SpeechBubble extends StatelessWidget {
           message,
           textAlign: TextAlign.center,
           style: theme.title.copyWith(
-            fontSize: emphasized ? 20 : 16,
-            fontWeight: FontWeight.w800,
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
             color: fg,
-            height: 1.15,
+            height: 1.1,
+            letterSpacing: emphasized ? 0.6 : 0.2,
           ),
         ),
       ),

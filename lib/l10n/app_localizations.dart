@@ -87,6 +87,8 @@ class AppLocalizations {
     if (place == 2) return isEs ? '2.º' : '2nd';
     if (place == 3) return isEs ? '3.º' : '3rd';
     if (place == 4) return isEs ? '4.º' : '4th';
+    if (place == 5) return isEs ? '5.º' : '5th';
+    if (place == 6) return isEs ? '6.º' : '6th';
     return '$place';
   }
 

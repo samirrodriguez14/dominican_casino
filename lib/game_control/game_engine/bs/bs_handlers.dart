@@ -7,6 +7,7 @@ import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/round.dart';
+import 'package:dominican_casino/models/table_slot.dart';
 
 /// Valid claim ranks for BS (standard deck faces).
 const bsClaimRanks = [
@@ -202,12 +203,17 @@ class BsOutOfTurnHandler {
 
     bs.challengerPid = action.performedById;
     bs.wasBluffing = !honest;
+    // Stay in resolve so UI can reveal/collect before the next seat acts.
     bs.phase = BsPhase.resolve;
+    bs.challengeDeadline = null;
+    // Keep lastPlayedCardIds / lastClaimPid for the reveal banner.
 
     final loserId = honest ? action.performedById : claimer;
     final pileCards = List<PlayingCardModel>.from(state.playingArea);
 
-    state.cardMoveEvents = EventHandler.generatePileToHandEvents(
+    // Collect animates as settlement after the reveal beat (not instant flight).
+    state.cardMoveEvents = [];
+    state.settlementEvents = EventHandler.generatePileToHandEvents(
       cards: pileCards,
       receiverId: loserId,
       performedBy: action.performedById,
@@ -217,21 +223,35 @@ class BsOutOfTurnHandler {
     state.tableOrder.clear();
     (state.hands[loserId] ??= []).addAll(pileCards);
 
-    final nextTurn = GameActionHandler.getNextPlayerId(state, claimer);
-    bs.phase = BsPhase.turn;
     bs.pileCardIds = [];
-    bs.lastPlayedCardIds = [];
-    bs.challengeDeadline = null;
     bs.lastClaimCount = 0;
     bs.lastClaimRank = null;
-    // Keep lastClaimPid / challengerPid / wasBluffing for result banner.
-    bs.wasBluffing = !honest;
-    bs.challengerPid = action.performedById;
-    bs.lastClaimPid = claimer;
+    // lastPlayedCardIds kept for reveal UI; cleared on the next claim.
+    // Turn stays on the claimer until [completeResolve] after collect motion.
     state.bsState = bs;
-    state.setTurn(nextTurn);
 
     _checkWin(state);
+    return state;
+  }
+
+  /// After reveal + pile collect animations: open the next seat's turn.
+  static GameState completeResolve(GameState state) {
+    final bs = state.bsState;
+    if (bs == null) return state;
+    state.settlementEvents = [];
+    if (state.gameStatus == GameStatus.gameOver) {
+      bs.phase = BsPhase.turn;
+      state.bsState = bs;
+      return state;
+    }
+    if (bs.phase != BsPhase.resolve) return state;
+
+    final claimer = bs.lastClaimPid;
+    if (claimer != null && claimer.isNotEmpty) {
+      state.setTurn(GameActionHandler.getNextPlayerId(state, claimer));
+    }
+    bs.phase = BsPhase.turn;
+    state.bsState = bs;
     return state;
   }
 
@@ -264,16 +284,8 @@ class BsOutOfTurnHandler {
         state.winnerId = entry.key;
         state.gameStatus = GameStatus.gameOver;
         state.round.roundStatus = RoundStatus.completed;
-        // Rank everyone by remaining hand size so 2nd/3rd pot shares work.
-        // Winner forced highest; fewer leftover cards = better place.
-        for (final handEntry in state.hands.entries) {
-          if (!state.playersInfo.containsKey(handEntry.key)) continue;
-          if (handEntry.key == entry.key) {
-            state.scores[handEntry.key] = 100000;
-          } else {
-            state.scores[handEntry.key] = 1000 - handEntry.value.length;
-          }
-        }
+        // Winner 0; others −(sum of leftover ranks). Less negative = higher place.
+        state.applyLeftoverRankFinishScores(entry.key);
         state.setTurn('');
         return;
       }
@@ -282,9 +294,30 @@ class BsOutOfTurnHandler {
 }
 
 class BsGameStateHandler {
-  /// Deal the entire deck evenly; remainder cards go to earliest seats.
+  /// Move the shuffled [GameState.deck] onto the center pile (discard shoe).
+  static void stageShoeOnTable(GameState gameState) {
+    if (gameState.deck.isEmpty) return;
+    gameState.playingArea
+      ..clear()
+      ..addAll(gameState.deck);
+    gameState.deck = [];
+    gameState.playingAreaStacks.clear();
+    gameState.tableOrder = [
+      for (final c in gameState.playingArea) TableOrder.cardKey(c.id),
+    ];
+  }
+
+  /// Deal the entire center shoe evenly; remainder cards go to earliest seats.
   static GameState dealAll(GameState gameState, String dealerPid) {
-    gameState.deck = Deck.shuffle(Deck.standard());
+    // Prefer the staged center shoe (post-shuffle); fall back to a fresh deck.
+    var shoe = List<PlayingCardModel>.from(
+      gameState.playingArea.isNotEmpty ? gameState.playingArea : gameState.deck,
+    );
+    if (shoe.isEmpty) {
+      shoe = Deck.shuffle(Deck.standard());
+    }
+
+    gameState.deck = [];
     gameState.playingArea.clear();
     gameState.playingAreaStacks.clear();
     gameState.tableOrder.clear();
@@ -297,21 +330,26 @@ class BsGameStateHandler {
       gameState.playersDeck[pid] = [];
     }
 
-    final deck = List<PlayingCardModel>.from(gameState.deck);
-    gameState.deck = [];
+    // Round-robin deal order → interleaved flight events (one seat at a time).
+    final dealSequence = <({String pid, PlayingCardModel card})>[];
     var i = 0;
-    while (i < deck.length) {
+    while (i < shoe.length) {
       for (final pid in players) {
-        if (i >= deck.length) break;
-        gameState.hands[pid]!.add(deck[i]);
+        if (i >= shoe.length) break;
+        final card = shoe[i];
+        gameState.hands[pid]!.add(card);
+        dealSequence.add((pid: pid, card: card));
         i++;
       }
     }
 
-    for (final pid in players) {
-      final dealt = gameState.hands[pid]!;
+    for (final step in dealSequence) {
       gameState.cardMoveEvents.addAll(
-        EventHandler.generateDealToHandEvent(dealt, pid, dealerPid),
+        EventHandler.generateDealToHandEvent(
+          [step.card],
+          step.pid,
+          dealerPid,
+        ),
       );
     }
 

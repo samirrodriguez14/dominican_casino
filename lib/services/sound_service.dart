@@ -4,7 +4,20 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum GameSound { deal, capture, shuffle, win, illegal, softCard, coin, button }
+enum GameSound {
+  deal,
+  capture,
+  shuffle,
+  win,
+  illegal,
+  softCard,
+  coin,
+  button,
+  yourTurn,
+  bsCall,
+  bsBluff,
+  bsHonest,
+}
 
 class SoundService extends ChangeNotifier {
   SoundService._();
@@ -77,6 +90,10 @@ class SoundService extends ChangeNotifier {
     GameSound.softCard: 'sounds/soft_card.wav',
     GameSound.coin: 'sounds/coin.wav',
     GameSound.button: 'sounds/button_soft.wav',
+    GameSound.yourTurn: 'sounds/your_turn.wav',
+    GameSound.bsCall: 'sounds/bs_call.wav',
+    GameSound.bsBluff: 'sounds/bs_bluff.wav',
+    GameSound.bsHonest: 'sounds/bs_honest.wav',
   };
 
   bool get shouldPlaySfx => sfxEnabled && sfxVolume > 0;

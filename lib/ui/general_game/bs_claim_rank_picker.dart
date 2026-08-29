@@ -77,7 +77,15 @@ class _BsClaimRankSheet extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            Text(
+              'Ace counts as 1 (in order with 2).',
+              textAlign: TextAlign.center,
+              style: theme.caption.copyWith(
+                color: theme.textPrimary.withValues(alpha: .65),
+              ),
+            ),
+            const SizedBox(height: 4),
             CupertinoButton(
               onPressed: SoundService.wrapTap(
                 () => Navigator.of(context).pop(),

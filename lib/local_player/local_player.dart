@@ -144,6 +144,16 @@ class LocalPlayer extends ChangeNotifier {
   Future<bool> _tryAct(GameState state) async {
     if (state.gameStatus != GameStatus.inProgress) return false;
 
+    if (state.gameMode == GameMode.bs) {
+      BsPlayer.syncMemory(state);
+    }
+
+    // BS reveal/collect in progress — never start the next seat's play early.
+    if (state.gameMode == GameMode.bs &&
+        state.bsState?.phase == BsPhase.resolve) {
+      return false;
+    }
+
     switch (state.round.roundStatus) {
       case RoundStatus.playing:
         if (_isOurBot(state.controllerId) &&
@@ -170,16 +180,24 @@ class LocalPlayer extends ChangeNotifier {
         // BS challenge: a bot may Call Bluff while the window is open.
         if (state.gameMode == GameMode.bs &&
             state.bsState?.phase == BsPhase.challenge) {
+          // Wait until claim flights are consumed so Call BS can't beat the play.
+          final pendingClaimFlights = state.cardMoveEvents
+              .where((e) => !gameRepo.lastPlayedIds.contains(e.id))
+              .isNotEmpty;
+          if (pendingClaimFlights) return false;
+
+          // Cards are on the table; wait the fixed call beat, then maybe Call BS.
+          await Future.delayed(BsState.botCallDelay);
+          if (_disposed) return false;
+
+          final current = gameRepo.gameState;
+          if (current == null ||
+              current.bsState?.phase != BsPhase.challenge) {
+            return false;
+          }
           for (final botPid in botPids) {
-            final call = BsPlayer.maybeCallBluff(botPid, state);
+            final call = BsPlayer.maybeCallBluff(botPid, current);
             if (call == null) continue;
-            await Future.delayed(const Duration(milliseconds: 2500));
-            if (_disposed) return false;
-            final current = gameRepo.gameState;
-            if (current == null ||
-                current.bsState?.phase != BsPhase.challenge) {
-              return false;
-            }
             final next = engine.performOutOfTurnAction(current, call);
             await _persist(next);
             return true;
@@ -207,7 +225,11 @@ class LocalPlayer extends ChangeNotifier {
             bestAction = await CasinoPlayer.casinoBestAction(pid, state);
         }
 
-        await Future.delayed(const Duration(milliseconds: 900));
+        await Future.delayed(
+          state.gameMode == GameMode.bs
+              ? BsState.botPlayDelay
+              : const Duration(milliseconds: 900),
+        );
         if (_disposed) return false;
         final current = gameRepo.gameState;
         if (current == null || current.currentTurnPlayerId != pid) {

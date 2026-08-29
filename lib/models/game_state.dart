@@ -330,6 +330,27 @@ class GameState {
     return raw is num ? raw.toInt() : 0;
   }
 
+  /// Face-rank total (A=1 … K=13), negated so leftover hands finish negative.
+  static int leftoverRankScore(List<PlayingCardModel> hand) {
+    var sum = 0;
+    for (final c in hand) {
+      sum += c.valueLow;
+    }
+    return -sum;
+  }
+
+  /// Winner = 0; everyone else = −(sum of remaining card ranks).
+  /// Less negative finishes higher (2nd, 3rd, …) for pot shares.
+  void applyLeftoverRankFinishScores(String winnerPid) {
+    for (final pid in playersInfo.keys) {
+      if (pid == winnerPid) {
+        scores[pid] = 0;
+      } else {
+        scores[pid] = leftoverRankScore(hands[pid] ?? const []);
+      }
+    }
+  }
+
   int get seatedPlayerCount => playersInfo.length;
 
   int get maxSeats => maxSeatsFor(gameMode);
@@ -386,15 +407,10 @@ class GameState {
 
   int winPotCoins(String pid) {
     if (gameStatus != GameStatus.gameOver) return 0;
-    if (!entryPaidBy.contains(pid)) return 0;
-
-    // Rummy (Romir): single go-out winner-takes-all.
-    if (gameMode == GameMode.rummy) {
-      final rank = finishRank(pid);
-      if (rank == null) return 0;
-      if (rank != 1) return 0;
-      return WalletConfig.potTotal(entryCost, seatedPlayerCount);
-    }
+    if (!playersInfo.containsKey(pid)) return 0;
+    // Online: only paid seats share the pot.
+    // Local AI: show every seat's share of the theoretical table pot.
+    if (!isLocalBot && !entryPaidBy.contains(pid)) return 0;
 
     final rank = finishRank(pid);
     if (rank == null) return 0;

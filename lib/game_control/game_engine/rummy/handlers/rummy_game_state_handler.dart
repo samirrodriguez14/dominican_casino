@@ -94,7 +94,8 @@ class RummyGameStateHandler {
     gameState.round.nextAcknowledged = false;
     gameState.winnerId = performedBy;
     gameState.gameStatus = GameStatus.gameOver;
-    gameState.scores[performedBy] = (gameState.scores[performedBy] ?? 0) + 1;
+    // Winner 0; others −(sum of leftover ranks) for pot place shares.
+    gameState.applyLeftoverRankFinishScores(performedBy);
     // No next round for Rummy (single go-out contract).
     return gameState;
   }

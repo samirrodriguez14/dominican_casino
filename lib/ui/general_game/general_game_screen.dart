@@ -27,11 +27,13 @@ import 'package:dominican_casino/ui/general_game/areas/gen_player_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/bs_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/new_tresydos_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/areas/rummy_playing_area.dart';
+import 'package:dominican_casino/ui/general_game/bs_claim_rank_picker.dart';
 import 'package:dominican_casino/ui/general_game/gen_game_control.dart';
 import 'package:dominican_casino/ui/general_game/leave_match_to_home.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
 import 'package:dominican_casino/ui/general_game/simple/simple_casino_playing_area.dart';
 import 'package:dominican_casino/ui/general_game/simple/simple_player_area.dart';
+import 'package:dominican_casino/ui/general_game/widgets/bs_turn_token_overlay.dart';
 import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
 import 'package:dominican_casino/ui/widgets/coin_hint_ticker.dart';
 import 'package:dominican_casino/ui/widgets/player_score_avatar.dart';
@@ -70,6 +72,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   late final TutorialViewModel tutorialVm;
   final FlightLayerController _flightLayer = FlightLayerController();
   late final FlightTickerBag _flightTickers = FlightTickerBag(this);
+  final GlobalKey _gameStackKey = GlobalKey();
 
   /// Prevents stacking duplicate round/game status popups.
   String? _shownStatusKey;
@@ -138,6 +141,10 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       initvm.tutorialAllowsOpponentPlay = () =>
           tutorialVm.active && tutorialVm.step.playOpponent;
       initvm.tutorialAllowsDrag = tutorialVm.allowsDrag;
+      initvm.requestClaimRank = (cardCount) => showBsClaimRankPicker(
+            context,
+            cardCount: cardCount,
+          );
       final ok = await initvm.loadGame();
 
       if (ok && mounted) {
@@ -740,6 +747,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                 return FlightLayer(
                   controller: _flightLayer,
                   child: Stack(
+                    key: _gameStackKey,
                     children: [
                       if (!useSimpleLayout)
                         Padding(
@@ -921,6 +929,10 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
                           );
                         },
                       ),
+                      if (vm.gameState.gameMode == GameMode.bs)
+                        Positioned.fill(
+                          child: BsTurnTokenOverlay(stackKey: _gameStackKey),
+                        ),
                     ],
                   ),
                 );

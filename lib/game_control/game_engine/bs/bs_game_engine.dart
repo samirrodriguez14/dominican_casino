@@ -115,6 +115,9 @@ class BsGameEngine extends GameEngine {
         pid,
       );
       next.bsState = null;
+      // Stage the full shoe on the center pile so shuffle lands there and
+      // deal flights leave from a visible discard stack.
+      BsGameStateHandler.stageShoeOnTable(next);
       return next;
     }
 

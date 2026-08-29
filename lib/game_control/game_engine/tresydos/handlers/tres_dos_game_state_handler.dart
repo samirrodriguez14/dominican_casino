@@ -64,6 +64,8 @@ class TresDosGameStateHandler {
     if (won) {
       gameState.winnerId = performedBy;
       gameState.gameStatus = GameStatus.gameOver;
+      // Winner 0; others −(sum of leftover ranks) for pot place shares.
+      gameState.applyLeftoverRankFinishScores(performedBy);
       return gameState;
     }
 

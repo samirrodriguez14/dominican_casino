@@ -183,6 +183,9 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     final hasRound = roundScores.isNotEmpty;
     final l10n = AppLocalizations.of(context);
     final gameOver = gameState.gameStatus == GameStatus.gameOver;
+    final useFieldStandings = gameOver && gameState.seatedPlayerCount >= 5;
+    // Win screen: always 1st → last. Mid-match keeps seating / map order.
+    final boardIds = gameOver ? gameState.rankedPlayerIds() : playerIds;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420, maxHeight: 580),
@@ -191,31 +194,15 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ScoreBoardStack(
-              hasRound: hasRound,
-              boards: [
-                if (playerIds.isEmpty)
-                  const _BoardSpec(
-                    id: 'waiting',
-                    name: 'Waiting',
-                    avatarId: null,
-                    avatarAsset: null,
-                    defeatedAces: {},
-                    wearJourneyAccessories: true,
-                    score: 0,
-                    pendingCoins: 0,
-                    roundCoins: 0,
-                    showMatchCoins: false,
-                    beforeScore: 0,
-                    roundScore: 0,
-                    isDealer: false,
-                    isCasino: false,
-                    scoreMap: {},
-                  )
-                else
-                  for (final pid in playerIds)
-                    _BoardSpec(
-                      id: pid,
+            if (useFieldStandings)
+              _FieldStandingsCard(
+                rows: [
+                  for (final pid in gameState.rankedPlayerIds())
+                    _FieldStandingRow(
+                      place: gameState.finishRank(pid) ?? 0,
+                      placeLabel: gameState.finishRank(pid) != null
+                          ? l10n.placeShort(gameState.finishRank(pid)!)
+                          : '',
                       name: _playerLabel(pid),
                       avatarId: _playerSeatLook(pid).avatarId,
                       avatarAsset: _playerSeatLook(pid).avatarAsset,
@@ -223,39 +210,79 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
                       wearJourneyAccessories:
                           _playerSeatLook(pid).wearJourneyAccessories,
                       score: totalScores[pid] ?? 0,
-                      pendingCoins: gameOver
-                          ? gameState.winPotCoins(pid) +
-                              gameState.pendingCoinsFor(pid)
-                          : gameState.pendingCoinsFor(pid),
-                      roundCoins: _scoreN(
-                        Map<String, dynamic>.from(roundScores[pid] ?? {}),
-                        'coins',
-                      ),
-                      showMatchCoins: gameOver,
-                      beforeScore: _beforeScore(
-                        totalScores[pid] ?? 0,
-                        roundScores[pid],
-                      ),
-                      roundScore: _scoreN(
-                        Map<String, dynamic>.from(roundScores[pid] ?? {}),
-                        'total',
-                      ),
-                      isDealer: gameState.controllerId == pid,
-                      isCasino: GameRegistry.isCasinoFamily(gameState.gameMode),
-                      place: gameOver ? gameState.finishRank(pid) : null,
-                      placeLabel: gameOver &&
-                              gameState.finishRank(pid) != null
-                          ? l10n.coinPayoutPlace(gameState.finishRank(pid)!)
-                          : null,
-                      scoreMap: Map<String, dynamic>.from(
-                        roundScores[pid] ?? {},
-                      ),
+                      coins: gameState.winPotCoins(pid) +
+                          gameState.pendingCoinsFor(pid),
+                      isMe: pid == playerId,
                     ),
-              ],
-              locked: gameState.gameStatus == GameStatus.gameOver,
-              initialFrontId: _leaderId(playerIds),
-              autoReveal: widget.revealLastRound,
-            ),
+                ],
+              )
+            else
+              _ScoreBoardStack(
+                hasRound: hasRound,
+                boards: [
+                  if (boardIds.isEmpty)
+                    const _BoardSpec(
+                      id: 'waiting',
+                      name: 'Waiting',
+                      avatarId: null,
+                      avatarAsset: null,
+                      defeatedAces: {},
+                      wearJourneyAccessories: true,
+                      score: 0,
+                      pendingCoins: 0,
+                      roundCoins: 0,
+                      showMatchCoins: false,
+                      beforeScore: 0,
+                      roundScore: 0,
+                      isDealer: false,
+                      isCasino: false,
+                      scoreMap: {},
+                    )
+                  else
+                    for (final pid in boardIds)
+                      _BoardSpec(
+                        id: pid,
+                        name: _playerLabel(pid),
+                        avatarId: _playerSeatLook(pid).avatarId,
+                        avatarAsset: _playerSeatLook(pid).avatarAsset,
+                        defeatedAces: _playerSeatLook(pid).defeatedAces,
+                        wearJourneyAccessories:
+                            _playerSeatLook(pid).wearJourneyAccessories,
+                        score: totalScores[pid] ?? 0,
+                        pendingCoins: gameOver
+                            ? gameState.winPotCoins(pid) +
+                                gameState.pendingCoinsFor(pid)
+                            : gameState.pendingCoinsFor(pid),
+                        roundCoins: _scoreN(
+                          Map<String, dynamic>.from(roundScores[pid] ?? {}),
+                          'coins',
+                        ),
+                        showMatchCoins: gameOver,
+                        beforeScore: _beforeScore(
+                          totalScores[pid] ?? 0,
+                          roundScores[pid],
+                        ),
+                        roundScore: _scoreN(
+                          Map<String, dynamic>.from(roundScores[pid] ?? {}),
+                          'total',
+                        ),
+                        isDealer: gameState.controllerId == pid,
+                        isCasino:
+                            GameRegistry.isCasinoFamily(gameState.gameMode),
+                        place: gameOver ? gameState.finishRank(pid) : null,
+                        placeLabel: gameOver &&
+                                gameState.finishRank(pid) != null
+                            ? l10n.coinPayoutPlace(gameState.finishRank(pid)!)
+                            : null,
+                        scoreMap: Map<String, dynamic>.from(
+                          roundScores[pid] ?? {},
+                        ),
+                      ),
+                ],
+                locked: gameState.gameStatus == GameStatus.gameOver,
+                initialFrontId: _leaderId(boardIds),
+                autoReveal: widget.revealLastRound,
+              ),
             if (vm != null && gameState.gameStatus == GameStatus.gameOver)
               MatchCoinPayout(vm: vm),
             if (showActions && vm != null) ...[
@@ -435,6 +462,401 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
               child: const Text('Exit'),
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _FieldStandingRow {
+  const _FieldStandingRow({
+    required this.place,
+    required this.placeLabel,
+    required this.name,
+    required this.avatarId,
+    required this.avatarAsset,
+    required this.defeatedAces,
+    required this.wearJourneyAccessories,
+    required this.score,
+    required this.coins,
+    required this.isMe,
+  });
+
+  final int place;
+  final String placeLabel;
+  final String name;
+  final String? avatarId;
+  final String? avatarAsset;
+  final Set<JourneyWorld> defeatedAces;
+  final bool wearJourneyAccessories;
+  final dynamic score;
+  final int coins;
+  final bool isMe;
+}
+
+/// One results card for 5–6 seat tables: place / player / score / coins.
+///
+/// Reveal order is last → first: rows float in, then scores count up, then coins.
+class _FieldStandingsCard extends StatefulWidget {
+  const _FieldStandingsCard({required this.rows});
+
+  final List<_FieldStandingRow> rows;
+
+  @override
+  State<_FieldStandingsCard> createState() => _FieldStandingsCardState();
+}
+
+class _FieldStandingsCardState extends State<_FieldStandingsCard>
+    with TickerProviderStateMixin {
+  static const _rowIn = Duration(milliseconds: 240);
+  static const _rowGap = Duration(milliseconds: 55);
+  static const _countDur = Duration(milliseconds: 400);
+  static const _countGap = Duration(milliseconds: 45);
+  static const _phasePause = Duration(milliseconds: 120);
+
+  late final List<AnimationController> _rowInCtrls;
+  late final List<AnimationController> _scoreCtrls;
+  late final List<AnimationController> _coinCtrls;
+  int _seqToken = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _buildControllers();
+    _runSequence();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FieldStandingsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.rows.length != widget.rows.length ||
+        !_sameRowIds(oldWidget.rows, widget.rows)) {
+      _disposeControllers();
+      _buildControllers();
+      _runSequence();
+    }
+  }
+
+  bool _sameRowIds(List<_FieldStandingRow> a, List<_FieldStandingRow> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].name != b[i].name || a[i].place != b[i].place) return false;
+    }
+    return true;
+  }
+
+  void _buildControllers() {
+    final n = widget.rows.length;
+    _rowInCtrls = List.generate(
+      n,
+      (_) => AnimationController(vsync: this, duration: _rowIn),
+    );
+    _scoreCtrls = List.generate(
+      n,
+      (_) => AnimationController(vsync: this, duration: _countDur),
+    );
+    _coinCtrls = List.generate(
+      n,
+      (_) => AnimationController(vsync: this, duration: _countDur),
+    );
+  }
+
+  void _disposeControllers() {
+    for (final c in _rowInCtrls) {
+      c.dispose();
+    }
+    for (final c in _scoreCtrls) {
+      c.dispose();
+    }
+    for (final c in _coinCtrls) {
+      c.dispose();
+    }
+  }
+
+  Future<void> _runSequence() async {
+    final token = ++_seqToken;
+    final n = widget.rows.length;
+    if (n == 0) return;
+
+    // Last place → 1st: float / fade each row in.
+    for (var i = n - 1; i >= 0; i--) {
+      if (!mounted || token != _seqToken) return;
+      AppHaptics.selectionClick();
+      await _rowInCtrls[i].forward(from: 0);
+      if (!mounted || token != _seqToken) return;
+      if (i > 0) await Future<void>.delayed(_rowGap);
+    }
+
+    if (!mounted || token != _seqToken) return;
+    await Future<void>.delayed(_phasePause);
+
+    // Scores count 0 → target, last → first.
+    for (var i = n - 1; i >= 0; i--) {
+      if (!mounted || token != _seqToken) return;
+      await _scoreCtrls[i].forward(from: 0);
+      if (!mounted || token != _seqToken) return;
+      if (i > 0) await Future<void>.delayed(_countGap);
+    }
+
+    if (!mounted || token != _seqToken) return;
+    await Future<void>.delayed(_phasePause);
+
+    // Coins count 0 → target, last → first.
+    for (var i = n - 1; i >= 0; i--) {
+      if (!mounted || token != _seqToken) return;
+      AppHaptics.selectionClick();
+      await _coinCtrls[i].forward(from: 0);
+      if (!mounted || token != _seqToken) return;
+      if (i > 0) await Future<void>.delayed(_countGap);
+    }
+  }
+
+  @override
+  void dispose() {
+    _seqToken++;
+    _disposeControllers();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final leadAvatar = widget.rows.isNotEmpty ? widget.rows.first.avatarId : null;
+    final cardTheme = AvatarScoreTheme.of(leadAvatar);
+    final gold = theme.turnHighlight;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cardTheme.background,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: gold.withValues(alpha: 0.35),
+          width: 1.1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: 0.28),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Standings',
+              textAlign: TextAlign.center,
+              style: theme.title.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: cardTheme.ink,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _FieldStandingsHeader(ink: cardTheme.ink),
+            const SizedBox(height: 6),
+            for (var i = 0; i < widget.rows.length; i++) ...[
+              if (i > 0)
+                AnimatedBuilder(
+                  animation: _rowInCtrls[i],
+                  builder: (context, _) {
+                    return Opacity(
+                      opacity: _rowInCtrls[i].value.clamp(0.0, 1.0),
+                      child: Container(
+                        height: 0.6,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        color: cardTheme.ink.withValues(alpha: 0.08),
+                      ),
+                    );
+                  },
+                ),
+              _FieldStandingsRowView(
+                row: widget.rows[i],
+                ink: cardTheme.ink,
+                appear: _rowInCtrls[i],
+                scoreProgress: _scoreCtrls[i],
+                coinProgress: _coinCtrls[i],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldStandingsHeader extends StatelessWidget {
+  const _FieldStandingsHeader({required this.ink});
+
+  final Color ink;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppStyle.theme.caption.copyWith(
+      fontWeight: FontWeight.w700,
+      color: ink.withValues(alpha: 0.55),
+      fontSize: 10,
+      letterSpacing: 0.3,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          SizedBox(width: 36, child: Text('#', style: style)),
+          Expanded(
+            child: Text('Player', textAlign: TextAlign.center, style: style),
+          ),
+          SizedBox(
+            width: 52,
+            child: Text('Score', textAlign: TextAlign.center, style: style),
+          ),
+          SizedBox(
+            width: 64,
+            child: Text('Coins', textAlign: TextAlign.end, style: style),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldStandingsRowView extends StatelessWidget {
+  const _FieldStandingsRowView({
+    required this.row,
+    required this.ink,
+    required this.appear,
+    required this.scoreProgress,
+    required this.coinProgress,
+  });
+
+  final _FieldStandingRow row;
+  final Color ink;
+  final Animation<double> appear;
+  final Animation<double> scoreProgress;
+  final Animation<double> coinProgress;
+
+  int get _targetScore {
+    final raw = row.score;
+    return raw is num ? raw.toInt() : int.tryParse('$raw') ?? 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final gold = theme.turnHighlight;
+    final highlight = row.place == 1
+        ? gold.withValues(alpha: 0.14)
+        : row.isMe
+            ? theme.turnHighlight.withValues(alpha: 0.08)
+            : CupertinoColors.transparent;
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([appear, scoreProgress, coinProgress]),
+      builder: (context, child) {
+        final t = Curves.easeOutCubic.transform(appear.value.clamp(0.0, 1.0));
+        final scoreT =
+            Curves.easeOutCubic.transform(scoreProgress.value.clamp(0.0, 1.0));
+        final coinT =
+            Curves.easeOutCubic.transform(coinProgress.value.clamp(0.0, 1.0));
+        final shownScore = (_targetScore * scoreT).round();
+        final shownCoins = (row.coins * coinT).round();
+
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, (1 - t) * 16),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: highlight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 36,
+                      child: Text(
+                        row.placeLabel.isNotEmpty
+                            ? row.placeLabel
+                            : '${row.place}',
+                        textAlign: TextAlign.center,
+                        style: theme.caption.copyWith(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          color: row.place == 1 ? gold : ink,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          PlayerAvatarView(
+                            avatarId: row.avatarId,
+                            avatarAsset: row.avatarAsset,
+                            size: 36,
+                            showBorder: false,
+                            showJourneyAces: row.defeatedAces.isNotEmpty,
+                            defeatedAces: row.defeatedAces,
+                            wearJourneyAccessories:
+                                row.wearJourneyAccessories,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            row.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: theme.caption.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              color: ink,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      width: 52,
+                      child: Text(
+                        '$shownScore',
+                        textAlign: TextAlign.center,
+                        style: theme.body.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: ink,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 64,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(coinIcon, size: 13, color: gold),
+                          const SizedBox(width: 3),
+                          Text(
+                            '$shownCoins',
+                            style: theme.caption.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: gold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         );
       },
     );

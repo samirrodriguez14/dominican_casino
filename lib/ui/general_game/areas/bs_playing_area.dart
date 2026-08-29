@@ -1,11 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:dominican_casino/game_control/game_engine/bs/bs_seat_layout.dart';
-import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
+import 'package:dominican_casino/ui/cards/card_deck.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/general_game/game_status_sheet.dart';
@@ -122,7 +124,7 @@ class _BsSideColumn extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (topId != null) _BsCompactOpponent(oppId: topId!, speechSide: speechSide),
-        if (topId != null && bottomId != null) const SizedBox(height: 14),
+        if (topId != null && bottomId != null) const SizedBox(height: 44),
         if (bottomId != null)
           _BsCompactOpponent(oppId: bottomId!, speechSide: speechSide),
       ],
@@ -244,15 +246,21 @@ class _BsCompactOpponent extends StatelessWidget {
             ),
             if (!waiting) ...[
               const SizedBox(height: 6),
-              _HandStackBadge(
-                count: cards.length,
-                cardWidth: 32,
-                handKey: vm.oppHandKeyForPid(oppId),
-                cardIds: cards.map((c) => c.id).toList(),
-                vm: vm,
-                revealFace:
-                    vm.gameState.round.roundStatus == RoundStatus.completed,
-                faceCards: cards,
+              Offstage(
+                offstage: vm.motion.isShuffling,
+                child: _TurnStackBounce(
+                  active: highlight,
+                  child: _HandStackBadge(
+                    count: cards.length,
+                    cardWidth: 32,
+                    handKey: vm.oppHandKeyForPid(oppId),
+                    cardIds: cards.map((c) => c.id).toList(),
+                    vm: vm,
+                    revealFace:
+                        vm.gameState.round.roundStatus == RoundStatus.completed,
+                    faceCards: cards,
+                  ),
+                ),
               ),
             ],
           ],
@@ -270,6 +278,83 @@ class _BsCompactOpponent extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Occasional hop on the active seat's card stack (matches local hand pulse).
+class _TurnStackBounce extends StatefulWidget {
+  const _TurnStackBounce({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  State<_TurnStackBounce> createState() => _TurnStackBounceState();
+}
+
+class _TurnStackBounceState extends State<_TurnStackBounce>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+
+  /// Must match [_TurnHaloState._periodMs] and hand pulse.
+  static const _periodMs = 1600;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: _periodMs),
+    );
+    if (widget.active) _c.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TurnStackBounce oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !_c.isAnimating) {
+      _c.repeat();
+    } else if (!widget.active && _c.isAnimating) {
+      _c
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  /// Main hop (softer), then a smaller settle bounce that ends at rest.
+  double _softDoubleBounce(double local) {
+    double arc(double x) {
+      if (x <= 0 || x >= 1) return 0;
+      return math.sin(x * math.pi);
+    }
+
+    if (local < 0.62) return arc(local / 0.62) * 0.7;
+    return arc((local - 0.62) / 0.38) * 0.28;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active) return widget.child;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, child) {
+        // Wall-clock phase locks to avatar halo pulse.
+        final t =
+            (DateTime.now().millisecondsSinceEpoch % _periodMs) / _periodMs;
+        const bounceEnd = 0.5;
+        final hop = t >= bounceEnd
+            ? 0.0
+            : _softDoubleBounce((t / bounceEnd).clamp(0.0, 1.0)) * 4.0;
+        return Transform.translate(offset: Offset(0, -hop), child: child);
+      },
+      child: widget.child,
     );
   }
 }
@@ -367,16 +452,61 @@ class _BsCenterPile extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<GeneralGameViewModel>();
     final pile = vm.gameState.playingArea;
-    final bs = vm.gameState.bsState;
-    final revealing = bs?.phase == BsPhase.resolve ||
-        (bs?.wasBluffing != null && bs!.lastPlayedCardIds.isNotEmpty);
-    final revealIds = bs?.lastPlayedCardIds.toSet() ?? {};
+    final verdict = vm.bsRevealVerdict;
+    final revealing = vm.bsClaimCardsRevealed;
+    final gathering = vm.bsPileGathering;
+    final showClaimFan = revealing || gathering;
+    final shuffling = vm.motion.isShuffling;
+    final readyToDeal =
+        vm.gameState.round.roundStatus == RoundStatus.readyToDeal;
+    // Shoe is only for the undealt deck after shuffle. During play we need
+    // per-card [CardSlot.table] keys so hand → pile flights can land.
+    final showShoe = !showClaimFan && readyToDeal && pile.isNotEmpty;
 
-    return TablePlayDropZone(
-      key: vm.tableKey,
-      child: Center(
+    final Widget body;
+    if (showShoe && pile.isNotEmpty) {
+      body = Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CardDeck(
+              key: vm.deckKey,
+              title: '',
+              showLabel: false,
+              cardWidth: cardWidth,
+              cards: pile,
+              extraPoints: 0,
+              onTap: () {},
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${pile.length}',
+              style: AppStyle.theme.caption.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      final revealIds =
+          vm.gameState.bsState?.lastPlayedCardIds.toSet() ?? const <String>{};
+      final claimed = showClaimFan
+          ? pile.where((c) => revealIds.contains(c.id)).toList()
+          : const <PlayingCardModel>[];
+      final older = showClaimFan
+          ? pile.where((c) => !revealIds.contains(c.id)).toList()
+          : pile;
+
+      final revealWidth = cardWidth * 1.28;
+      final claimCount = claimed.isEmpty ? 1 : claimed.length;
+      final fanStep = revealWidth * 0.42;
+      final revealSpan = revealWidth + (claimCount - 1) * fanStep;
+
+      body = Center(
         child: pile.isEmpty
             ? SizedBox(
+                key: vm.deckKey,
                 width: cardWidth,
                 height: cardWidth * 1.4,
                 child: DecoratedBox(
@@ -388,44 +518,172 @@ class _BsCenterPile extends StatelessWidget {
                   ),
                 ),
               )
-            : SizedBox(
-                width: cardWidth + 16,
-                height: cardWidth * 1.4 + 12,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    for (var i = 0; i < pile.length; i++)
-                      Transform.translate(
-                        offset: Offset(
-                          (i % 3) * 1.5,
-                          (i % 4) * -1.2,
+            : AnimatedSize(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                child: SizedBox(
+                  width: showClaimFan && !gathering
+                      ? revealSpan.clamp(cardWidth + 16, 280)
+                      : cardWidth + 16,
+                  height: showClaimFan && !gathering
+                      ? revealWidth * 1.4 + 56
+                      : cardWidth * 1.4 + 12,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Older pile stays face-down underneath.
+                      for (var i = 0; i < older.length; i++)
+                        Transform.translate(
+                          offset: Offset(
+                            (i % 3) * 1.5,
+                            (i % 4) * -1.2 +
+                                (showClaimFan && !gathering ? 18 : 0),
+                          ),
+                          child: FlightAwareCard(
+                            key: vm.keyForCard(older[i].id, CardSlot.table),
+                            motion: vm.motion,
+                            cardId: older[i].id,
+                            width: cardWidth,
+                            child: PlayingCardBack(width: cardWidth),
+                          ),
                         ),
-                        child: FlightAwareCard(
-                          key: vm.keyForCard(pile[i].id, CardSlot.table),
-                          motion: vm.motion,
-                          cardId: pile[i].id,
-                          width: cardWidth,
-                          child: revealing && revealIds.contains(pile[i].id)
-                              ? PlayingCard(
-                                  playingCardModel: pile[i],
-                                  isSelected: true,
-                                  width: cardWidth,
-                                )
-                              : PlayingCardBack(width: cardWidth),
+                      // Last claim: fan open face-up, or tuck face-down into pile.
+                      for (var i = 0; i < claimed.length; i++)
+                        TweenAnimationBuilder<double>(
+                          key: ValueKey(
+                            '${gathering ? 'gather' : 'reveal'}_${claimed[i].id}',
+                          ),
+                          tween: Tween(
+                            begin: gathering ? 1 : 0,
+                            end: gathering ? 0 : 1,
+                          ),
+                          duration: Duration(
+                            milliseconds: gathering ? 420 : 420,
+                          ),
+                          curve: gathering
+                              ? Curves.easeInCubic
+                              : Curves.easeOutBack,
+                          builder: (context, t, _) {
+                            final mid = (claimed.length - 1) / 2.0;
+                            final dx = (i - mid) * fanStep * t;
+                            final width =
+                                cardWidth + (revealWidth - cardWidth) * t;
+                            final showFace = t > 0.42;
+                            return Transform.translate(
+                              offset: Offset(dx, -8.0 * t),
+                              child: Transform.scale(
+                                scale: 0.86 + 0.14 * t,
+                                child: FlightAwareCard(
+                                  key: vm.keyForCard(
+                                    claimed[i].id,
+                                    CardSlot.table,
+                                  ),
+                                  motion: vm.motion,
+                                  cardId: claimed[i].id,
+                                  width: width,
+                                  child: showFace
+                                      ? PlayingCard(
+                                          playingCardModel: claimed[i],
+                                          isSelected: true,
+                                          width: width,
+                                        )
+                                      : PlayingCardBack(width: width),
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    Positioned(
-                      bottom: 0,
-                      child: Text(
-                        '${pile.length}',
-                        style: AppStyle.theme.caption.copyWith(
-                          fontWeight: FontWeight.w700,
+                      if (!showClaimFan || gathering)
+                        Positioned(
+                          bottom: 0,
+                          child: Text(
+                            '${pile.length}',
+                            style: AppStyle.theme.caption.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
+                      if (verdict != null)
+                        Positioned(
+                          top: -36,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: _BsRevealBanner(
+                              message: verdict.$1,
+                              bluffing: verdict.$2,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
+      );
+    }
+
+    // Keep keys mounted (Offstage) so shuffle can still land on the shoe.
+    return TablePlayDropZone(
+      key: vm.tableKey,
+      child: Offstage(
+        offstage: shuffling,
+        child: body,
+      ),
+    );
+  }
+}
+
+class _BsRevealBanner extends StatelessWidget {
+  const _BsRevealBanner({
+    required this.message,
+    required this.bluffing,
+  });
+
+  final String message;
+  final bool bluffing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final accent = bluffing ? theme.warning : theme.success;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutBack,
+      builder: (context, t, child) {
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, (1 - t) * -10),
+            child: Transform.scale(scale: 0.85 + 0.15 * t, child: child),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: .95),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: theme.background, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: CupertinoColors.black.withValues(alpha: .35),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: theme.title.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: theme.background,
+            height: 1.1,
+          ),
+        ),
       ),
     );
   }

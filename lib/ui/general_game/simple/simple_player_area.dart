@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
 import 'package:dominican_casino/ui/cards/playing_card.dart';
 import 'package:dominican_casino/ui/general_game/board_drag_handle.dart';
@@ -61,7 +62,12 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                 );
               }
               final celebrating = vm.isCelebratingHand(vm.me);
+              final nudgeSelect = vm.gameState.gameMode == GameMode.bs &&
+                  vm.isSeatTurn(vm.me) &&
+                  vm.selectedCards.isEmpty &&
+                  !celebrating;
               final count = fanCards.length;
+              final totalHandCount = vm.myHandCards.length;
               final scale = HandFanLayout.visualScale(celebrating: celebrating);
               final layout = HandFanLayout.fit(
                 count: count,
@@ -114,6 +120,13 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
                                 draggingId: draggingId,
                                 holdFlat: holdFlat,
                                 celebrating: celebrating,
+                                nudgeSelect: nudgeSelect,
+                              ),
+                            if (totalHandCount > 6)
+                              Positioned(
+                                right: -2,
+                                bottom: 2,
+                                child: _HandCountBadge(count: totalHandCount),
                               ),
                           ],
                         ),
@@ -141,6 +154,7 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
     required String? draggingId,
     required bool holdFlat,
     required bool celebrating,
+    required bool nudgeSelect,
   }) {
     final selected = (vm.gameState.gameMode == GameMode.bs
             ? vm.selectedCards.any((c) => c.id == card.id)
@@ -198,9 +212,14 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
             child: Opacity(
               opacity: vm.isDragHidden(card.id) ? 0 : 1,
               child: WinningHandWave(
-                active: celebrating,
+                active: celebrating || nudgeSelect,
                 index: index,
-                amplitude: 4,
+                amplitude: nudgeSelect && !celebrating ? 5 : 4,
+                glow: celebrating,
+                pulse: nudgeSelect && !celebrating,
+                period: nudgeSelect && !celebrating
+                    ? const Duration(milliseconds: 1600)
+                    : const Duration(milliseconds: 1200),
                 child: TutorialPulse(
                   cardId: card.id,
                   targetKey: vm.keyForCard(card.id, CardSlot.myHand),
@@ -231,5 +250,40 @@ class _SimplePlayerAreaState extends State<SimplePlayerArea> {
     if (layout == null || box == null || !box.hasSize || count <= 0) return 0;
     final local = box.globalToLocal(globalCenter);
     return layout.indexAtLocalX(local.dx, count);
+  }
+}
+
+class _HandCountBadge extends StatelessWidget {
+  const _HandCountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: theme.surface.withValues(alpha: .95),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: theme.border.withValues(alpha: .75)),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: .28),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        '$count',
+        style: theme.caption.copyWith(
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+          color: theme.textPrimary,
+          height: 1.1,
+        ),
+      ),
+    );
   }
 }

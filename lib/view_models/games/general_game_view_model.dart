@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:math';
 
 import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
+import 'package:dominican_casino/game_control/game_engine/bs/bs_handlers.dart';
 import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
 import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_rules_handler.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
@@ -71,6 +72,17 @@ class GeneralGameViewModel extends ChangeNotifier {
   bool _pendingRepoSync = false;
   bool _syncScheduled = false;
   bool _disposed = false;
+
+  /// BS Call Bluff: flip claim cards, then show Honest/Bluffing banner.
+  bool _bsClaimCardsRevealed = false;
+  bool _bsVerdictBannerOpen = false;
+  bool _bsCallSpeechVisible = false;
+
+  /// Claim fan collapsing face-down into the center pile before collect flight.
+  bool _bsPileGathering = false;
+
+  /// Edge-detect local turn for [GameSound.yourTurn] (armed after load).
+  bool _turnSfxArmed = false;
 
   GameReaction? outgoingReaction;
   GameReaction? incomingReaction;
@@ -441,15 +453,94 @@ class GeneralGameViewModel extends ChangeNotifier {
       await _flyCommit(intermediate, events, playOrigins);
       if (_disposed) return;
 
-      // Beat so everyone can read the last play before leftovers collect.
-      await Future<void>.delayed(const Duration(milliseconds: 750));
-      if (_disposed) return;
+      // Call BS: flip claim → banner → collect → then advance turn.
+      final bsReveal = next.gameMode == GameMode.bs &&
+          next.bsState?.wasBluffing != null &&
+          (next.bsState?.lastPlayedCardIds.isNotEmpty ?? false);
+      if (bsReveal) {
+        // Beat 1: "BS!" speech; pile still face-down.
+        _bsCallSpeechVisible = true;
+        SoundService.instance.play(GameSound.bsCall);
+        notifyListeners();
+        await Future<void>.delayed(BsState.afterCallBeforeReveal);
+        if (_disposed) return;
+        // Beat 2: flip / expand last claim cards only.
+        _bsClaimCardsRevealed = true;
+        notifyListeners();
+        await Future<void>.delayed(BsState.revealCardsHold);
+        if (_disposed) return;
+        // Beat 3: Honest / Bluffing banner.
+        _bsVerdictBannerOpen = true;
+        final bluffing = next.bsState?.wasBluffing == true;
+        SoundService.instance.play(
+          bluffing ? GameSound.bsBluff : GameSound.bsHonest,
+        );
+        notifyListeners();
+        await Future<void>.delayed(BsState.verdictBannerHold);
+        if (_disposed) return;
+        // Drop banner, then flip claim cards face-down into the center pile.
+        _bsVerdictBannerOpen = false;
+        notifyListeners();
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        if (_disposed) return;
 
+        _bsClaimCardsRevealed = false;
+        _bsPileGathering = true;
+        notifyListeners();
+        await Future<void>.delayed(BsState.gatherPileHold);
+        if (_disposed) return;
+        _bsPileGathering = false;
+        notifyListeners();
+        await WidgetsBinding.instance.endOfFrame;
+        if (_disposed) return;
+      } else {
+        await Future<void>.delayed(const Duration(milliseconds: 750));
+        if (_disposed) return;
+      }
+
+      // Origins from the gathered face-down pile; cascade to the hand one-by-one.
       final settleOrigins = _captureOrigins(settlementEvents);
-      await _flyCommit(next, settlementEvents, settleOrigins);
+      final settleWidths = _captureStartWidths(settlementEvents);
+
+      await _flyCommit(
+        next,
+        List<CardMoveEvent>.from(settlementEvents),
+        settleOrigins,
+        startWidths: settleWidths,
+        arcLift: bsReveal ? 26 : 0,
+        perCard: bsReveal
+            ? const Duration(milliseconds: 480)
+            : null,
+        stagger: bsReveal
+            ? const Duration(milliseconds: 48)
+            : null,
+        forceFaceDown: bsReveal,
+      );
       if (_disposed) return;
 
-      await Future<void>.delayed(const Duration(milliseconds: 320));
+      _bsClaimCardsRevealed = false;
+      _bsPileGathering = false;
+      _bsCallSpeechVisible = false;
+      _bsVerdictBannerOpen = false;
+
+      await Future<void>.delayed(
+        bsReveal ? BsState.afterCollectDelay : const Duration(milliseconds: 320),
+      );
+      if (_disposed) return;
+
+      if (bsReveal) {
+        final finished = BsOutOfTurnHandler.completeResolve(next);
+        if (!tutorialMode) {
+          try {
+            await gameRepo.fs.updateGame(finished);
+          } catch (_) {}
+        }
+        _adoptIncomingState(finished);
+        if (!_disposed) {
+          _syncTurnClock();
+          notifyListeners();
+        }
+      }
       return;
     }
 
@@ -465,12 +556,37 @@ class GeneralGameViewModel extends ChangeNotifier {
     await _flyCommit(next, orderedEvents, origins);
     if (_disposed) return;
 
+    // Challenge window starts only after claim cards have landed.
+    if (next.gameMode == GameMode.bs &&
+        next.bsState?.phase == BsPhase.challenge) {
+      await _openBsChallengeWindow(next);
+    }
+
     if (orderedEvents.isEmpty) return;
 
     final settleMs = orderedEvents.any((e) => e.to.type == ZoneType.playerDeck)
         ? 280
         : 80;
     await Future<void>.delayed(Duration(milliseconds: settleMs));
+  }
+
+  /// Restart the Call BS clock once claim cards are on the table.
+  Future<void> _openBsChallengeWindow(GameState state) async {
+    final bs = state.bsState;
+    if (bs == null || bs.phase != BsPhase.challenge) return;
+    bs.challengeDeadline =
+        DateTime.now().toUtc().add(BsState.challengeWindow);
+    state.bsState = bs;
+    if (!tutorialMode) {
+      try {
+        await gameRepo.fs.updateGame(state);
+      } catch (_) {}
+    }
+    _adoptIncomingState(state);
+    if (!_disposed) {
+      _syncTurnClock();
+      notifyListeners();
+    }
   }
 
   /// Visual pause state: final scores/hands, but leftovers still on the table.
@@ -491,7 +607,35 @@ class GeneralGameViewModel extends ChangeNotifier {
           .toList();
     }
 
+    final hands = <String, List<PlayingCardModel>>{
+      for (final e in next.hands.entries)
+        e.key: e.key == receiver
+            ? e.value.where((c) => !settleIds.contains(c.id)).toList()
+            : List<PlayingCardModel>.from(e.value),
+    };
+
     final leftovers = settlementEvents.map((e) => e.card).toList();
+
+    // BS Call Bluff: keep claim ids + verdict so the center can flip/expand.
+    // Hold the turn on the claimer until reveal + collect finish.
+    BsState? bs = next.bsState;
+    String? holdTurn = next.currentTurnPlayerId;
+    if (next.gameMode == GameMode.bs && bs != null) {
+      holdTurn = (bs.lastClaimPid != null && bs.lastClaimPid!.isNotEmpty)
+          ? bs.lastClaimPid
+          : holdTurn;
+      bs = BsState(
+        phase: BsPhase.resolve,
+        pileCardIds: List<String>.from(bs.pileCardIds),
+        lastPlayedCardIds: List<String>.from(bs.lastPlayedCardIds),
+        lastClaimPid: bs.lastClaimPid,
+        lastClaimCount: bs.lastClaimCount,
+        lastClaimRank: bs.lastClaimRank,
+        challengeDeadline: null,
+        challengerPid: bs.challengerPid,
+        wasBluffing: bs.wasBluffing,
+      );
+    }
 
     return GameState(
       gameStatus: next.gameStatus,
@@ -499,17 +643,14 @@ class GeneralGameViewModel extends ChangeNotifier {
       id: next.id,
       controllerId: next.controllerId,
       started: next.started,
-      currentTurnPlayerId: next.currentTurnPlayerId,
+      currentTurnPlayerId: holdTurn,
       deck: List<PlayingCardModel>.from(next.deck),
       scores: Map<String, dynamic>.from(next.scores),
       extraPoints: next.extraPoints,
       extraPointsHolderId: next.extraPointsHolderId,
       playingArea: leftovers,
       playingAreaStacks: [],
-      hands: {
-        for (final e in next.hands.entries)
-          e.key: List<PlayingCardModel>.from(e.value),
-      },
+      hands: hands,
       playersDeck: playersDeck,
       lastTakes: {
         for (final e in next.lastTakes.entries)
@@ -533,16 +674,23 @@ class GeneralGameViewModel extends ChangeNotifier {
       roundSpecialCoins: Map<String, int>.from(next.roundSpecialCoins),
       roundViraoCoins: Map<String, int>.from(next.roundViraoCoins),
       tableOrder: leftovers.map((c) => TableOrder.cardKey(c.id)).toList(),
-      turnDeadline: next.turnDeadline,
+      turnDeadline: null,
       turnDurationSeconds: next.turnDurationSeconds,
+      rummyState: next.rummyState,
+      bsState: bs,
     );
   }
 
   Future<void> _flyCommit(
     GameState commit,
     List<CardMoveEvent> events,
-    Map<String, Offset> origins,
-  ) async {
+    Map<String, Offset> origins, {
+    Map<String, double>? startWidths,
+    double arcLift = 0,
+    Duration? perCard,
+    Duration? stagger,
+    bool forceFaceDown = false,
+  }) async {
     if (_disposed) return;
     final handoff = dragHandoff;
     dragHandoff = null;
@@ -560,23 +708,40 @@ class GeneralGameViewModel extends ChangeNotifier {
       return;
     }
 
-    final flights = events.map((e) {
-      final startUp = _startFaceUpFor(e);
-      final endUp = _endFaceUpFor(e);
+    // BS Call collect: land on the hand badge; cascade is staggered separately.
+    final scoopToZone = forceFaceDown &&
+        events.every((e) => e.to.type == ZoneType.playerHand);
+
+    final flights = <CardFlightRequest>[];
+    for (var i = 0; i < events.length; i++) {
+      final e = events[i];
+      final startUp = forceFaceDown ? false : _startFaceUpFor(e);
+      final endUp = forceFaceDown ? false : _endFaceUpFor(e);
       final handedOff = handoff != null && handoff.cardIds.contains(e.card.id);
-      return CardFlightRequest(
-        event: e,
-        fromGlobalCenter: origins[e.card.id],
-        fromKey: keyForZone(e.from),
-        toKey: _resolveToKey(e),
-        startFaceUp: startUp,
-        endFaceUp: endUp,
-        flip: startUp != endUp,
-        startWidth: handedOff ? handoff.width : _widthForZone(e.from),
-        endWidth: _widthForZone(e.to, cardId: e.card.id),
-        hapticOnLaunch: !handedOff,
+      flights.add(
+        CardFlightRequest(
+          event: e,
+          fromGlobalCenter: origins[e.card.id],
+          fromKey: keyForZone(e.from),
+          toKey: scoopToZone ? keyForZone(e.to) : _resolveToKey(e),
+          startFaceUp: startUp,
+          endFaceUp: endUp,
+          flip: startUp != endUp,
+          startWidth: handedOff
+              ? handoff.width
+              : (startWidths?[e.card.id] ?? _widthForZone(e.from)),
+          endWidth: _widthForZone(e.to, cardId: e.card.id),
+          // Collect cascade: one kickoff haptic; normal play ticks each launch.
+          hapticOnLaunch: !handedOff &&
+              (forceFaceDown
+                  ? i == 0
+                  : (stagger != Duration.zero || i == 0)),
+          arcLift: arcLift,
+          duration: perCard,
+          stagger: stagger,
+        ),
       );
-    }).toList();
+    }
 
     await motion.run(flights);
   }
@@ -648,14 +813,39 @@ class GeneralGameViewModel extends ChangeNotifier {
     return map;
   }
 
+  /// Laid-out card widths at flight start (e.g. fanned reveal vs pile backs).
+  Map<String, double> _captureStartWidths(List<CardMoveEvent> events) {
+    final map = <String, double>{};
+    for (final e in events) {
+      if (map.containsKey(e.card.id)) continue;
+      final key = _slotKeyForEventOrigin(e);
+      final w = _widthOf(key) ??
+          _widthOf(keyForCard(e.card.id, CardSlot.inStack)) ??
+          _widthOf(keyForZone(e.from));
+      if (w != null) map[e.card.id] = w;
+    }
+    return map;
+  }
+
+  double? _widthOf(GlobalKey? key) {
+    if (key == null) return null;
+    final box = key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || box.size.isEmpty) return null;
+    return box.size.width;
+  }
+
   GlobalKey? _slotKeyForEventOrigin(CardMoveEvent e) {
     switch (e.from.type) {
       case ZoneType.playerHand:
-        return e.from.holderId == me
-            ? (isRummyBoxed(e.card.id)
-                  ? keyForCard(e.card.id, CardSlot.rummyBox)
-                  : keyForCard(e.card.id, CardSlot.myHand))
-            : keyForCard(e.card.id, CardSlot.oppHand);
+        if (e.from.holderId == me) {
+          return isRummyBoxed(e.card.id)
+              ? keyForCard(e.card.id, CardSlot.rummyBox)
+              : keyForCard(e.card.id, CardSlot.myHand);
+        }
+        // Opp stacks only mount a key on the top card — fall back to the stack.
+        final top = keyForCard(e.card.id, CardSlot.oppHand);
+        if (top.currentContext != null) return top;
+        return keyForZone(e.from);
       case ZoneType.table:
         // Loose table card, or already inside a stack.
         final loose = keyForCard(e.card.id, CardSlot.table);
@@ -673,7 +863,15 @@ class GeneralGameViewModel extends ChangeNotifier {
   GlobalKey? _resolveToKey(CardMoveEvent e) {
     // Loose table card — key attaches after this rebuild.
     if (gameState.playingArea.any((c) => c.id == e.card.id)) {
-      return keyForCard(e.card.id, CardSlot.table);
+      final loose = keyForCard(e.card.id, CardSlot.table);
+      if (loose.currentContext != null) return loose;
+      // BS shoe / empty-slot frames: land on the pile center until the
+      // per-card slot mounts (or when the shoe has no per-card keys).
+      if (gameState.gameMode == GameMode.bs) {
+        if (deckKey.currentContext != null) return deckKey;
+        return tableKey;
+      }
+      return loose;
     }
 
     // Inside a stack — fly to that card's fanned slot, not stack center.
@@ -687,10 +885,14 @@ class GeneralGameViewModel extends ChangeNotifier {
         if (pid == me && isRummyBoxed(e.card.id)) {
           return keyForCard(e.card.id, CardSlot.rummyBox);
         }
-        return keyForCard(
+        final slot = keyForCard(
           e.card.id,
           pid == me ? CardSlot.myHand : CardSlot.oppHand,
         );
+        // Opp badges (and any unmounted hand slot) only keep a key on the
+        // top card — fall back to the hand zone so the flyer still moves.
+        if (slot.currentContext != null) return slot;
+        return keyForZone(e.to);
       }
     }
 
@@ -883,10 +1085,36 @@ class GeneralGameViewModel extends ChangeNotifier {
       width: 52.0,
     );
 
+    // Fresh BS match: nothing on the table yet — spawn a shoe at center so
+    // shuffle still washes into the discard pile before deal.
+    if (sources.isEmpty && gameState.gameMode == GameMode.bs) {
+      addPileBacks(
+        pileKey: tableKey,
+        count: 52,
+        width: 72.0,
+      );
+    }
+
     return sources;
   }
 
   bool _startFaceUpFor(CardMoveEvent e) {
+    // BS claims stay secret on the table: land as backs.
+    if (gameState.gameMode == GameMode.bs) {
+      if (e.to.type == ZoneType.table) {
+        // Local hand is face-up — start face-up and flip to back in flight.
+        return e.from.type == ZoneType.playerHand && e.from.holderId == me;
+      }
+      // Pile collect: only the revealed claim stays face-up; older pile stays backs.
+      if (e.from.type == ZoneType.table && e.to.type == ZoneType.playerHand) {
+        final claimIds =
+            gameState.bsState?.lastPlayedCardIds.toSet() ?? const <String>{};
+        return claimIds.contains(e.card.id) && _bsClaimCardsRevealed;
+      }
+      if (e.from.type == ZoneType.table) return false;
+      if (e.from.type == ZoneType.playerHand) return false;
+      if (e.from.type == ZoneType.gameDeck) return false;
+    }
     if (e.from.type == ZoneType.gameDeck) return false;
     if (e.from.type == ZoneType.playerHand && e.from.holderId != me) {
       return false;
@@ -895,6 +1123,10 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   bool _endFaceUpFor(CardMoveEvent e) {
+    // Center pile is always face-down in BS.
+    if (gameState.gameMode == GameMode.bs && e.to.type == ZoneType.table) {
+      return false;
+    }
     if (e.to.type == ZoneType.playerHand && e.to.holderId != me) {
       return false;
     }
@@ -1013,6 +1245,8 @@ class GeneralGameViewModel extends ChangeNotifier {
       gameEngine.getOutOfTurnActions(gameState, me);
 
   bool get canCallBluff =>
+      !isAnimating &&
+      !motion.hasFlights &&
       outOfTurnActions.any((a) => a is CallBluffAction);
 
   /// Speech line for a seat during BS claim / Call Bluff beats.
@@ -1028,14 +1262,53 @@ class GeneralGameViewModel extends ChangeNotifier {
         bs.lastClaimCount > 0) {
       final rank = bs.lastClaimRank!;
       final label = bs.lastClaimCount == 1 ? rank : '${rank}s';
-      return ('${bs.lastClaimCount} $label', false);
+      return ('${bs.lastClaimCount} - $label', false);
     }
 
-    if (bs.challengerPid == pid && bs.wasBluffing != null) {
+    // "BS!" while the call/reveal beat is on screen — gone when the next turn starts.
+    if (_bsCallSpeechVisible &&
+        bs.challengerPid == pid &&
+        bs.wasBluffing != null) {
       return ('BS!', true);
     }
 
     return null;
+  }
+
+  /// True while last-claim cards are flipped face-up on the table.
+  bool get bsClaimCardsRevealed => _bsClaimCardsRevealed;
+
+  /// True while claim cards tuck back into the face-down center pile.
+  bool get bsPileGathering => _bsPileGathering;
+
+  /// Center-table Call BS verdict banner.
+  /// Returns (message, wasBluffing) or null.
+  (String, bool)? get bsRevealVerdict {
+    if (!_bsVerdictBannerOpen) return null;
+    if (gameState.gameMode != GameMode.bs) return null;
+    final bs = gameState.bsState;
+    if (bs == null || bs.wasBluffing == null) return null;
+    if (bs.lastPlayedCardIds.isEmpty) return null;
+    if (gameState.playingArea.isEmpty) return null;
+    final claimer = bs.lastClaimPid;
+    if (claimer == null || claimer.isEmpty) return null;
+    final name = seatDisplayName(claimer);
+    return bs.wasBluffing!
+        ? ('$name was Bluffing!', true)
+        : ('$name was Honest!', false);
+  }
+
+  String seatDisplayName(String pid) {
+    if (pid == me) {
+      final n = player.name?.trim() ?? '';
+      if (n.isNotEmpty) return n;
+    }
+    final info = gameState.playersInfo[pid];
+    if (info is Map) {
+      final n = (info['name'] as String?)?.trim();
+      if (n != null && n.isNotEmpty) return n;
+    }
+    return 'Player';
   }
 
   List<PlayingCardModel> get myHandCards => gameState.hands[me] ?? [];
@@ -1170,17 +1443,22 @@ class GeneralGameViewModel extends ChangeNotifier {
 
     final highToLow = _handIsRanked(hand, descending: true);
     if (highToLow) {
-      hand.sort((a, b) => a.valueHigh.compareTo(b.valueHigh));
+      hand.sort((a, b) => _handSortValue(a).compareTo(_handSortValue(b)));
     } else {
-      hand.sort((a, b) => b.valueHigh.compareTo(a.valueHigh));
+      hand.sort((a, b) => _handSortValue(b).compareTo(_handSortValue(a)));
     }
     _rememberMyHandOrder();
     notifyListeners();
   }
 
+  /// BS treats Ace as 1 (before 2); other modes keep Ace high for sort.
+  int _handSortValue(PlayingCardModel c) =>
+      gameState.gameMode == GameMode.bs ? c.valueLow : c.valueHigh;
+
   bool _handIsRanked(List<PlayingCardModel> hand, {required bool descending}) {
     for (var i = 1; i < hand.length; i++) {
-      final cmp = hand[i].valueHigh.compareTo(hand[i - 1].valueHigh);
+      final cmp =
+          _handSortValue(hand[i]).compareTo(_handSortValue(hand[i - 1]));
       if (descending ? cmp > 0 : cmp < 0) return false;
     }
     return true;
@@ -1191,9 +1469,30 @@ class GeneralGameViewModel extends ChangeNotifier {
   }
 
   void _adoptIncomingState(GameState incoming) {
+    final prevTurn = _turnSfxArmed ? gameState.currentTurnPlayerId : null;
     _preserveMyHandOrder(incoming);
     gameState = incoming;
     _rememberMyHandOrder();
+    if (_turnSfxArmed) {
+      _maybePlayYourTurnSfx(fromPid: prevTurn);
+    }
+  }
+
+  /// Play [GameSound.yourTurn] once when the live turn becomes the local seat.
+  void _maybePlayYourTurnSfx({required String? fromPid}) {
+    final toPid = gameState.currentTurnPlayerId;
+    final becameMine = toPid == me && fromPid != me;
+    if (!becameMine) return;
+    if (gameState.round.roundStatus != RoundStatus.playing) return;
+    if (gameState.gameMode == GameMode.bs &&
+        gameState.bsState?.phase == BsPhase.resolve) {
+      return;
+    }
+    SoundService.instance.play(GameSound.yourTurn);
+  }
+
+  void _armYourTurnSfx() {
+    _turnSfxArmed = true;
   }
 
   /// Re-apply this player's fan order onto [incoming].
@@ -1481,8 +1780,24 @@ class GeneralGameViewModel extends ChangeNotifier {
     );
   }
 
+  /// Optional UI hook: pick a BS claim rank (card count → rank or null if cancelled).
+  Future<String?> Function(int cardCount)? requestClaimRank;
+
   List<PlayAction> actionsForDrop(BoardDragSource source, DropTarget target) {
     if (!canPlayTurn) return const [];
+    // BS: drag hand card(s) onto the center pile to claim.
+    if (gameState.gameMode == GameMode.bs) {
+      if (source.kind == BoardDragKind.handCard &&
+          (target.kind == DropTargetKind.emptyTable ||
+              target.kind == DropTargetKind.tableCard)) {
+        final selection = _bsClaimDropSelection(source);
+        return gameEngine
+            .getAvailableActions(gameState, selection)
+            .whereType<ClaimPlayAction>()
+            .toList();
+      }
+      return const [];
+    }
     // Tres y Dos: play a hand card onto the discard, or drag a pile card
     // into the hand to take it.
     if (!isCasinoFamily) {
@@ -1522,6 +1837,24 @@ class GeneralGameViewModel extends ChangeNotifier {
     }
     final selection = selectionForDrop(source, target);
     return gameEngine.getAvailableActions(gameState, selection);
+  }
+
+  /// Cards played when dragging onto the BS pile: whole multi-select if the
+  /// dragged card is selected, otherwise just the dragged card.
+  CurrentCardSelection _bsClaimDropSelection(BoardDragSource source) {
+    final dragged = source.card!;
+    List<PlayingCardModel> cards;
+    if (selectedCards.any((c) => c.id == dragged.id)) {
+      cards = List<PlayingCardModel>.from(selectedCards);
+    } else {
+      cards = [dragged];
+    }
+    return CurrentCardSelection(
+      pid: me,
+      selectedCard: null,
+      selectedCards: cards,
+      selectedStacks: const [],
+    );
   }
 
   List<PlayingCardModel> _mergedPreviewCards(CurrentCardSelection selection) {
@@ -1678,12 +2011,64 @@ class GeneralGameViewModel extends ChangeNotifier {
       return false;
     }
 
-    final selection = selectionForDrop(source, target);
+    final selection = gameState.gameMode == GameMode.bs &&
+            source.kind == BoardDragKind.handCard
+        ? _bsClaimDropSelection(source)
+        : selectionForDrop(source, target);
     final preview =
         target.kind == DropTargetKind.emptyTable ||
             target.kind == DropTargetKind.playerHand
         ? null
         : _buildPreviewFor(selection, actions, forceMerge: true);
+
+    // BS claim: pick rank, then fly — don't commit a blank claim.
+    if (actions.length == 1 && actions.first is ClaimPlayAction) {
+      dropHover = null;
+      final cards = (actions.first as ClaimPlayAction).cards.isNotEmpty
+          ? (actions.first as ClaimPlayAction).cards
+          : selection.selectedCards;
+      if (cards.isEmpty) {
+        dragHandoff = null;
+        notifyListeners();
+        return false;
+      }
+      selectedCards = List<PlayingCardModel>.from(cards);
+      selectedCard = null;
+      notifyListeners();
+
+      final rank = await requestClaimRank?.call(cards.length);
+      if (_disposed || rank == null || rank.isEmpty) {
+        dragHandoff = null;
+        notifyListeners();
+        return false;
+      }
+
+      // Expand handoff so every claimed card hides during flight.
+      if (dragHandoff != null) {
+        dragHandoff = DragHandoff(
+          cardIds: cards.map((c) => c.id).toSet(),
+          globalCenter: dragHandoff!.globalCenter,
+          width: dragHandoff!.width,
+        );
+      }
+
+      final claim = ClaimPlayAction(
+        cards: cards,
+        claimedRank: rank,
+        performedById: me,
+      );
+      await _commitDropAction(
+        claim,
+        CurrentCardSelection(
+          pid: me,
+          selectedCard: null,
+          selectedCards: cards,
+          selectedStacks: const [],
+        ),
+        globalCenter,
+      );
+      return true;
+    }
 
     if (actions.length == 1) {
       // Keep the last painted merge preview until [_flyCommit] rebuilds.
@@ -1813,20 +2198,32 @@ class GeneralGameViewModel extends ChangeNotifier {
     selectedStacks = List<PlayingAreaStackModel>.from(selection.selectedStacks);
 
     if (dragHandoff == null && globalCenter != null) {
-      final sourceCard = action is PlayCardAction
-          ? action.usedCard
-          : action is TakeCardAction
-          ? action.usedCard
-          : selection.selectedCard;
-      if (sourceCard != null) {
-        beginDragHandoff(
-          BoardDragSource.hand(sourceCard),
-          globalCenter,
-          _widthForZone(const Zone(type: ZoneType.table)),
+      if (action is ClaimPlayAction && action.cards.isNotEmpty) {
+        dragHandoff = DragHandoff(
+          cardIds: action.cards.map((c) => c.id).toSet(),
+          globalCenter: globalCenter,
+          width: _widthForZone(const Zone(type: ZoneType.table)),
         );
+      } else {
+        final sourceCard = action is PlayCardAction
+            ? action.usedCard
+            : action is TakeCardAction
+            ? action.usedCard
+            : selection.selectedCard;
+        if (sourceCard != null) {
+          beginDragHandoff(
+            BoardDragSource.hand(sourceCard),
+            globalCenter,
+            _widthForZone(const Zone(type: ZoneType.table)),
+          );
+        }
       }
     }
 
+    if (action is ClaimPlayAction) {
+      await performClaimPlay(action.cards, action.claimedRank);
+      return;
+    }
     await performPlayAction(action);
   }
 
@@ -1836,7 +2233,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     return actionsForDrop(
       BoardDragSource.hand(card),
       const DropTarget.emptyTable(),
-    ).any((a) => a is PlayCardAction);
+    ).any((a) => a is PlayCardAction || a is ClaimPlayAction);
   }
 
   Future<void> playSelectedToTable() async {
@@ -2432,6 +2829,7 @@ class GeneralGameViewModel extends ChangeNotifier {
       _syncRevealedPending();
       _syncWinCelebration();
       _syncTurnClock();
+      _armYourTurnSfx();
       loading = false;
       notifyListeners();
       return true;
@@ -2840,6 +3238,11 @@ class GeneralGameViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    requestClaimRank = null;
+    _bsClaimCardsRevealed = false;
+    _bsPileGathering = false;
+    _bsVerdictBannerOpen = false;
+    _bsCallSpeechVisible = false;
     _reactionSub?.cancel();
     _outgoingHideTimer?.cancel();
     _incomingHideTimer?.cancel();

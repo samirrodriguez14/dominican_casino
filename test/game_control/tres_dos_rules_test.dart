@@ -108,7 +108,7 @@ void main() {
       // Round ended + score advanced + match over (first round wins).
       expect(result.round.roundStatus, RoundStatus.completed);
       expect(result.round.id, 0);
-      expect(result.scores[pid1], 1);
+      expect(result.scores[pid1], 0);
       expect(result.winnerId, pid1);
       expect(result.gameStatus, GameStatus.gameOver);
 

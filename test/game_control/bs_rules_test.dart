@@ -1,7 +1,9 @@
 import 'package:dominican_casino/game_control/game_engine/bs/bs_game_engine.dart';
+import 'package:dominican_casino/game_control/game_engine/bs/bs_handlers.dart';
 import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
 import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
+import 'package:dominican_casino/game_control/interfaces/zone.dart';
 import 'package:dominican_casino/models/deck.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/playing_card_model.dart';
@@ -83,8 +85,44 @@ void main() {
         state.hands.values.fold<int>(0, (n, h) => n + h.length);
     expect(total, 52);
     expect(state.deck, isEmpty);
+    expect(state.playingArea, isEmpty);
+    expect(state.cardMoveEvents.length, 52);
     expect(state.bsState?.phase, BsPhase.turn);
     expect(state.round.roundStatus, RoundStatus.playing);
+  });
+
+  test('shuffle stages the full shoe on the center pile', () {
+    final engine = BsGameEngine();
+    var state = GameState.create('g', p1, GameMode.bs);
+    state.playersInfo[p1] = {'name': 'P1'};
+    state.playersInfo[p2] = {'name': 'P2'};
+    state.playersInfo[p3] = {'name': 'P3'};
+    state.hands[p1] = [];
+    state.hands[p2] = [];
+    state.hands[p3] = [];
+    state.gameStatus = GameStatus.inProgress;
+
+    state = engine.performInGameAction(state, InGameAction.shuffle, p1);
+
+    expect(state.round.roundStatus, RoundStatus.readyToDeal);
+    expect(state.deck, isEmpty);
+    expect(state.playingArea.length, 52);
+    expect(state.tableOrder.length, 52);
+  });
+
+  test('deal empties the staged shoe into hands', () {
+    final engine = BsGameEngine();
+    var state = GameState.create('g', p1, GameMode.bs);
+    state.playersInfo[p1] = {'name': 'P1'};
+    state.playersInfo[p2] = {'name': 'P2'};
+    state.gameStatus = GameStatus.inProgress;
+    state = engine.performInGameAction(state, InGameAction.shuffle, p1);
+    expect(state.playingArea.length, 52);
+
+    state = engine.performInGameAction(state, InGameAction.deal, p1);
+    expect(state.playingArea, isEmpty);
+    expect(state.hands[p1]!.length + state.hands[p2]!.length, 52);
+    expect(state.cardMoveEvents.first.from.type, ZoneType.gameDeck);
   });
 
   test('honest claim: challenger takes the pile', () {
@@ -106,9 +144,18 @@ void main() {
       CallBluffAction(performedById: p2),
     );
 
-    expect(state.bsState?.phase, BsPhase.turn);
+    expect(state.bsState?.phase, BsPhase.resolve);
+    expect(state.bsState?.wasBluffing, isFalse);
+    expect(state.bsState?.lastPlayedCardIds, isNotEmpty);
     expect(state.playingArea, isEmpty);
+    expect(state.cardMoveEvents, isEmpty);
+    expect(state.settlementEvents, isNotEmpty);
     expect(state.hands[p2]!.length, 4); // 2 + pile
+    // Next seat waits until resolve animations finish.
+    expect(state.currentTurnPlayerId, p1);
+
+    state = BsOutOfTurnHandler.completeResolve(state);
+    expect(state.bsState?.phase, BsPhase.turn);
     expect(state.currentTurnPlayerId, p2); // next after p1
   });
 
@@ -128,8 +175,14 @@ void main() {
       CallBluffAction(performedById: p3),
     );
 
+    expect(state.bsState?.wasBluffing, isTrue);
+    expect(state.bsState?.phase, BsPhase.resolve);
+    expect(state.settlementEvents, isNotEmpty);
     expect(state.playingArea, isEmpty);
     expect(state.hands[p1]!.any((c) => c.id == bluff.first.id), isTrue);
+    expect(state.currentTurnPlayerId, p1);
+
+    state = BsOutOfTurnHandler.completeResolve(state);
     expect(state.currentTurnPlayerId, p2);
   });
 
@@ -182,5 +235,11 @@ void main() {
 
     expect(state.gameStatus, GameStatus.gameOver);
     expect(state.winnerId, p1);
+    expect(state.scores[p1], 0);
+    // p2: K+2 = −15; p3: A+7 = −8 → p3 places ahead of p2.
+    expect(state.scores[p2], -15);
+    expect(state.scores[p3], -8);
+    expect(state.finishRank(p3), 2);
+    expect(state.finishRank(p2), 3);
   });
 }

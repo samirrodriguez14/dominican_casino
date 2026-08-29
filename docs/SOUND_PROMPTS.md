@@ -20,6 +20,9 @@ Foley for a premium mobile Dominican card game. Intimate close-mic, dry, no reve
 | Win | ~0.8s | 75–85% | Off |
 | Illegal | 0.15s | 80–90% | Off |
 | Your turn | 0.3s | 80–90% | Off |
+| Call BS | 0.35–0.45s | 80–90% | Off |
+| BS bluff | 0.25–0.35s | 80–90% | Off |
+| BS honest | 0.35–0.45s | 80–90% | Off |
 
 ---
 
@@ -112,6 +115,50 @@ Gentle attention chime for a turn notification: two soft high woodblock or chip 
 
 ---
 
+## 7. `bs_call.wav` — someone calls BS
+
+Played when Call BS speech starts (`GameSound.bsCall`). Placeholder ships as a copy of `capture.wav` until replaced.
+
+**Prompt:**
+```
+Foley for a premium mobile Dominican card game. Intimate close-mic, dry, no reverb. Real paper playing cards on green casino felt over a walnut wooden table. Warm, tactile, classy home-casino. No music, no voices, no crowd, no synthesizers.
+
+Sharp challenge cue for calling a bluff: a firm double wood-table knock with a short paper-card slap, punchy and dry, no voice, no buzzer. 0.4 seconds, ends cleanly.
+```
+
+**Tighter fallback:**
+```
+Two close dry knocks on a wooden table, then a quick paper card slap on felt. Assertive challenge cue, 0.35 seconds. No voice, no alarm.
+```
+
+---
+
+## 8. `bs_bluff.wav` — claim was a bluff
+
+Played with the Bluffing verdict banner (`GameSound.bsBluff`). Placeholder ships as a copy of `illegal.wav` until replaced.
+
+**Prompt:**
+```
+Foley for a premium mobile Dominican card game. Intimate close-mic, dry, no reverb. Real paper playing cards on green casino felt over a walnut wooden table. Warm, tactile, classy home-casino. No music, no voices, no crowd, no synthesizers.
+
+Soft gotcha cue when a bluff is caught: low muted wood thud with a short descending chip tick, polite not harsh, no buzzer, no alarm. 0.3 seconds.
+```
+
+---
+
+## 9. `bs_honest.wav` — claim was honest
+
+Played with the Honest verdict banner (`GameSound.bsHonest`). Placeholder ships as a copy of `win.wav` until replaced.
+
+**Prompt:**
+```
+Foley for a premium mobile Dominican card game. Intimate close-mic, dry, no reverb. Real paper playing cards on green casino felt over a walnut wooden table. Warm, tactile, classy home-casino. No music, no voices, no crowd, no synthesizers.
+
+Soft confirmation cue when a claim was honest: gentle ascending chip clink pair, warm and classy, rewarding but quiet, no fanfare, no voice. 0.4 seconds, ends cleanly.
+```
+
+---
+
 ## Generation tips
 
 - Generate 3–4 variations each; pick the quietest, driest, most “on the table” take.
@@ -119,3 +166,4 @@ Gentle attention chime for a turn notification: two soft high woodblock or chip 
 - If shuffle sounds like a different room (more echo, more bass, more “Hollywood”), regenerate until it matches deal.
 - Normalize so deal and capture peak at about the same loudness; shuffle a touch quieter so a 1s clip does not blast; win slightly louder; illegal quieter.
 - Prefer mono or stereo centered; avoid heavy reverb (reads as distant, not on-table).
+- Call BS / bluff / honest should sit in the same room as capture and illegal — challenge is punchier than illegal; honest is quieter than win.

@@ -256,12 +256,15 @@ class _TurnHaloState extends State<_TurnHalo>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c;
 
+  /// Shared with BS stack bounce / hand pulse so glow and hop stay locked.
+  static const _periodMs = 1600;
+
   @override
   void initState() {
     super.initState();
     _c = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: _periodMs),
     );
     if (widget.active) _c.repeat();
   }
@@ -284,23 +287,45 @@ class _TurnHaloState extends State<_TurnHalo>
     super.dispose();
   }
 
+  double _softDoubleBounce(double local) {
+    double arc(double x) {
+      if (x <= 0 || x >= 1) return 0;
+      return math.sin(x * math.pi);
+    }
+
+    // Softer main hop, then a light settle.
+    if (local < 0.62) return arc(local / 0.62) * 0.7;
+    return arc((local - 0.62) / 0.38) * 0.28;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!widget.active) return widget.child;
     return AnimatedBuilder(
       animation: _c,
       builder: (context, child) {
-        final t = (math.sin(_c.value * math.pi * 2) + 1) / 2;
-        final glow = 0.22 + t * 0.38;
-        final spread = 1.0 + t * 2.2;
+        // Wall-clock phase keeps this locked to stack / hand bounce.
+        final t =
+            (DateTime.now().millisecondsSinceEpoch % _periodMs) / _periodMs;
+        const bounceEnd = 0.5;
+        final intensity = t >= bounceEnd
+            ? 0.0
+            : _softDoubleBounce((t / bounceEnd).clamp(0.0, 1.0));
+        final glow = 0.14 + intensity * 0.22;
+        final spread = 0.5 + intensity * 1.5;
         return DecoratedBox(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
                 color: widget.color.withValues(alpha: glow),
-                blurRadius: widget.size * 0.32,
+                blurRadius: widget.size * 0.36,
                 spreadRadius: spread,
+              ),
+              BoxShadow(
+                color: widget.color.withValues(alpha: 0.05 + intensity * 0.1),
+                blurRadius: widget.size * 0.55,
+                spreadRadius: spread + 1.2,
               ),
             ],
           ),

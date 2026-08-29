@@ -276,7 +276,7 @@ void main() {
       expect(next.winnerId, pid1);
       expect(next.round.roundStatus, RoundStatus.completed);
       expect(next.round.id, equals(0));
-      expect(next.scores[pid1], equals(1));
+      expect(next.scores[pid1], equals(0));
     });
 
     test('wrong boxes do not end the round', () {

@@ -2,15 +2,9 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Map<String, dynamic> playersInfo(String p1, String p2) => {
-      p1: {'name': 'P1'},
-      p2: {'name': 'P2'},
-    };
-
-Map<String, dynamic> playersInfo3(String p1, String p2, String p3) => {
-      p1: {'name': 'P1'},
-      p2: {'name': 'P2'},
-      p3: {'name': 'P3'},
+Map<String, dynamic> playersInfoFor(List<String> pids) => {
+      for (var i = 0; i < pids.length; i++)
+        pids[i]: {'name': 'P${i + 1}'},
     };
 
 GameState rummyGameOverState({
@@ -18,26 +12,20 @@ GameState rummyGameOverState({
   required List<String> pids,
   required String winnerId,
   required int entryCost,
+  Map<String, int>? scores,
 }) {
-  final p1 = pids[0];
-  final p2 = pids[1];
-  final p3 = pids.length >= 3 ? pids[2] : null;
-
-  final info = p3 == null
-      ? playersInfo(p1, p2)
-      : playersInfo3(p1, p2, p3);
-
   return GameState(
     gameStatus: GameStatus.gameOver,
     gameMode: mode,
     id: 'gid',
-    controllerId: p1,
+    controllerId: pids.first,
     started: true,
     currentTurnPlayerId: '',
     deck: const [],
-    scores: {
-      for (final pid in pids) pid: pid == winnerId ? 1 : 0,
-    },
+    scores: scores ??
+        {
+          for (final pid in pids) pid: pid == winnerId ? 0 : -20,
+        },
     extraPoints: 0,
     extraPointsHolderId: '',
     playingArea: const [],
@@ -56,7 +44,7 @@ GameState rummyGameOverState({
       roundScores: const {},
     ),
     winnerId: winnerId,
-    playersInfo: info,
+    playersInfo: playersInfoFor(pids),
     entryCost: entryCost,
     entryPaidBy: pids,
     payoutClaimedBy: const [],
@@ -64,7 +52,7 @@ GameState rummyGameOverState({
 }
 
 void main() {
-  group('Rummy pot payout (winner-takes-all)', () {
+  group('Rummy pot payout (shared field splits)', () {
     test('2 seats: 1st takes full pot, 2nd gets 0', () {
       const entry = 100;
       final s = rummyGameOverState(
@@ -78,19 +66,62 @@ void main() {
       expect(s.winPotCoins('p2'), equals(0));
     });
 
-    test('3 seats: 1st takes full pot, 2nd gets 0', () {
+    test('3 seats: 75/25 for 1st/2nd', () {
       const entry = 100;
       final s = rummyGameOverState(
         mode: GameMode.rummy,
         pids: const ['p1', 'p2', 'p3'],
         winnerId: 'p1',
         entryCost: entry,
+        scores: {'p1': 0, 'p2': -10, 'p3': -40},
       );
 
-      expect(s.winPotCoins('p1'), equals(300));
-      expect(s.winPotCoins('p2'), equals(0));
+      expect(s.winPotCoins('p1'), equals(225));
+      expect(s.winPotCoins('p2'), equals(75));
       expect(s.winPotCoins('p3'), equals(0));
+    });
+
+    test('4 seats Tres y Dos: 75/25 for 1st/2nd', () {
+      const entry = 100;
+      final s = rummyGameOverState(
+        mode: GameMode.tresydos,
+        pids: const ['p1', 'p2', 'p3', 'p4'],
+        winnerId: 'p1',
+        entryCost: entry,
+        scores: {'p1': 0, 'p2': -5, 'p3': -12, 'p4': -30},
+      );
+
+      expect(s.winPotCoins('p1'), equals(300)); // 75% of 400
+      expect(s.winPotCoins('p2'), equals(100)); // 25%
+      expect(s.winPotCoins('p3'), equals(0));
+      expect(s.winPotCoins('p4'), equals(0));
+    });
+
+    test('local AI: bots show theoretical pot shares without paying entry', () {
+      const entry = 100;
+      final s = rummyGameOverState(
+        mode: GameMode.bs,
+        pids: const ['me', 'b1', 'b2', 'b3', 'b4', 'b5'],
+        winnerId: 'b2',
+        entryCost: entry,
+        scores: {
+          'b2': 0,
+          'me': -5,
+          'b1': -10,
+          'b3': -20,
+          'b4': -30,
+          'b5': -40,
+        },
+      );
+      s.isLocalBot = true;
+      s.botPlayerIds = const ['b1', 'b2', 'b3', 'b4', 'b5'];
+      s.entryPaidBy = const ['me']; // only the human paid
+
+      // 6 seats → 70/20/10 of 600.
+      expect(s.winPotCoins('b2'), equals(420));
+      expect(s.winPotCoins('me'), equals(120));
+      expect(s.winPotCoins('b1'), equals(60));
+      expect(s.winPotCoins('b3'), equals(0));
     });
   });
 }
-

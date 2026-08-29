@@ -18,6 +18,15 @@ class CardFlightRequest {
   final double endWidth;
   final bool hapticOnLaunch;
 
+  /// Peak upward lift mid-flight (px). 0 = straight lerp.
+  final double arcLift;
+
+  /// Overrides the default per-card flight duration when set.
+  final Duration? duration;
+
+  /// When set on any flight in a batch, overrides launch stagger for the batch.
+  final Duration? stagger;
+
   const CardFlightRequest({
     required this.event,
     this.fromGlobalCenter,
@@ -29,6 +38,9 @@ class CardFlightRequest {
     this.startWidth = 60,
     this.endWidth = 60,
     this.hapticOnLaunch = true,
+    this.arcLift = 0,
+    this.duration,
+    this.stagger,
   });
 
   PlayingCardModel get card => event.card;

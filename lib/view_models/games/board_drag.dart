@@ -126,7 +126,7 @@ class DropHover {
 
   bool get isEmptyTablePlay =>
       target.kind == DropTargetKind.emptyTable &&
-      actions.any((a) => a is PlayCardAction);
+      actions.any((a) => a is PlayCardAction || a is ClaimPlayAction);
 
   String get hintLabel {
     if (actions.isEmpty) return '';

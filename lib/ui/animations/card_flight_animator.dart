@@ -26,6 +26,20 @@ class CardFlightAnimator {
       return;
     }
 
+    // Whole-deck deals: keep the cascade snappy.
+    // Per-flight stagger override (e.g. Duration.zero) wins for the batch.
+    final overrideStagger = flights
+        .map((f) => f.stagger)
+        .whereType<Duration>()
+        .firstOrNull;
+    final effectiveStagger = overrideStagger ??
+        (flights.length > 24
+            ? const Duration(milliseconds: 28)
+            : stagger);
+    final effectivePerCard = flights.length > 24 && overrideStagger == null
+        ? const Duration(milliseconds: 340)
+        : perCard;
+
     final entries = <_FlightEntry>[];
 
     try {
@@ -37,7 +51,9 @@ class CardFlightAnimator {
         begin ??= layer.centerOf(flight.fromKey);
         if (begin == null) continue;
 
-        final controller = tickers.create(duration: perCard);
+        final controller = tickers.create(
+          duration: flight.duration ?? effectivePerCard,
+        );
         final entry = _FlightEntry(
           flight: flight,
           layer: layer,
@@ -76,7 +92,7 @@ class CardFlightAnimator {
       for (var i = 0; i < entries.length; i++) {
         final entry = entries[i];
         futures.add(
-          Future<void>.delayed(stagger * i).then((_) async {
+          Future<void>.delayed(effectiveStagger * i).then((_) async {
             if (tickers.isCancelled) return;
             final toDeck = entry.flight.to.type == ZoneType.playerDeck;
             if (entry.flight.hapticOnLaunch) {
@@ -156,8 +172,14 @@ class _FlightEntry {
 
   Widget build(BuildContext context) {
     syncDestination();
-    final t = Curves.easeOutCubic.transform(controller.value);
-    final p = Offset.lerp(begin, end, t) ?? begin;
+    final curve = flight.arcLift > 0
+        ? Curves.easeInOutCubic
+        : Curves.easeOutCubic;
+    final t = curve.transform(controller.value);
+    final base = Offset.lerp(begin, end, t) ?? begin;
+    final lift =
+        flight.arcLift <= 0 ? 0.0 : math.sin(t * math.pi) * flight.arcLift;
+    final p = Offset(base.dx, base.dy - lift);
     final width = lerpDouble(startWidth, endWidth, t) ?? startWidth;
     final height = width * 1.4;
     Widget card;

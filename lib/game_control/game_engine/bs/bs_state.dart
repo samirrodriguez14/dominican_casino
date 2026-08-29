@@ -25,7 +25,29 @@ class BsState {
   String? challengerPid;
   bool? wasBluffing;
 
-  static const Duration challengeWindow = Duration(seconds: 4);
+  /// How long others have to Call BS after claim cards have landed.
+  static const Duration challengeWindow = Duration(seconds: 5);
+
+  /// Bots Call BS this long after the challenge window opens (cards landed).
+  static const Duration botCallDelay = Duration(milliseconds: 2500);
+
+  /// Brief beat after "BS!" before flipping the claim cards.
+  static const Duration afterCallBeforeReveal = Duration(milliseconds: 700);
+
+  /// Claim cards stay face-up before the Honest/Bluffing banner.
+  static const Duration revealCardsHold = Duration(milliseconds: 1400);
+
+  /// Banner stays up before the pile gathers and collects to a hand.
+  static const Duration verdictBannerHold = Duration(milliseconds: 2000);
+
+  /// Claim cards flip face-down and tuck back into the center pile.
+  static const Duration gatherPileHold = Duration(milliseconds: 480);
+
+  /// Beat after pile lands, before the next turn is emphasized.
+  static const Duration afterCollectDelay = Duration(milliseconds: 900);
+
+  /// Extra think time before a bot plays on their turn.
+  static const Duration botPlayDelay = Duration(milliseconds: 1600);
 
   Map<String, dynamic> toJson() => {
         'phase': phase.name,

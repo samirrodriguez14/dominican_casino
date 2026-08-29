@@ -1,3 +1,4 @@
+import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
 import 'package:dominican_casino/game_control/interfaces/action.dart';
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/round.dart';
@@ -9,6 +10,7 @@ import 'package:dominican_casino/view_models/games/board_drag.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 
 /// Hand-play choices: action chips, with cancel inline when a drop
@@ -27,7 +29,9 @@ class PlayActionBar extends StatelessWidget {
     final actions = pending?.actions ?? vm.possiblePlayActions;
     final choosing = pending != null;
     final outOfTurn = vm.outOfTurnActions;
-    final callBluff = outOfTurn.whereType<CallBluffAction>().firstOrNull;
+    final callBluff = vm.canCallBluff
+        ? outOfTurn.whereType<CallBluffAction>().firstOrNull
+        : null;
     final showPlayChips = choosing || (vm.canPlayTurn && actions.isNotEmpty);
     final showChips = showPlayChips || callBluff != null;
     final roundPlaying =
@@ -159,10 +163,8 @@ class _ActionChipRow extends StatelessWidget {
                 if (callBluff != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _ActionChipButton(
-                      label: 'Call BS',
-                      icon: CupertinoIcons.exclamationmark_bubble_fill,
-                      primary: true,
+                    child: _CallBsTimerButton(
+                      deadline: vm.gameState.bsState?.challengeDeadline,
                       onTap: () => vm.performOutOfTurnAction(callBluff!),
                     ),
                   ),
@@ -258,6 +260,150 @@ class _TurnHint extends StatelessWidget {
         color: isMyTurn
             ? theme.turnHighlight
             : theme.textPrimary.withValues(alpha: .7),
+      ),
+    );
+  }
+}
+
+class _CallBsTimerButton extends StatefulWidget {
+  const _CallBsTimerButton({
+    required this.onTap,
+    this.deadline,
+  });
+
+  final DateTime? deadline;
+  final VoidCallback onTap;
+
+  @override
+  State<_CallBsTimerButton> createState() => _CallBsTimerButtonState();
+}
+
+class _CallBsTimerButtonState extends State<_CallBsTimerButton>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  Duration _lastPaint = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((elapsed) {
+      if (!mounted) return;
+      if (elapsed - _lastPaint < const Duration(milliseconds: 50)) return;
+      _lastPaint = elapsed;
+      setState(() {});
+      if (_remaining <= 0) _ticker.stop();
+    })..start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CallBsTimerButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.deadline != oldWidget.deadline && !_ticker.isTicking) {
+      _lastPaint = Duration.zero;
+      _ticker.start();
+    }
+  }
+
+  double get _remaining {
+    final deadline = widget.deadline;
+    if (deadline == null) return 1;
+    final totalMs = BsState.challengeWindow.inMilliseconds;
+    if (totalMs <= 0) return 0;
+    final left = deadline.difference(DateTime.now()).inMilliseconds;
+    return (left / totalMs).clamp(0.0, 1.0);
+  }
+
+  Color _fillColor(Color gold) {
+    final t = _remaining;
+    if (t > 0.42) return gold;
+    if (t > 0.18) {
+      return Color.lerp(
+        const Color(0xFFE8A04A),
+        gold,
+        (t - 0.18) / 0.24,
+      )!;
+    }
+    return Color.lerp(
+      const Color(0xFFE85D4A),
+      const Color(0xFFE8A04A),
+      t / 0.18,
+    )!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppStyle.theme;
+    final gold = theme.turnHighlight;
+    final dark = theme.background;
+    final remaining = _remaining;
+    final fill = _fillColor(gold);
+    // Spent side: muted surface so the drain reads left → right.
+    final spent = Color.lerp(dark, gold, 0.22)!;
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: SoundService.wrapTap(widget.onTap),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Depleted track.
+            Positioned.fill(
+              child: ColoredBox(color: spent),
+            ),
+            // Remaining time fills from the left and shrinks as the window ends.
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: remaining,
+                  heightFactor: 1,
+                  child: ColoredBox(color: fill),
+                ),
+              ),
+            ),
+            // Soft border on top of the fill.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: gold, width: 1.4),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    CupertinoIcons.exclamationmark_bubble_fill,
+                    size: 18,
+                    color: dark,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Call BS',
+                    style: TextStyle(
+                      color: dark,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

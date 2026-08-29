@@ -18,7 +18,8 @@
         "Other players have a few seconds to Call BS.",
         "If you were honest, the challenger takes the pile. If you bluffed, you take the pile.",
         "If nobody calls, the pile stays and play continues.",
-        "First player to empty their hand wins."
+        "First player to empty their hand wins.",
+        "Leftover hands score face ranks with Ace as 1 (before 2), through King as 13."
       ]
     },
     {
