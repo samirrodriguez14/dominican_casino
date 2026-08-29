@@ -41,66 +41,75 @@ Future<void> showGameStatusPopup(
     transitionDuration: const Duration(milliseconds: 280),
     pageBuilder: (ctx, animation, secondary) {
       return SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: SingleChildScrollView(
-                child: DefaultTextStyle(
-                  style: AppStyle.theme.body,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (resolvedTitle != null) ...[
-                        Text(
-                          resolvedTitle,
-                          textAlign: TextAlign.center,
-                          style: AppStyle.theme.title.copyWith(
-                            color: const Color(0xFFF7F4EC),
-                            fontSize: 20,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Align(
+                alignment: Alignment.center,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 440,
+                    maxHeight: constraints.maxHeight,
+                  ),
+                  child: DefaultTextStyle(
+                    style: AppStyle.theme.body,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (resolvedTitle != null) ...[
+                          Text(
+                            resolvedTitle,
+                            textAlign: TextAlign.center,
+                            style: AppStyle.theme.title.copyWith(
+                              color: const Color(0xFFF7F4EC),
+                              fontSize: 20,
+                            ),
+                          ),
+                          if (subtitle != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              textAlign: TextAlign.center,
+                              style: AppStyle.theme.caption.copyWith(
+                                color: const Color(0xCCF7F4EC),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 14),
+                        ],
+                        Flexible(
+                          child: GameStatusSheet(
+                            vm: vm,
+                            gameState: gameState,
+                            playerId: playerId,
+                            showActions: showActions,
+                            revealLastRound: revealLastRound,
                           ),
                         ),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            textAlign: TextAlign.center,
-                            style: AppStyle.theme.caption.copyWith(
-                              color: const Color(0xCCF7F4EC),
+                        if (primaryText != null) ...[
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: CupertinoButton.filled(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                              onPressed: SoundService.wrapTap(() {
+                                AppHaptics.mediumImpact();
+                                Navigator.of(ctx).pop();
+                                onPrimary?.call();
+                              }),
+                              child: Text(primaryText),
                             ),
                           ),
                         ],
-                        const SizedBox(height: 14),
                       ],
-                      GameStatusSheet(
-                        vm: vm,
-                        gameState: gameState,
-                        playerId: playerId,
-                        showActions: showActions,
-                        revealLastRound: revealLastRound,
-                      ),
-                      if (primaryText != null) ...[
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: CupertinoButton.filled(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            onPressed: SoundService.wrapTap(() {
-                              AppHaptics.mediumImpact();
-                              Navigator.of(ctx).pop();
-                              onPrimary?.call();
-                            }),
-                            child: Text(primaryText),
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       );
@@ -183,136 +192,154 @@ class _GameStatusSheetState extends State<GameStatusSheet> {
     final hasRound = roundScores.isNotEmpty;
     final l10n = AppLocalizations.of(context);
     final gameOver = gameState.gameStatus == GameStatus.gameOver;
-    final useFieldStandings = gameOver && gameState.seatedPlayerCount >= 5;
-    // Win screen: always 1st → last. Mid-match keeps seating / map order.
+    final isCasinoFamily = GameRegistry.isCasinoFamily(gameState.gameMode);
+    // Casino: fan of per-player cards (standings only for large game-over fields).
+    // Other modes: always the standings board (win screen + avatar status popup).
+    final useFieldStandings =
+        !isCasinoFamily || (gameOver && gameState.seatedPlayerCount >= 5);
+    // Casino fan: win screen ranks 1st→last; mid-match keeps seating / map order.
     final boardIds = gameOver ? gameState.rankedPlayerIds() : playerIds;
+    final standingsIds = gameState.rankedPlayerIds();
+    final media = MediaQuery.of(context);
+    // Cap to the screen so mid-match (standings + actions) never overflows.
+    final screenCap = media.size.height - media.padding.vertical - 48;
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 420, maxHeight: 580),
-      child: SingleChildScrollView(
-        controller: widget.scrollController,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (useFieldStandings)
-              _FieldStandingsCard(
-                rows: [
-                  for (final pid in gameState.rankedPlayerIds())
-                    _FieldStandingRow(
-                      place: gameState.finishRank(pid) ?? 0,
-                      placeLabel: gameState.finishRank(pid) != null
-                          ? l10n.placeShort(gameState.finishRank(pid)!)
-                          : '',
-                      name: _playerLabel(pid),
-                      avatarId: _playerSeatLook(pid).avatarId,
-                      avatarAsset: _playerSeatLook(pid).avatarAsset,
-                      defeatedAces: _playerSeatLook(pid).defeatedAces,
-                      wearJourneyAccessories:
-                          _playerSeatLook(pid).wearJourneyAccessories,
-                      score: totalScores[pid] ?? 0,
-                      coins: gameState.winPotCoins(pid) +
-                          gameState.pendingCoinsFor(pid),
-                      isMe: pid == playerId,
-                    ),
-                ],
-              )
-            else
-              _ScoreBoardStack(
-                hasRound: hasRound,
-                boards: [
-                  if (boardIds.isEmpty)
-                    const _BoardSpec(
-                      id: 'waiting',
-                      name: 'Waiting',
-                      avatarId: null,
-                      avatarAsset: null,
-                      defeatedAces: {},
-                      wearJourneyAccessories: true,
-                      score: 0,
-                      pendingCoins: 0,
-                      roundCoins: 0,
-                      showMatchCoins: false,
-                      beforeScore: 0,
-                      roundScore: 0,
-                      isDealer: false,
-                      isCasino: false,
-                      scoreMap: {},
-                    )
-                  else
-                    for (final pid in boardIds)
-                      _BoardSpec(
-                        id: pid,
-                        name: _playerLabel(pid),
-                        avatarId: _playerSeatLook(pid).avatarId,
-                        avatarAsset: _playerSeatLook(pid).avatarAsset,
-                        defeatedAces: _playerSeatLook(pid).defeatedAces,
-                        wearJourneyAccessories:
-                            _playerSeatLook(pid).wearJourneyAccessories,
-                        score: totalScores[pid] ?? 0,
-                        pendingCoins: gameOver
-                            ? gameState.winPotCoins(pid) +
-                                gameState.pendingCoinsFor(pid)
-                            : gameState.pendingCoinsFor(pid),
-                        roundCoins: _scoreN(
-                          Map<String, dynamic>.from(roundScores[pid] ?? {}),
-                          'coins',
-                        ),
-                        showMatchCoins: gameOver,
-                        beforeScore: _beforeScore(
-                          totalScores[pid] ?? 0,
-                          roundScores[pid],
-                        ),
-                        roundScore: _scoreN(
-                          Map<String, dynamic>.from(roundScores[pid] ?? {}),
-                          'total',
-                        ),
-                        isDealer: gameState.controllerId == pid,
-                        isCasino:
-                            GameRegistry.isCasinoFamily(gameState.gameMode),
-                        place: gameOver ? gameState.finishRank(pid) : null,
-                        placeLabel: gameOver &&
-                                gameState.finishRank(pid) != null
-                            ? l10n.coinPayoutPlace(gameState.finishRank(pid)!)
-                            : null,
-                        scoreMap: Map<String, dynamic>.from(
-                          roundScores[pid] ?? {},
-                        ),
-                      ),
-                ],
-                locked: gameState.gameStatus == GameStatus.gameOver,
-                initialFrontId: _leaderId(boardIds),
-                autoReveal: widget.revealLastRound,
-              ),
-            if (vm != null && gameState.gameStatus == GameStatus.gameOver)
-              MatchCoinPayout(vm: vm),
-            if (showActions && vm != null) ...[
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _StatusIconButton(
-                    icon: CupertinoIcons.info,
-                    onPressed: () => _openRules(context, vm),
-                  ),
-                  const SizedBox(width: 8),
-                  _StatusHomeButton(
-                    onPressed: () async {
-                      Navigator.of(context).pop();
-                      await leaveMatchToHome(context, vm);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _StatusIconButton(
-                    icon: CupertinoIcons.arrow_right_square_fill,
-                    danger: true,
-                    onPressed: () => _handleResign(context, vm),
-                  ),
-                ],
-              ),
+    final board = useFieldStandings
+        ? _FieldStandingsCard(
+            rows: [
+              for (final pid in standingsIds)
+                _FieldStandingRow(
+                  place: gameState.finishRank(pid) ?? 0,
+                  placeLabel: gameState.finishRank(pid) != null
+                      ? l10n.placeShort(gameState.finishRank(pid)!)
+                      : '',
+                  name: _playerLabel(pid),
+                  avatarId: _playerSeatLook(pid).avatarId,
+                  avatarAsset: _playerSeatLook(pid).avatarAsset,
+                  defeatedAces: _playerSeatLook(pid).defeatedAces,
+                  wearJourneyAccessories:
+                      _playerSeatLook(pid).wearJourneyAccessories,
+                  score: totalScores[pid] ?? 0,
+                  coins: gameOver
+                      ? gameState.winPotCoins(pid) +
+                          gameState.pendingCoinsFor(pid)
+                      : gameState.pendingCoinsFor(pid),
+                  isMe: pid == playerId,
+                ),
             ],
-          ],
-        ),
-      ),
+          )
+        : _ScoreBoardStack(
+            hasRound: hasRound,
+            boards: [
+              if (boardIds.isEmpty)
+                const _BoardSpec(
+                  id: 'waiting',
+                  name: 'Waiting',
+                  avatarId: null,
+                  avatarAsset: null,
+                  defeatedAces: {},
+                  wearJourneyAccessories: true,
+                  score: 0,
+                  pendingCoins: 0,
+                  roundCoins: 0,
+                  showMatchCoins: false,
+                  beforeScore: 0,
+                  roundScore: 0,
+                  isDealer: false,
+                  isCasino: false,
+                  scoreMap: {},
+                )
+              else
+                for (final pid in boardIds)
+                  _BoardSpec(
+                    id: pid,
+                    name: _playerLabel(pid),
+                    avatarId: _playerSeatLook(pid).avatarId,
+                    avatarAsset: _playerSeatLook(pid).avatarAsset,
+                    defeatedAces: _playerSeatLook(pid).defeatedAces,
+                    wearJourneyAccessories:
+                        _playerSeatLook(pid).wearJourneyAccessories,
+                    score: totalScores[pid] ?? 0,
+                    pendingCoins: gameOver
+                        ? gameState.winPotCoins(pid) +
+                            gameState.pendingCoinsFor(pid)
+                        : gameState.pendingCoinsFor(pid),
+                    roundCoins: _scoreN(
+                      Map<String, dynamic>.from(roundScores[pid] ?? {}),
+                      'coins',
+                    ),
+                    showMatchCoins: gameOver,
+                    beforeScore: _beforeScore(
+                      totalScores[pid] ?? 0,
+                      roundScores[pid],
+                    ),
+                    roundScore: _scoreN(
+                      Map<String, dynamic>.from(roundScores[pid] ?? {}),
+                      'total',
+                    ),
+                    isDealer: gameState.controllerId == pid,
+                    isCasino: GameRegistry.isCasinoFamily(gameState.gameMode),
+                    place: gameOver ? gameState.finishRank(pid) : null,
+                    placeLabel: gameOver && gameState.finishRank(pid) != null
+                        ? l10n.coinPayoutPlace(gameState.finishRank(pid)!)
+                        : null,
+                    scoreMap: Map<String, dynamic>.from(
+                      roundScores[pid] ?? {},
+                    ),
+                  ),
+            ],
+            locked: gameState.gameStatus == GameStatus.gameOver,
+            initialFrontId: _leaderId(boardIds),
+            autoReveal: widget.revealLastRound,
+          );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxSheetH = math.min(
+          580.0,
+          constraints.hasBoundedHeight
+              ? math.min(constraints.maxHeight, screenCap)
+              : screenCap,
+        );
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 420, maxHeight: maxSheetH),
+          child: ListView(
+            controller: widget.scrollController,
+            shrinkWrap: true,
+            physics: const ClampingScrollPhysics(),
+            children: [
+              board,
+              if (vm != null && gameState.gameStatus == GameStatus.gameOver)
+                MatchCoinPayout(vm: vm),
+              if (showActions && vm != null) ...[
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _StatusIconButton(
+                      icon: CupertinoIcons.info,
+                      onPressed: () => _openRules(context, vm),
+                    ),
+                    const SizedBox(width: 8),
+                    _StatusHomeButton(
+                      onPressed: () async {
+                        Navigator.of(context).pop();
+                        await leaveMatchToHome(context, vm);
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _StatusIconButton(
+                      icon: CupertinoIcons.arrow_right_square_fill,
+                      danger: true,
+                      onPressed: () => _handleResign(context, vm),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 

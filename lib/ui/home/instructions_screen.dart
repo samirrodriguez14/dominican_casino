@@ -8,13 +8,28 @@ import 'package:dominican_casino/ui/home/home_instruction_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 
-class InstructionsScreen extends StatelessWidget {
+class InstructionsScreen extends StatefulWidget {
   const InstructionsScreen({super.key});
+
+  @override
+  State<InstructionsScreen> createState() => _InstructionsScreenState();
+}
+
+class _InstructionsScreenState extends State<InstructionsScreen> {
+  Future<InstructionsData>? _future;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _future ??= loadInstructions(
+      GameMode.casino,
+      locale: Localizations.localeOf(context),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final locale = Localizations.localeOf(context);
 
     return CupertinoPageScaffold(
       backgroundColor: AppStyle.theme.background,
@@ -28,8 +43,16 @@ class InstructionsScreen extends StatelessWidget {
       ),
       child: SafeArea(
         child: FutureBuilder<InstructionsData>(
-          future: loadInstructions(GameMode.casino, locale: locale),
+          future: _future,
           builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  l10n.instructions,
+                  style: AppStyle.theme.body,
+                ),
+              );
+            }
             if (!snapshot.hasData) {
               return const Center(child: CupertinoActivityIndicator());
             }
@@ -88,18 +111,15 @@ class _InstructionPage extends StatelessWidget {
             style: AppStyle.theme.title.copyWith(fontSize: 32),
           ),
           const SizedBox(height: 20),
-
           InstructionSectionContent(
             section: section,
             bodyFontSize: 20,
             cardWidth: 64,
           ),
-
           const SizedBox(height: 24),
-
           Center(
             child: Text(
-              "$pageNumber / $totalPages",
+              '$pageNumber / $totalPages',
               style: AppStyle.theme.body,
             ),
           ),

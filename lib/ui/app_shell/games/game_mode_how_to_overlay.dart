@@ -53,6 +53,7 @@ Future<void> showGameModeHowTo(
         animation.addStatusListener(onStatus);
         return GameModeHowToOverlay(
           mode: mode,
+          locale: Localizations.localeOf(context),
           cardWidth: cardWidth,
           anchor: anchor,
           expandFromAnchor: expandFromAnchor,
@@ -98,6 +99,7 @@ class GameModeHowToOverlay extends StatefulWidget {
   const GameModeHowToOverlay({
     super.key,
     required this.mode,
+    required this.locale,
     required this.cardWidth,
     required this.onPlay,
     required this.onClose,
@@ -107,6 +109,7 @@ class GameModeHowToOverlay extends StatefulWidget {
   });
 
   final GameMode mode;
+  final Locale locale;
   final double cardWidth;
   final Rect? anchor;
   final bool expandFromAnchor;
@@ -172,14 +175,16 @@ class _GameModeHowToOverlayState extends State<GameModeHowToOverlay>
     try {
       final data = await loadInstructions(
         widget.mode,
-        locale: Localizations.localeOf(context),
+        locale: widget.locale,
       );
       if (!mounted) return;
       setState(() => _sections = data.sections);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _tryRevealBack();
       });
-    } catch (_) {}
+    } catch (_) {
+      // Keep the spinner if assets fail; avoid leaving a blank card face.
+    }
   }
 
   Future<void> _tryRevealBack() async {

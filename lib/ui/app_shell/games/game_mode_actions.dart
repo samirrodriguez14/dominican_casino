@@ -878,18 +878,19 @@ Future<InstructionsData> loadInstructions(
   GameMode mode, {
   Locale? locale,
 }) async {
-  final isEs = locale?.languageCode == 'es';
+  final isEs = locale?.languageCode.toLowerCase() == 'es';
   final enPath = _instructionsAssetPath(mode, isEs: false);
-  if (!isEs) {
-    final raw = await rootBundle.loadString(enPath);
-    return InstructionsData.fromJson(jsonDecode(raw));
-  }
-  final esPath = _instructionsAssetPath(mode, isEs: true);
+  final path = isEs ? _instructionsAssetPath(mode, isEs: true) : enPath;
   try {
-    final raw = await rootBundle.loadString(esPath);
-    return InstructionsData.fromJson(jsonDecode(raw));
+    final raw = await rootBundle.loadString(path);
+    return InstructionsData.fromJson(
+      jsonDecode(raw) as Map<String, dynamic>,
+    );
   } catch (_) {
+    if (!isEs) rethrow;
     final raw = await rootBundle.loadString(enPath);
-    return InstructionsData.fromJson(jsonDecode(raw));
+    return InstructionsData.fromJson(
+      jsonDecode(raw) as Map<String, dynamic>,
+    );
   }
 }
