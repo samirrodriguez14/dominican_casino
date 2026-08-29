@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
@@ -69,6 +70,7 @@ class _JourneyThemeUnlockRewardOverlayState
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final palette = journeyPaletteFor(widget.world);
+    final j = JourneyL10n.of(context);
 
     return FadeTransition(
       opacity: CurvedAnimation(parent: _in, curve: Curves.easeOut),
@@ -108,7 +110,7 @@ class _JourneyThemeUnlockRewardOverlayState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Theme unlocked',
+                          j.themeUnlocked,
                           style: theme.title.copyWith(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -116,7 +118,7 @@ class _JourneyThemeUnlockRewardOverlayState
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'You unlocked the ${widget.world.label} theme.',
+                          j.worldThemeUnlocked(widget.world),
                           textAlign: TextAlign.center,
                           style: theme.mutedText,
                         ),
@@ -146,7 +148,7 @@ class _JourneyThemeUnlockRewardOverlayState
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          '${widget.world.label} theme',
+                          j.worldThemeLabel(widget.world),
                           style: theme.body.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -163,7 +165,7 @@ class _JourneyThemeUnlockRewardOverlayState
                             () => _dismiss(goToProfile: true),
                           ),
                           child: Text(
-                            'Go to profile',
+                            j.goToProfile,
                             style: TextStyle(
                               color: theme.textPrimary,
                               fontWeight: FontWeight.w700,
@@ -180,7 +182,7 @@ class _JourneyThemeUnlockRewardOverlayState
                             () => _dismiss(goToProfile: false),
                           ),
                           child: Text(
-                            'Continue',
+                            j.continueLabel,
                             style: TextStyle(
                               color: theme.muted,
                               fontWeight: FontWeight.w600,

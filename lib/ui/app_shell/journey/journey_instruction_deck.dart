@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/models/journey_instruction.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -307,7 +308,8 @@ class _ExpandedGuide extends StatelessWidget {
                             theme: theme,
                           );
                         } else {
-                          final page = journeyInstructions[index];
+                          final pages = JourneyL10n.of(context).instructions;
+                          final page = pages[index];
                           final isLatest = pageId == unlockedThrough;
                           final showEnter = showEnterKingdomCta &&
                               page.id == enterKingdomPageId &&
@@ -392,10 +394,9 @@ class _CeremonyInstructionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final page = journeyInstructionById(pageId) ??
-        (pageId >= 1 && pageId <= journeyInstructions.length
-            ? journeyInstructions[pageId - 1]
-            : null);
+    final pages = JourneyL10n.of(context).instructions;
+    final page = JourneyL10n.of(context).instructionById(pageId) ??
+        (pageId >= 1 && pageId <= pages.length ? pages[pageId - 1] : null);
     final isLatest = pageId == unlockedThrough || timeline.pastBoom;
     final revealed = page == null
         ? _LockedInstructionCard(

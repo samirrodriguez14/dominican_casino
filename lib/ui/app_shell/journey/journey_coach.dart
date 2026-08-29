@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/models/tutorial_action.dart';
@@ -32,6 +33,11 @@ class JourneyCoachController extends ChangeNotifier {
 
   final GlobalKey trailKey;
   final GlobalKey deckKey;
+
+  /// Live locale flag from the Journey board (defaults to English).
+  ValueGetter<bool> isEs = () => false;
+
+  JourneyL10n get l10n => JourneyL10n(isEs());
 
   int _step = 0;
   bool _active = false;
@@ -74,59 +80,81 @@ class JourneyCoachController extends ChangeNotifier {
         _line(
           step: 0,
           section: 0,
-          speaker: 'Pulilo',
-          text: 'Oh, hi. You finally woke up.',
+          speaker: l10n.pulilo,
+          text: l10n.t(
+            'Oh, hi. You finally woke up.',
+            'Ah, hola. Por fin despertaste.',
+          ),
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 1,
           section: 0,
-          speaker: 'You',
-          text: 'Where am I?',
+          speaker: l10n.you,
+          text: l10n.t(
+            'Where am I?',
+            '¿Dónde estoy?',
+          ),
           who: TutorialSpeaker.player,
         ),
         _line(
           step: 2,
           section: 0,
-          speaker: 'Pulilo',
-          text:
-              'You are at the entrance of the Diamond Kingdom. '
-              'You seemed to be dead, but luckily my tea did its miracle '
-              'one more time.',
+          speaker: l10n.pulilo,
+          text: l10n.t(
+            'You are at the entrance of the Diamond Kingdom. '
+            'You seemed to be dead, but luckily my tea did its miracle '
+            'one more time.',
+            'Estás en la entrada del Reino de Diamantes. '
+            'Parecías muerto, pero por suerte mi té hizo su milagro '
+            'una vez más.',
+          ),
           who: TutorialSpeaker.guide,
           targetKey: trailKey,
         ),
         _line(
           step: 3,
           section: 0,
-          speaker: 'You',
-          text: 'My head hurts… why am I here?',
+          speaker: l10n.you,
+          text: l10n.t(
+            'My head hurts… why am I here?',
+            'Me duele la cabeza… ¿por qué estoy aquí?',
+          ),
           who: TutorialSpeaker.player,
         ),
         _line(
           step: 4,
           section: 1,
-          speaker: 'Pulilo',
-          text:
-              'Well, I don\'t know, but these things were with you when I '
-              'found you. This magical deck of cards has hidden instructions '
-              'that only its owner can read.',
+          speaker: l10n.pulilo,
+          text: l10n.t(
+            'Well, I don\'t know, but these things were with you when I '
+            'found you. This magical deck of cards has hidden instructions '
+            'that only its owner can read.',
+            'Bueno, no sé, pero estas cosas estaban contigo cuando te '
+            'encontré. Este mazo mágico de cartas tiene instrucciones '
+            'ocultas que solo su dueño puede leer.',
+          ),
           who: TutorialSpeaker.guide,
           targetKey: deckKey,
         ),
         _line(
           step: 5,
           section: 1,
-          speaker: 'You',
-          text: 'How did I get here?',
+          speaker: l10n.you,
+          text: l10n.t(
+            'How did I get here?',
+            '¿Cómo llegué aquí?',
+          ),
           who: TutorialSpeaker.player,
         ),
         _line(
           step: 6,
           section: 1,
-          speaker: 'Pulilo',
-          text:
-              'Well, follow these instructions and you might find out.',
+          speaker: l10n.pulilo,
+          text: l10n.t(
+            'Well, follow these instructions and you might find out.',
+            'Bueno, sigue estas instrucciones y quizás lo descubras.',
+          ),
           who: TutorialSpeaker.guide,
           targetKey: deckKey,
           showSkip: false,
@@ -137,18 +165,25 @@ class JourneyCoachController extends ChangeNotifier {
         _line(
           step: 0,
           section: 2,
-          speaker: 'You',
-          text: 'So can you help?',
+          speaker: l10n.you,
+          text: l10n.t(
+            'So can you help?',
+            '¿Entonces puedes ayudarme?',
+          ),
           who: TutorialSpeaker.player,
         ),
         _line(
           step: 1,
           section: 2,
-          speaker: 'Pulilo',
-          text:
-              'Oh no… That card has a Diamonds suit on it. Your help lies '
-              'there in the Diamond Kingdom, my friend. Go on, and start '
-              'your journey.',
+          speaker: l10n.pulilo,
+          text: l10n.t(
+            'Oh no… That card has a Diamonds suit on it. Your help lies '
+            'there in the Diamond Kingdom, my friend. Go on, and start '
+            'your journey.',
+            'Ay no… Esa carta tiene el palo de Diamantes. Tu ayuda está '
+            'allá en el Reino de Diamantes, amigo. Dale, y empieza '
+            'tu viaje.',
+          ),
           who: TutorialSpeaker.guide,
           showSkip: false,
         ),
@@ -278,6 +313,7 @@ class JourneyCoachOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = JourneyL10n.of(context);
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -303,9 +339,7 @@ class JourneyCoachOverlay extends StatelessWidget {
               totalSteps: controller.steps.length,
               canGoNext: true,
               isLastScreen: isLast,
-              lastPrimaryLabel: isPhaseA
-                  ? 'Open instructions'
-                  : 'Open instructions',
+              lastPrimaryLabel: l10n.openInstructions,
               onPlay: () {
                 if (isPhaseA) {
                   _openLetter();
@@ -384,6 +418,11 @@ class JourneyJackIntroController extends ChangeNotifier {
   static final String jackAvatarId =
       journeyAvatarId(JourneyWorld.diamonds, JourneyRank.jack);
 
+  /// Live locale flag from the Journey board (defaults to English).
+  ValueGetter<bool> isEs = () => false;
+
+  JourneyL10n get l10n => JourneyL10n(isEs());
+
   int _step = 0;
   bool _active = false;
   bool _finished = false;
@@ -396,9 +435,11 @@ class JourneyJackIntroController extends ChangeNotifier {
         TutorialStep(
           step: 0,
           section: 0,
-          title: 'Jack',
-          description:
-              'Hi kid. Pricey mask you have there. Where did you get it from?',
+          title: l10n.jack,
+          description: l10n.t(
+            'Hi kid. Pricey mask you have there. Where did you get it from?',
+            'Hola, chico. Qué máscara tan cara tienes ahí. ¿De dónde la sacaste?',
+          ),
           speaker: TutorialSpeaker.guide,
           avatarId: jackAvatarId,
           blockGameInteraction: true,
@@ -409,8 +450,11 @@ class JourneyJackIntroController extends ChangeNotifier {
         TutorialStep(
           step: 1,
           section: 0,
-          title: 'You',
-          description: 'That\'s what I\'m trying to figure out.',
+          title: l10n.you,
+          description: l10n.t(
+            'That\'s what I\'m trying to figure out.',
+            'Eso es justo lo que estoy tratando de averiguar.',
+          ),
           speaker: TutorialSpeaker.player,
           blockGameInteraction: true,
           allowedActions: const <TutorialAction>[],
@@ -420,11 +464,15 @@ class JourneyJackIntroController extends ChangeNotifier {
         TutorialStep(
           step: 2,
           section: 0,
-          title: 'Jack',
-          description:
-              'Oh well, I know that the King holds the most powerful card '
-              'in the world. It\'s the Ace of Diamonds. He can certainly '
-              'help you figure that out.',
+          title: l10n.jack,
+          description: l10n.t(
+            'Oh well, I know that the King holds the most powerful card '
+            'in the world. It\'s the Ace of Diamonds. He can certainly '
+            'help you figure that out.',
+            'Bueno, yo sé que el Rey tiene la carta más poderosa '
+            'del mundo. Es el As de Diamantes. Él seguro puede '
+            'ayudarte a descubrirlo.',
+          ),
           speaker: TutorialSpeaker.guide,
           avatarId: jackAvatarId,
           blockGameInteraction: true,
@@ -435,8 +483,11 @@ class JourneyJackIntroController extends ChangeNotifier {
         TutorialStep(
           step: 3,
           section: 1,
-          title: 'You',
-          description: 'How can I see the king?',
+          title: l10n.you,
+          description: l10n.t(
+            'How can I see the king?',
+            '¿Cómo puedo ver al rey?',
+          ),
           speaker: TutorialSpeaker.player,
           blockGameInteraction: true,
           allowedActions: const <TutorialAction>[],
@@ -446,9 +497,11 @@ class JourneyJackIntroController extends ChangeNotifier {
         TutorialStep(
           step: 4,
           section: 1,
-          title: 'Jack',
-          description:
-              'Oh I can take you to him, if you beat me at this card game.',
+          title: l10n.jack,
+          description: l10n.t(
+            'Oh I can take you to him, if you beat me at this card game.',
+            'Ah, yo te puedo llevar con él, si me ganas en este juego de cartas.',
+          ),
           speaker: TutorialSpeaker.guide,
           avatarId: jackAvatarId,
           blockGameInteraction: true,
@@ -459,8 +512,11 @@ class JourneyJackIntroController extends ChangeNotifier {
         TutorialStep(
           step: 5,
           section: 1,
-          title: 'You',
-          description: 'Really?',
+          title: l10n.you,
+          description: l10n.t(
+            'Really?',
+            '¿De verdad?',
+          ),
           speaker: TutorialSpeaker.player,
           blockGameInteraction: true,
           allowedActions: const <TutorialAction>[],
@@ -470,10 +526,13 @@ class JourneyJackIntroController extends ChangeNotifier {
         TutorialStep(
           step: 6,
           section: 1,
-          title: 'Jack',
-          description:
-              'Yes, silly isn\'t it? I\'ll take you there if you win. '
-              'But you\'ll have to give me your pricey mask if you lose.',
+          title: l10n.jack,
+          description: l10n.t(
+            'Yes, silly isn\'t it? I\'ll take you there if you win. '
+            'But you\'ll have to give me your pricey mask if you lose.',
+            'Sí, ¿no es una tontería? Te llevo allá si ganas. '
+            'Pero me tienes que dar esa máscara cara si pierdes.',
+          ),
           speaker: TutorialSpeaker.guide,
           avatarId: jackAvatarId,
           blockGameInteraction: true,
@@ -543,6 +602,7 @@ class JourneyJackIntroOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = JourneyL10n.of(context);
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -567,7 +627,7 @@ class JourneyJackIntroOverlay extends StatelessWidget {
               totalSteps: controller.steps.length,
               canGoNext: true,
               isLastScreen: isLast,
-              lastPrimaryLabel: 'Challenge',
+              lastPrimaryLabel: l10n.challenge,
               onPlay: _complete,
               onNext: () {
                 if (isLast) {
@@ -593,6 +653,11 @@ class JourneyQueenIntroController extends ChangeNotifier {
       journeyAvatarId(JourneyWorld.diamonds, JourneyRank.jack);
   static final String queenAvatarId =
       journeyAvatarId(JourneyWorld.diamonds, JourneyRank.queen);
+
+  /// Live locale flag from the Journey board (defaults to English).
+  ValueGetter<bool> isEs = () => false;
+
+  JourneyL10n get l10n => JourneyL10n(isEs());
 
   int _step = 0;
   bool _active = false;
@@ -629,128 +694,172 @@ class JourneyQueenIntroController extends ChangeNotifier {
         _line(
           step: 0,
           section: 0,
-          speaker: 'You',
-          text: 'Well, where\'s the King?',
+          speaker: l10n.you,
+          text: l10n.t(
+            'Well, where\'s the King?',
+            'Bueno, ¿dónde está el Rey?',
+          ),
           avatarId: null,
           who: TutorialSpeaker.player,
         ),
         _line(
           step: 1,
           section: 0,
-          speaker: 'Jack',
-          text:
-              'I know I said I\'d take you there, but first you need to '
-              'see the Queen.',
+          speaker: l10n.jack,
+          text: l10n.t(
+            'I know I said I\'d take you there, but first you need to '
+            'see the Queen.',
+            'Sé que dije que te llevaría allá, pero primero tienes que '
+            'ver a la Reina.',
+          ),
           avatarId: jackAvatarId,
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 2,
           section: 0,
-          speaker: 'You',
-          text: 'You cheated!',
+          speaker: l10n.you,
+          text: l10n.t(
+            'You cheated!',
+            '¡Me engañaste!',
+          ),
           avatarId: null,
           who: TutorialSpeaker.player,
         ),
         _line(
           step: 3,
           section: 0,
-          speaker: 'Jack',
-          text:
-              'Well, now you see how things are run here in the Diamonds '
-              'kingdom. Your Queen awaits.',
+          speaker: l10n.jack,
+          text: l10n.t(
+            'Well, now you see how things are run here in the Diamonds '
+            'kingdom. Your Queen awaits.',
+            'Bueno, ahora ves cómo se hacen las cosas aquí en el reino de '
+            'Diamantes. Tu Reina te espera.',
+          ),
           avatarId: jackAvatarId,
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 4,
           section: 1,
-          speaker: 'Queen',
-          text: 'What\'s this, Jack?',
+          speaker: l10n.queen,
+          text: l10n.t(
+            'What\'s this, Jack?',
+            '¿Qué es esto, Jota?',
+          ),
           avatarId: queenAvatarId,
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 5,
           section: 1,
-          speaker: 'Jack',
-          text:
-              'This kid beat me at my card game. I wagered that he would '
-              'see the King if he beat me, and you know we can\'t break a '
-              'wager, so I used the loophole and brought him to you instead.',
+          speaker: l10n.jack,
+          text: l10n.t(
+            'This kid beat me at my card game. I wagered that he would '
+            'see the King if he beat me, and you know we can\'t break a '
+            'wager, so I used the loophole and brought him to you instead.',
+            'Este chico me ganó en mi juego de cartas. Aposté que vería '
+            'al Rey si me ganaba, y tú sabes que no se puede romper una '
+            'apuesta, así que usé la trampa y lo traje a ti en su lugar.',
+          ),
           avatarId: jackAvatarId,
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 6,
           section: 1,
-          speaker: 'Queen',
-          text: 'You lost, huh? And why did he want to see the King?',
+          speaker: l10n.queen,
+          text: l10n.t(
+            'You lost, huh? And why did he want to see the King?',
+            'Perdiste, ¿eh? ¿Y por qué quería ver al Rey?',
+          ),
           avatarId: queenAvatarId,
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 7,
           section: 1,
-          speaker: 'Jack',
-          text:
-              'Well, he seems to be just another wanderer from the Spades '
-              'kingdom, but he\'s lost his memory and is trying to find his '
-              'home. And he\'s got a pricey magic mask that can\'t be taken '
-              'from him — he needs to willingly give it away.',
+          speaker: l10n.jack,
+          text: l10n.t(
+            'Well, he seems to be just another wanderer from the Spades '
+            'kingdom, but he\'s lost his memory and is trying to find his '
+            'home. And he\'s got a pricey magic mask that can\'t be taken '
+            'from him — he needs to willingly give it away.',
+            'Bueno, parece ser solo otro vagabundo del reino de Espadas, '
+            'pero perdió la memoria y está tratando de encontrar su '
+            'hogar. Y tiene una máscara mágica cara que no se le puede '
+            'quitar — tiene que entregarla de su propia voluntad.',
+          ),
           avatarId: jackAvatarId,
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 8,
           section: 2,
-          speaker: 'Queen',
-          text:
-              'Mmm, is that so? Well, I\'ve only ever lost a wager against '
-              'my husband. Bring him over.',
+          speaker: l10n.queen,
+          text: l10n.t(
+            'Mmm, is that so? Well, I\'ve only ever lost a wager against '
+            'my husband. Bring him over.',
+            'Mmm, ¿así es? Bueno, yo solo he perdido una apuesta contra '
+            'mi esposo. Tráelo.',
+          ),
           avatarId: queenAvatarId,
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 9,
           section: 2,
-          speaker: 'You',
-          text: 'Hello, I came here to talk to the King.',
+          speaker: l10n.you,
+          text: l10n.t(
+            'Hello, I came here to talk to the King.',
+            'Hola, vine aquí a hablar con el Rey.',
+          ),
           avatarId: null,
           who: TutorialSpeaker.player,
         ),
         _line(
           step: 10,
           section: 2,
-          speaker: 'Queen',
-          text:
-              'I heard you were good with card games. If you win, I\'ll '
-              'take you to him.',
+          speaker: l10n.queen,
+          text: l10n.t(
+            'I heard you were good with card games. If you win, I\'ll '
+            'take you to him.',
+            'Escuché que eres bueno con los juegos de cartas. Si ganas, te '
+            'llevo con él.',
+          ),
           avatarId: queenAvatarId,
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 11,
           section: 2,
-          speaker: 'You',
-          text: 'You\'ll take me directly to him. No more tricks.',
+          speaker: l10n.you,
+          text: l10n.t(
+            'You\'ll take me directly to him. No more tricks.',
+            'Me vas a llevar directo con él. Sin más trucos.',
+          ),
           avatarId: null,
           who: TutorialSpeaker.player,
         ),
         _line(
           step: 12,
           section: 2,
-          speaker: 'Queen',
-          text:
-              'Yes of course, but you\'ll owe me that mask if you lose.',
+          speaker: l10n.queen,
+          text: l10n.t(
+            'Yes of course, but you\'ll owe me that mask if you lose.',
+            'Sí, claro, pero me deberás esa máscara si pierdes.',
+          ),
           avatarId: queenAvatarId,
           who: TutorialSpeaker.guide,
         ),
         _line(
           step: 13,
           section: 2,
-          speaker: 'You',
-          text: 'Alright, let\'s do that.',
+          speaker: l10n.you,
+          text: l10n.t(
+            'Alright, let\'s do that.',
+            'Está bien, hagamos eso.',
+          ),
           avatarId: null,
           who: TutorialSpeaker.player,
           showSkip: false,
@@ -817,6 +926,7 @@ class JourneyQueenIntroOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = JourneyL10n.of(context);
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -841,7 +951,7 @@ class JourneyQueenIntroOverlay extends StatelessWidget {
               totalSteps: controller.steps.length,
               canGoNext: true,
               isLastScreen: isLast,
-              lastPrimaryLabel: 'Challenge',
+              lastPrimaryLabel: l10n.challenge,
               onPlay: _complete,
               onNext: () {
                 if (isLast) {

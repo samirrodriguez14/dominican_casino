@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -82,7 +83,7 @@ class _JourneyDefeatedCarouselState extends State<JourneyDefeatedCarousel> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${widget.worldDef.world.label} defeated',
+                '${JourneyL10n.of(context).worldLabel(widget.worldDef.world)} ${JourneyL10n.of(context).defeatedLabel}',
                 style: theme.caption.copyWith(
                   fontWeight: FontWeight.w700,
                   color: theme.muted,

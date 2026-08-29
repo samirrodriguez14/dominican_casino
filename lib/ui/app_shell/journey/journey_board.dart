@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/models/journey_instruction.dart';
@@ -258,6 +260,7 @@ class JourneyBoardState extends State<JourneyBoard>
     _spadesRuinsApproach = JourneySpadesRuinsApproachController();
     _spadesRuinsClimax = JourneySpadesRuinsClimaxController();
     _spadesFinale = JourneySpadesFinaleController();
+    _bindStoryLocale();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final repo = context.read<AppRepo>();
@@ -282,8 +285,36 @@ class JourneyBoardState extends State<JourneyBoard>
       _repo?.removeListener(_onRepoChanged);
       _repo = repo;
       _repo!.addListener(_onRepoChanged);
+      _bindStoryLocale();
     }
   }
+
+  /// Keep story dialogue controllers on the live app locale.
+  void _bindStoryLocale() {
+    bool isEs() => (_repo?.locale.languageCode ?? 'en') == 'es';
+    _coach.isEs = isEs;
+    _jackIntro.isEs = isEs;
+    _queenIntro.isEs = isEs;
+    _kingIntro.isEs = isEs;
+    _aceEscape.isEs = isEs;
+    _clubsJackIntro.isEs = isEs;
+    _clubsCourt.isEs = isEs;
+    _clubsAceOffer.isEs = isEs;
+    _clubsHeartsSendoff.isEs = isEs;
+    _heartsJackIntro.isEs = isEs;
+    _heartsQueenEscort.isEs = isEs;
+    _heartsKingIntro.isEs = isEs;
+    _heartsAceOffer.isEs = isEs;
+    _spadesJackIntro.isEs = isEs;
+    _spadesKingEscort.isEs = isEs;
+    _spadesCamp.isEs = isEs;
+    _spadesRuinsApproach.isEs = isEs;
+    _spadesRuinsClimax.isEs = isEs;
+    _spadesFinale.isEs = isEs;
+  }
+
+  JourneyL10n get _jl10n =>
+      JourneyL10n((_repo?.locale.languageCode ?? 'en') == 'es');
 
   @override
   void dispose() {
@@ -760,7 +791,7 @@ class JourneyBoardState extends State<JourneyBoard>
       card: card,
       message: taunt.world == JourneyWorld.spades &&
               taunt.rank == JourneyRank.king
-          ? 'I told you not to lose.'
+          ? _jl10n.iToldYouNotToLose
           : null,
     );
     if (!mounted) return;
@@ -1389,17 +1420,20 @@ class JourneyBoardState extends State<JourneyBoard>
 
     final claim = await showCupertinoDialog<bool>(
       context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(ace.title),
-        content: const Text('Claim the Ace of Spades.'),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Claim'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final j = JourneyL10n.of(ctx);
+        return CupertinoAlertDialog(
+          title: Text(j.cardTitle(ace)),
+          content: Text(j.claimAce(JourneyWorld.spades)),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(j.claim),
+            ),
+          ],
+        );
+      },
     );
     if (!mounted || claim != true) return;
 
@@ -1459,9 +1493,7 @@ class JourneyBoardState extends State<JourneyBoard>
     final action = await showJourneyLossTaunt(
       context,
       card: jack,
-      message:
-          'Beating me marks you as trouble. You cannot enter the King\'s camp. '
-          'Try again — and lose like a refugee.',
+      message: _jl10n.spadesJackMustLose,
     );
     if (!mounted) return;
     await repo.clearPendingSpadesJackCampDenied();
@@ -1567,17 +1599,20 @@ class JourneyBoardState extends State<JourneyBoard>
 
     final claim = await showCupertinoDialog<bool>(
       context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(ace.title),
-        content: const Text('Yes — I won.'),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Claim'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final j = JourneyL10n.of(ctx);
+        return CupertinoAlertDialog(
+          title: Text(j.cardTitle(ace)),
+          content: Text(j.yesIWon),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(j.claim),
+            ),
+          ],
+        );
+      },
     );
     if (!mounted || claim != true) return;
     await _resolveDefeat(ace);
@@ -1710,17 +1745,20 @@ class JourneyBoardState extends State<JourneyBoard>
 
     final claim = await showCupertinoDialog<bool>(
       context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(ace.title),
-        content: const Text('Claim the Ace of Clubs.'),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Claim'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final j = JourneyL10n.of(ctx);
+        return CupertinoAlertDialog(
+          title: Text(j.cardTitle(ace)),
+          content: Text(j.claimAce(JourneyWorld.clubs)),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(j.claim),
+            ),
+          ],
+        );
+      },
     );
     if (!mounted || claim != true) return;
 
@@ -1900,17 +1938,20 @@ class JourneyBoardState extends State<JourneyBoard>
 
     final claim = await showCupertinoDialog<bool>(
       context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(ace.title),
-        content: const Text('Claim the Ace of Hearts.'),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Claim'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final j = JourneyL10n.of(ctx);
+        return CupertinoAlertDialog(
+          title: Text(j.cardTitle(ace)),
+          content: Text(j.claimAce(JourneyWorld.hearts)),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(j.claim),
+            ),
+          ],
+        );
+      },
     );
     if (!mounted || claim != true) return;
 
@@ -2994,21 +3035,25 @@ class JourneyBoardState extends State<JourneyBoard>
     if (isAce) {
       final claim = await showCupertinoDialog<String>(
         context: context,
-        builder: (ctx) => CupertinoAlertDialog(
-          title: Text('Claim: ${card.title}'),
-          content: const Text('Collect this Ace and unlock the next world.'),
-          actions: [
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              onPressed: () => Navigator.of(ctx).pop('defeat'),
-              child: const Text('Claim'),
-            ),
-            CupertinoDialogAction(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        ),
+        builder: (ctx) {
+          final j = JourneyL10n.of(ctx);
+          final l10n = AppLocalizations.of(ctx);
+          return CupertinoAlertDialog(
+            title: Text(j.claimTitle(card)),
+            content: Text(j.claimAceCollectHint),
+            actions: [
+              CupertinoDialogAction(
+                isDefaultAction: true,
+                onPressed: () => Navigator.of(ctx).pop('defeat'),
+                child: Text(j.claim),
+              ),
+              CupertinoDialogAction(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(l10n.cancel),
+              ),
+            ],
+          );
+        },
       );
       if (!mounted || claim != 'defeat') return;
       await _resolveDefeat(card);
@@ -3022,37 +3067,37 @@ class JourneyBoardState extends State<JourneyBoard>
     final clubsCourt = _isClubsCourtChallenge(card);
     final outcome = await showCupertinoDialog<String>(
       context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(
-          alreadyDefeated
-              ? 'Replay: ${card.title}'
-              : clubsCourt
-                  ? 'Challenge: Clubs court'
-                  : 'Challenge: ${card.title}',
-        ),
-        content: Text(
-          alreadyDefeated
-              ? 'Play ${card.gameLabel} again against this challenger.'
-              : clubsCourt
-                  ? 'Play Rummy against the King, Queen, and Jack of Clubs.'
-                  : 'Play ${card.gameLabel} against this challenger.',
-        ),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.of(ctx).pop('play'),
-            child: const Text('Play'),
+      builder: (ctx) {
+        final j = JourneyL10n.of(ctx);
+        final l10n = AppLocalizations.of(ctx);
+        return CupertinoAlertDialog(
+          title: Text(
+            alreadyDefeated
+                ? j.replayTitle(card)
+                : j.challengeTitle(card, clubsCourt: clubsCourt),
           ),
-          CupertinoDialogAction(
-            onPressed: () => Navigator.of(ctx).pop('test'),
-            child: const Text('Test…'),
+          content: Text(
+            alreadyDefeated
+                ? j.replayBody(card)
+                : j.challengeBody(card, clubsCourt: clubsCourt),
           ),
-          CupertinoDialogAction(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(ctx).pop('play'),
+              child: Text(j.play),
+            ),
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(ctx).pop('test'),
+              child: Text(j.t('Test…', 'Probar…')),
+            ),
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.cancel),
+            ),
+          ],
+        );
+      },
     );
 
     if (!mounted || outcome == null) return;
@@ -3889,8 +3934,8 @@ class JourneyBoardState extends State<JourneyBoard>
                                 null &&
                             (_guideShowUnlockCta || _showStoryContinueCta),
                         unlockChallengerLabel: _showStoryContinueCta
-                            ? 'Continue'
-                            : 'Unlock next challenger',
+                            ? JourneyL10n.of(context).continueLabel
+                            : JourneyL10n.of(context).unlockNextChallenger,
                         onUnlockNextChallenger: _onUnlockNextChallenger,
                         showEnterKingdomCta: () {
                           final p = context.read<AppRepo>().journeyProgress;
@@ -3951,15 +3996,18 @@ class JourneyBoardState extends State<JourneyBoard>
                           return 1;
                         }(),
                         enterKingdomLabel: () {
+                          final j = JourneyL10n.of(context);
                           final p = context.read<AppRepo>().journeyProgress;
-                          if (_coach.isWaitingForLetter) return 'Continue';
+                          if (_coach.isWaitingForLetter) {
+                            return j.continueLabel;
+                          }
                           if (p.heartsAceGiftSeen &&
                               p.isDefeated(
                                 JourneyWorld.hearts,
                                 JourneyRank.ace,
                               ) &&
                               !p.hasEntered(JourneyWorld.spades)) {
-                            return 'Enter Spades kingdom';
+                            return j.enterKingdom(JourneyWorld.spades);
                           }
                           if (p.clubsAceGiftSeen &&
                               p.isDefeated(
@@ -3967,7 +4015,7 @@ class JourneyBoardState extends State<JourneyBoard>
                                 JourneyRank.ace,
                               ) &&
                               !p.hasEntered(JourneyWorld.hearts)) {
-                            return 'Enter Hearts kingdom';
+                            return j.enterKingdom(JourneyWorld.hearts);
                           }
                           if (p.diamondsAceEscapeSeen &&
                               p.isDefeated(
@@ -3975,9 +4023,9 @@ class JourneyBoardState extends State<JourneyBoard>
                                 JourneyRank.ace,
                               ) &&
                               !p.hasEntered(JourneyWorld.clubs)) {
-                            return 'Enter Clubs kingdom';
+                            return j.enterKingdom(JourneyWorld.clubs);
                           }
-                          return 'Enter Diamonds kingdom';
+                          return j.enterKingdom(JourneyWorld.diamonds);
                         }(),
                         onEnterKingdom: () {
                           final p = context.read<AppRepo>().journeyProgress;
@@ -4121,7 +4169,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _kingIntro.finish();
                     await _onKingIntroChallenge();
                   },
-                  lastPrimaryLabel: 'Challenge',
+                  lastPrimaryLabel: JourneyL10n.of(context).challenge,
                 ),
 
                 JourneyStoryOverlay(
@@ -4135,7 +4183,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _aceEscape.finish();
                     await _onAceEscapeComplete();
                   },
-                  lastPrimaryLabel: 'Run away',
+                  lastPrimaryLabel: JourneyL10n.of(context).runAway,
                 ),
 
                 JourneyStoryOverlay(
@@ -4149,7 +4197,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _clubsJackIntro.finish();
                     await _onClubsJackChallenge();
                   },
-                  lastPrimaryLabel: 'Challenge',
+                  lastPrimaryLabel: JourneyL10n.of(context).challenge,
                 ),
 
                 JourneyStoryOverlay(
@@ -4163,7 +4211,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _clubsCourt.finish();
                     await _onClubsCourtChallenge();
                   },
-                  lastPrimaryLabel: 'Challenge',
+                  lastPrimaryLabel: JourneyL10n.of(context).challenge,
                 ),
 
                 JourneyStoryOverlay(
@@ -4177,7 +4225,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _clubsAceOffer.finish();
                     await _onClubsAceOfferComplete();
                   },
-                  lastPrimaryLabel: 'Continue',
+                  lastPrimaryLabel: JourneyL10n.of(context).continueLabel,
                 ),
 
                 JourneyStoryOverlay(
@@ -4191,7 +4239,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _clubsHeartsSendoff.finish();
                     await _onClubsHeartsSendoffComplete();
                   },
-                  lastPrimaryLabel: 'Continue',
+                  lastPrimaryLabel: JourneyL10n.of(context).continueLabel,
                 ),
 
                 JourneyStoryOverlay(
@@ -4205,7 +4253,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _heartsJackIntro.finish();
                     await _onHeartsJackChallenge();
                   },
-                  lastPrimaryLabel: 'Challenge',
+                  lastPrimaryLabel: JourneyL10n.of(context).challenge,
                 ),
 
                 JourneyStoryOverlay(
@@ -4219,7 +4267,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _heartsQueenEscort.finish();
                     await _onHeartsQueenEscortChallenge();
                   },
-                  lastPrimaryLabel: 'Challenge',
+                  lastPrimaryLabel: JourneyL10n.of(context).challenge,
                 ),
 
                 JourneyStoryOverlay(
@@ -4233,7 +4281,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _heartsKingIntro.finish();
                     await _onHeartsKingIntroChallenge();
                   },
-                  lastPrimaryLabel: 'Challenge',
+                  lastPrimaryLabel: JourneyL10n.of(context).challenge,
                 ),
 
                 JourneyStoryOverlay(
@@ -4247,7 +4295,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _heartsAceOffer.finish();
                     await _onHeartsAceOfferComplete();
                   },
-                  lastPrimaryLabel: 'Continue',
+                  lastPrimaryLabel: JourneyL10n.of(context).continueLabel,
                 ),
 
                 JourneyStoryOverlay(
@@ -4261,7 +4309,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _spadesJackIntro.finish();
                     await _onSpadesJackChallenge();
                   },
-                  lastPrimaryLabel: 'Challenge',
+                  lastPrimaryLabel: JourneyL10n.of(context).challenge,
                 ),
 
                 JourneyStoryOverlay(
@@ -4275,7 +4323,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _spadesKingEscort.finish();
                     await _onSpadesKingEscortChallenge();
                   },
-                  lastPrimaryLabel: 'Challenge',
+                  lastPrimaryLabel: JourneyL10n.of(context).challenge,
                 ),
 
                 JourneyStoryOverlay(
@@ -4289,7 +4337,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _spadesCamp.finish();
                     await _onSpadesCampComplete();
                   },
-                  lastPrimaryLabel: 'Continue',
+                  lastPrimaryLabel: JourneyL10n.of(context).continueLabel,
                 ),
 
                 JourneyStoryOverlay(
@@ -4303,7 +4351,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _spadesRuinsApproach.finish();
                     await _onSpadesRuinsApproachComplete();
                   },
-                  lastPrimaryLabel: 'Continue',
+                  lastPrimaryLabel: JourneyL10n.of(context).continueLabel,
                 ),
 
                 JourneyStoryOverlay(
@@ -4317,7 +4365,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _spadesRuinsClimax.finish();
                     await _onSpadesRuinsClimaxComplete();
                   },
-                  lastPrimaryLabel: 'Continue',
+                  lastPrimaryLabel: JourneyL10n.of(context).continueLabel,
                 ),
 
                 JourneyStoryOverlay(
@@ -4331,7 +4379,7 @@ class JourneyBoardState extends State<JourneyBoard>
                     _spadesFinale.finish();
                     await _onSpadesFinaleComplete();
                   },
-                  lastPrimaryLabel: 'Continue',
+                  lastPrimaryLabel: JourneyL10n.of(context).continueLabel,
                 ),
 
                 if (_themeUnlockRewardWorld != null)

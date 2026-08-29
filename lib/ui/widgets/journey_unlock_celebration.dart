@@ -1,7 +1,9 @@
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/models/journey_progress.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -61,26 +63,18 @@ class _JourneyUnlockCelebrationOverlayState
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
+    final j = JourneyL10n.of(context);
     final reward = widget.reward;
     final avatarId = reward.avatarId;
-    Theme? unlockedTheme;
+    JourneyWorld? unlockedWorld;
     if (reward.themeId != null) {
       for (final value in Theme.values) {
         if (value.name == reward.themeId) {
-          unlockedTheme = value;
+          unlockedWorld = journeyWorldForTheme(value);
           break;
         }
       }
     }
-    final themeLabel = unlockedTheme == null
-        ? null
-        : switch (unlockedTheme) {
-            Theme.casino => 'Diamonds',
-            Theme.dune => 'Clubs',
-            Theme.fig => 'Hearts',
-            Theme.midnight => 'Spades',
-            Theme.sage => 'Base',
-          };
 
     return FadeTransition(
       opacity: CurvedAnimation(parent: _in, curve: Curves.easeOut),
@@ -120,7 +114,7 @@ class _JourneyUnlockCelebrationOverlayState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Unlocked',
+                          j.unlocked,
                           style: theme.title.copyWith(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -128,7 +122,7 @@ class _JourneyUnlockCelebrationOverlayState
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'New rewards from your victory.',
+                          j.newRewardsFromVictory,
                           textAlign: TextAlign.center,
                           style: theme.mutedText,
                         ),
@@ -141,7 +135,7 @@ class _JourneyUnlockCelebrationOverlayState
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            '${reward.rank.label} avatar',
+                            j.avatarReward(reward.rank),
                             style: theme.body.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -164,13 +158,13 @@ class _JourneyUnlockCelebrationOverlayState
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '${reward.world.label} Ace trophy',
+                            j.aceTrophy(reward.world),
                             style: theme.body.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
-                        if (themeLabel != null) ...[
+                        if (unlockedWorld != null) ...[
                           const SizedBox(height: 16),
                           Icon(
                             CupertinoIcons.paintbrush_fill,
@@ -179,7 +173,7 @@ class _JourneyUnlockCelebrationOverlayState
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '$themeLabel theme',
+                            j.worldThemeLabel(unlockedWorld),
                             style: theme.body.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -195,7 +189,7 @@ class _JourneyUnlockCelebrationOverlayState
                           borderRadius: BorderRadius.circular(12),
                           onPressed: SoundService.wrapTap(_dismiss),
                           child: Text(
-                            'Continue',
+                            j.continueLabel,
                             style: TextStyle(
                               color: theme.textPrimary,
                               fontWeight: FontWeight.w700,

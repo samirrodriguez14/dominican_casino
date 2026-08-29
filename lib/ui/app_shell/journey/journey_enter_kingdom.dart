@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,23 +8,21 @@ Future<bool> confirmEnterKingdom(
   BuildContext context, {
   required JourneyWorld world,
 }) async {
+  final j = JourneyL10n.of(context);
   final result = await showCupertinoDialog<bool>(
     context: context,
     builder: (ctx) => CupertinoAlertDialog(
-      title: Text('Entering ${world.label}'),
-      content: Text(
-        'You are entering the ${world.label} kingdom. '
-        'This will change the theme of the application.',
-      ),
+      title: Text(j.enteringKingdomTitle(world)),
+      content: Text(j.enteringKingdomBody(world)),
       actions: [
         CupertinoDialogAction(
           onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
-          child: const Text('Stay here'),
+          child: Text(j.stayHere),
         ),
         CupertinoDialogAction(
           isDefaultAction: true,
           onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
-          child: const Text('Continue'),
+          child: Text(j.continueLabel),
         ),
       ],
     ),
@@ -36,23 +35,21 @@ Future<bool> confirmReturnToProgressKingdom(
   BuildContext context, {
   required JourneyWorld world,
 }) async {
+  final j = JourneyL10n.of(context);
   final result = await showCupertinoDialog<bool>(
     context: context,
     builder: (ctx) => CupertinoAlertDialog(
-      title: Text('Return to ${world.label}?'),
-      content: Text(
-        'Closing this will take you back to your current progress in the '
-        '${world.label} kingdom. This will change the theme of the application.',
-      ),
+      title: Text(j.returnToKingdomTitle(world)),
+      content: Text(j.returnToKingdomBody(world)),
       actions: [
         CupertinoDialogAction(
           onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, false)),
-          child: const Text('Keep browsing'),
+          child: Text(j.keepBrowsing),
         ),
         CupertinoDialogAction(
           isDefaultAction: true,
           onPressed: SoundService.wrapTap(() => Navigator.pop(ctx, true)),
-          child: const Text('Return'),
+          child: Text(j.returnLabel),
         ),
       ],
     ),

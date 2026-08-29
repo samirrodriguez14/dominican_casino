@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
@@ -19,12 +20,13 @@ Future<JourneyLossAction?> showJourneyLossTaunt(
   String? message,
 }) {
   final palette = journeyPaletteFor(card.world);
-  final kingdomLabel = card.world.label;
+  final j = JourneyL10n.of(context);
+  final kingdomLabel = j.worldLabel(card.world);
   return showCupertinoDialog<JourneyLossAction>(
     context: context,
     builder: (ctx) {
       return CupertinoAlertDialog(
-        title: Text(card.title),
+        title: Text(j.cardTitle(card)),
         content: Padding(
           padding: const EdgeInsets.only(top: 12),
           child: Column(
@@ -43,7 +45,7 @@ Future<JourneyLossAction?> showJourneyLossTaunt(
                       width: 100,
                       child: Center(
                         child: Text(
-                          card.rank.label,
+                          j.rankLabel(card.rank),
                           style: TextStyle(color: palette.text),
                         ),
                       ),
@@ -53,8 +55,7 @@ Future<JourneyLossAction?> showJourneyLossTaunt(
               ),
               const SizedBox(height: 14),
               Text(
-                message ??
-                    'Haha, you didn\'t stand a chance, kiddo. Give me that mask…',
+                message ?? j.lossTauntDefault,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: palette.text.withValues(alpha: 0.9),
@@ -70,14 +71,14 @@ Future<JourneyLossAction?> showJourneyLossTaunt(
             onPressed: SoundService.wrapTap(
               () => Navigator.of(ctx).pop(JourneyLossAction.replay),
             ),
-            child: const Text('Replay'),
+            child: Text(j.replay),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
             onPressed: SoundService.wrapTap(
               () => Navigator.of(ctx).pop(JourneyLossAction.restartKingdom),
             ),
-            child: Text('Back to $kingdomLabel'),
+            child: Text(j.backToKingdom(kingdomLabel)),
           ),
         ],
       );
@@ -91,11 +92,12 @@ Future<void> showJourneyReplayPraise(
   required JourneyCardDef card,
 }) {
   final palette = journeyPaletteFor(card.world);
+  final j = JourneyL10n.of(context);
   return showCupertinoDialog<void>(
     context: context,
     builder: (ctx) {
       return CupertinoAlertDialog(
-        title: Text(card.title),
+        title: Text(j.cardTitle(card)),
         content: Padding(
           padding: const EdgeInsets.only(top: 12),
           child: Column(
@@ -114,7 +116,7 @@ Future<void> showJourneyReplayPraise(
                       width: 100,
                       child: Center(
                         child: Text(
-                          card.rank.label,
+                          j.rankLabel(card.rank),
                           style: TextStyle(color: palette.text),
                         ),
                       ),
@@ -124,7 +126,7 @@ Future<void> showJourneyReplayPraise(
               ),
               const SizedBox(height: 14),
               Text(
-                'Good job. It seems you haven\'t lost your touch.',
+                j.replayPraise,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: palette.text.withValues(alpha: 0.9),
@@ -138,7 +140,7 @@ Future<void> showJourneyReplayPraise(
           CupertinoDialogAction(
             isDefaultAction: true,
             onPressed: SoundService.wrapTap(() => Navigator.of(ctx).pop()),
-            child: const Text('Thanks'),
+            child: Text(j.thanks),
           ),
         ],
       );

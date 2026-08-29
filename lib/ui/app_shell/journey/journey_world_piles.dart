@@ -1,3 +1,4 @@
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/models/journey.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/style/journey_worlds.dart';
@@ -320,7 +321,7 @@ class _WorldPile extends StatelessWidget {
           Opacity(
             opacity: cardVisible ? 1 : 0.45,
             child: Text(
-              '${worldDef.world.suitSymbol} ${worldDef.world.label}',
+              '${worldDef.world.suitSymbol} ${JourneyL10n.of(context).worldLabel(worldDef.world)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.caption.copyWith(
@@ -353,7 +354,8 @@ class _CeremonySealedPileSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
-    final label = timeline.pastBoom ? world.label : 'Sealed';
+    final j = JourneyL10n.of(context);
+    final label = timeline.pastBoom ? j.worldLabel(world) : j.sealed;
     return Column(
       children: [
         Expanded(
