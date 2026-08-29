@@ -125,6 +125,36 @@ class HomeXpClaim {
   }
 }
 
+/// Unlock gift that should fly into the Profile tab and be "eaten".
+class PendingProfileGift {
+  const PendingProfileGift({
+    this.world,
+    this.avatarId,
+    this.openLooks = false,
+    this.focusLeagueTip = false,
+    this.switchToProfile = true,
+  });
+
+  /// Theme + league badges for a kingdom enter unlock.
+  final JourneyWorld? world;
+
+  /// Journey face / painted avatar unlock.
+  final String? avatarId;
+
+  /// Open Looks focused on [world]'s theme after landing.
+  final bool openLooks;
+
+  /// Keep the league tip queue after delivery.
+  final bool focusLeagueTip;
+
+  /// When false, only fly/eat into the Profile tab — stay on the current tab
+  /// (e.g. Journey after claiming an avatar).
+  final bool switchToProfile;
+
+  bool get hasContent =>
+      world != null || (avatarId != null && avatarId!.isNotEmpty);
+}
+
 class AppRepo extends ChangeNotifier {
   Theme _appTheme = Theme.sage;
   Theme get appTheme => _appTheme;
@@ -162,6 +192,15 @@ class AppRepo extends ChangeNotifier {
 
   /// Set when Journey theme unlock offers "Go to profile" tip.
   bool _pendingProfileThemeTip = false;
+
+  /// Level just reached — show the level-up popup (any level gain).
+  int? _pendingLevelCelebration;
+  int? get pendingLevelCelebration => _pendingLevelCelebration;
+
+  /// Theme / avatar / league gift flying into the Profile tab.
+  PendingProfileGift? _pendingProfileGift;
+  PendingProfileGift? get pendingProfileGift => _pendingProfileGift;
+
   HomeCoinClaim? _pendingHomeCoinClaim;
   HomeCoinClaim? get pendingHomeCoinClaim => _pendingHomeCoinClaim;
   HomeXpClaim? _pendingHomeXpClaim;
@@ -199,6 +238,7 @@ class AppRepo extends ChangeNotifier {
   int get journeyStoryEpoch => _journeyStoryEpoch;
   bool _openJourneyRequest = false;
   bool get openJourneyRequest => _openJourneyRequest;
+  bool _openJourneyInstructionsRequest = false;
   StreamSubscription<String>? _fcmTokenSub;
   String? _activeGameId;
   Future<void> _activeGameWrite = Future.value();
@@ -528,8 +568,23 @@ class AppRepo extends ChangeNotifier {
     return true;
   }
 
-  void requestOpenJourney() {
+  /// Queue a theme/avatar/league gift to fly into the Profile tab.
+  void requestProfileGift(PendingProfileGift gift) {
+    _pendingProfileGift = gift;
+    notifyListeners();
+  }
+
+  PendingProfileGift? takePendingProfileGift() {
+    final v = _pendingProfileGift;
+    _pendingProfileGift = null;
+    return v;
+  }
+
+  void requestOpenJourney({bool openInstructions = false}) {
     _openJourneyRequest = true;
+    if (openInstructions) {
+      _openJourneyInstructionsRequest = true;
+    }
     notifyListeners();
   }
 
@@ -537,6 +592,18 @@ class AppRepo extends ChangeNotifier {
     final v = _openJourneyRequest;
     _openJourneyRequest = false;
     return v;
+  }
+
+  bool takeOpenJourneyInstructionsRequest() {
+    final v = _openJourneyInstructionsRequest;
+    _openJourneyInstructionsRequest = false;
+    return v;
+  }
+
+  void clearPendingLevelCelebration() {
+    if (_pendingLevelCelebration == null) return;
+    _pendingLevelCelebration = null;
+    notifyListeners();
   }
 
   JourneyDisplaySnapshot journeyBoardForLevel([int? level]) {
@@ -1036,7 +1103,10 @@ class AppRepo extends ChangeNotifier {
 
     _journeyStoryEpoch += 1;
     _openJourneyRequest = false;
+    _openJourneyInstructionsRequest = false;
     _pendingProfileThemeTip = false;
+    _pendingLevelCelebration = null;
+    _pendingProfileGift = null;
     unawaited(syncPublicProfile());
     notifyListeners();
   }
@@ -2847,7 +2917,7 @@ class AppRepo extends ChangeNotifier {
     await _persistPlayer();
     final levelAfter = experienceProgress.level;
     if (levelAfter > levelBefore) {
-      _noteKingdomsUnlockedByLevel(fromLevel: levelBefore, toLevel: levelAfter);
+      _noteLevelUp(fromLevel: levelBefore, toLevel: levelAfter);
       unawaited(syncPublicProfile());
     }
     notifyListeners();
@@ -2864,25 +2934,13 @@ class AppRepo extends ChangeNotifier {
     await grantXp(delta);
   }
 
-  /// When level catches up after a prior Ace, open Journey so the player can enter.
-  void _noteKingdomsUnlockedByLevel({
+  /// Queue the level-up popup for the highest level just reached.
+  void _noteLevelUp({
     required int fromLevel,
     required int toLevel,
   }) {
-    for (final world in JourneyWorld.values) {
-      if (world.requiredLevel <= fromLevel) continue;
-      if (world.requiredLevel > toLevel) continue;
-      if (_journeyProgress.hasEntered(world)) continue;
-      if (!_journeyProgress.canUnlockThemeFor(
-        world,
-        playerLevel: toLevel,
-      )) {
-        continue;
-      }
-      // Story already cleared; level was the missing piece.
-      requestOpenJourney();
-      break;
-    }
+    if (toLevel <= fromLevel) return;
+    _pendingLevelCelebration = toLevel;
   }
 
   ExperienceProgress get experienceProgress =>
@@ -4544,6 +4602,8 @@ class AppRepo extends ChangeNotifier {
     _journeyProgress = JourneyProgress.empty();
     _journeyStoryEpoch += 1;
     _pendingProfileThemeTip = false;
+    _pendingLevelCelebration = null;
+    _pendingProfileGift = null;
     _resetLooksInMemory();
     appStatus = AppStatus.notReady;
   }

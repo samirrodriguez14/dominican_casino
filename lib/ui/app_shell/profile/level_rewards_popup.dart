@@ -284,7 +284,8 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
                             : null,
                         onOpenJourney: () {
                           Navigator.pop(context);
-                          repo.requestOpenJourney();
+                          repo.requestShellTab(1);
+                          repo.requestOpenJourney(openInstructions: true);
                         },
                       );
                     },

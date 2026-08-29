@@ -144,6 +144,14 @@ class GamesScreenState extends State<GamesScreen>
     await _journeyKey.currentState?.restoreJourneySettled();
   }
 
+  Future<void> openJourneyInstructions() async {
+    await _restoreJourneyAfterMatch();
+    if (!mounted) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    _journeyKey.currentState?.openJourneyInstructions();
+  }
+
   Rect? _toStage(Rect global) {
     final box = _stageKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return null;
@@ -269,10 +277,16 @@ class GamesScreenState extends State<GamesScreen>
       (repo) => repo.openJourneyRequest,
     );
     if (openJourney) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        if (!context.read<AppRepo>().takeOpenJourneyRequest()) return;
-        _restoreJourneyAfterMatch();
+        final repo = context.read<AppRepo>();
+        if (!repo.takeOpenJourneyRequest()) return;
+        final openInstructions = repo.takeOpenJourneyInstructionsRequest();
+        if (openInstructions) {
+          await openJourneyInstructions();
+        } else {
+          await _restoreJourneyAfterMatch();
+        }
       });
     }
     return Padding(

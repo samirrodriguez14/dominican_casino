@@ -459,6 +459,19 @@ class AppLocalizations {
   String kingdomAlreadyUnlocked(String kingdom) =>
       isEs ? '$kingdom desbloqueado' : '$kingdom unlocked';
   String get goToJourney => isEs ? 'Ir al Journey' : 'Go to Journey';
+  String get goToRewards =>
+      isEs ? 'Ir a recompensas' : 'Go to rewards';
+  String get exit => isEs ? 'Salir' : 'Exit';
+  String levelReachedTitle(int level) =>
+      isEs ? '¡Nivel $level!' : 'Level $level!';
+  String get levelReachedBody => isEs
+      ? 'Felicitaciones. Desbloqueaste nuevas recompensas.'
+      : 'Congrats — you reached a new level. Unlocked rewards.';
+  String levelReachedBodyWithJourney(String kingdom) => isEs
+      ? 'Felicitaciones. Desbloqueaste nuevas recompensas. '
+          'Hay progreso disponible en Journey ($kingdom).'
+      : 'Congrats — you reached a new level. Unlocked rewards. '
+          'Progress is available in Journey ($kingdom).';
   String levelChallengeProgress(int current, int goal) => '$current/$goal';
 
   String levelChallengeTitle(LevelChallengeId id) {

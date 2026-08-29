@@ -2109,6 +2109,9 @@ class JourneyBoardState extends State<JourneyBoard>
     });
   }
 
+  /// Public entry from shell / rewards → Journey instructions.
+  void openJourneyInstructions({int? page}) => _openGuide(page: page);
+
   void _closeGuide() {
     final resumePhaseB = _coach.isWaitingForLetter;
     setState(() {
@@ -4421,9 +4424,15 @@ class JourneyBoardState extends State<JourneyBoard>
                       world: _themeUnlockRewardWorld!,
                       onGoToProfile: () {
                         final repo = context.read<AppRepo>();
+                        repo.requestProfileGift(
+                          PendingProfileGift(
+                            world: _themeUnlockRewardWorld,
+                            openLooks: true,
+                            focusLeagueTip: true,
+                          ),
+                        );
                         repo.requestProfileThemeTip();
                         _onThemeUnlockRewardDismissed(goToProfile: true);
-                        repo.requestShellTab(2);
                       },
                       onContinue: () {
                         _onThemeUnlockRewardDismissed(goToProfile: false);

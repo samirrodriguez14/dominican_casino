@@ -96,6 +96,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _maybeStartCoach() {
+    if (_looksMode) return;
     if (_coachScheduled || _coach.isActive || _coach.isFinished) return;
     final repo = context.read<AppRepo>();
     final player = repo.player;
@@ -127,10 +128,9 @@ class ProfileScreenState extends State<ProfileScreen> {
     _carouselKey.currentState?.toggleFront();
   }
 
-  void openLooks() {
-    if (_looksMode) return;
+  void openLooks({Theme? focusTheme}) {
     final repo = context.read<AppRepo>();
-    final current = repo.appTheme;
+    final current = focusTheme ?? repo.appTheme;
     final packs = visibleThemePacksForProfile(repo.ownedPacks);
     final index = packs.indexWhere((pack) => pack.id == current);
     setState(() {
@@ -146,6 +146,21 @@ class ProfileScreenState extends State<ProfileScreen> {
       _looksMode = false;
       _looksGrid = false;
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybeStartCoach();
+    });
+  }
+
+  /// After a gift lands: show Looks for a theme, or identity for an avatar tip.
+  Future<void> receiveProfileGift(PendingProfileGift gift) async {
+    if (gift.openLooks && gift.world != null) {
+      openLooks(focusTheme: gift.world!.themeId);
+      // League tip waits until Looks is closed (see [closeLooks]).
+      return;
+    }
+    await _ensureProfileCardFront();
+    _maybeStartCoach();
   }
 
   void _toggleLooks() {

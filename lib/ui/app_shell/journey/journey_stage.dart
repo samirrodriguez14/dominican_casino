@@ -295,6 +295,11 @@ class JourneyStageState extends State<JourneyStage>
     );
   }
 
+  /// Expand the Journey instruction deck (e.g. from level rewards).
+  void openJourneyInstructions() {
+    _boardKey.currentState?.openJourneyInstructions();
+  }
+
   void _onWorldThemeEquipped(JourneyWorld world) {
     if (mounted) setState(() {});
   }
