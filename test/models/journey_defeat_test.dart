@@ -102,6 +102,18 @@ void main() {
       JourneyRank.ace,
       playerLevel: 2,
     );
+    // Clubs needs level 5 — Ace at level 2 does not open the next pile yet.
+    expect(r.unlockedWorld, isNull);
+    expect(
+      r.worlds.firstWhere((w) => w.world == JourneyWorld.clubs).unlocked,
+      isFalse,
+    );
+
+    r = snap.withDefeat(
+      JourneyWorld.diamonds,
+      JourneyRank.ace,
+      playerLevel: 5,
+    );
     expect(r.unlockedWorld, JourneyWorld.clubs);
     expect(r.revealedCard?.world, JourneyWorld.clubs);
     expect(r.revealedCard?.rank, JourneyRank.jack);
@@ -125,16 +137,44 @@ void main() {
     expect(diamonds.cardOf(JourneyRank.queen)!.gameMode, GameMode.rummy);
   });
 
-  test('journey themes unlock only after prior Ace', () {
+  test('journey themes unlock only after prior Ace and required level', () {
     final progress = JourneyProgress.empty();
-    expect(progress.canUnlockThemeFor(JourneyWorld.diamonds), isTrue);
-    expect(progress.canUnlockThemeFor(JourneyWorld.clubs), isFalse);
-    expect(progress.canUnlockThemeFor(JourneyWorld.spades), isFalse);
+    expect(
+      progress.canUnlockThemeFor(JourneyWorld.diamonds, playerLevel: 1),
+      isTrue,
+    );
+    expect(
+      progress.canUnlockThemeFor(JourneyWorld.clubs, playerLevel: 5),
+      isFalse,
+    );
+    expect(
+      progress.canUnlockThemeFor(JourneyWorld.spades, playerLevel: 15),
+      isFalse,
+    );
 
     progress.recordDefeat(JourneyWorld.hearts, JourneyRank.ace);
-    expect(progress.canUnlockThemeFor(JourneyWorld.spades), isTrue);
+    expect(
+      progress.canUnlockThemeFor(JourneyWorld.spades, playerLevel: 10),
+      isFalse,
+    );
+    expect(
+      progress.canUnlockThemeFor(JourneyWorld.spades, playerLevel: 15),
+      isTrue,
+    );
     expect(progress.hasEntered(JourneyWorld.spades), isFalse);
     expect(progress.hasEntered(JourneyWorld.hearts), isTrue);
+  });
+
+  test('clubs stays sealed until level 5 even after diamonds Ace', () {
+    final progress = JourneyProgress.empty()
+      ..markEntered(JourneyWorld.diamonds)
+      ..recordDefeat(JourneyWorld.diamonds, JourneyRank.ace);
+
+    final low = hydrateJourneyBoard(progress: progress, playerLevel: 4);
+    expect(low.worldOf(JourneyWorld.clubs).unlocked, isFalse);
+
+    final high = hydrateJourneyBoard(progress: progress, playerLevel: 5);
+    expect(high.worldOf(JourneyWorld.clubs).unlocked, isTrue);
   });
 
   test('diamondsJackIntroSeen persists and migrates with jack unlock', () {

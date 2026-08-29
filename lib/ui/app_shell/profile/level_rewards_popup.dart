@@ -1,4 +1,5 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/l10n/journey_l10n.dart';
 import 'package:dominican_casino/models/experience.dart';
 import 'package:dominican_casino/models/level_challenge.dart';
 import 'package:dominican_casino/models/level_rewards.dart';
@@ -6,6 +7,7 @@ import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/ui/animations/currency_burst.dart';
 import 'package:dominican_casino/ui/widgets/coin_icon.dart';
@@ -40,7 +42,7 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
   final Map<int, GlobalKey> _challengeLevelKeys = {
     for (final level in _challengeLevels) level: GlobalKey(),
   };
-  static const double _rowExtent = 76;
+  static const double _rowExtent = 88;
   bool _claiming = false;
   _PopupTab _tab = _PopupTab.rewards;
 
@@ -264,9 +266,26 @@ class _LevelRewardsPopupCardState extends State<LevelRewardsPopupCard> {
                         showBottomLine: index < _roadmapLevels.length - 1,
                         topLineReached: pathAboveReached,
                         bottomLineReached: pathBelowReached,
+                        kingdomStatus: def.unlocksJourneyWorld == null
+                            ? null
+                            : journeyKingdomRewardStatus(
+                                world: def.unlocksJourneyWorld!,
+                                playerLevel: progress.level,
+                                hasEntered: repo.journeyProgress
+                                    .hasEntered(def.unlocksJourneyWorld!),
+                                canUnlock: repo.journeyProgress
+                                    .canUnlockThemeFor(
+                                  def.unlocksJourneyWorld!,
+                                  playerLevel: progress.level,
+                                ),
+                              ),
                         onClaim: claimable && !_claiming
                             ? (origin) => _claimReward(def, origin)
                             : null,
+                        onOpenJourney: () {
+                          Navigator.pop(context);
+                          repo.requestOpenJourney();
+                        },
                       );
                     },
                   )
@@ -695,7 +714,9 @@ class _RoadmapRow extends StatelessWidget {
     required this.showBottomLine,
     required this.topLineReached,
     required this.bottomLineReached,
+    this.kingdomStatus,
     this.onClaim,
+    this.onOpenJourney,
   });
 
   final LevelRewardDef def;
@@ -709,12 +730,15 @@ class _RoadmapRow extends StatelessWidget {
   final bool showBottomLine;
   final bool topLineReached;
   final bool bottomLineReached;
+  final JourneyKingdomRewardStatus? kingdomStatus;
   final void Function(Offset? origin)? onClaim;
+  final VoidCallback? onOpenJourney;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final l10n = AppLocalizations.of(context);
+    final journeyL10n = JourneyL10n.of(context);
     final energy = def.isEnergy;
     final icon = energy ? CupertinoIcons.bolt_fill : coinIcon;
     final iconColor = energy ? theme.warning : theme.turnHighlight;
@@ -725,6 +749,7 @@ class _RoadmapRow extends StatelessWidget {
         : reached
             ? theme.xp.withValues(alpha: 0.75)
             : theme.muted.withValues(alpha: 0.55);
+    final kingdom = def.unlocksJourneyWorld;
 
     return Opacity(
       opacity: opacity,
@@ -767,25 +792,61 @@ class _RoadmapRow extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Text(
-                      l10n.levelLabel(def.level),
-                      style: theme.caption.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: theme.xp,
-                        fontSize: 12,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                l10n.levelLabel(def.level),
+                                style: theme.caption.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: theme.xp,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(icon, size: 18, color: iconColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                '+${def.amount}',
+                                style: theme.title.copyWith(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (kingdom != null && kingdomStatus != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '${kingdom.suitSymbol} ${_kingdomCaption(
+                                l10n,
+                                journeyL10n,
+                                kingdom,
+                                kingdomStatus!,
+                              )}',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.caption.copyWith(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: kingdomStatus ==
+                                            JourneyKingdomRewardStatus
+                                                .readyToEnter ||
+                                        emphasizeNext ||
+                                        isCurrent
+                                    ? theme.textPrimary
+                                    : theme.muted,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Icon(icon, size: 20, color: iconColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      '+${def.amount}',
-                      style: theme.title.copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const Spacer(),
                     if (claimed)
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -844,6 +905,28 @@ class _RoadmapRow extends StatelessWidget {
                           );
                         },
                       )
+                    else if (kingdomStatus ==
+                        JourneyKingdomRewardStatus.readyToEnter)
+                      CupertinoButton(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        minimumSize: Size.zero,
+                        color: theme.turnHighlight.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(999),
+                        onPressed: onOpenJourney == null
+                            ? null
+                            : SoundService.wrapTap(onOpenJourney!),
+                        child: Text(
+                          l10n.goToJourney,
+                          style: theme.caption.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF1A1224),
+                            fontSize: 11,
+                          ),
+                        ),
+                      )
                     else
                       Icon(
                         CupertinoIcons.lock_fill,
@@ -858,6 +941,24 @@ class _RoadmapRow extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String _kingdomCaption(
+    AppLocalizations l10n,
+    JourneyL10n journeyL10n,
+    JourneyWorld kingdom,
+    JourneyKingdomRewardStatus status,
+  ) {
+    final name = journeyL10n.worldLabel(kingdom);
+    return switch (status) {
+      JourneyKingdomRewardStatus.lockedByLevel => l10n.unlocksKingdom(name),
+      JourneyKingdomRewardStatus.needsPriorAce =>
+        l10n.kingdomNeedsPriorAce(name),
+      JourneyKingdomRewardStatus.readyToEnter =>
+        l10n.kingdomReadyToEnter(name),
+      JourneyKingdomRewardStatus.entered =>
+        l10n.kingdomAlreadyUnlocked(name),
+    };
   }
 }
 

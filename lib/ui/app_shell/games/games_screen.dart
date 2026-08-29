@@ -337,22 +337,50 @@ class GamesScreenState extends State<GamesScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _GamesMatchActions(
-                        onQuickPlay: () => showQuickPlayDialog(context),
-                        onJoinById: () => showJoinGameDialog(context),
+                      _QuickMatchButton(
+                        onPressed: () => showQuickPlayDialog(context),
                       ),
-                      CupertinoButton(
-                        padding: const EdgeInsets.all(8),
-                        minimumSize: Size.zero,
-                        onPressed: SoundService.wrapTap(toggleGrid),
-                        child: Icon(
-                          gridOn
-                              ? CupertinoIcons.rectangle_stack
-                              : CupertinoIcons.square_grid_2x2,
-                          size: 22,
-                          color: theme.textPrimary,
-                          semanticLabel: gridOn ? 'Stacked view' : 'Grid view',
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CupertinoButton(
+                            padding: const EdgeInsets.all(8),
+                            minimumSize: Size.zero,
+                            onPressed: SoundService.wrapTap(
+                              () => showJoinGameDialog(context),
+                            ),
+                            child: Semantics(
+                              label: AppLocalizations.of(context).joinById,
+                              button: true,
+                              child: SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: IconTheme(
+                                  data: IconThemeData(
+                                    color: theme.textPrimary,
+                                    size: 22,
+                                  ),
+                                  child: const _HashPlayIcon(),
+                                ),
+                              ),
+                            ),
+                          ),
+                          CupertinoButton(
+                            padding: const EdgeInsets.all(8),
+                            minimumSize: Size.zero,
+                            onPressed: SoundService.wrapTap(toggleGrid),
+                            child: Icon(
+                              gridOn
+                                  ? CupertinoIcons.rectangle_stack
+                                  : CupertinoIcons.square_grid_2x2,
+                              size: 22,
+                              color: theme.textPrimary,
+                              semanticLabel:
+                                  gridOn ? 'Stacked view' : 'Grid view',
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -390,66 +418,61 @@ class GamesScreenState extends State<GamesScreen>
   }
 }
 
-class _GamesMatchActions extends StatelessWidget {
-  const _GamesMatchActions({
-    required this.onQuickPlay,
-    required this.onJoinById,
-  });
+class _QuickMatchButton extends StatelessWidget {
+  const _QuickMatchButton({required this.onPressed});
 
-  final VoidCallback onQuickPlay;
-  final VoidCallback onJoinById;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 48),
-      child: Column(
+    return CupertinoButton(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+      color: theme.turnHighlight,
+      borderRadius: BorderRadius.circular(14),
+      onPressed: SoundService.wrapTap(onPressed),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-            color: theme.turnHighlight,
-            borderRadius: BorderRadius.circular(14),
-            onPressed: SoundService.wrapTap(onQuickPlay),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  CupertinoIcons.bolt,
-                  size: 18,
-                  color: theme.background,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  l10n.quickPlay,
-                  style: theme.title.copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: theme.background,
-                  ),
-                ),
-              ],
-            ),
+          Icon(
+            CupertinoIcons.bolt,
+            size: 18,
+            color: theme.background,
           ),
-          CupertinoButton(
-            padding: const EdgeInsets.only(top: 10, bottom: 0),
-            minimumSize: Size.zero,
-            onPressed: SoundService.wrapTap(onJoinById),
-            child: Text(
-              l10n.joinById,
-              style: theme.body.copyWith(
-                fontSize: 13,
-                color: theme.muted,
-                decoration: TextDecoration.underline,
-                decorationColor: theme.muted,
-              ),
+          const SizedBox(width: 6),
+          Text(
+            l10n.quickPlay,
+            style: theme.title.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: theme.background,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Hash / number with a small play triangle.
+class _HashPlayIcon extends StatelessWidget {
+  const _HashPlayIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = IconTheme.of(context).color;
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Icon(CupertinoIcons.number, size: 20, color: color),
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: Icon(CupertinoIcons.play_fill, size: 11, color: color),
+        ),
+      ],
     );
   }
 }

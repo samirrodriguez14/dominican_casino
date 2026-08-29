@@ -417,6 +417,16 @@ class AppLocalizations {
   String get claimed => isEs ? 'Reclamado' : 'Claimed';
   String reachLevelToUnlock(int n) =>
       isEs ? 'Alcanza el nivel $n para desbloquear' : 'Reach level $n to unlock';
+  String unlocksKingdom(String kingdom) =>
+      isEs ? 'Desbloquea $kingdom' : 'Unlocks $kingdom';
+  String kingdomReadyToEnter(String kingdom) =>
+      isEs ? 'Listo — entra a $kingdom' : 'Ready — enter $kingdom';
+  String kingdomNeedsPriorAce(String kingdom) => isEs
+      ? 'Gana el As anterior para abrir $kingdom'
+      : 'Beat the prior Ace to open $kingdom';
+  String kingdomAlreadyUnlocked(String kingdom) =>
+      isEs ? '$kingdom desbloqueado' : '$kingdom unlocked';
+  String get goToJourney => isEs ? 'Ir al Journey' : 'Go to Journey';
   String levelChallengeProgress(int current, int goal) => '$current/$goal';
 
   String levelChallengeTitle(LevelChallengeId id) {

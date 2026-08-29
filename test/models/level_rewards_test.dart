@@ -39,6 +39,15 @@ void main() {
       expect(rewardForLevel(5)?.kind, LevelRewardKind.coins);
       expect(rewardForLevel(6)?.kind, LevelRewardKind.energy);
     });
+
+    test('kingdom unlocks at levels 1, 5, 10, 15', () {
+      expect(rewardForLevel(1)?.unlocksJourneyWorld?.name, 'diamonds');
+      expect(rewardForLevel(5)?.unlocksJourneyWorld?.name, 'clubs');
+      expect(rewardForLevel(10)?.unlocksJourneyWorld?.name, 'hearts');
+      expect(rewardForLevel(15)?.unlocksJourneyWorld?.name, 'spades');
+      expect(rewardForLevel(2)?.unlocksJourneyWorld, isNull);
+      expect(rewardForLevel(20)?.unlocksJourneyWorld, isNull);
+    });
   });
 
   group('claim eligibility helpers', () {

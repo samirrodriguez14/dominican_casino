@@ -54,6 +54,22 @@ enum JourneyWorld {
     JourneyWorld.hearts => Theme.fig,
     JourneyWorld.spades => Theme.midnight,
   };
+
+  /// Player level required before this kingdom can unlock.
+  int get requiredLevel => switch (this) {
+    JourneyWorld.diamonds => 1,
+    JourneyWorld.clubs => 5,
+    JourneyWorld.hearts => 10,
+    JourneyWorld.spades => 15,
+  };
+}
+
+/// Kingdom that becomes level-eligible at exactly [level], if any.
+JourneyWorld? journeyWorldUnlockedAtLevel(int level) {
+  for (final world in JourneyWorld.values) {
+    if (world.requiredLevel == level) return world;
+  }
+  return null;
 }
 
 JourneyWorld? journeyWorldForTheme(Theme theme) {

@@ -412,8 +412,10 @@ class JourneyProgress {
     if (world == JourneyWorld.diamonds) diamondsEntered = true;
   }
 
-  /// Play-locked theme may unlock only after the prior Ace (Diamonds: anytime).
-  bool canUnlockThemeFor(JourneyWorld world) {
+  /// Play-locked theme may unlock after the prior Ace (Diamonds: anytime)
+  /// and only once [playerLevel] meets that world's required level.
+  bool canUnlockThemeFor(JourneyWorld world, {required int playerLevel}) {
+    if (playerLevel < world.requiredLevel) return false;
     if (world == JourneyWorld.diamonds) return true;
     final idx = JourneyWorld.values.indexOf(world);
     if (idx <= 0) return false;
@@ -567,10 +569,65 @@ JourneyDisplaySnapshot hydrateJourneyBoard({
   if (defer != null) {
     snap = snap.withDeferredNext(defer);
   }
+  snap = snap.withWorldLevelGates(
+    progress: progress,
+    playerLevel: playerLevel,
+  );
   return snap;
 }
 
 extension on JourneyDisplaySnapshot {
+  /// Seal or open kingdom piles from level + prior-Ace story gates.
+  JourneyDisplaySnapshot withWorldLevelGates({
+    required JourneyProgress progress,
+    required int playerLevel,
+  }) {
+    return JourneyDisplaySnapshot(
+      worlds: [
+        for (final w in worlds)
+          _worldWithLevelGate(w, progress: progress, playerLevel: playerLevel),
+      ],
+    );
+  }
+
+  JourneyWorldDef _worldWithLevelGate(
+    JourneyWorldDef w, {
+    required JourneyProgress progress,
+    required int playerLevel,
+  }) {
+    final levelOk = playerLevel >= w.world.requiredLevel;
+    if (w.world == JourneyWorld.diamonds) {
+      // Entered state is owned by withDiamondsGates; only enforce level here.
+      if (!levelOk && w.unlocked) {
+        return w.copyWith(unlocked: false);
+      }
+      return w;
+    }
+    final idx = JourneyWorld.values.indexOf(w.world);
+    final priorAce = idx > 0 &&
+        progress.isDefeated(JourneyWorld.values[idx - 1], JourneyRank.ace);
+    final shouldUnlock = priorAce && levelOk;
+    if (shouldUnlock == w.unlocked) return w;
+    if (!shouldUnlock) {
+      return w.copyWith(unlocked: false);
+    }
+    return w.copyWith(
+      unlocked: true,
+      cards: [
+        for (final c in w.cards)
+          if (c.rank == JourneyRank.jack &&
+              c.state != JourneyCardState.defeated)
+            c.copyWith(
+              state: playerLevel >= (c.requiredLevel ?? 1)
+                  ? JourneyCardState.available
+                  : JourneyCardState.levelLocked,
+            )
+          else
+            c,
+      ],
+    );
+  }
+
   /// Apply first-kingdom tutorial gates before the Jack is playable.
   JourneyDisplaySnapshot withDiamondsGates({
     required bool entered,

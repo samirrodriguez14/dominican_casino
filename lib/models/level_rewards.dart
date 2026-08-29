@@ -1,16 +1,51 @@
+import 'package:dominican_casino/style/journey_worlds.dart';
+
 /// Per-level coin/energy rewards players claim from the rewards popup.
 enum LevelRewardKind { coins, energy }
+
+/// How a kingdom reward should read on the level roadmap.
+enum JourneyKingdomRewardStatus {
+  /// Player has not reached the required level yet.
+  lockedByLevel,
+
+  /// Level is met, but the prior Ace has not been defeated.
+  needsPriorAce,
+
+  /// Level + story gates clear; player has not entered yet.
+  readyToEnter,
+
+  /// Player has already entered the kingdom.
+  entered,
+}
+
+JourneyKingdomRewardStatus journeyKingdomRewardStatus({
+  required JourneyWorld world,
+  required int playerLevel,
+  required bool hasEntered,
+  required bool canUnlock,
+}) {
+  if (hasEntered) return JourneyKingdomRewardStatus.entered;
+  if (playerLevel < world.requiredLevel) {
+    return JourneyKingdomRewardStatus.lockedByLevel;
+  }
+  if (canUnlock) return JourneyKingdomRewardStatus.readyToEnter;
+  return JourneyKingdomRewardStatus.needsPriorAce;
+}
 
 class LevelRewardDef {
   const LevelRewardDef({
     required this.level,
     required this.kind,
     required this.amount,
+    this.unlocksJourneyWorld,
   });
 
   final int level;
   final LevelRewardKind kind;
   final int amount;
+
+  /// Optional Journey kingdom that becomes level-eligible at this level.
+  final JourneyWorld? unlocksJourneyWorld;
 
   bool get isEnergy => kind == LevelRewardKind.energy;
   bool get isCoins => kind == LevelRewardKind.coins;
@@ -26,17 +61,20 @@ int coinsForLevel(int level) => 50 + 15 * level;
 int energyForLevel(int level) => 8 + level ~/ 3;
 
 LevelRewardDef levelRewardFor(int level) {
+  final kingdom = journeyWorldUnlockedAtLevel(level);
   if (isEnergyLevel(level)) {
     return LevelRewardDef(
       level: level,
       kind: LevelRewardKind.energy,
       amount: energyForLevel(level),
+      unlocksJourneyWorld: kingdom,
     );
   }
   return LevelRewardDef(
     level: level,
     kind: LevelRewardKind.coins,
     amount: coinsForLevel(level),
+    unlocksJourneyWorld: kingdom,
   );
 }
 

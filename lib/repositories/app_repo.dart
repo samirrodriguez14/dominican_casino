@@ -381,7 +381,11 @@ class AppRepo extends ChangeNotifier {
     final world = journeyWorldForTheme(id);
     if (!ownsPack(id)) {
       if (pack.isPlayLocked) {
-        if (world == null || !_journeyProgress.canUnlockThemeFor(world)) {
+        if (world == null ||
+            !_journeyProgress.canUnlockThemeFor(
+              world,
+              playerLevel: experienceProgress.level,
+            )) {
           return false;
         }
       } else if (pack.unlock != ThemeUnlockKind.free) {
@@ -393,7 +397,12 @@ class AppRepo extends ChangeNotifier {
       if (world != null) await _persistJourneyProgress();
     } else if (world != null && !_journeyProgress.hasEntered(world)) {
       // Already owned (legacy Ace grant) — entering still marks the kingdom.
-      if (!_journeyProgress.canUnlockThemeFor(world)) return false;
+      if (!_journeyProgress.canUnlockThemeFor(
+        world,
+        playerLevel: experienceProgress.level,
+      )) {
+        return false;
+      }
       _journeyProgress.markEntered(world);
       await _persistJourneyProgress();
     }
@@ -911,7 +920,10 @@ class AppRepo extends ChangeNotifier {
       final world = journeyWorldForTheme(pack.id);
       if (world == null || !ownsPack(pack.id)) continue;
       if (_journeyProgress.hasEntered(world) &&
-          _journeyProgress.canUnlockThemeFor(world)) {
+          _journeyProgress.canUnlockThemeFor(
+            world,
+            playerLevel: experienceProgress.level,
+          )) {
         continue;
       }
       _ownedPacks.remove(pack.id);
@@ -2774,9 +2786,35 @@ class AppRepo extends ChangeNotifier {
     if (amount <= 0) return;
     final current = player;
     if (current == null) return;
+    final levelBefore = ExperienceProgress.fromTotal(current.xp).level;
     player = current.copyWith(xp: current.xp + amount);
     await _persistPlayer();
+    final levelAfter = experienceProgress.level;
+    if (levelAfter > levelBefore) {
+      _noteKingdomsUnlockedByLevel(fromLevel: levelBefore, toLevel: levelAfter);
+    }
     notifyListeners();
+  }
+
+  /// When level catches up after a prior Ace, open Journey so the player can enter.
+  void _noteKingdomsUnlockedByLevel({
+    required int fromLevel,
+    required int toLevel,
+  }) {
+    for (final world in JourneyWorld.values) {
+      if (world.requiredLevel <= fromLevel) continue;
+      if (world.requiredLevel > toLevel) continue;
+      if (_journeyProgress.hasEntered(world)) continue;
+      if (!_journeyProgress.canUnlockThemeFor(
+        world,
+        playerLevel: toLevel,
+      )) {
+        continue;
+      }
+      // Story already cleared; level was the missing piece.
+      requestOpenJourney();
+      break;
+    }
   }
 
   ExperienceProgress get experienceProgress =>

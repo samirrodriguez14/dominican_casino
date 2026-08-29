@@ -280,26 +280,35 @@ class JourneyDisplaySnapshot {
     if (rank == JourneyRank.ace) {
       final idx = JourneyWorld.values.indexOf(world);
       if (idx >= 0 && idx + 1 < JourneyWorld.values.length) {
-        unlockedWorld = JourneyWorld.values[idx + 1];
+        final next = JourneyWorld.values[idx + 1];
+        unlockedWorld = next;
+        final levelOk = playerLevel >= next.requiredLevel;
         nextWorlds = [
           for (final w in nextWorlds)
             if (w.world != unlockedWorld)
               w
             else
               w.copyWith(
-                unlocked: true,
+                unlocked: levelOk,
                 cards: [
                   for (final c in w.cards)
                     if (c.rank == JourneyRank.jack)
-                      c.copyWith(state: _unlockedStateFor(c, playerLevel))
+                      c.copyWith(
+                        state: levelOk
+                            ? _unlockedStateFor(c, playerLevel)
+                            : JourneyCardState.levelLocked,
+                      )
                     else
                       c,
                 ],
               ),
         ];
-        revealed = nextWorlds
-            .firstWhere((w) => w.world == unlockedWorld)
-            .cardOf(JourneyRank.jack);
+        revealed = levelOk
+            ? nextWorlds
+                .firstWhere((w) => w.world == unlockedWorld)
+                .cardOf(JourneyRank.jack)
+            : null;
+        if (!levelOk) unlockedWorld = null;
       }
     } else {
       final worldDef = nextWorlds.firstWhere((w) => w.world == world);
