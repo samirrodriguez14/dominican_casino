@@ -516,6 +516,7 @@ class FirestoreService extends GameService {
     bool completedJourneyTutorial = false,
     bool completedProfileTutorial = false,
     int? xp,
+    Map<String, dynamic>? matchStats,
     List<String>? ownedPacks,
     String? appTheme,
     String? cardBack,
@@ -531,12 +532,23 @@ class FirestoreService extends GameService {
       'completedJourneyTutorial': completedJourneyTutorial,
       'completedProfileTutorial': completedProfileTutorial,
       'xp': ?xp,
+      'matchStats': ?matchStats,
       'ownedPacks': ?ownedPacks,
       'appTheme': ?appTheme,
       'cardBack': ?cardBack,
       'cardBackMark': ?cardBackMark,
       'cardBackTint': ?cardBackTint,
       'locale': ?locale,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> saveMatchStats({
+    required String uid,
+    required Map<String, dynamic> matchStats,
+  }) async {
+    await _users.doc(uid).set({
+      'matchStats': matchStats,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

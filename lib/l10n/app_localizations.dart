@@ -1,3 +1,4 @@
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Minimal bilingual strings (en / es). Default language is English.
@@ -255,6 +256,24 @@ class AppLocalizations {
       isEs ? 'No hay partidas anteriores' : 'No previous games';
   String get won => isEs ? 'Ganaste' : 'Won';
   String get lost => isEs ? 'Perdiste' : 'Lost';
+  String get stats => isEs ? 'Estadísticas' : 'Stats';
+  String get wins => isEs ? 'Victorias' : 'Wins';
+  String get losses => isEs ? 'Derrotas' : 'Losses';
+  String get winRate => isEs ? 'Éxito' : 'Win rate';
+  String get statsEmpty => isEs
+      ? 'Juega partidas para ver tu récord aquí.'
+      : 'Play matches to see your record here.';
+
+  String gameModeName(GameMode mode) {
+    return switch (mode) {
+      GameMode.casino => 'Casino',
+      GameMode.casinoSpeed => isEs ? 'Casino Rápido' : 'Casino Speed',
+      GameMode.tresydos => 'Tres y Dos',
+      GameMode.rummy => 'Rummy',
+      GameMode.robaito => 'Robaito',
+      GameMode.bs => 'BS',
+    };
+  }
 
   String timeAgo(DateTime date) {
     final diff = DateTime.now().difference(date);

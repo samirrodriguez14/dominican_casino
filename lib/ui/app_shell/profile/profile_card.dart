@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/player_match_stats.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/services/sound_service.dart';
@@ -7,6 +10,7 @@ import 'package:dominican_casino/style/journey_worlds.dart';
 import 'package:dominican_casino/ui/app_shell/journey/journey_progress_trail.dart';
 import 'package:dominican_casino/ui/app_shell/profile/avatar_picker_popup.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_coach.dart';
+import 'package:dominican_casino/ui/app_shell/profile/profile_stats_face.dart';
 import 'package:dominican_casino/ui/app_shell/profile/profile_wallet_cards.dart';
 import 'package:dominican_casino/ui/cards/playing_card_back.dart';
 import 'package:dominican_casino/ui/home/home_card_layout.dart';
@@ -38,12 +42,42 @@ class ProfileCard extends StatefulWidget {
   State<ProfileCard> createState() => _ProfileCardState();
 }
 
-class _ProfileCardState extends State<ProfileCard> {
+class _ProfileCardState extends State<ProfileCard>
+    with SingleTickerProviderStateMixin {
   bool _editingCard = false;
+  late final AnimationController _flip;
+
+  @override
+  void initState() {
+    super.initState();
+    _flip = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 360),
+    );
+  }
+
+  @override
+  void dispose() {
+    _flip.dispose();
+    super.dispose();
+  }
 
   void _setEditing(bool value) {
     if (_editingCard == value) return;
+    if (value && _flip.value > 0) {
+      _flip.value = 0;
+    }
     setState(() => _editingCard = value);
+  }
+
+  void _toggleStats() {
+    if (_editingCard) return;
+    if (_flip.isAnimating) return;
+    if (_flip.value < 0.5) {
+      _flip.forward();
+    } else {
+      _flip.reverse();
+    }
   }
 
   @override
@@ -53,134 +87,180 @@ class _ProfileCardState extends State<ProfileCard> {
     final name = vm.player?.name ?? '';
     final avatarId = vm.player?.avatarId;
     final score = AvatarScoreTheme.of(avatarId);
+    final stats = vm.player?.matchStats ?? PlayerMatchStats.empty;
 
     return AspectRatio(
       aspectRatio: homeCardAspect,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: score.background,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: score.ink.withValues(alpha: 0.08),
-            width: 0.6,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.black.withValues(alpha: .30),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: Stack(
-            children: [
-              _CornerPip(
-                avatarId: avatarId,
-                name: name,
-                score: score,
-                defeatedAces: repo.journeyProgress.defeatedAceWorlds,
-                wearJourneyAccessories: repo.wearJourneyAccessories,
-              ),
-              if (!_editingCard)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: _CoachWrap(
-                          coach: widget.coach,
-                          targetKey: widget.identityKey,
-                          child: KeyedSubtree(
-                            key: widget.identityKey,
-                            child: LayoutBuilder(
-                              builder: (context, inner) {
-                                final avatarSize = (inner.maxHeight * 0.52).clamp(
-                                  108.0,
-                                  156.0,
-                                );
-                                return Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    _AvatarButton(
-                                      avatarId: avatarId,
-                                      size: avatarSize,
-                                      score: score,
-                                      playingCardWidth: avatarSize * 0.32,
-                                      defeatedAces: repo
-                                          .journeyProgress.defeatedAceWorlds,
-                                      wearJourneyAccessories:
-                                          repo.wearJourneyAccessories,
-                                      onPressed: () =>
-                                          _changeAvatar(context, vm),
-                                      onEditPlayingCard: () =>
-                                          _setEditing(true),
-                                      onAceTap: () {
-                                        final aces = repo
-                                            .journeyProgress.defeatedAceWorlds;
-                                        showJourneyAceAccessoriesPopup(
-                                          context,
-                                          avatarId: avatarId,
-                                          defeatedAces: aces,
-                                        );
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _NameButton(
-                                      name: name,
-                                      score: score,
-                                      onPressed: () =>
-                                          _changeName(context, vm),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      _CoachWrap(
-                        coach: widget.coach,
-                        targetKey: widget.walletKey,
-                        child: KeyedSubtree(
-                          key: widget.walletKey,
-                          child: ProfileWalletPills(
-                            scoreTheme: score,
-                            trailing: widget.onToggleLooks == null
-                                ? null
-                                : _CoachWrap(
-                                    coach: widget.coach,
-                                    targetKey: widget.looksKey,
-                                    bounce: false,
-                                    child: KeyedSubtree(
-                                      key: widget.looksKey,
-                                      child: _LooksActionButton(
-                                        score: score,
-                                        onPressed: widget.onToggleLooks!,
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ],
+      child: AnimatedBuilder(
+        animation: _flip,
+        builder: (context, _) {
+          final t = _flip.value;
+          final angle = t * math.pi;
+          final showBack = t >= 0.5 && !_editingCard;
+          return Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0012)
+              ..rotateY(showBack ? angle - math.pi : angle),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              decoration: BoxDecoration(
+                color: score.background,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: score.ink.withValues(alpha: 0.08),
+                  width: 0.6,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: CupertinoColors.black.withValues(alpha: .30),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
                   ),
-                )
-              else
-                Positioned.fill(
-                  child: _PlayingCardEditor(
-                    score: score,
-                    repo: repo,
-                    onDone: () => _setEditing(false),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: showBack
+                    ? ProfileStatsFace(
+                        stats: stats,
+                        score: score,
+                        onFlipBack: _toggleStats,
+                      )
+                    : _buildFront(
+                        repo: repo,
+                        vm: vm,
+                        name: name,
+                        avatarId: avatarId,
+                        score: score,
+                      ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFront({
+    required AppRepo repo,
+    required ProfileViewModel vm,
+    required String name,
+    required String? avatarId,
+    required AvatarScoreTheme score,
+  }) {
+    return Stack(
+      children: [
+        _CornerPip(
+          avatarId: avatarId,
+          name: name,
+          score: score,
+          defeatedAces: repo.journeyProgress.defeatedAceWorlds,
+          wearJourneyAccessories: repo.wearJourneyAccessories,
+        ),
+        if (!_editingCard) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Column(
+              children: [
+                Expanded(
+                  child: _CoachWrap(
+                    coach: widget.coach,
+                    targetKey: widget.identityKey,
+                    child: KeyedSubtree(
+                      key: widget.identityKey,
+                      child: LayoutBuilder(
+                        builder: (context, inner) {
+                          final avatarSize = (inner.maxHeight * 0.52).clamp(
+                            108.0,
+                            156.0,
+                          );
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _AvatarButton(
+                                avatarId: avatarId,
+                                size: avatarSize,
+                                score: score,
+                                playingCardWidth: avatarSize * 0.32,
+                                defeatedAces:
+                                    repo.journeyProgress.defeatedAceWorlds,
+                                wearJourneyAccessories:
+                                    repo.wearJourneyAccessories,
+                                onPressed: () => _changeAvatar(context, vm),
+                                onEditPlayingCard: () => _setEditing(true),
+                                onAceTap: () {
+                                  final aces =
+                                      repo.journeyProgress.defeatedAceWorlds;
+                                  showJourneyAceAccessoriesPopup(
+                                    context,
+                                    avatarId: avatarId,
+                                    defeatedAces: aces,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              _NameButton(
+                                name: name,
+                                score: score,
+                                onPressed: () => _changeName(context, vm),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.only(right: 60),
+                  child: _CoachWrap(
+                    coach: widget.coach,
+                    targetKey: widget.walletKey,
+                    child: KeyedSubtree(
+                      key: widget.walletKey,
+                      child: ProfileWalletPills(scoreTheme: score),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+          if (widget.onToggleLooks != null)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: _CoachWrap(
+                coach: widget.coach,
+                targetKey: widget.looksKey,
+                bounce: false,
+                child: KeyedSubtree(
+                  key: widget.looksKey,
+                  child: _LooksActionButton(
+                    score: score,
+                    onPressed: widget.onToggleLooks!,
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            right: 10,
+            bottom: 10,
+            child: _StatsActionButton(
+              score: score,
+              onPressed: SoundService.wrapTap(_toggleStats),
+            ),
+          ),
+        ] else
+          Positioned.fill(
+            child: _PlayingCardEditor(
+              score: score,
+              repo: repo,
+              onDone: () => _setEditing(false),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -294,6 +374,39 @@ class _LooksActionButton extends StatelessWidget {
           size: 22,
           color: score.ink,
           semanticLabel: l10n.themes,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsActionButton extends StatelessWidget {
+  const _StatsActionButton({required this.score, required this.onPressed});
+
+  final AvatarScoreTheme score;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: onPressed,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: score.panel,
+          shape: BoxShape.circle,
+          border: Border.all(color: score.ink.withValues(alpha: 0.18)),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          CupertinoIcons.chart_pie_fill,
+          size: 22,
+          color: score.ink,
+          semanticLabel: l10n.stats,
         ),
       ),
     );

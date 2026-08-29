@@ -1,3 +1,5 @@
+import 'package:dominican_casino/models/player_match_stats.dart';
+
 class Player {
   static const String defaultAvatarId = 'palm';
 
@@ -9,6 +11,7 @@ class Player {
   String? token;
   String? avatarId;
   int xp;
+  PlayerMatchStats matchStats;
   Player({
     required this.id,
     this.name,
@@ -18,6 +21,7 @@ class Player {
     this.completedJourneyTutorial = false,
     this.completedProfileTutorial = false,
     this.xp = 0,
+    this.matchStats = PlayerMatchStats.empty,
   });
   factory Player.fromDto(Map<String, dynamic> playerDto) {
     return Player(
@@ -31,6 +35,7 @@ class Player {
       completedProfileTutorial:
           playerDto['completedProfileTutorial'] ?? false,
       xp: (playerDto['xp'] as num?)?.toInt() ?? 0,
+      matchStats: PlayerMatchStats.fromJson(playerDto['matchStats']),
     );
   }
   Map<String, dynamic> toJson() => {
@@ -42,6 +47,7 @@ class Player {
     'completedJourneyTutorial': completedJourneyTutorial,
     'completedProfileTutorial': completedProfileTutorial,
     'xp': xp,
+    'matchStats': matchStats.toJson(),
   };
 
   /// Seat snapshot stored on a game document (no auth/token fields).
@@ -62,6 +68,7 @@ class Player {
     String? token,
     String? avatarId,
     int? xp,
+    PlayerMatchStats? matchStats,
   }) {
     return Player(
       id: id ?? this.id,
@@ -74,6 +81,7 @@ class Player {
       completedProfileTutorial:
           completedProfileTutorial ?? this.completedProfileTutorial,
       xp: xp ?? this.xp,
+      matchStats: matchStats ?? this.matchStats,
     );
   }
 

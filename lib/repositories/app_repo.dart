@@ -11,6 +11,7 @@ import 'package:dominican_casino/models/journey_progress.dart';
 import 'package:dominican_casino/models/level_rewards.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/player.dart';
+import 'package:dominican_casino/models/player_match_stats.dart';
 import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/models/wallet.dart';
@@ -148,6 +149,9 @@ class AppRepo extends ChangeNotifier {
   HomeXpClaim? _pendingHomeXpClaim;
   HomeXpClaim? get pendingHomeXpClaim => _pendingHomeXpClaim;
   final Set<String> _claimedXpGameIds = {};
+  final Set<String> _recordedStatsGameIds = {};
+  bool _matchStatsBackfillAttempted = false;
+  bool _remoteMatchStatsInitialized = false;
   Set<DailyChallengeId> _pendingHomeDailyChallengeEnergy = {};
   Set<DailyChallengeId> get pendingHomeDailyChallengeEnergy =>
       Set.unmodifiable(_pendingHomeDailyChallengeEnergy);
@@ -929,10 +933,14 @@ class AppRepo extends ChangeNotifier {
 
     _pendingHomeXpClaim = null;
     _claimedXpGameIds.clear();
+    _recordedStatsGameIds.clear();
+    _matchStatsBackfillAttempted = false;
+    _remoteMatchStatsInitialized = false;
     final uid = FirebaseAuth.instance.currentUser?.uid ?? player?.id;
     if (uid != null) {
       await sp.remove(_homeXpClaimPrefsKey(uid));
       await sp.remove(_claimedXpGamesPrefsKey(uid));
+      await sp.remove(_recordedStatsGamesPrefsKey(uid));
     }
 
     if (player != null) {
@@ -1808,6 +1816,7 @@ class AppRepo extends ChangeNotifier {
       _claimedXpGameIds
         ..clear()
         ..addAll(_loadClaimedXpGameIds(sp.getString(_claimedXpGamesPrefsKey(uid))));
+      await _loadRecordedStatsGames(uid);
     } catch (e) {
       developer.log('AppRepo.loadHomeXpClaim: $e');
       _pendingHomeXpClaim = null;
@@ -1979,6 +1988,9 @@ class AppRepo extends ChangeNotifier {
     if (game.gameStatus != GameStatus.gameOver) return;
     if (me.isEmpty) return;
     if (_walletUid == null) return;
+
+    await recordMatchResult(game, me);
+
     if (_claimedXpGameIds.contains(game.id)) return;
     if (_pendingHomeXpClaim?.gameId == game.id) return;
 
@@ -1990,6 +2002,80 @@ class AppRepo extends ChangeNotifier {
     _pendingHomeXpClaim = HomeXpClaim(gameId: game.id, amount: amount);
     await _persistHomeXpClaim();
     notifyListeners();
+  }
+
+  /// Idempotent career W/L bump for a finished match.
+  Future<void> recordMatchResult(GameState game, String me) async {
+    if (game.gameStatus != GameStatus.gameOver) return;
+    if (me.isEmpty) return;
+    final current = player;
+    if (current == null) return;
+    if (_recordedStatsGameIds.contains(game.id)) return;
+    if (!game.playersInfo.containsKey(me)) return;
+    final winner = game.winnerId;
+    if (winner == null || winner.isEmpty) return;
+
+    final after = current.matchStats.withGame(game, me);
+    if (after.gamesPlayed == current.matchStats.gamesPlayed) return;
+
+    _recordedStatsGameIds.add(game.id);
+    player = current.copyWith(matchStats: after);
+    await _persistRecordedStatsGames();
+    await _persistPlayer();
+    notifyListeners();
+  }
+
+  String _recordedStatsGamesPrefsKey(String uid) =>
+      'recorded_match_stats_games_$uid';
+
+  Future<void> _loadRecordedStatsGames(String uid) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      _recordedStatsGameIds
+        ..clear()
+        ..addAll(
+          _loadClaimedXpGameIds(
+            sp.getString(_recordedStatsGamesPrefsKey(uid)),
+          ),
+        );
+    } catch (e) {
+      developer.log('AppRepo.loadRecordedStatsGames: $e');
+      _recordedStatsGameIds.clear();
+    }
+  }
+
+  Future<void> _persistRecordedStatsGames() async {
+    final uid = _walletUid ?? player?.id;
+    if (uid == null) return;
+    final sp = await SharedPreferences.getInstance();
+    final ids = _recordedStatsGameIds.toList(growable: false);
+    final trimmed = ids.length <= 80 ? ids : ids.sublist(ids.length - 80);
+    await sp.setString(_recordedStatsGamesPrefsKey(uid), jsonEncode(trimmed));
+  }
+
+  /// One-time aggregate from archived games when cloud has no matchStats yet.
+  Future<void> _maybeBackfillMatchStats({required String uid}) async {
+    if (_matchStatsBackfillAttempted) return;
+    _matchStatsBackfillAttempted = true;
+    final current = player;
+    if (current == null || current.id != uid) return;
+    if (_remoteMatchStatsInitialized) return;
+    if (current.matchStats.gamesPlayed > 0) {
+      await _persistPlayer();
+      _remoteMatchStatsInitialized = true;
+      return;
+    }
+
+    try {
+      final archived = await fs.fetchArchivedGames(uid, limit: 100);
+      final filled = PlayerMatchStats.fromArchivedGames(archived, uid);
+      player = current.copyWith(matchStats: filled);
+      await _persistPlayer();
+      _remoteMatchStatsInitialized = true;
+      notifyListeners();
+    } catch (e) {
+      developer.log('AppRepo.backfillMatchStats: $e');
+    }
   }
 
   Future<void> completeHomeXpClaim() async {
@@ -2610,6 +2696,7 @@ class AppRepo extends ChangeNotifier {
       await _loadWallet(preferRemote: true);
       await _loadJourneyProgress();
       await _reconcileJourneyThemeOwnership();
+      await _maybeBackfillMatchStats(uid: user.uid);
       if (notificationsEnabled) {
         unawaited(_syncFcmToken());
       }
@@ -3594,6 +3681,9 @@ class AppRepo extends ChangeNotifier {
     _pendingHomeCoinClaim = null;
     _pendingHomeXpClaim = null;
     _claimedXpGameIds.clear();
+    _recordedStatsGameIds.clear();
+    _matchStatsBackfillAttempted = false;
+    _remoteMatchStatsInitialized = false;
     _pendingHomeDailyChallengeEnergy = {};
     _lastDailyClaimAt = null;
     _dailyChallenges = DailyChallengeState.empty(_localDayKey());
@@ -3628,6 +3718,7 @@ class AppRepo extends ChangeNotifier {
         completedJourneyTutorial: current.completedJourneyTutorial,
         completedProfileTutorial: current.completedProfileTutorial,
         xp: current.xp,
+        matchStats: current.matchStats.toJson(),
         ownedPacks: _ownedPacks.map((pack) => pack.name).toList(),
         appTheme: _appTheme.name,
         cardBack: _cardBack.name,
@@ -3647,6 +3738,10 @@ class AppRepo extends ChangeNotifier {
     String? suggestedName,
   }) {
     Player? cloud;
+    final remoteHasMatchStats = remote?.containsKey('matchStats') == true;
+    if (remoteHasMatchStats) {
+      _remoteMatchStatsInitialized = true;
+    }
     if (remote != null) {
       cloud = Player.fromDto({
         'id': uid,
@@ -3658,6 +3753,7 @@ class AppRepo extends ChangeNotifier {
         'completedProfileTutorial':
             remote['completedProfileTutorial'] ?? false,
         'xp': remote['xp'],
+        if (remoteHasMatchStats) 'matchStats': remote['matchStats'],
       });
     }
 
@@ -3674,6 +3770,16 @@ class AppRepo extends ChangeNotifier {
         cloud?.name ??
         local?.name ??
         'p_${uid.substring(0, 6)}';
+
+    final matchStats = remoteHasMatchStats
+        ? PlayerMatchStats.prefer(
+            preferred: cloud!.matchStats,
+            other: local?.matchStats ?? PlayerMatchStats.empty,
+          )
+        : PlayerMatchStats.prefer(
+            preferred: local?.matchStats ?? PlayerMatchStats.empty,
+            other: cloud?.matchStats ?? PlayerMatchStats.empty,
+          );
 
     return Player(
       id: uid,
@@ -3692,6 +3798,7 @@ class AppRepo extends ChangeNotifier {
           (cloud?.completedProfileTutorial ?? false) ||
           (local?.completedProfileTutorial ?? false),
       xp: _maxInt(cloud?.xp ?? 0, local?.xp ?? 0),
+      matchStats: matchStats,
       token: local?.token,
     );
   }
@@ -3731,6 +3838,7 @@ class AppRepo extends ChangeNotifier {
       _applyLooksFromRemote(remote, replace: false);
       await _persistLooksLocal();
       await _persistPlayer();
+      await _maybeBackfillMatchStats(uid: uid);
       return player;
     } catch (e) {
       developer.log("AppRepo.loadPlayer Error: $e");
