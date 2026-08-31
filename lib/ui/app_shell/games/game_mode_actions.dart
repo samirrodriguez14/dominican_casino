@@ -153,26 +153,6 @@ void showEnterGameDialog(
             turnDurationSeconds: turnDurationSeconds,
           );
         },
-        onPublic:
-            (
-              entryCost, {
-              int playerCount = 2,
-              int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
-            }) async {
-          if (!await ensureGoogleForOnlinePlay(context)) return;
-          if (!context.mounted) return;
-          Navigator.pop(dialogContext);
-          gameEnter(
-            context,
-            vm,
-            mode,
-            false,
-            entryCost: entryCost,
-            playerCount: playerCount,
-            turnDurationSeconds: turnDurationSeconds,
-            isPublic: true,
-          );
-        },
         gameTitle: _modeTitle(vm, mode),
       );
     },
@@ -226,13 +206,12 @@ class _PathPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Expanded(
           child: _PathChip(
             icon: CupertinoIcons.bolt_fill,
-            label: l10n.playPuliChip,
+            label: AppLocalizations.of(context).playPuliChip,
             selected: selected == _PlayPath.puli,
             onTap: () => onChanged(_PlayPath.puli),
           ),
@@ -244,15 +223,6 @@ class _PathPicker extends StatelessWidget {
             label: friendTitle,
             selected: selected == _PlayPath.friend,
             onTap: () => onChanged(_PlayPath.friend),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: _PathChip(
-            icon: CupertinoIcons.globe,
-            label: l10n.playPublicChip,
-            selected: selected == _PlayPath.publicPath,
-            onTap: () => onChanged(_PlayPath.publicPath),
           ),
         ),
       ],
@@ -624,7 +594,6 @@ class _EnterGamePopup extends StatefulWidget {
     required this.gameTitle,
     required this.onFriend,
     required this.onPuli,
-    required this.onPublic,
   });
 
   final GameMode mode;
@@ -641,12 +610,6 @@ class _EnterGamePopup extends StatefulWidget {
     required int turnDurationSeconds,
   })
   onPuli;
-  final void Function(
-    int entryCost, {
-    required int playerCount,
-    required int turnDurationSeconds,
-  })
-  onPublic;
 
   @override
   State<_EnterGamePopup> createState() => _EnterGamePopupState();
@@ -672,8 +635,7 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
   void _start() {
     final playerCount = switch (widget.mode) {
       GameMode.bs => _playerCount.clamp(3, 6),
-      GameMode.tresydos || GameMode.rummy
-          when _path == _PlayPath.puli || _path == _PlayPath.publicPath =>
+      GameMode.tresydos || GameMode.rummy when _path == _PlayPath.puli =>
         _playerCount,
       _ => 2,
     };
@@ -693,12 +655,6 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
           playerCount: playerCount,
           turnDurationSeconds: turnDurationSeconds,
         );
-      case _PlayPath.publicPath:
-        widget.onPublic(
-          _stake,
-          playerCount: playerCount,
-          turnDurationSeconds: turnDurationSeconds,
-        );
     }
   }
 
@@ -708,11 +664,7 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
     final l10n = AppLocalizations.of(context);
     final mode = widget.mode;
     final energy = WalletConfig.energyCostFor(mode.name);
-    final showPlayerCount =
-        (_multiSeatMode &&
-            (_path == _PlayPath.puli || _path == _PlayPath.publicPath)) ||
-        (widget.mode == GameMode.bs &&
-            (_path == _PlayPath.puli || _path == _PlayPath.publicPath));
+    final showPlayerCount = _multiSeatMode && _path == _PlayPath.puli;
     final showTurnClock = mode == GameMode.casinoSpeed;
     final countOptions =
         mode == GameMode.bs ? const [3, 4, 5, 6] : const [2, 3, 4];
@@ -844,7 +796,7 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
   }
 }
 
-enum _PlayPath { friend, puli, publicPath }
+enum _PlayPath { friend, puli }
 
 Future<void> gameEnter(
   BuildContext context,

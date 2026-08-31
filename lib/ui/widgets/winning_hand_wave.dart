@@ -16,6 +16,8 @@ class WinningHandWave extends StatefulWidget {
     this.period = const Duration(milliseconds: 1600),
     /// When true: cards hop once in a left→right wave, rest, then hop again.
     this.pulse = false,
+    /// Pulse rising-edge taps. Off for opponent turn bounce (less noisy).
+    this.haptic = true,
   });
 
   final bool active;
@@ -25,6 +27,7 @@ class WinningHandWave extends StatefulWidget {
   final bool glow;
   final Duration period;
   final bool pulse;
+  final bool haptic;
 
   @override
   State<WinningHandWave> createState() => _WinningHandWaveState();
@@ -96,7 +99,7 @@ class _WinningHandWaveState extends State<WinningHandWave>
   }
 
   void _tickHaptic(double hop) {
-    if (!widget.pulse) return;
+    if (!widget.pulse || !widget.haptic) return;
     // Rising edge of each bounce (main + settle) → one light tap per card.
     if (_hapticArmed && hop > 0.12 && _prevHop <= 0.12) {
       _hapticArmed = false;

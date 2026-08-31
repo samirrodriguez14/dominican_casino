@@ -39,10 +39,9 @@ class AppLocalizations {
       isEs ? 'Apuesta máxima' : 'Max stake';
   String quickMatchMaxCoins(int n) =>
       isEs ? 'máx. $n monedas' : 'max $n coins';
-  String get quickMatchPlayers =>
-      isEs ? 'Máx. jugadores' : 'Max players';
+  String get quickMatchPlayers => isEs ? 'Jugadores' : 'Players';
   String quickMatchMaxPlayersDetail(int n) =>
-      isEs ? 'máx. $n jugadores' : 'max $n players';
+      isEs ? 'hasta $n jugadores' : 'up to $n players';
   String get quickMatchSearching =>
       isEs ? 'Buscando partida…' : 'Searching for a match…';
   String quickMatchSecondsLeft(int n) =>

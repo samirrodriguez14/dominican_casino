@@ -2928,8 +2928,9 @@ class GeneralGameViewModel extends ChangeNotifier {
         }
       }
 
-      if (!alreadySeated &&
-          !tutorialMode &&
+      // Quick Match pre-seats everyone at create time; still charge on first
+      // open if not yet in entryPaidBy.
+      if (!tutorialMode &&
           !gameState.isLocalBot &&
           !gameState.entryPaidBy.contains(player.id)) {
         final cost = gameState.entryCost;

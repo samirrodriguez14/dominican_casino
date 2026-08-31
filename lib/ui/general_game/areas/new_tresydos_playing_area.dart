@@ -416,6 +416,7 @@ class _CompactSideSeat extends StatelessWidget {
                                 amplitude: turnPulse ? 5 : 3,
                                 glow: celebrating,
                                 pulse: turnPulse,
+                                haptic: false,
                                 period: turnPulse
                                     ? const Duration(milliseconds: 1600)
                                     : const Duration(milliseconds: 1200),

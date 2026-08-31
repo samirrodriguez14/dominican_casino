@@ -100,6 +100,24 @@ Future<void> _runQuickMatchSearch(
   final pid = repo.player?.id;
   if (pid == null || pid.isEmpty) return;
 
+  // Pre-check affordability for the cheapest energy among selected modes
+  // and the max stake filter.
+  final modes = QuickMatchService.energyModesFor(prefs);
+  final needsEnergy = modes.any((m) => !repo.canAffordEnergy(m));
+  if (needsEnergy) {
+    await showInsufficientFundsDialog(context, energy: true);
+    return;
+  }
+  if (!repo.canAffordStake(prefs.maxEntryCost)) {
+    // Still allow if they can afford a lower stake the matcher might pick;
+    // only block when they cannot afford even the lowest common stake (0).
+    final lowest = WalletConfig.stakesFor(allowNoBet: true).first;
+    if (!repo.canAffordStake(lowest)) {
+      await showInsufficientFundsDialog(context, energy: false);
+      return;
+    }
+  }
+
   final cancel = Completer<void>();
   var dismissed = false;
 
@@ -122,9 +140,11 @@ Future<void> _runQuickMatchSearch(
     },
   );
 
-  final match = await QuickMatchService(repo.fs).findMatch(
+  final outcome = await QuickMatchService(repo.fs).findMatch(
     prefs: prefs,
     playerId: pid,
+    displayName: repo.player?.name,
+    avatarId: repo.player?.avatarId,
     cancel: cancel.future,
   );
 
@@ -134,9 +154,11 @@ Future<void> _runQuickMatchSearch(
     Navigator.of(context, rootNavigator: true).pop();
   }
 
-  if (cancel.isCompleted) return;
+  if (outcome.kind == QuickMatchOutcomeKind.cancelled) return;
 
-  if (match == null) {
+  if (outcome.kind == QuickMatchOutcomeKind.timedOut ||
+      outcome.gameId == null ||
+      outcome.gameMode == null) {
     final l10n = AppLocalizations.of(context);
     await showCupertinoDialog<void>(
       context: context,
@@ -154,17 +176,14 @@ Future<void> _runQuickMatchSearch(
     return;
   }
 
-  if (!repo.canAffordEnergy(match.gameMode)) {
+  final mode = outcome.gameMode!;
+  if (!repo.canAffordEnergy(mode)) {
     await showInsufficientFundsDialog(context, energy: true);
-    return;
-  }
-  if (!repo.canAffordStake(match.entryCost)) {
-    await showInsufficientFundsDialog(context, energy: false);
     return;
   }
 
   context.go(
-    GameRoutes.game(gameId: match.id, gameMode: match.gameMode.name),
+    GameRoutes.game(gameId: outcome.gameId!, gameMode: mode.name),
   );
 }
 

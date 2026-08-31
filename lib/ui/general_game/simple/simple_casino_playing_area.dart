@@ -477,6 +477,7 @@ class SimpleOpponentRow extends StatelessWidget {
                                   amplitude: turnPulse ? 5 : 3.5,
                                   glow: celebrating,
                                   pulse: turnPulse,
+                                  haptic: false,
                                   period: turnPulse
                                       ? const Duration(milliseconds: 1600)
                                       : const Duration(milliseconds: 1200),

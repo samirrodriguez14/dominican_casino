@@ -39,7 +39,10 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
   StreamSubscription<RemoteMessage>? _fcmOpenedSub;
   late final GoRouter _router;
 
-  bool _handledInitialLink = false;
+  bool _linksReady = false;
+  String? _lastHandledLink;
+  DateTime? _lastHandledAt;
+  Uri? _pendingLaunchUri;
 
   @override
   void initState() {
@@ -116,12 +119,12 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
     );
 
     _router.routerDelegate.addListener(_syncActiveGamePresence);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncActiveGamePresence();
-    });
-
     _initDeepLinks();
     _initNotificationTaps();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncActiveGamePresence();
+      unawaited(_readyDeepLinks());
+    });
   }
 
   /// Turn pushes are skipped while this device is looking at that match.
@@ -151,21 +154,8 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
   }
 
   Future<void> _initDeepLinks() async {
-    try {
-      final initialUri = await _appLinks.getInitialLink();
-      if (!_handledInitialLink && initialUri != null) {
-        _handledInitialLink = true;
-        developer.log('DeepLink: Initial app link: $initialUri');
-        _handleIncomingUri(initialUri);
-      }
-    } catch (e, st) {
-      developer.log(
-        'DeepLink: Failed to read initial app link',
-        error: e,
-        stackTrace: st,
-      );
-    }
-
+    // Subscribe first so a cold-start link delivered via the event channel
+    // is not missed while awaiting getInitialLink.
     _linkSub = _appLinks.uriLinkStream.listen(
       (uri) {
         developer.log('DeepLink: Incoming app link stream: $uri');
@@ -179,6 +169,33 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
         );
       },
     );
+
+    try {
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        developer.log('DeepLink: Initial app link: $initialUri');
+        _handleIncomingUri(initialUri);
+      }
+    } catch (e, st) {
+      developer.log(
+        'DeepLink: Failed to read initial app link',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  /// Cold start often delivers the invite before [AppRepo.loadApp] finishes
+  /// and before go_router is attached — queue until both are ready.
+  Future<void> _readyDeepLinks() async {
+    await context.read<AppRepo>().loadApp();
+    if (!mounted) return;
+    _linksReady = true;
+    final pending = _pendingLaunchUri;
+    if (pending != null) {
+      _pendingLaunchUri = null;
+      _handleIncomingUri(pending);
+    }
   }
 
   Future<void> _initNotificationTaps() async {
@@ -216,8 +233,23 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
   }
 
   void _handleIncomingUri(Uri uri) {
+    final key = uri.toString();
+    final lastAt = _lastHandledAt;
+    if (_lastHandledLink == key &&
+        lastAt != null &&
+        DateTime.now().difference(lastAt) < const Duration(seconds: 2)) {
+      return;
+    }
+    if (!_linksReady) {
+      _pendingLaunchUri = uri;
+      developer.log('DeepLink: Queued until app ready: $uri');
+      return;
+    }
+
     developer.log('DeepLink: path segments: ${uri.pathSegments}');
     final invite = GameRoutes.parseInvite(uri);
+    _lastHandledLink = key;
+    _lastHandledAt = DateTime.now();
     if (invite == null) {
       _router.go('/home');
       return;
@@ -238,6 +270,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
       return;
     }
     if (appRepo.player == null) {
+      developer.log('DeepLink: Player not ready after loadApp; staying home');
       _router.go('/home');
       return;
     }

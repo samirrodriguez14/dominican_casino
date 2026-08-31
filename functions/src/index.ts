@@ -10,7 +10,14 @@ const ENERGY_CAP = 50;
 /** Must match AndroidManifest + NotificationsService on the client. */
 const ANDROID_CHANNEL_ID = "fcm_game";
 
-admin.initializeApp();
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
+
+export {
+  onMatchmakingQueueWrite,
+  onMatchmakingSweep,
+} from "./matchmaking.js";
 
 /**
  * Notify the next human player when currentTurnPlayerId changes.
@@ -131,7 +138,9 @@ export const sendGameInvites = onCall(
       typeof game.gameMode === "string" ? game.gameMode : "";
     const hostSeat = playersInfo[uid];
     const fromName =
-      hostSeat && typeof hostSeat.name === "string" && hostSeat.name.length > 0 ?
+      hostSeat &&
+      typeof hostSeat.name === "string" &&
+      hostSeat.name.length > 0 ?
         hostSeat.name :
         "Someone";
     const copy = _inviteCopy(fromName);
@@ -238,8 +247,9 @@ function _isBotPid(
 }
 
 /**
- * @param {unknown} raw playersInfo or invitedPlayers map.
- * @return {Record<string, {name?: string}>}
+ * Normalize playersInfo / invitedPlayers into a id → seat map.
+ * @param {unknown} raw Map-like Firestore field.
+ * @return {Object<string, {name: (string|undefined)}>}
  */
 function _playersInfoMap(
   raw: unknown,

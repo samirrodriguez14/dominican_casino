@@ -936,6 +936,7 @@ class _RummyOpponentFan extends StatelessWidget {
           amplitude: highlightTurn && !celebrating ? 5 : waveAmplitude,
           glow: celebrating,
           pulse: highlightTurn && !celebrating,
+          haptic: false,
           period: highlightTurn && !celebrating
               ? const Duration(milliseconds: 1600)
               : const Duration(milliseconds: 1200),

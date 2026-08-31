@@ -7,6 +7,7 @@ import 'package:dominican_casino/models/game_pill_data.dart';
 import 'package:dominican_casino/models/game_reaction.dart';
 import 'package:dominican_casino/models/league.dart';
 import 'package:dominican_casino/models/opponent_match_stats.dart';
+import 'package:dominican_casino/models/quick_match_prefs.dart';
 import 'package:dominican_casino/models/wallet.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/services/game_service.dart';
@@ -829,7 +830,7 @@ class FirestoreService extends GameService {
     }
   }
 
-  /// Live public lobbies waiting for players (Quick Play).
+  /// Live public lobbies waiting for players (legacy / debug).
   Stream<List<GameState>> listenPublicWaitingGames() {
     return _games
         .where('isPublic', isEqualTo: true)
@@ -849,6 +850,48 @@ class FirestoreService extends GameService {
           }
           return out;
         });
+  }
+
+  CollectionReference<Map<String, dynamic>> get _matchmakingQueue =>
+      FirebaseFirestore.instance.collection('matchmakingQueue');
+
+  /// Enqueue or refresh this player's Quick Match ticket.
+  Future<void> enqueueMatchmaking({
+    required String uid,
+    required String ticketId,
+    required QuickMatchPrefs prefs,
+    String? displayName,
+    String? avatarId,
+  }) async {
+    final modes = prefs.anyMode
+        ? <String>[]
+        : prefs.effectiveModes.map(gameModeTo).toList();
+    await _matchmakingQueue.doc(uid).set({
+      'uid': uid,
+      'ticketId': ticketId,
+      'modes': modes,
+      'maxEntryCost': prefs.maxEntryCost,
+      'maxPlayers': prefs.maxPlayers,
+      'status': 'waiting',
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      if (displayName != null && displayName.isNotEmpty)
+        'displayName': displayName,
+      if (avatarId != null && avatarId.isNotEmpty) 'avatarId': avatarId,
+    });
+  }
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> listenMatchmakingTicket(
+    String uid,
+  ) {
+    return _matchmakingQueue.doc(uid).snapshots();
+  }
+
+  Future<void> cancelMatchmaking(String uid) async {
+    await _matchmakingQueue.doc(uid).set({
+      'status': 'cancelled',
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Map<String, dynamic> _gamePayload(GameState gState) {

@@ -78,5 +78,21 @@ service cloud.firestore {
         allow read, write: if signedIn();
       }
     }
+
+    // Quick Match queue — clients enqueue/cancel; matcher CF claims matches.
+    match /matchmakingQueue/{uid} {
+      allow read: if isSelf(uid);
+      allow delete: if isSelf(uid);
+      allow create: if isSelf(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.status == 'waiting'
+        && !('matchedGameId' in request.resource.data);
+      allow update: if isSelf(uid)
+        && (
+          (request.resource.data.status == 'waiting'
+            && !('matchedGameId' in request.resource.data))
+          || request.resource.data.status == 'cancelled'
+        );
+    }
   }
 }
