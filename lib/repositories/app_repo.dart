@@ -539,6 +539,13 @@ class AppRepo extends ChangeNotifier {
     return _loadFuture ??= _loadAppInternal();
   }
 
+  /// Drop a waiting Quick Match ticket left by a killed/backgrounded search.
+  Future<void> _abandonStaleMatchmaking() async {
+    final pid = player?.id;
+    if (pid == null || pid.isEmpty) return;
+    await QuickMatchService(fs).abandonStaleSearch(pid);
+  }
+
   Future<void> _loadAppInternal() async {
     developer.log("AppRepo: Loading app");
     try {
@@ -547,6 +554,9 @@ class AppRepo extends ChangeNotifier {
       await _loadQuickMatchPrefs();
       await _loadTheme();
       player = await _loadPlayer();
+      // Cancel leftover Quick Match tickets ASAP (before wallet/FCM work) so
+      // the minute sweeper cannot form Rummy / Tres y Dos / Sweep while idle.
+      await _abandonStaleMatchmaking();
       if (player != null) {
         await equipPack(_appTheme, avatarId: player!.avatarId);
       }
@@ -563,17 +573,14 @@ class AppRepo extends ChangeNotifier {
       _listenForFcmTokenRefresh();
       await refreshNotificationStatus();
       unawaited(_persistActiveGameId());
-      // Drop a waiting Quick Match ticket left by a killed search so the
-      // minute sweeper cannot form a Sweep lobby while the user is idle.
-      final matchmakingPid = player?.id;
-      if (matchmakingPid != null && matchmakingPid.isNotEmpty) {
-        unawaited(QuickMatchService(fs).abandonStaleSearch(matchmakingPid));
-      }
       if (player != null) appStatus = AppStatus.appReady;
     } catch (e, st) {
       developer.log("AppRepo.loadApp Error: $e", error: e, stackTrace: st);
       // Last-resort local player so the UI is never stuck on "loading app".
       player ??= await _fallbackLocalPlayer();
+      try {
+        await _abandonStaleMatchmaking();
+      } catch (_) {}
       if (player != null) appStatus = AppStatus.appReady;
       try {
         gamesInfo = await loadGames();
