@@ -1,4 +1,4 @@
-# You Are Up
+# Barajando
 
 A beautiful, cross-platform card game app featuring traditional Dominican card games. Experience the thrill of Sweep, Tres y Dos, and Robaito with friends and family in real-time multiplayer matches.
 

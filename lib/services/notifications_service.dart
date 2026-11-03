@@ -141,7 +141,7 @@ Future<void> _showLocalFromRemoteMessage(
 ) async {
   final title = message.notification?.title ??
       message.data['title']?.toString() ??
-      'You Are Up';
+      'Barajando';
   final body = message.notification?.body ??
       message.data['body']?.toString() ??
       '';

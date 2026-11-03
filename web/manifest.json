@@ -1,11 +1,11 @@
 {
-    "name": "You Are Up",
-    "short_name": "You Are Up",
+    "name": "Barajando",
+    "short_name": "Barajando",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "You Are Up",
+    "description": "Barajando",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -89,7 +89,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "Welcome to You Are Up!",
+                "Welcome to Barajando!",
                 textAlign: TextAlign.center,
                 style: AppStyle.theme.title.copyWith(
                   fontSize: 32,

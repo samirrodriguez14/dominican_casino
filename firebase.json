@@ -120,7 +120,7 @@
       "anonymous": true,
       "emailPassword": false,
       "googleSignIn": {
-        "oAuthBrandDisplayName": "You Are Up",
+        "oAuthBrandDisplayName": "Barajando",
         "supportEmail": "samirrodriguez14@gmail.com"
       }
     }

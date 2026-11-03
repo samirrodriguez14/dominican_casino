@@ -18,7 +18,7 @@ class AppStyle {
 abstract class AppTheme {
   double get radius;
 
-  String get appLogo => 'assets/images/logo_icon_sage.png';
+  String get appLogo => 'assets/images/logo_icon_barajando.png';
 
   /// Two-card mark with a transparent field, for placing on UI cards.
   String get appLogoMark => 'assets/images/logo_cards_transparent.png';

@@ -316,7 +316,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
       listenable: appRepo,
       builder: (context, _) {
         return CupertinoApp.router(
-          title: 'You Are Up',
+          title: 'Barajando',
           routerConfig: _router,
           theme: buildCupertinoTheme(appRepo.selectedTheme),
           locale: appRepo.locale,

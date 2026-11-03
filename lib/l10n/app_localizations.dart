@@ -20,7 +20,7 @@ class AppLocalizations {
 
   bool get isEs => locale.languageCode == 'es';
 
-  String get appTitle => 'You Are Up';
+  String get appTitle => 'Barajando';
   String get joinById => isEs ? 'Unirse por #ID' : 'Join by #ID';
   String get quickPlay => isEs ? 'Partida rápida' : 'Quick Match';
   String get playPublicChip => isEs ? 'Público' : 'Public';
@@ -212,7 +212,7 @@ class AppLocalizations {
   String get clickToPlayQuickMatch =>
       isEs ? 'Toca para una partida rápida' : 'Click to play a quick match';
   String get appByline =>
-      isEs ? 'You Are Up por SR2' : 'You Are Up by SR2';
+      isEs ? 'Barajando por SR2' : 'Barajando by SR2';
   String get theApp => isEs ? 'LA APP' : 'THE APP';
   String get aboutHeadline => isEs
       ? '¡Juega tus juegos de naipes favoritos!'
@@ -242,7 +242,7 @@ class AppLocalizations {
   String get tryAgain => isEs ? 'Inténtalo de nuevo.' : 'Please try again.';
   String get retry => isEs ? 'Reintentar' : 'Retry';
   String get welcomeTitle =>
-      isEs ? 'Bienvenido a You Are Up' : 'Welcome to You Are Up';
+      isEs ? 'Bienvenido a Barajando' : 'Welcome to Barajando';
   String get welcomeTutorialBody => isEs
       ? 'Aprende a jugar con un tutorial rápido contra Puli, nuestro bot.'
       : 'Learn how to play with a short tutorial against Puli, our AI opponent.';
