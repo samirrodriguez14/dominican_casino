@@ -253,7 +253,6 @@ class AppRepo extends ChangeNotifier {
   StreamSubscription<String>? _fcmTokenSub;
   String? _activeGameId;
   Future<void> _activeGameWrite = Future.value();
-  Timer? _energyTestTimer;
   Timer? _dailyRewardTimer;
   Duration? _dailyRewardLastRemaining;
 
@@ -3226,8 +3225,9 @@ class AppRepo extends ChangeNotifier {
   }
 
   /// Fetch the current FCM token and write it to users/{uid}.fcmToken.
-  Future<void> _syncFcmToken() async {
-    if (!notificationsEnabled) return;
+  /// Returns an error string when nothing was saved.
+  Future<String?> _syncFcmToken() async {
+    if (!notificationsEnabled) return 'Notifications are off';
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null && player?.id != uid) {
@@ -3240,28 +3240,30 @@ class AppRepo extends ChangeNotifier {
       final messaging = FirebaseMessaging.instance;
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
         String? apns;
-        for (var i = 0; i < 8; i++) {
+        for (var i = 0; i < 10; i++) {
           apns = await messaging.getAPNSToken();
           if (apns != null) break;
-          await Future.delayed(const Duration(milliseconds: 250));
+          await Future.delayed(const Duration(milliseconds: 400));
         }
         if (apns == null) {
           developer.log('APNS token not ready yet');
-          return;
+          return 'APNs token not ready. Use a physical iPhone and try again.';
         }
       }
       final token = await messaging.getToken();
       if (token == null) {
         developer.log('FCM getToken returned null', name: 'notifications');
-        return;
+        return 'FCM returned no token';
       }
-      await _saveFcmToken(token);
+      return _saveFcmToken(token);
     } catch (e) {
       developer.log('AppRepo._syncFcmToken: $e');
+      return 'Token sync failed: $e';
     }
   }
 
-  Future<void> _saveFcmToken(String token) async {
+  /// Returns an error string when the token was not written.
+  Future<String?> _saveFcmToken(String token) async {
     final current = player;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (current == null || uid == null) {
@@ -3269,7 +3271,7 @@ class AppRepo extends ChangeNotifier {
         'FCM token not saved: player=${current != null} uid=$uid',
         name: 'notifications',
       );
-      return;
+      return 'Not signed in';
     }
     if (current.id != uid) {
       developer.log(
@@ -3277,7 +3279,7 @@ class AppRepo extends ChangeNotifier {
         '(call ensurePlayableUid first)',
         name: 'notifications',
       );
-      return;
+      return 'Profile id does not match the signed-in account';
     }
     if (current.token != token) {
       player = current.copyWith(token: token);
@@ -3289,8 +3291,10 @@ class AppRepo extends ChangeNotifier {
         'FCM token saved for $uid …${token.substring(token.length - 6)}',
         name: 'notifications',
       );
+      return null;
     } catch (e) {
       developer.log('AppRepo.saveUserToken: $e');
+      return 'Could not save FCM token: $e';
     }
   }
 
@@ -4217,54 +4221,57 @@ class AppRepo extends ChangeNotifier {
   }
 
   /// Debug: call Cloud Function [testTurn] for an immediate turn-style push.
-  Future<bool> testTurnNotification() async {
+  Future<String> testTurnNotification() => _callTestPush('testTurn');
+
+  /// Debug: call Cloud Function [testEnergyFull] for an immediate energy push.
+  Future<String> testEnergyFullNotification() =>
+      _callTestPush('testEnergyFull');
+
+  /// Ask permission, store this device's FCM token, then call [name].
+  Future<String> _callTestPush(String name) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      debugPrint('testTurn failed: no FirebaseAuth user');
-      return false;
-    }
+    if (uid == null) return 'Not signed in';
     try {
       await ensurePlayableUid();
-      if (notificationsEnabled) await _syncFcmToken();
-      final result = await FirebaseFunctions.instance
-          .httpsCallable('testTurn')
-          .call<Object?>({});
-      final data = result.data;
-      final status = data is Map ? data['result']?.toString() : data?.toString();
-      debugPrint('testTurn: $status');
-      return status == 'sent';
-    } catch (e) {
-      debugPrint('testTurn failed: $e');
-      return false;
-    }
-  }
-
-  /// Debug: mark energy-full as due so onEnergyFull can send on its next
-  /// minute tick. Does not use a callable (v2 IAM blocks those here).
-  Future<bool> testEnergyFullNotification() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      debugPrint('testEnergyFull failed: no FirebaseAuth user');
-      return false;
-    }
-    _walletPersistPaused = true;
-    _energyTestTimer?.cancel();
-    try {
-      await fs.armEnergyFullNotification(uid);
-      debugPrint(
-        'testEnergyFull: armed energyFullAt. '
-        'Keep this screen (or lock the phone). Banner within ~1 min.',
+      await NotificationsService.instance.configure();
+      await NotificationsService.instance
+          .requestAndroidPostNotificationsPermission();
+      final settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
       );
-      _energyTestTimer = Timer(const Duration(minutes: 2), () {
-        _walletPersistPaused = false;
-        unawaited(_persistWallet());
-        debugPrint('testEnergyFull: restored wallet persist');
-      });
-      return true;
+      notificationStatus = settings.authorizationStatus;
+      notificationsEnabled =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+      notifyListeners();
+      if (!notificationsEnabled) {
+        return 'Notification permission denied';
+      }
+      final tokenError = await _syncFcmToken();
+      if (tokenError != null) return tokenError;
+
+      final result = await FirebaseFunctions.instance
+          .httpsCallable(name)
+          .call(<String, dynamic>{});
+      final data = result.data;
+      final status = data is Map ? data['result']?.toString() : null;
+      final reason = data is Map ? data['reason']?.toString() : null;
+      final message = (reason != null && reason.isNotEmpty && reason != status)
+          ? '$status ($reason)'
+          : (status ?? data?.toString() ?? 'no result');
+      debugPrint('$name: $message');
+      if (status == 'sent') return 'Sent. The banner should show now.';
+      return message;
+    } on FirebaseFunctionsException catch (e) {
+      final message = '$name failed: ${e.code} ${e.message ?? ''}'.trim();
+      debugPrint(message);
+      return message;
     } catch (e) {
-      _walletPersistPaused = false;
-      debugPrint('testEnergyFull failed: $e');
-      return false;
+      debugPrint('$name failed: $e');
+      return '$name failed: $e';
     }
   }
 

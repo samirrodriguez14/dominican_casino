@@ -153,7 +153,7 @@ export const sendGameInvites = onCall(
         gameMode,
         fromName,
       });
-      if (ok) sent += 1;
+      if (ok.ok) sent += 1;
     }
     return {result: sent > 0 ? "sent" : "skip", sent};
   },
@@ -202,8 +202,10 @@ export const testEnergyFull = onCall(
     if (!uid) {
       throw new HttpsError("unauthenticated", "Sign in first");
     }
+    logger.info("testEnergyFull called", {uid});
     const result = await _notifyEnergyFull(uid, {force: true});
-    return {result};
+    logger.info("testEnergyFull result", {uid, result});
+    return {result, reason: result};
   },
 );
 
@@ -221,13 +223,18 @@ export const testTurn = onCall(
     const gid = typeof request.data?.gid === "string" ?
       request.data.gid :
       "test";
+    logger.info("testTurn called", {uid, gid});
     const copy = _turnCopy();
     const sent = await _sendToUser(uid, copy, {
       type: "turn",
       gid,
       gameMode: "test",
     }, {force: true});
-    return {result: sent ? "sent" : "skip"};
+    logger.info("testTurn result", {uid, ok: sent.ok, reason: sent.reason});
+    return {
+      result: sent.ok ? "sent" : "skip",
+      reason: sent.reason,
+    };
   },
 );
 
@@ -359,9 +366,16 @@ async function _notifyEnergyFull(
     return "clear";
   }
 
-  const copy = _energyCopy(user.locale as string | undefined);
-  const sent = await _sendToUser(uid, copy, {type: "energy_full"});
-  return sent ? "sent" : "skip";
+    const copy = _energyCopy(user.locale as string | undefined);
+  const sent = await _sendToUser(
+    uid,
+    copy,
+    {type: "energy_full"},
+    {force},
+  );
+  if (sent.ok) return "sent";
+  if (sent.reason === "no_token") return "clear";
+  return "skip";
 }
 
 /**
@@ -396,28 +410,32 @@ function _collectFcmTokens(
  * @param {Record<string, string>} data Extra FCM data payload.
  * @param {object=} opts Optional flags.
  * @param {boolean=} opts.force Skip in-game skip for testing.
- * @return {Promise<boolean>} True when at least one FCM send succeeded.
+ * @return {Promise<{ok: boolean, reason: string}>} Send outcome.
  */
 async function _sendToUser(
   uid: string,
   copy: {title: string; body: string},
   data: Record<string, string>,
   opts?: {force?: boolean},
-): Promise<boolean> {
+): Promise<{ok: boolean; reason: string}> {
   const force = opts?.force === true;
   const userSnap = await admin.firestore()
     .collection("users").doc(uid).get();
   const user = userSnap.data();
-  const viewingGid = user?.activeGameId as string | undefined;
+  if (!user) {
+    logger.info("No user doc", {uid});
+    return {ok: false, reason: "no_user"};
+  }
+  const viewingGid = user.activeGameId as string | undefined;
   const targetGid = data.gid;
   if (!force && targetGid && viewingGid === targetGid) {
     logger.info("Skip, user viewing game", {uid, gid: targetGid});
-    return false;
+    return {ok: false, reason: "viewing_game"};
   }
   const tokens = _collectFcmTokens(user);
   if (tokens.length === 0) {
     logger.info("No FCM token", {uid});
-    return false;
+    return {ok: false, reason: "no_token"};
   }
 
   const payloadData: Record<string, string> = {
@@ -427,6 +445,7 @@ async function _sendToUser(
   };
 
   let anySent = false;
+  let lastError = "send_failed";
   for (const token of tokens) {
     try {
       const messageId = await admin.messaging().send({
@@ -468,8 +487,13 @@ async function _sendToUser(
       });
       anySent = true;
     } catch (err) {
-      logger.error("FCM send failed", {uid, tokenTail: token.slice(-8), err});
+      lastError = err instanceof Error ? err.message : String(err);
+      logger.error("FCM send failed", {
+        uid,
+        tokenTail: token.slice(-8),
+        err: lastError,
+      });
     }
   }
-  return anySent;
+  return anySent ? {ok: true, reason: "sent"} : {ok: false, reason: lastError};
 }

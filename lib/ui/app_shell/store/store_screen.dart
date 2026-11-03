@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:barajando/l10n/app_localizations.dart';
 import 'package:barajando/models/daily_challenge.dart';
 import 'package:barajando/models/theme_pack.dart';
@@ -18,6 +20,26 @@ import 'package:barajando/view_models/app_theme_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+
+void _runDebugPush(BuildContext context, Future<String> Function() run) {
+  unawaited(() async {
+    final message = await run();
+    if (!context.mounted) return;
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Push test'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }());
+}
 
 class StoreScreen extends StatefulWidget {
   const StoreScreen({super.key});
@@ -180,7 +202,10 @@ class _DailySection extends StatelessWidget {
             minimumSize: Size.zero,
             color: theme.textPrimary.withValues(alpha: .14),
             onPressed: SoundService.wrapTap(() {
-              context.read<AppRepo>().testEnergyFullNotification();
+              _runDebugPush(
+                context,
+                context.read<AppRepo>().testEnergyFullNotification,
+              );
             }),
             child: Text(
               l10n.debugTestEnergyPush,
@@ -196,7 +221,10 @@ class _DailySection extends StatelessWidget {
             minimumSize: Size.zero,
             color: theme.textPrimary.withValues(alpha: .14),
             onPressed: SoundService.wrapTap(() {
-              context.read<AppRepo>().testTurnNotification();
+              _runDebugPush(
+                context,
+                context.read<AppRepo>().testTurnNotification,
+              );
             }),
             child: Text(
               'Test turn push',
