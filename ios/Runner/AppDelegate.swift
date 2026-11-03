@@ -14,6 +14,12 @@ import UserNotifications
     return ok
   }
 
+  override func applicationDidBecomeActive(_ application: UIApplication) {
+    super.applicationDidBecomeActive(application)
+    application.applicationIconBadgeNumber = 0
+    UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+  }
+
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
