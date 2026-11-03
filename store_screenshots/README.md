@@ -39,8 +39,9 @@ Size: **2064 × 2752**
 Captions live in [`manifest.json`](manifest.json).
 
 ```bash
-# 1) Boot a simulator, then capture (prints STORE_SHOT markers):
-flutter run -d <UDID> --dart-define=STORE_SCREENSHOTS=true 2>&1 | tee /tmp/barajando-shots.log
+# 1) Boot a simulator, then capture with the store-shot entrypoint
+#    (do NOT use --dart-define=STORE_SCREENSHOTS — it sticks in Generated.xcconfig):
+flutter run -d <UDID> -t lib/main_store_shots.dart 2>&1 | tee /tmp/barajando-shots.log
 
 # 2) In another terminal, watch markers and write raw PNGs:
 tool/capture_store_screenshots.sh <UDID> store_screenshots/raw/iphone /tmp/barajando-shots.log
@@ -59,4 +60,5 @@ Pillow venv: `python3 -m venv tool/.venv && tool/.venv/bin/pip install Pillow`
 
 - Raw captures are real Simulator UI (`raw/`). Framed exports add sage/gold caption bands.
 - Store-shot mode skips notification permission prompts and first-run tutorial popups.
+- Normal `flutter run` / Xcode builds never run the tour (flag stays off).
 - English captions only; swap strings in `manifest.json` for a Spanish set later.

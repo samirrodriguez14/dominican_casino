@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 /// Drives the App Store screenshot storyboard.
 ///
 /// Prints `STORE_SHOT:<id>` when each screen is ready for `simctl` capture.
+/// Only runs when launched via `lib/main_store_shots.dart`.
 /// Pair with [tool/capture_store_screenshots.sh].
 class StoreShotTour {
   StoreShotTour._();
@@ -22,6 +23,8 @@ class StoreShotTour {
   static bool _started = false;
 
   static Future<void> maybeStart(BuildContext context, GoRouter router) async {
+    // Never auto-drive the normal app — leftover dart-defines used to leave
+    // this on and spawn Sweep / Tres y Dos / Rummy vs Pulilo after login.
     if (!kStoreScreenshots || _started) return;
     _started = true;
     // Let first frame + Firebase settle, then run.

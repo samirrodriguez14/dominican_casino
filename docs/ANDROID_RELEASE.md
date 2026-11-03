@@ -1,6 +1,6 @@
 # Android / Play Store contract
 
-Version in `pubspec.yaml`: `0.1.0+1`. Application id / package: `com.sr2.dominicanCasino` (matches iOS bundle id).
+Version in `pubspec.yaml`: `0.1.1+8` (see [CHANGELOG.md](../CHANGELOG.md) for “What’s New”). Application id / package: `com.sr2.dominicanCasino` (matches iOS bundle id).
 
 Firebase Android app id: `1:932020449632:android:6541fabbce84c931c9ee05`. Config file: [`android/app/google-services.json`](../android/app/google-services.json). Dart options: [`lib/services/firebase_options.dart`](../lib/services/firebase_options.dart).
 

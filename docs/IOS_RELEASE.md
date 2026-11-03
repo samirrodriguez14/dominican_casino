@@ -1,6 +1,6 @@
 # iOS / App Store contract
 
-Version in `pubspec.yaml`: `0.1.0+1`. Bundle id in Firebase/Xcode: `com.example.dominicanCasino` (placeholder).
+Version in `pubspec.yaml`: `0.1.1+8` (see [CHANGELOG.md](../CHANGELOG.md) for “What’s New”). Bundle id in Firebase/Xcode: `com.example.dominicanCasino` (placeholder).
 
 ## Blockers before first upload
 
