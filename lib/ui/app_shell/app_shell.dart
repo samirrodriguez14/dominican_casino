@@ -1,5 +1,6 @@
 import 'package:barajando/l10n/app_localizations.dart';
 import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/store_shots/store_shot_flags.dart';
 import 'package:barajando/style/app_theme.dart';
 import 'package:barajando/style/journey_worlds.dart';
 import 'package:barajando/ui/animations/currency_burst.dart';
@@ -87,7 +88,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   void _maybeOfferFirstRun() {
-    if (_offeredTutorial || !mounted) return;
+    if (kStoreScreenshots || _offeredTutorial || !mounted) return;
     final repo = context.read<AppRepo>();
     if (repo.pendingHomeCoinClaim != null ||
         repo.pendingHomeDailyChallengeEnergy.isNotEmpty ||

@@ -1,0 +1,58 @@
+{
+  "brand": {
+    "name": "Barajando",
+    "background": "#1A2220",
+    "surface": "#252E2B",
+    "accent": "#C4B07A",
+    "sage": "#6F9E86",
+    "text": "#F4F2EC",
+    "muted": "#B0BAB4",
+    "logo": "assets/images/logo_cards_transparent.png"
+  },
+  "devices": {
+    "iphone": {
+      "width": 1206,
+      "height": 2622,
+      "caption_band": 0.18,
+      "ui_margin": 0.04
+    },
+    "ipad": {
+      "width": 2064,
+      "height": 2752,
+      "caption_band": 0.14,
+      "ui_margin": 0.05
+    }
+  },
+  "screens": [
+    {
+      "id": "01-games",
+      "title": "Play Dominican card games",
+      "subtitle": "Sweep, Tres y Dos, Rummy, and more"
+    },
+    {
+      "id": "02-sweep",
+      "title": "Sweep — classic capture",
+      "subtitle": "Clear the table. Claim the pot."
+    },
+    {
+      "id": "03-tresydos",
+      "title": "Tres y Dos with friends or AI",
+      "subtitle": "The Dominican classic, anytime"
+    },
+    {
+      "id": "04-rummy",
+      "title": "Build melds. Win the pot.",
+      "subtitle": "Rummy the Barajando way"
+    },
+    {
+      "id": "05-journey",
+      "title": "Climb the Journey",
+      "subtitle": "Challengers, leagues, and rewards"
+    },
+    {
+      "id": "06-profile",
+      "title": "Make the table yours",
+      "subtitle": "Themes, avatars, and progress"
+    }
+  ]
+}

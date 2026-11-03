@@ -8,6 +8,8 @@ import 'package:barajando/repositories/app_repo.dart';
 import 'package:barajando/repositories/game_repo.dart';
 import 'package:barajando/routing/game_routes.dart';
 import 'package:barajando/services/notifications_service.dart';
+import 'package:barajando/store_shots/store_shot_flags.dart';
+import 'package:barajando/store_shots/store_shot_tour.dart';
 import 'package:barajando/ui/app_shell/app_shell.dart';
 import 'package:barajando/style/app_theme.dart';
 import 'package:barajando/ui/general_game/general_game_screen.dart';
@@ -125,6 +127,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncActiveGamePresence();
       unawaited(_readyDeepLinks());
+      unawaited(StoreShotTour.maybeStart(context, _router));
     });
   }
 
@@ -200,6 +203,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
   }
 
   Future<void> _initNotificationTaps() async {
+    if (kStoreScreenshots) return;
     _fcmOpenedSub = NotificationsService.instance.opened.listen(
       _openFromNotification,
     );
@@ -317,6 +321,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
       builder: (context, _) {
         return CupertinoApp.router(
           title: 'Barajando',
+          debugShowCheckedModeBanner: false,
           routerConfig: _router,
           theme: buildCupertinoTheme(appRepo.selectedTheme),
           locale: appRepo.locale,
