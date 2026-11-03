@@ -10,7 +10,7 @@ import 'package:barajando/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:barajando/ui/app_shell/games/game_mode_grid.dart';
 import 'package:barajando/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:barajando/ui/app_shell/games/game_mode_actions.dart';
-import 'package:barajando/ui/app_shell/games/tutorial_flow.dart';
+import 'package:barajando/ui/app_shell/games/quick_play_dialog.dart';
 import 'package:barajando/ui/app_shell/journey/journey_stage.dart';
 import 'package:barajando/ui/app_shell/shell_insets.dart';
 import 'package:barajando/ui/widgets/stacked_card_carousel.dart';
@@ -352,7 +352,7 @@ class GamesScreenState extends State<GamesScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _QuickMatchButton(
-                        onPressed: () => runLandingQuickMatch(context),
+                        onPressed: () => showQuickPlayDialog(context),
                       ),
                       const SizedBox(height: 4),
                       Row(

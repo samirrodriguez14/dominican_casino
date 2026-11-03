@@ -3,10 +3,6 @@ import 'package:barajando/models/game_state.dart';
 /// Game modes that have an in-app guided tutorial.
 const tutorialGameModes = <GameMode>{
   GameMode.casino,
-  GameMode.casinoSpeed,
-  GameMode.rummy,
-  GameMode.tresydos,
-  GameMode.bs,
 };
 
 bool isTutorialGameMode(GameMode mode) => tutorialGameModes.contains(mode);

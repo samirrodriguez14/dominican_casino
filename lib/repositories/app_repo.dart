@@ -502,9 +502,10 @@ class AppRepo extends ChangeNotifier {
       player?.completedTutorial == true ||
       (player?.completedGameTutorials.isNotEmpty ?? false);
 
-  Set<GameMode> get matchmakingEligibleModes => gameModeCarouselModes
-      .where((m) => isGameTutorialDone(m))
-      .toSet();
+  /// Once Sweep tutorial is done (or legacy completedTutorial), all carousel
+  /// modes are matchmaking-eligible. Other modes have no guided tutorial.
+  Set<GameMode> get matchmakingEligibleModes =>
+      hasAnyTutorialDone ? gameModeCarouselModes.toSet() : {};
 
   void setTutorialPendingLaunch(TutorialPendingLaunch? launch) {
     _tutorialPendingLaunch = launch;

@@ -1,9 +1,13 @@
 import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/tutorial_post_action.dart';
+import 'package:barajando/repositories/app_repo.dart';
 import 'package:barajando/services/sound_service.dart';
 import 'package:barajando/style/app_theme.dart';
 import 'package:barajando/ui/app_shell/games/tutorial_flow.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
+import 'package:provider/provider.dart';
 
 /// First-run welcome on Games. Start tutorial or dismiss for this session.
 Future<void> showWelcomeTutorialPopup(BuildContext context) {
@@ -60,9 +64,12 @@ Future<void> showWelcomeTutorialPopup(BuildContext context) {
                     color: theme.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    onPressed: SoundService.wrapTap(() async {
+                    onPressed: SoundService.wrapTap(() {
                       Navigator.pop(dialogContext);
-                      await runHomeQuickPlay(context);
+                      context.read<AppRepo>().setTutorialPostAction(
+                        TutorialPostAction.matchmaking,
+                      );
+                      launchTutorialMatch(context, GameMode.casino);
                     }),
                     child: Text(
                       l10n.startTutorial,

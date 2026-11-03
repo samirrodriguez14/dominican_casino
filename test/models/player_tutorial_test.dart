@@ -13,23 +13,24 @@ void main() {
       expect(player.completedTutorial, isTrue);
     });
 
-    test('completedGameTutorials json round-trips', () {
+    test('completedGameTutorials json round-trips for Sweep', () {
       final player = Player(
         id: 'p1',
         completedTutorial: true,
-        completedGameTutorials: {GameMode.rummy, GameMode.bs},
+        completedGameTutorials: {GameMode.casino},
       );
       final restored = Player.fromDto(player.toJson());
-      expect(restored.completedGameTutorials, player.completedGameTutorials);
+      expect(restored.completedGameTutorials, {GameMode.casino});
     });
 
-    test('explicit tutorials are not overwritten by legacy flag', () {
+    test('non-Sweep tutorial ids fall back to legacy casino', () {
       final player = Player.fromDto({
         'id': 'p1',
         'completedTutorial': true,
-        'completedGameTutorials': ['rummy'],
+        'completedGameTutorials': ['rummy', 'bs'],
       });
-      expect(player.completedGameTutorials, {GameMode.rummy});
+      // Non-Sweep ids are dropped; legacy flag migrates to Sweep.
+      expect(player.completedGameTutorials, {GameMode.casino});
     });
   });
 }
