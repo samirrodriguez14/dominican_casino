@@ -429,9 +429,9 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
   }
 
   /// Next far-side peek after [incomingIndex] becomes the front card.
-  int? _fanEnterPeekIndex(int? incomingIndex) {
+  int? _fanEnterPeekIndex(int? incomingIndex, {required bool toLeft}) {
     if (incomingIndex == null || widget.itemCount < 3) return null;
-    if (_dismissToLeft) {
+    if (toLeft) {
       if (widget.wrap) {
         return (incomingIndex + 1) % widget.itemCount;
       }
@@ -521,6 +521,17 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
     );
   }
 
+  /// Far-side peek fade-in progress from the current drag (0 at rest).
+  double _fanDragEnterProgress() {
+    return Curves.easeOut.transform(
+      (_dragDx.abs() / _dismissThreshold).clamp(0.0, 1.0),
+    );
+  }
+
+  _CardPose _fanEnterPose(_CardPose farRest, double opacity) {
+    return _withOpacity(farRest, opacity.clamp(0.0, 1.0));
+  }
+
   ({
     _CardPose left,
     _CardPose front,
@@ -532,11 +543,9 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
   _fanRestackPoses(double cardWidth) {
     final t = _anim.value.clamp(0.0, 1.0);
     final eased = Curves.easeOutCubic.transform(t);
-    // Far-side peek starts slightly after the restack so it reads as coming
-    // from under the stack rather than popping at full angle.
-    final enterT = Curves.easeOutCubic.transform(
-      ((t - 0.12) / 0.88).clamp(0.0, 1.0),
-    );
+    // Continue from drag fade-in so the far peek doesn't pop on release.
+    final dragEnter = _fanDragEnterProgress();
+    final enterOpacity = dragEnter + (1.0 - dragEnter) * eased;
     final start = _frontPoseWhileDragging();
     final leftRest = _leftRest(cardWidth);
     final rightRest = _rightRest(cardWidth);
@@ -561,7 +570,7 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
           _exitEnd(leftRest, cardWidth, left: true),
           exitOut,
         ),
-        enter: _CardPose.lerp(_frontRest, rightRest, enterT),
+        enter: _fanEnterPose(rightRest, enterOpacity),
         dismissedUnder: t > 0.48,
       );
     }
@@ -580,7 +589,7 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
         _exitEnd(rightRest, cardWidth, left: false),
         exitOut,
       ),
-      enter: _CardPose.lerp(_frontRest, leftRest, enterT),
+      enter: _fanEnterPose(leftRest, enterOpacity),
       dismissedUnder: t > 0.48,
     );
   }
@@ -767,7 +776,10 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
       final poses = _fanRestackPoses(cardWidth);
       final incomingIndex = _dismissToLeft ? _rightIndex : _leftIndex;
       final incomingPose = _dismissToLeft ? poses.right : poses.left;
-      final enterIdx = _fanEnterPeekIndex(incomingIndex);
+      final enterIdx = _fanEnterPeekIndex(
+        incomingIndex,
+        toLeft: _dismissToLeft,
+      );
 
       final movingFront = _posedCard(
         index: _front,
@@ -814,20 +826,51 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
       return [?fadeCard, ?enterCard, ?incoming, movingFront];
     }
 
-    late final _CardPose leftPose;
-    late final _CardPose frontPose;
-    late final _CardPose rightPose;
+    late _CardPose leftPose;
+    late _CardPose frontPose;
+    late _CardPose rightPose;
+    Widget? enterCard;
 
     if (_dragging || _dragDx.abs() > 0.5) {
       frontPose = _frontPoseWhileDragging();
-      if (_dragDx < 0) {
+      final toLeft = _dragDx < 0;
+      final enterProgress = _fanDragEnterProgress();
+      final incomingIndex = toLeft ? _rightIndex : _leftIndex;
+      final enterIdx = _fanEnterPeekIndex(incomingIndex, toLeft: toLeft);
+      if (toLeft) {
         rightPose = _sideTowardFront(rightRest);
-        leftPose = _sideReceding(leftRest, cardWidth, left: true);
+        // Fade the outgoing left peek with drag so enter can take its place.
+        leftPose = _withOpacity(
+          _sideReceding(leftRest, cardWidth, left: true),
+          1.0 - enterProgress * 0.85,
+        );
+        if (enterIdx != null) {
+          enterCard = _posedCard(
+            key: ValueKey('enter-$enterIdx'),
+            index: enterIdx,
+            pose: _fanEnterPose(rightRest, enterProgress),
+            cardWidth: cardWidth,
+            interactive: false,
+          );
+        }
       } else {
         leftPose = _sideTowardFront(leftRest);
         final recede = _sideReceding(rightRest, cardWidth, left: false);
         final cover = (_dragDx / (cardWidth * fanPeek + 10)).clamp(0.0, 1.0);
-        rightPose = _withOpacity(recede, 1.0 - Curves.easeIn.transform(cover));
+        rightPose = _withOpacity(
+          recede,
+          (1.0 - Curves.easeIn.transform(cover)).clamp(0.0, 1.0) *
+              (1.0 - enterProgress * 0.85),
+        );
+        if (enterIdx != null) {
+          enterCard = _posedCard(
+            key: ValueKey('enter-$enterIdx'),
+            index: enterIdx,
+            pose: _fanEnterPose(leftRest, enterProgress),
+            cardWidth: cardWidth,
+            interactive: false,
+          );
+        }
       }
     } else {
       frontPose = _frontRest;
@@ -875,12 +918,14 @@ class StackedCardCarouselState extends State<StackedCardCarousel>
     // While dragging right, keep the left peek above the (fading) right peek.
     if (_dragDx > 0) {
       return [
+        ?enterCard,
         ?rightCard,
         ?leftCard,
         frontCard,
       ];
     }
     return [
+      ?enterCard,
       ?leftCard,
       ?rightCard,
       frontCard,
