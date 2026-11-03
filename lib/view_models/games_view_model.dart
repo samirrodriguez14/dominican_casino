@@ -255,8 +255,9 @@ class GamesViewModel extends ChangeNotifier {
     _listenPid = pid;
     _paused = false;
     _stopActiveSubscription();
-    currentGames = const [];
-    loading = true;
+    // Keep the previous list while the snapshot reloads so the home peek
+    // badge does not flash off then on when leaving a match.
+    loading = currentGames.isEmpty;
     error = null;
     notifyListeners();
 

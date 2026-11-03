@@ -57,10 +57,12 @@ class NotificationsService {
     _configured = true;
 
     // Allow banners while the app is in the foreground (iOS).
+    // Keep badge off — APNs already sets badge:1, and presenting it again
+    // while open re-flashes the red icon circle until AppDelegate clears it.
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
           alert: true,
-          badge: true,
+          badge: false,
           sound: true,
         );
 
@@ -109,6 +111,21 @@ class NotificationsService {
     final message = _launchMessage;
     _launchMessage = null;
     if (message != null) _emitOpened(message);
+  }
+
+  /// Clear local + delivered notifications (Android shade / leftover locals).
+  /// iOS also clears in AppDelegate on foreground; this covers plugin locals.
+  Future<void> clearPresentedNotifications() async {
+    try {
+      await _local.cancelAll();
+    } catch (e, st) {
+      developer.log(
+        'Failed to cancel local notifications',
+        error: e,
+        stackTrace: st,
+        name: 'notifications',
+      );
+    }
   }
 
   void _emitOpened(RemoteMessage message) {
@@ -181,6 +198,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // CF payloads already include a `notification` block — the OS shows that.
+  // Only mirror data-only messages so we do not double-post (flash then wipe).
+  if (message.notification != null) return;
 
   final local = FlutterLocalNotificationsPlugin();
   const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');

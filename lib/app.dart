@@ -298,6 +298,11 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         sounds.startMusic();
+        if (!kStoreScreenshots) {
+          unawaited(
+            NotificationsService.instance.clearPresentedNotifications(),
+          );
+        }
         break;
       // Skip [inactive]: on Android it fires for transient system UI (and
       // around audio focus changes) without the app leaving the foreground.

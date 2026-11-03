@@ -30,6 +30,7 @@ import 'package:barajando/repositories/apple_account_deletion.dart';
 import 'package:barajando/services/google_sign_in_setup.dart';
 import 'package:barajando/services/firestore_service.dart';
 import 'package:barajando/services/notifications_service.dart';
+import 'package:barajando/services/quick_match_service.dart';
 import 'package:barajando/style/app_theme.dart';
 import 'package:barajando/style/journey_worlds.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -562,6 +563,12 @@ class AppRepo extends ChangeNotifier {
       _listenForFcmTokenRefresh();
       await refreshNotificationStatus();
       unawaited(_persistActiveGameId());
+      // Drop a waiting Quick Match ticket left by a killed search so the
+      // minute sweeper cannot form a Sweep lobby while the user is idle.
+      final matchmakingPid = player?.id;
+      if (matchmakingPid != null && matchmakingPid.isNotEmpty) {
+        unawaited(QuickMatchService(fs).abandonStaleSearch(matchmakingPid));
+      }
       if (player != null) appStatus = AppStatus.appReady;
     } catch (e, st) {
       developer.log("AppRepo.loadApp Error: $e", error: e, stackTrace: st);

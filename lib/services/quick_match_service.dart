@@ -67,30 +67,34 @@ class QuickMatchService {
       completer.complete(outcome);
     }
 
+    QuickMatchOutcome? outcomeFromData(Map<String, dynamic> data) {
+      final status = data['status']?.toString();
+      final docTicket = data['ticketId']?.toString();
+      if (docTicket != null && docTicket != ticketId) return null;
+
+      if (status == 'matched') {
+        final gid = data['matchedGameId']?.toString() ?? '';
+        if (gid.isEmpty) return null;
+        final mode = gameModeFrom(
+          data['matchedGameMode']?.toString(),
+        );
+        return QuickMatchOutcome.matched(gameId: gid, gameMode: mode);
+      }
+      if (status == 'timedOut') {
+        return const QuickMatchOutcome.timedOut();
+      }
+      if (status == 'cancelled') {
+        return const QuickMatchOutcome.cancelled();
+      }
+      return null;
+    }
+
     void onSnap(DocumentSnapshot<Map<String, dynamic>> snap) {
       if (completer.isCompleted) return;
       final data = snap.data();
       if (data == null) return;
-      final status = data['status']?.toString();
-      final docTicket = data['ticketId']?.toString();
-      if (docTicket != null && docTicket != ticketId) return;
-
-      if (status == 'matched') {
-        final gid = data['matchedGameId']?.toString() ?? '';
-        if (gid.isEmpty) return;
-        final mode = gameModeFrom(
-          data['matchedGameMode']?.toString(),
-        );
-        finish(QuickMatchOutcome.matched(gameId: gid, gameMode: mode));
-        return;
-      }
-      if (status == 'timedOut') {
-        finish(const QuickMatchOutcome.timedOut());
-        return;
-      }
-      if (status == 'cancelled') {
-        finish(const QuickMatchOutcome.cancelled());
-      }
+      final outcome = outcomeFromData(data);
+      if (outcome != null) finish(outcome);
     }
 
     sub = _fs.listenMatchmakingTicket(playerId).listen(
@@ -118,12 +122,32 @@ class QuickMatchService {
     }
 
     try {
-      final outcome = await completer.future;
+      var outcome = await completer.future;
+
+      // Timeout/cancel can race the server match write. Re-read before
+      // abandoning so we still join when the lobby already exists.
+      if (outcome.kind != QuickMatchOutcomeKind.matched) {
+        try {
+          final latest = await _fs.getMatchmakingTicket(playerId);
+          if (latest != null) {
+            final fromServer = outcomeFromData(latest);
+            if (fromServer != null &&
+                fromServer.kind == QuickMatchOutcomeKind.matched) {
+              outcome = fromServer;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (outcome.kind == QuickMatchOutcomeKind.matched) {
+        return outcome;
+      }
+
       if (cancelledByUser ||
           outcome.kind == QuickMatchOutcomeKind.cancelled ||
           outcome.kind == QuickMatchOutcomeKind.timedOut) {
         try {
-          await _fs.cancelMatchmaking(playerId);
+          await _fs.cancelMatchmaking(playerId, ticketId: ticketId);
         } catch (_) {}
       }
       return outcome;
@@ -131,6 +155,13 @@ class QuickMatchService {
       timer.cancel();
       await sub.cancel();
     }
+  }
+
+  /// Drop a leftover waiting ticket from a killed search session.
+  Future<void> abandonStaleSearch(String playerId) async {
+    try {
+      await _fs.cancelMatchmaking(playerId);
+    } catch (_) {}
   }
 
   /// Modes to check energy against before enqueue (effective selection).

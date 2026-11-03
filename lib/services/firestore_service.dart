@@ -889,11 +889,34 @@ class FirestoreService extends GameService {
     return _matchmakingQueue.doc(uid).snapshots();
   }
 
-  Future<void> cancelMatchmaking(String uid) async {
-    await _matchmakingQueue.doc(uid).set({
-      'status': 'cancelled',
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+  /// Cancel only while still [waiting] for [ticketId] (or any waiting ticket
+  /// when [ticketId] is null). Never overwrite an already-matched lobby —
+  /// that race orphaned games and left opponents able to Start Sweep while
+  /// this client thought it had timed out.
+  Future<bool> cancelMatchmaking(String uid, {String? ticketId}) async {
+    final ref = _matchmakingQueue.doc(uid);
+    return FirebaseFirestore.instance.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) return false;
+      final data = snap.data();
+      if (data == null) return false;
+      if (data['status']?.toString() != 'waiting') return false;
+      if (ticketId != null) {
+        final docTicket = data['ticketId']?.toString();
+        if (docTicket != null && docTicket != ticketId) return false;
+      }
+      tx.set(ref, {
+        'status': 'cancelled',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return true;
+    });
+  }
+
+  /// Snapshot of this player's queue ticket, if any.
+  Future<Map<String, dynamic>?> getMatchmakingTicket(String uid) async {
+    final snap = await _matchmakingQueue.doc(uid).get();
+    return snap.data();
   }
 
   Map<String, dynamic> _gamePayload(GameState gState) {
