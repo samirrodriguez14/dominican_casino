@@ -3,21 +3,21 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>181795819212-e04g13o4btr65bd0i2b20pcou5ehj4gn.apps.googleusercontent.com</string>
+	<string>233905633982-fudd285263nco6amgala5ssuafbtpj19.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.181795819212-e04g13o4btr65bd0i2b20pcou5ehj4gn</string>
+	<string>com.googleusercontent.apps.233905633982-fudd285263nco6amgala5ssuafbtpj19</string>
 	<key>API_KEY</key>
-	<string>AIzaSyDhDNECfhjpCvZwk2S1u9EWdLIa2Gn-T4U</string>
+	<string>AIzaSyDGxpnS1wovQloTSUDWa5f_D7dzSc7v5-Q</string>
 	<key>GCM_SENDER_ID</key>
-	<string>181795819212</string>
+	<string>233905633982</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.sr2.youareup</string>
+	<string>com.sr2.barajando</string>
 	<key>PROJECT_ID</key>
-	<string>youareup</string>
+	<string>barajando-39731</string>
 	<key>STORAGE_BUCKET</key>
-	<string>youareup.firebasestorage.app</string>
+	<string>barajando-39731.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:181795819212:ios:aa5ce674bc508ff6bbfc69</string>
+	<string>1:233905633982:ios:bf90d85ee92f24d284fcef</string>
 </dict>
 </plist>

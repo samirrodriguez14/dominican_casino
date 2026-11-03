@@ -1,13 +1,13 @@
 import 'dart:math' as math;
 
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/player.dart';
-import 'package:youareup/models/tutorial_step.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/widgets/player_avatar.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/player.dart';
+import 'package:barajando/models/tutorial_step.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

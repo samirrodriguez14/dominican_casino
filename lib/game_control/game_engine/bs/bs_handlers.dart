@@ -1,13 +1,13 @@
-import 'package:youareup/game_control/game_engine/bs/bs_state.dart';
-import 'package:youareup/game_control/game_engine/game_engine.dart';
-import 'package:youareup/game_control/game_engine/general_handlers/event_handler.dart';
-import 'package:youareup/game_control/game_engine/general_handlers/game_action_handler.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/models/deck.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/models/round.dart';
-import 'package:youareup/models/table_slot.dart';
+import 'package:barajando/game_control/game_engine/bs/bs_state.dart';
+import 'package:barajando/game_control/game_engine/game_engine.dart';
+import 'package:barajando/game_control/game_engine/general_handlers/event_handler.dart';
+import 'package:barajando/game_control/game_engine/general_handlers/game_action_handler.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/models/deck.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/models/round.dart';
+import 'package:barajando/models/table_slot.dart';
 
 /// Valid claim ranks for BS (standard deck faces).
 const bsClaimRanks = [

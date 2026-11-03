@@ -1,4 +1,4 @@
-import 'package:youareup/repositories/account_display_name.dart';
+import 'package:barajando/repositories/account_display_name.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

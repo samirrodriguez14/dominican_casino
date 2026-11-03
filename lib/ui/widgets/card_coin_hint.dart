@@ -1,6 +1,6 @@
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/widgets/coin_hint_ticker.dart';
-import 'package:youareup/ui/widgets/coin_icon.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/widgets/coin_hint_ticker.dart';
+import 'package:barajando/ui/widgets/coin_icon.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Coin stack in the bottom-left of a card / stack.

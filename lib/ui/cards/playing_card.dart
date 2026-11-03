@@ -1,10 +1,10 @@
-import 'package:youareup/game_control/casino_coin_bonuses.dart';
-import 'package:youareup/game_control/game_registry.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/widgets/card_coin_hint.dart';
-import 'package:youareup/view_models/games/general_game_view_model.dart';
-import 'package:youareup/view_models/tutorial_view_model.dart';
+import 'package:barajando/game_control/casino_coin_bonuses.dart';
+import 'package:barajando/game_control/game_registry.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/widgets/card_coin_hint.dart';
+import 'package:barajando/view_models/games/general_game_view_model.dart';
+import 'package:barajando/view_models/tutorial_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

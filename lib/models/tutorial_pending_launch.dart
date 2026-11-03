@@ -1,5 +1,5 @@
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/wallet_config.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/wallet_config.dart';
 
 /// Stashed game-creation params while the player is in a tutorial match.
 class TutorialPendingLaunch {

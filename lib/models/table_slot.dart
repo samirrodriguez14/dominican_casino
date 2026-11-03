@@ -1,5 +1,5 @@
-import 'package:youareup/models/playing_area_stack_model.dart';
-import 'package:youareup/models/playing_card_model.dart';
+import 'package:barajando/models/playing_area_stack_model.dart';
+import 'package:barajando/models/playing_card_model.dart';
 
 /// One visual slot on the table — either a loose card or a stack.
 /// [tableOrder] on [GameState] stores these as `c:<id>` / `s:<id>`.

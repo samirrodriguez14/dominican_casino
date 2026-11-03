@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/animations/currency_burst.dart';
-import 'package:youareup/ui/widgets/coin_icon.dart';
-import 'package:youareup/ui/widgets/currency_bar.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/animations/currency_burst.dart';
+import 'package:barajando/ui/widgets/coin_icon.dart';
+import 'package:barajando/ui/widgets/currency_bar.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Center congrats card, then coins jump into the top-right stack.

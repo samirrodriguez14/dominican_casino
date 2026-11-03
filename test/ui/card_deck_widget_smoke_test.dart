@@ -1,6 +1,6 @@
 import '../helpers/game_state_fixtures.dart';
-import 'package:youareup/ui/cards/card_deck.dart';
-import 'package:youareup/ui/cards/playing_card.dart';
+import 'package:barajando/ui/cards/card_deck.dart';
+import 'package:barajando/ui/cards/playing_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,4 +1,4 @@
-import 'package:youareup/ui/animations/card_motion.dart';
+import 'package:barajando/ui/animations/card_motion.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Flight destination/origin slot. The [key] always resolves to a fixed-size

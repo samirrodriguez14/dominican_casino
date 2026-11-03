@@ -1,5 +1,5 @@
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/view_models/games/hand_order.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/view_models/games/hand_order.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 PlayingCardModel _c(String id) => PlayingCardModel(

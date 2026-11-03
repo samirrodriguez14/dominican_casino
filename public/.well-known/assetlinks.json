@@ -5,7 +5,7 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.sr2.youareup",
+      "package_name": "com.sr2.barajando",
       "sha256_cert_fingerprints": [
         "70:5F:74:E5:86:EB:B5:14:93:58:DC:90:F1:67:65:BD:C2:04:F1:21:D2:BB:F0:E5:D7:3B:5D:A0:F4:88:C4:5B"
       ]

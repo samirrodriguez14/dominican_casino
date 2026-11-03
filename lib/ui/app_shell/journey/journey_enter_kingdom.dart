@@ -1,6 +1,6 @@
-import 'package:youareup/l10n/journey_l10n.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/journey_worlds.dart';
+import 'package:barajando/l10n/journey_l10n.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Confirm before switching the app theme to a Journey kingdom pack.

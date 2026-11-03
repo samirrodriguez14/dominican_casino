@@ -1,21 +1,21 @@
 import 'dart:math' as math;
 
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/theme_pack.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/style/journey_worlds.dart';
-import 'package:youareup/ui/app_shell/journey/journey_progress_trail.dart';
-import 'package:youareup/ui/app_shell/profile/avatar_picker_popup.dart';
-import 'package:youareup/ui/app_shell/profile/profile_coach.dart';
-import 'package:youareup/ui/app_shell/profile/profile_league_face.dart';
-import 'package:youareup/ui/app_shell/profile/profile_wallet_cards.dart';
-import 'package:youareup/ui/cards/playing_card_back.dart';
-import 'package:youareup/ui/home/home_card_layout.dart';
-import 'package:youareup/ui/widgets/player_avatar.dart';
-import 'package:youareup/view_models/app_theme_view_model.dart';
-import 'package:youareup/view_models/profile_view_model.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/theme_pack.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/style/journey_worlds.dart';
+import 'package:barajando/ui/app_shell/journey/journey_progress_trail.dart';
+import 'package:barajando/ui/app_shell/profile/avatar_picker_popup.dart';
+import 'package:barajando/ui/app_shell/profile/profile_coach.dart';
+import 'package:barajando/ui/app_shell/profile/profile_league_face.dart';
+import 'package:barajando/ui/app_shell/profile/profile_wallet_cards.dart';
+import 'package:barajando/ui/cards/playing_card_back.dart';
+import 'package:barajando/ui/home/home_card_layout.dart';
+import 'package:barajando/ui/widgets/player_avatar.dart';
+import 'package:barajando/view_models/app_theme_view_model.dart';
+import 'package:barajando/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

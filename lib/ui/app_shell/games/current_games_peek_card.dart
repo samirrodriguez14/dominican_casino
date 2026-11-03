@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/player_match_stats.dart';
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/app_shell/games/current_games_list.dart';
-import 'package:youareup/ui/app_shell/games/current_games_stats_face.dart';
-import 'package:youareup/ui/home/home_card_layout.dart';
-import 'package:youareup/view_models/games_view_model.dart';
-import 'package:youareup/view_models/profile_view_model.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/player_match_stats.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/app_shell/games/current_games_list.dart';
+import 'package:barajando/ui/app_shell/games/current_games_stats_face.dart';
+import 'package:barajando/ui/home/home_card_layout.dart';
+import 'package:barajando/view_models/games_view_model.dart';
+import 'package:barajando/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

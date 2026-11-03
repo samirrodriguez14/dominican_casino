@@ -1,5 +1,5 @@
-import 'package:youareup/models/journey.dart';
-import 'package:youareup/style/journey_worlds.dart';
+import 'package:barajando/models/journey.dart';
+import 'package:barajando/style/journey_worlds.dart';
 
 /// Jack + Queen + King + Ace across all four kingdoms.
 const journeyTrailStepCount = 16;

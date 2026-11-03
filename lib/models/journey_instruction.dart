@@ -1,5 +1,5 @@
-import 'package:youareup/models/journey.dart';
-import 'package:youareup/style/journey_worlds.dart';
+import 'package:barajando/models/journey.dart';
+import 'package:barajando/style/journey_worlds.dart';
 
 /// One stage-guide page in the Journey instruction deck.
 class JourneyInstruction {

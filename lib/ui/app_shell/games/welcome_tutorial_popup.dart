@@ -1,7 +1,7 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/app_shell/games/tutorial_flow.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/app_shell/games/tutorial_flow.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
 

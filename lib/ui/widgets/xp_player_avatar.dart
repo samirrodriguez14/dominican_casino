@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 
-import 'package:youareup/models/experience.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/widgets/player_avatar.dart';
+import 'package:barajando/models/experience.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

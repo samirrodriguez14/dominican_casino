@@ -1,18 +1,18 @@
 import 'dart:developer' as developer;
 
-import 'package:youareup/game_control/casino_coin_bonuses.dart';
-import 'package:youareup/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
-import 'package:youareup/game_control/game_engine/game_engine.dart';
-import 'package:youareup/game_control/game_registry.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/local_player/bs_player.dart';
-import 'package:youareup/local_player/casino_player.dart';
-import 'package:youareup/local_player/tresdos_player.dart';
-import 'package:youareup/local_player/rummy_player.dart';
-import 'package:youareup/game_control/game_engine/bs/bs_state.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/round.dart';
-import 'package:youareup/repositories/game_repo.dart';
+import 'package:barajando/game_control/casino_coin_bonuses.dart';
+import 'package:barajando/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
+import 'package:barajando/game_control/game_engine/game_engine.dart';
+import 'package:barajando/game_control/game_registry.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/local_player/bs_player.dart';
+import 'package:barajando/local_player/casino_player.dart';
+import 'package:barajando/local_player/tresdos_player.dart';
+import 'package:barajando/local_player/rummy_player.dart';
+import 'package:barajando/game_control/game_engine/bs/bs_state.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/round.dart';
+import 'package:barajando/repositories/game_repo.dart';
 import 'package:flutter/cupertino.dart';
 
 class PossibleSelection {

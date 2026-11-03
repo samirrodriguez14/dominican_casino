@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import 'package:youareup/models/game_info.dart';
-import 'package:youareup/models/game_pill_data.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/local_bot_roster.dart';
-import 'package:youareup/models/wallet_config.dart';
+import 'package:barajando/models/game_info.dart';
+import 'package:barajando/models/game_pill_data.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/local_bot_roster.dart';
+import 'package:barajando/models/wallet_config.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/services/sound_service.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 
 class GamesViewModel extends ChangeNotifier {

@@ -1,5 +1,5 @@
-import 'package:youareup/models/tutorial_action.dart';
-import 'package:youareup/models/tutorial_step.dart';
+import 'package:barajando/models/tutorial_action.dart';
+import 'package:barajando/models/tutorial_step.dart';
 import 'package:flutter/material.dart';
 
 class TutorialViewModel extends ChangeNotifier {

@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:youareup/models/wallet_config.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/widgets/coin_icon.dart';
-import 'package:youareup/ui/widgets/currency_delta_label.dart';
+import 'package:barajando/models/wallet_config.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/widgets/coin_icon.dart';
+import 'package:barajando/ui/widgets/currency_delta_label.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

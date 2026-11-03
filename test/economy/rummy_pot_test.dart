@@ -1,5 +1,5 @@
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/round.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/round.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> playersInfoFor(List<String> pids) => {

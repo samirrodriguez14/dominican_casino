@@ -1,8 +1,8 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/widgets/player_avatar.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
 import 'package:provider/provider.dart';

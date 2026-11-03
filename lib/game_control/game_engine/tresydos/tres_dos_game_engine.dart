@@ -1,14 +1,14 @@
 import 'dart:developer' as developer;
 
-import 'package:youareup/game_control/game_engine/general_handlers/event_handler.dart';
-import 'package:youareup/game_control/game_engine/general_handlers/game_action_handler.dart';
-import 'package:youareup/game_control/game_engine/game_engine.dart';
-import 'package:youareup/game_control/game_engine/tresydos/handlers/tres_dos_play_action_handler.dart';
-import 'package:youareup/game_control/game_engine/tresydos/handlers/tres_dos_game_state_handler.dart';
-import 'package:youareup/game_control/game_engine/tresydos/handlers/tres_dos_rules_handler.dart';
-import 'package:youareup/game_control/game_registry.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/models/game_state.dart';
+import 'package:barajando/game_control/game_engine/general_handlers/event_handler.dart';
+import 'package:barajando/game_control/game_engine/general_handlers/game_action_handler.dart';
+import 'package:barajando/game_control/game_engine/game_engine.dart';
+import 'package:barajando/game_control/game_engine/tresydos/handlers/tres_dos_play_action_handler.dart';
+import 'package:barajando/game_control/game_engine/tresydos/handlers/tres_dos_game_state_handler.dart';
+import 'package:barajando/game_control/game_engine/tresydos/handlers/tres_dos_rules_handler.dart';
+import 'package:barajando/game_control/game_registry.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/models/game_state.dart';
 
 class TresDosGameEngine extends GameEngine {
   @override

@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/quick_match_prefs.dart';
-import 'package:youareup/services/firestore_service.dart';
-import 'package:youareup/ui/app_shell/games/game_mode_carousel.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/quick_match_prefs.dart';
+import 'package:barajando/services/firestore_service.dart';
+import 'package:barajando/ui/app_shell/games/game_mode_carousel.dart';
 
 /// Outcome of a Quick Match queue ticket.
 enum QuickMatchOutcomeKind { matched, timedOut, cancelled }

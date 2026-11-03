@@ -1,7 +1,7 @@
-import 'package:youareup/game_control/game_engine/game_engine.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/game_control/interfaces/zone.dart';
-import 'package:youareup/models/game_state.dart';
+import 'package:barajando/game_control/game_engine/game_engine.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/game_control/interfaces/zone.dart';
+import 'package:barajando/models/game_state.dart';
 
 class TresDosRulesHandler {
   ///GET ALL AVAILABLE ACTIONS BASED ON CARD SELECTION AND GAME STATE

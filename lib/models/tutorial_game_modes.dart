@@ -1,4 +1,4 @@
-import 'package:youareup/models/game_state.dart';
+import 'package:barajando/models/game_state.dart';
 
 /// Game modes that have an in-app guided tutorial.
 const tutorialGameModes = <GameMode>{

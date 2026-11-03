@@ -1,9 +1,9 @@
-import 'package:youareup/routing/game_routes.dart';
+import 'package:barajando/routing/game_routes.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('GameRoutes.parseInvite parses youareup://join deep links', () {
-    final uri = Uri.parse('youareup://join/ABCD/casino');
+  test('GameRoutes.parseInvite parses barajando://join deep links', () {
+    final uri = Uri.parse('barajando://join/ABCD/casino');
     final result = GameRoutes.parseInvite(uri);
     expect(result, isNotNull);
     expect(result!.gameId, 'ABCD');

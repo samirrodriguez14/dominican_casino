@@ -1,14 +1,14 @@
-import 'package:youareup/game_control/interfaces/card_event.dart';
-import 'package:youareup/models/deck.dart';
-import 'package:youareup/models/playing_area_stack_model.dart';
-import 'package:youareup/models/round.dart';
-import 'package:youareup/models/table_slot.dart';
+import 'package:barajando/game_control/interfaces/card_event.dart';
+import 'package:barajando/models/deck.dart';
+import 'package:barajando/models/playing_area_stack_model.dart';
+import 'package:barajando/models/round.dart';
+import 'package:barajando/models/table_slot.dart';
 
-import 'package:youareup/models/local_bot_roster.dart';
-import 'package:youareup/models/wallet_config.dart';
+import 'package:barajando/models/local_bot_roster.dart';
+import 'package:barajando/models/wallet_config.dart';
 
-import 'package:youareup/game_control/game_engine/rummy/rummy_state.dart';
-import 'package:youareup/game_control/game_engine/bs/bs_state.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_state.dart';
+import 'package:barajando/game_control/game_engine/bs/bs_state.dart';
 
 import 'playing_card_model.dart';
 

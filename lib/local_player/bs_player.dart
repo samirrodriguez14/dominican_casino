@@ -1,11 +1,11 @@
 import 'dart:math';
 
-import 'package:youareup/game_control/game_engine/bs/bs_state.dart';
-import 'package:youareup/game_control/game_engine/game_engine.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/models/round.dart';
+import 'package:barajando/game_control/game_engine/bs/bs_state.dart';
+import 'package:barajando/game_control/game_engine/game_engine.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/models/round.dart';
 import 'package:flutter/foundation.dart';
 
 /// BS bot: dumps honest multi-card plays often; Call BS only when useful.

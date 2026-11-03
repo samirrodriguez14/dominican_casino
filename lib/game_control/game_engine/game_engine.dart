@@ -1,7 +1,7 @@
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_area_stack_model.dart';
-import 'package:youareup/models/playing_card_model.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_area_stack_model.dart';
+import 'package:barajando/models/playing_card_model.dart';
 
 class CurrentCardSelection {
   String pid;

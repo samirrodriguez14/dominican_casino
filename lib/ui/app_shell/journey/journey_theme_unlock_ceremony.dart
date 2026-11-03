@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:youareup/style/journey_worlds.dart';
+import 'package:barajando/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Timeline for the kingdom theme unlock ceremony (0 → 1).

@@ -1,9 +1,9 @@
-import 'package:youareup/models/theme_pack.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/cards/playing_card_back.dart';
-import 'package:youareup/ui/widgets/player_avatar.dart';
-import 'package:youareup/ui/widgets/theme_lock_cover.dart';
+import 'package:barajando/models/theme_pack.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/cards/playing_card_back.dart';
+import 'package:barajando/ui/widgets/player_avatar.dart';
+import 'package:barajando/ui/widgets/theme_lock_cover.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Coin-locked theme pack for sale, painted in that pack's table colors.

@@ -1,10 +1,10 @@
-import 'package:youareup/game_control/game_engine/game_engine.dart';
-import 'package:youareup/game_control/game_engine/rummy/rummy_state.dart';
-import 'package:youareup/models/deck.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_area_stack_model.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/models/round.dart';
+import 'package:barajando/game_control/game_engine/game_engine.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_state.dart';
+import 'package:barajando/models/deck.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_area_stack_model.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/models/round.dart';
 
 /// Small deterministic fixtures for unit tests.
 ///

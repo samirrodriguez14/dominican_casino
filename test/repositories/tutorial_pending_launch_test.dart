@@ -1,7 +1,7 @@
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/tutorial_pending_launch.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/services/firestore_service.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/tutorial_pending_launch.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/services/firestore_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

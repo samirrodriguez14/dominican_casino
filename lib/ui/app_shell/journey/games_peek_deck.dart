@@ -1,7 +1,7 @@
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/app_shell/games/game_mode_card.dart';
-import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/app_shell/games/game_mode_card.dart';
+import 'package:barajando/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Collapsed games deck peek when the Journey is on the table.

@@ -1,4 +1,4 @@
-import 'package:youareup/style/app_theme.dart';
+import 'package:barajando/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 

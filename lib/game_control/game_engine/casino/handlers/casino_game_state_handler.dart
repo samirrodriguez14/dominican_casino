@@ -1,7 +1,7 @@
-import 'package:youareup/game_control/game_engine/general_handlers/game_action_handler.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/models/round.dart';
+import 'package:barajando/game_control/game_engine/general_handlers/game_action_handler.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/models/round.dart';
 
 class CasinoGameStateHandler {
   //USE TO MAKE CHANGES TO THE GAME STATTE...

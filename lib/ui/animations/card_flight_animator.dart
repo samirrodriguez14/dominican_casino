@@ -1,12 +1,12 @@
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
-import 'package:youareup/game_control/interfaces/zone.dart';
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/ui/animations/animated_move_card.dart';
-import 'package:youareup/ui/animations/card_motion.dart';
-import 'package:youareup/ui/animations/flight_layer.dart';
+import 'package:barajando/game_control/interfaces/zone.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/ui/animations/animated_move_card.dart';
+import 'package:barajando/ui/animations/card_motion.dart';
+import 'package:barajando/ui/animations/flight_layer.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Card flights in [FlightLayer] coordinates (same Stack as the board).

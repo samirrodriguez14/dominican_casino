@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/style/journey_worlds.dart';
-import 'package:youareup/ui/widgets/coin_gain_badge.dart';
-import 'package:youareup/ui/widgets/player_avatar.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/style/journey_worlds.dart';
+import 'package:barajando/ui/widgets/coin_gain_badge.dart';
+import 'package:barajando/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/scheduler.dart';
 

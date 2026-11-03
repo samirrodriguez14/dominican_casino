@@ -1,8 +1,8 @@
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/game_control/interfaces/card_event.dart';
-import 'package:youareup/game_control/interfaces/zone.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_card_model.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/game_control/interfaces/card_event.dart';
+import 'package:barajando/game_control/interfaces/zone.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_card_model.dart';
 import 'package:uuid/uuid.dart';
 
 class EventHandler {

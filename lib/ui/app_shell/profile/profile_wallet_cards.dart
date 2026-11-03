@@ -1,17 +1,17 @@
 import 'dart:async';
 
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/experience.dart';
-import 'package:youareup/models/wallet_config.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/app_shell/profile/level_rewards_popup.dart';
-import 'package:youareup/ui/widgets/coin_icon.dart';
-import 'package:youareup/ui/widgets/currency_bar.dart';
-import 'package:youareup/ui/widgets/exp_icon.dart';
-import 'package:youareup/ui/widgets/player_avatar.dart';
-import 'package:youareup/ui/widgets/wallet_dialogs.dart';
-import 'package:youareup/services/haptics.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/experience.dart';
+import 'package:barajando/models/wallet_config.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/app_shell/profile/level_rewards_popup.dart';
+import 'package:barajando/ui/widgets/coin_icon.dart';
+import 'package:barajando/ui/widgets/currency_bar.dart';
+import 'package:barajando/ui/widgets/exp_icon.dart';
+import 'package:barajando/ui/widgets/player_avatar.dart';
+import 'package:barajando/ui/widgets/wallet_dialogs.dart';
+import 'package:barajando/services/haptics.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

@@ -1,5 +1,5 @@
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/style/app_theme.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class AppThemeViewModel extends ChangeNotifier {

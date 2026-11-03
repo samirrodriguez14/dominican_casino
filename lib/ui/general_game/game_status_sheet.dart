@@ -1,20 +1,20 @@
 import 'dart:math' as math;
 
-import 'package:youareup/game_control/game_registry.dart';
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/style/journey_worlds.dart';
-import 'package:youareup/ui/app_shell/games/game_mode_actions.dart';
-import 'package:youareup/ui/app_shell/games/game_mode_how_to_overlay.dart';
-import 'package:youareup/ui/general_game/leave_match_to_home.dart';
-import 'package:youareup/ui/general_game/match_coin_payout.dart';
-import 'package:youareup/ui/widgets/coin_icon.dart';
-import 'package:youareup/ui/widgets/player_avatar.dart';
-import 'package:youareup/ui/widgets/player_score_avatar.dart';
-import 'package:youareup/view_models/games/general_game_view_model.dart';
+import 'package:barajando/game_control/game_registry.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/style/journey_worlds.dart';
+import 'package:barajando/ui/app_shell/games/game_mode_actions.dart';
+import 'package:barajando/ui/app_shell/games/game_mode_how_to_overlay.dart';
+import 'package:barajando/ui/general_game/leave_match_to_home.dart';
+import 'package:barajando/ui/general_game/match_coin_payout.dart';
+import 'package:barajando/ui/widgets/coin_icon.dart';
+import 'package:barajando/ui/widgets/player_avatar.dart';
+import 'package:barajando/ui/widgets/player_score_avatar.dart';
+import 'package:barajando/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 
 Future<void> showGameStatusPopup(

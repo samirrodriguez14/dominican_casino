@@ -1,8 +1,8 @@
-import 'package:youareup/game_control/game_registry.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/models/round.dart';
+import 'package:barajando/game_control/game_registry.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/models/round.dart';
 
 /// Casino in-game coin bonuses. Accrued on the match and claimed at home.
 class CasinoCoinBonuses {

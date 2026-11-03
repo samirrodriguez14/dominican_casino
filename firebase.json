@@ -3,22 +3,22 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "youareup",
-          "appId": "1:181795819212:android:09d7a3388cfd33e5bbfc69",
+          "projectId": "barajando-39731",
+          "appId": "1:233905633982:android:f76c63a62667153784fcef",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
-          "projectId": "youareup",
-          "appId": "1:181795819212:ios:aa5ce674bc508ff6bbfc69",
+          "projectId": "barajando-39731",
+          "appId": "1:233905633982:ios:bf90d85ee92f24d284fcef",
           "uploadDebugSymbols": false,
           "fileOutput": "ios/GoogleService-Info.plist"
         },
         "buildConfigurations": {
           "Debug": {
-            "projectId": "youareup",
-            "appId": "1:181795819212:ios:aa5ce674bc508ff6bbfc69",
+            "projectId": "barajando-39731",
+            "appId": "1:233905633982:ios:bf90d85ee92f24d284fcef",
             "uploadDebugSymbols": false,
             "fileOutput": "ios/GoogleService-Info.plist"
           }
@@ -26,11 +26,11 @@
       },
       "dart": {
         "lib/services/firebase_options.dart": {
-          "projectId": "youareup",
+          "projectId": "barajando-39731",
           "configurations": {
-            "android": "1:181795819212:android:09d7a3388cfd33e5bbfc69",
-            "ios": "1:181795819212:ios:aa5ce674bc508ff6bbfc69",
-            "web": "1:181795819212:web:24768b6eb4209f64bbfc69"
+            "android": "1:233905633982:android:f76c63a62667153784fcef",
+            "ios": "1:233905633982:ios:bf90d85ee92f24d284fcef",
+            "web": "1:233905633982:web:8b03c73ef188cbfc84fcef"
           }
         }
       }
@@ -43,6 +43,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "barajando",
     "public": "public",
     "ignore": [
       "firebase.json",

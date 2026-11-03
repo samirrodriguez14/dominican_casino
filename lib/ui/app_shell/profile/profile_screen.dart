@@ -1,15 +1,15 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/theme_pack.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/app_shell/profile/profile_card.dart';
-import 'package:youareup/ui/app_shell/profile/profile_coach.dart';
-import 'package:youareup/ui/app_shell/profile/profile_settings_body.dart';
-import 'package:youareup/ui/app_shell/profile/theme_pack_carousel.dart';
-import 'package:youareup/ui/app_shell/shell_insets.dart';
-import 'package:youareup/ui/home/home_card_layout.dart';
-import 'package:youareup/ui/widgets/stacked_card_carousel.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/theme_pack.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/app_shell/profile/profile_card.dart';
+import 'package:barajando/ui/app_shell/profile/profile_coach.dart';
+import 'package:barajando/ui/app_shell/profile/profile_settings_body.dart';
+import 'package:barajando/ui/app_shell/profile/theme_pack_carousel.dart';
+import 'package:barajando/ui/app_shell/shell_insets.dart';
+import 'package:barajando/ui/home/home_card_layout.dart';
+import 'package:barajando/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

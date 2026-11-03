@@ -1,4 +1,4 @@
-import 'package:youareup/models/playing_card_model.dart';
+import 'package:barajando/models/playing_card_model.dart';
 
 enum RummyKind {
   set,

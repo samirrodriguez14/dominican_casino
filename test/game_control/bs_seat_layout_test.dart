@@ -1,4 +1,4 @@
-import 'package:youareup/game_control/game_engine/bs/bs_seat_layout.dart';
+import 'package:barajando/game_control/game_engine/bs/bs_seat_layout.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

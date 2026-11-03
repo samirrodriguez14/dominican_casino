@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>youareup</string>
+	<string>barajando</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -28,10 +28,10 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>youareup.invite</string>
+			<string>barajando.invite</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>youareup</string>
+				<string>barajando</string>
 			</array>
 		</dict>
 		<dict>
@@ -39,7 +39,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.181795819212-e04g13o4btr65bd0i2b20pcou5ehj4gn</string>
+				<string>com.googleusercontent.apps.233905633982-fudd285263nco6amgala5ssuafbtpj19</string>
 			</array>
 		</dict>
 	</array>
@@ -48,7 +48,7 @@
 	<key>FlutterDeepLinkingEnabled</key>
 	<false/>
 	<key>GIDClientID</key>
-	<string>181795819212-e04g13o4btr65bd0i2b20pcou5ehj4gn.apps.googleusercontent.com</string>
+	<string>233905633982-fudd285263nco6amgala5ssuafbtpj19.apps.googleusercontent.com</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

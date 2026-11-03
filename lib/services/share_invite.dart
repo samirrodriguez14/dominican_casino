@@ -1,6 +1,6 @@
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/routing/game_routes.dart';
-import 'package:youareup/services/haptics.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/routing/game_routes.dart';
+import 'package:barajando/services/haptics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:share_plus/share_plus.dart';
 

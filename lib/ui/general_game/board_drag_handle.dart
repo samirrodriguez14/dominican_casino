@@ -1,14 +1,14 @@
 import 'dart:ui' show lerpDouble;
 
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_area_stack_model.dart';
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/ui/animations/card_motion.dart';
-import 'package:youareup/ui/animations/flight_layer.dart';
-import 'package:youareup/ui/cards/playing_card.dart';
-import 'package:youareup/ui/cards/playing_card_back.dart';
-import 'package:youareup/view_models/games/board_drag.dart';
-import 'package:youareup/view_models/games/general_game_view_model.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_area_stack_model.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/ui/animations/card_motion.dart';
+import 'package:barajando/ui/animations/flight_layer.dart';
+import 'package:barajando/ui/cards/playing_card.dart';
+import 'package:barajando/ui/cards/playing_card_back.dart';
+import 'package:barajando/view_models/games/board_drag.dart';
+import 'package:barajando/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';

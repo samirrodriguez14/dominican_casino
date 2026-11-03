@@ -1,5 +1,5 @@
-import 'package:youareup/models/player.dart';
-import 'package:youareup/repositories/app_repo.dart';
+import 'package:barajando/models/player.dart';
+import 'package:barajando/repositories/app_repo.dart';
 import 'package:flutter/cupertino.dart';
 
 class HomeViewModel extends ChangeNotifier {

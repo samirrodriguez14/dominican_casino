@@ -1,4 +1,4 @@
-import 'package:youareup/ui/widgets/coin_icon.dart';
+import 'package:barajando/ui/widgets/coin_icon.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Dim overlay with a centered lock. Used on locked theme cards.

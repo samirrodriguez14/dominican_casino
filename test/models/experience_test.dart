@@ -1,6 +1,6 @@
-import 'package:youareup/models/experience.dart';
-import 'package:youareup/models/player.dart';
-import 'package:youareup/repositories/app_repo.dart';
+import 'package:barajando/models/experience.dart';
+import 'package:barajando/models/player.dart';
+import 'package:barajando/repositories/app_repo.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

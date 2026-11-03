@@ -1,10 +1,10 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/l10n/journey_l10n.dart';
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/style/journey_worlds.dart';
-import 'package:youareup/style/layouts/app_popup.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/l10n/journey_l10n.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/style/journey_worlds.dart';
+import 'package:barajando/style/layouts/app_popup.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
 

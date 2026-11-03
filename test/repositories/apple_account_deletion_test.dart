@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:youareup/repositories/apple_account_deletion.dart';
+import 'package:barajando/repositories/apple_account_deletion.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/repositories/game_repo.dart';
-import 'package:youareup/services/firestore_service.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/repositories/game_repo.dart';
+import 'package:barajando/services/firestore_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

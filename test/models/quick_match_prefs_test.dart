@@ -1,5 +1,5 @@
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/quick_match_prefs.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/quick_match_prefs.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

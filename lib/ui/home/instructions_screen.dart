@@ -1,10 +1,10 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/instructions.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/app_shell/games/game_mode_actions.dart';
-import 'package:youareup/ui/home/home_instruction_card.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/instructions.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/app_shell/games/game_mode_actions.dart';
+import 'package:barajando/ui/home/home_instruction_card.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 

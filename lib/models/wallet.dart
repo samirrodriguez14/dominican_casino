@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:youareup/models/wallet_config.dart';
+import 'package:barajando/models/wallet_config.dart';
 
 class Wallet {
   const Wallet({

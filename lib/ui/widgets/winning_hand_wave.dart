@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/style/app_theme.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Subtle wave for a winning Tres y Dos hand, or a one-shot bounce nudge.

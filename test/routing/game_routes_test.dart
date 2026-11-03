@@ -1,4 +1,4 @@
-import 'package:youareup/routing/game_routes.dart';
+import 'package:barajando/routing/game_routes.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

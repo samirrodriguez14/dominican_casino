@@ -1,11 +1,11 @@
-import 'package:youareup/l10n/journey_l10n.dart';
-import 'package:youareup/models/journey.dart';
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/style/journey_worlds.dart';
-import 'package:youareup/ui/home/home_card_layout.dart';
-import 'package:youareup/ui/widgets/stacked_card_carousel.dart';
+import 'package:barajando/l10n/journey_l10n.dart';
+import 'package:barajando/models/journey.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/style/journey_worlds.dart';
+import 'package:barajando/ui/home/home_card_layout.dart';
+import 'package:barajando/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Center fan carousel of defeated royals (same look as challenge focus cards).

@@ -1,7 +1,7 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/tutorial_step.dart';
-import 'package:youareup/ui/app_shell/games/game_mode_how_to_overlay.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/tutorial_step.dart';
+import 'package:barajando/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:flutter/cupertino.dart';
 
 List<TutorialStep> getRummyTutorialSteps({required AppLocalizations l10n}) {

@@ -1,4 +1,4 @@
-import 'package:youareup/game_control/game_engine/rummy/rummy_contract.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_contract.dart';
 
 /// Rummy-specific match state.
 ///

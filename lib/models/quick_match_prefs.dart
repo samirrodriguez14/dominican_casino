@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/wallet_config.dart';
-import 'package:youareup/ui/app_shell/games/game_mode_carousel.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/wallet_config.dart';
+import 'package:barajando/ui/app_shell/games/game_mode_carousel.dart';
 
 /// Persisted Quick Play filters. Empty [modes] means any playable mode.
 class QuickMatchPrefs {

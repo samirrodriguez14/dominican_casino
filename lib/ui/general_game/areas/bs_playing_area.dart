@@ -1,21 +1,21 @@
 import 'dart:math' as math;
 
-import 'package:youareup/game_control/game_engine/bs/bs_seat_layout.dart';
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/models/round.dart';
-import 'package:youareup/services/haptics.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/animations/flight_aware_card.dart';
-import 'package:youareup/ui/cards/card_deck.dart';
-import 'package:youareup/ui/cards/playing_card.dart';
-import 'package:youareup/ui/cards/playing_card_back.dart';
-import 'package:youareup/ui/general_game/game_status_sheet.dart';
-import 'package:youareup/ui/general_game/widgets/table_play_drop_zone.dart';
-import 'package:youareup/ui/widgets/player_avatar.dart';
-import 'package:youareup/ui/widgets/player_score_avatar.dart';
-import 'package:youareup/ui/widgets/reaction_bubble.dart';
-import 'package:youareup/view_models/games/general_game_view_model.dart';
+import 'package:barajando/game_control/game_engine/bs/bs_seat_layout.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/models/round.dart';
+import 'package:barajando/services/haptics.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/animations/flight_aware_card.dart';
+import 'package:barajando/ui/cards/card_deck.dart';
+import 'package:barajando/ui/cards/playing_card.dart';
+import 'package:barajando/ui/cards/playing_card_back.dart';
+import 'package:barajando/ui/general_game/game_status_sheet.dart';
+import 'package:barajando/ui/general_game/widgets/table_play_drop_zone.dart';
+import 'package:barajando/ui/widgets/player_avatar.dart';
+import 'package:barajando/ui/widgets/player_score_avatar.dart';
+import 'package:barajando/ui/widgets/reaction_bubble.dart';
+import 'package:barajando/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

@@ -1,7 +1,7 @@
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/ui/app_shell/games/game_mode_card.dart';
-import 'package:youareup/ui/app_shell/games/game_mode_how_to_overlay.dart';
-import 'package:youareup/ui/widgets/stacked_card_carousel.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/ui/app_shell/games/game_mode_card.dart';
+import 'package:barajando/ui/app_shell/games/game_mode_how_to_overlay.dart';
+import 'package:barajando/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Casino starts in the center; Speed and Tres y Dos fan out on the sides.

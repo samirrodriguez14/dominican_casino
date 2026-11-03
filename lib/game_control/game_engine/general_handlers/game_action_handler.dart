@@ -1,11 +1,11 @@
-import 'package:youareup/game_control/game_engine/general_handlers/event_handler.dart';
-import 'package:youareup/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
-import 'package:youareup/game_control/game_registry.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/models/deck.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/models/round.dart';
+import 'package:barajando/game_control/game_engine/general_handlers/event_handler.dart';
+import 'package:barajando/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
+import 'package:barajando/game_control/game_registry.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/models/deck.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/models/round.dart';
 
 class GameActionHandler {
   /// Pure mutation — callers persist the returned state.

@@ -1,9 +1,9 @@
 import 'dart:math';
 
-import 'package:youareup/game_control/game_engine/rummy/rummy_contract.dart';
-import 'package:youareup/game_control/game_engine/rummy/rummy_matcher.dart';
-import 'package:youareup/game_control/game_engine/rummy/rummy_requirement.dart';
-import 'package:youareup/models/playing_card_model.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_contract.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_matcher.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_requirement.dart';
+import 'package:barajando/models/playing_card_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 PlayingCardModel card({

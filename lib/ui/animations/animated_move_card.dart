@@ -1,6 +1,6 @@
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/ui/cards/playing_card.dart';
-import 'package:youareup/ui/cards/playing_card_back.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/ui/cards/playing_card.dart';
+import 'package:barajando/ui/cards/playing_card_back.dart';
 import 'package:flutter/cupertino.dart';
 
 class AnimatedMoveCard extends StatelessWidget {

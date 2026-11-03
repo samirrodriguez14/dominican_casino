@@ -1,9 +1,9 @@
-import 'package:youareup/models/avatar_catalog.dart';
-import 'package:youareup/models/journey.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/style/journey_worlds.dart';
+import 'package:barajando/models/avatar_catalog.dart';
+import 'package:barajando/models/journey.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/style/journey_worlds.dart';
 
-export 'package:youareup/models/avatar_catalog.dart'
+export 'package:barajando/models/avatar_catalog.dart'
     show
         AvatarCatalog,
         AvatarDef,

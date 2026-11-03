@@ -1,9 +1,9 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/experience.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/widgets/coin_icon.dart';
-import 'package:youareup/ui/widgets/exp_icon.dart';
-import 'package:youareup/view_models/games/general_game_view_model.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/experience.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/widgets/coin_icon.dart';
+import 'package:barajando/ui/widgets/exp_icon.dart';
+import 'package:barajando/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Match bonus + pot + XP tally. Wallet / profile credit happens on home.

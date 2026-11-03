@@ -1,10 +1,10 @@
-import 'package:youareup/game_control/game_engine/rummy/rummy_contract.dart';
-import 'package:youareup/game_control/game_engine/rummy/rummy_requirement.dart';
-import 'package:youareup/game_control/game_engine/rummy/rummy_state.dart';
-import 'package:youareup/models/deck.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/player.dart';
-import 'package:youareup/models/round.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_contract.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_requirement.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_state.dart';
+import 'package:barajando/models/deck.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/player.dart';
+import 'package:barajando/models/round.dart';
 import 'package:uuid/uuid.dart';
 
 class TutorialRummyFactory {

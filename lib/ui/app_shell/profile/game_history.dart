@@ -1,5 +1,5 @@
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/style/app_theme.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class GameHistoryTile extends StatelessWidget {

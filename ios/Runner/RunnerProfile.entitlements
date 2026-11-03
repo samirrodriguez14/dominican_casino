@@ -10,7 +10,7 @@
 	</array>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:youareup.web.app</string>
+		<string>applinks:barajando.web.app</string>
 	</array>
 </dict>
 </plist>

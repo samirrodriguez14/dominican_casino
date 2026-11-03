@@ -1,7 +1,7 @@
-import 'package:youareup/game_control/interfaces/card_event.dart';
-import 'package:youareup/game_control/interfaces/zone.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/ui/animations/flight_layer.dart';
+import 'package:barajando/game_control/interfaces/card_event.dart';
+import 'package:barajando/game_control/interfaces/zone.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/ui/animations/flight_layer.dart';
 import 'package:flutter/cupertino.dart';
 
 class CardFlightRequest {

@@ -1,4 +1,4 @@
-import 'package:youareup/ui/general_game/hand_fan_layout.dart';
+import 'package:barajando/ui/general_game/hand_fan_layout.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

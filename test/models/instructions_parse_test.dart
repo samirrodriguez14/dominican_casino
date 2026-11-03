@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/instructions.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/instructions.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

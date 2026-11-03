@@ -1,7 +1,7 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Login face: welcome, logo, and a pulsing quick-play cue.

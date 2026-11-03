@@ -1,10 +1,10 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/instructions.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/cards/playing_card.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/instructions.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Game-picker face used on the home How to play stack.

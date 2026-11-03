@@ -5,21 +5,10 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
-///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
-  /// Web OAuth client id — required as [GoogleSignIn] `serverClientId` on Android
-  /// so Firebase Auth receives an ID token. Also appears in `google-services.json`
-  /// as an `oauth_client` entry with `client_type: 3`.
+  /// Web OAuth client id — required as [GoogleSignIn] `serverClientId` on Android.
   static const String googleWebClientId =
-      '181795819212-o7ns8q6mssd8ujdaqcrje3ei7nssvq27.apps.googleusercontent.com';
+      '233905633982-m2cetbe3hfk76k35km3618amiuif327q.apps.googleusercontent.com';
 
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -53,30 +42,30 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBc9yDqnxBZzAKni_uuV3XShMtr-JNm3Mw',
-    appId: '1:181795819212:web:24768b6eb4209f64bbfc69',
-    messagingSenderId: '181795819212',
-    projectId: 'youareup',
-    authDomain: 'youareup.firebaseapp.com',
-    storageBucket: 'youareup.firebasestorage.app',
+    apiKey: 'AIzaSyBTX40jWpEBfgPsUaFvNhbIZvVWuWp7vVs',
+    appId: '1:233905633982:web:8b03c73ef188cbfc84fcef',
+    messagingSenderId: '233905633982',
+    projectId: 'barajando-39731',
+    authDomain: 'barajando-39731.firebaseapp.com',
+    storageBucket: 'barajando-39731.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDMwWWO8GeRrRNUPRlUyXccy1NtnqnrYrA',
-    appId: '1:181795819212:android:09d7a3388cfd33e5bbfc69',
-    messagingSenderId: '181795819212',
-    projectId: 'youareup',
-    storageBucket: 'youareup.firebasestorage.app',
+    apiKey: 'AIzaSyB9X5r5-T6eJosNTULle-RJh86jr-UlFNA',
+    appId: '1:233905633982:android:f76c63a62667153784fcef',
+    messagingSenderId: '233905633982',
+    projectId: 'barajando-39731',
+    storageBucket: 'barajando-39731.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDhDNECfhjpCvZwk2S1u9EWdLIa2Gn-T4U',
-    appId: '1:181795819212:ios:aa5ce674bc508ff6bbfc69',
-    messagingSenderId: '181795819212',
-    projectId: 'youareup',
-    storageBucket: 'youareup.firebasestorage.app',
+    apiKey: 'AIzaSyDGxpnS1wovQloTSUDWa5f_D7dzSc7v5-Q',
+    appId: '1:233905633982:ios:bf90d85ee92f24d284fcef',
+    messagingSenderId: '233905633982',
+    projectId: 'barajando-39731',
+    storageBucket: 'barajando-39731.firebasestorage.app',
     iosClientId:
-        '181795819212-e04g13o4btr65bd0i2b20pcou5ehj4gn.apps.googleusercontent.com',
-    iosBundleId: 'com.sr2.youareup',
+        '233905633982-fudd285263nco6amgala5ssuafbtpj19.apps.googleusercontent.com',
+    iosBundleId: 'com.sr2.barajando',
   );
 }

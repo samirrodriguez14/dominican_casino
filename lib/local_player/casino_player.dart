@@ -1,12 +1,12 @@
 import 'dart:developer' as developer;
 
-import 'package:youareup/game_control/game_engine/casino/handlers/casino_rules_handler.dart'
+import 'package:barajando/game_control/game_engine/casino/handlers/casino_rules_handler.dart'
     show CasinoRulesHandler;
-import 'package:youareup/game_control/game_engine/game_engine.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/local_player/local_player.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_card_model.dart';
+import 'package:barajando/game_control/game_engine/game_engine.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/local_player/local_player.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_card_model.dart';
 
 class CasinoPlayer {
   static const double aceWeight = 1.0;

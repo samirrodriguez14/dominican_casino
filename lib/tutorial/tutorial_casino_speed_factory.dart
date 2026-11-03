@@ -1,6 +1,6 @@
-import 'package:youareup/models/wallet_config.dart';
-import 'package:youareup/tutorial/tutorial_casino_factory.dart';
-import 'package:youareup/models/game_state.dart';
+import 'package:barajando/models/wallet_config.dart';
+import 'package:barajando/tutorial/tutorial_casino_factory.dart';
+import 'package:barajando/models/game_state.dart';
 
 class TutorialCasinoSpeedFactory {
   static GameState createBasicTakeTutorial({

@@ -1,6 +1,6 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
 /// One-page pitch: headline on top, two feature lines underneath.

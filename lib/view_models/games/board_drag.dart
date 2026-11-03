@@ -1,8 +1,8 @@
 import 'dart:ui' show Offset;
 
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/models/playing_area_stack_model.dart';
-import 'package:youareup/models/playing_card_model.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/models/playing_area_stack_model.dart';
+import 'package:barajando/models/playing_card_model.dart';
 
 enum BoardDragKind { handCard, tableCard, tableStack, deckCard }
 

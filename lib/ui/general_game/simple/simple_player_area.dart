@@ -1,17 +1,17 @@
 import 'dart:math' as math;
 
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/playing_card_model.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/animations/flight_aware_card.dart';
-import 'package:youareup/ui/cards/playing_card.dart';
-import 'package:youareup/ui/general_game/board_drag_handle.dart';
-import 'package:youareup/ui/general_game/hand_fan_layout.dart';
-import 'package:youareup/ui/general_game/play_action_bar.dart';
-import 'package:youareup/ui/tutorial/tutorial_hint_pulse.dart';
-import 'package:youareup/ui/widgets/winning_hand_wave.dart';
-import 'package:youareup/view_models/games/board_drag.dart';
-import 'package:youareup/view_models/games/general_game_view_model.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/playing_card_model.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/animations/flight_aware_card.dart';
+import 'package:barajando/ui/cards/playing_card.dart';
+import 'package:barajando/ui/general_game/board_drag_handle.dart';
+import 'package:barajando/ui/general_game/hand_fan_layout.dart';
+import 'package:barajando/ui/general_game/play_action_bar.dart';
+import 'package:barajando/ui/tutorial/tutorial_hint_pulse.dart';
+import 'package:barajando/ui/widgets/winning_hand_wave.dart';
+import 'package:barajando/view_models/games/board_drag.dart';
+import 'package:barajando/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

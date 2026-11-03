@@ -1,6 +1,6 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/repositories/app_repo.dart';
-import 'package:youareup/services/sound_service.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/repositories/app_repo.dart';
+import 'package:barajando/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';

@@ -1,4 +1,4 @@
-import 'package:youareup/style/app_theme.dart';
+import 'package:barajando/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Journey world identity + palette tokens (aligned with AppTheme packs).

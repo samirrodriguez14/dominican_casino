@@ -1,6 +1,6 @@
-import 'package:youareup/models/theme_avatar_unlocks.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/style/journey_worlds.dart';
+import 'package:barajando/models/theme_avatar_unlocks.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
 enum ThemeUnlockKind { free, play, coins }

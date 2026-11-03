@@ -1,5 +1,5 @@
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/view_models/games/general_game_view_model.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

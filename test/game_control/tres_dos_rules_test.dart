@@ -1,8 +1,8 @@
-import 'package:youareup/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/game_control/game_registry.dart';
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/models/round.dart';
+import 'package:barajando/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/game_control/game_registry.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/models/round.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/game_state_fixtures.dart';

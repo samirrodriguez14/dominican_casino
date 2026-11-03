@@ -1,10 +1,10 @@
-import 'package:youareup/l10n/app_localizations.dart';
-import 'package:youareup/models/player_match_stats.dart';
-import 'package:youareup/services/sound_service.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/ui/app_shell/games/current_games_list.dart';
-import 'package:youareup/ui/app_shell/shared/match_stats_widgets.dart';
-import 'package:youareup/view_models/profile_view_model.dart';
+import 'package:barajando/l10n/app_localizations.dart';
+import 'package:barajando/models/player_match_stats.dart';
+import 'package:barajando/services/sound_service.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/ui/app_shell/games/current_games_list.dart';
+import 'package:barajando/ui/app_shell/shared/match_stats_widgets.dart';
+import 'package:barajando/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

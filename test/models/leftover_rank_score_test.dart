@@ -1,5 +1,5 @@
-import 'package:youareup/models/deck.dart';
-import 'package:youareup/models/game_state.dart';
+import 'package:barajando/models/deck.dart';
+import 'package:barajando/models/game_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

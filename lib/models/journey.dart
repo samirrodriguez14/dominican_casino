@@ -1,5 +1,5 @@
-import 'package:youareup/models/game_state.dart';
-import 'package:youareup/style/journey_worlds.dart';
+import 'package:barajando/models/game_state.dart';
+import 'package:barajando/style/journey_worlds.dart';
 
 /// Royal ranks shown on the Journey table (v1: four cards per world).
 enum JourneyRank {

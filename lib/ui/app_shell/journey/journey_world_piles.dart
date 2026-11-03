@@ -1,11 +1,11 @@
-import 'package:youareup/l10n/journey_l10n.dart';
-import 'package:youareup/models/journey.dart';
-import 'package:youareup/style/app_theme.dart';
-import 'package:youareup/style/journey_worlds.dart';
-import 'package:youareup/ui/app_shell/journey/journey_board.dart';
-import 'package:youareup/ui/app_shell/journey/journey_face_card.dart';
-import 'package:youareup/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
-import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:barajando/l10n/journey_l10n.dart';
+import 'package:barajando/models/journey.dart';
+import 'package:barajando/style/app_theme.dart';
+import 'package:barajando/style/journey_worlds.dart';
+import 'package:barajando/ui/app_shell/journey/journey_board.dart';
+import 'package:barajando/ui/app_shell/journey/journey_face_card.dart';
+import 'package:barajando/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
+import 'package:barajando/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Four world piles across the top of the Journey board.

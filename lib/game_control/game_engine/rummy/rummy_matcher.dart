@@ -1,6 +1,6 @@
-import 'package:youareup/game_control/game_engine/rummy/rummy_contract.dart';
-import 'package:youareup/game_control/game_engine/rummy/rummy_requirement.dart';
-import 'package:youareup/models/playing_card_model.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_contract.dart';
+import 'package:barajando/game_control/game_engine/rummy/rummy_requirement.dart';
+import 'package:barajando/models/playing_card_model.dart';
 
 /// Pure matching logic for Rummy (Romir).
 ///

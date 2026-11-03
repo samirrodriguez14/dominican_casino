@@ -1,11 +1,11 @@
 import 'dart:developer' as developer;
 
-import 'package:youareup/game_control/game_engine/bs/bs_handlers.dart';
-import 'package:youareup/game_control/game_engine/game_engine.dart';
-import 'package:youareup/game_control/game_engine/general_handlers/event_handler.dart';
-import 'package:youareup/game_control/game_engine/general_handlers/game_action_handler.dart';
-import 'package:youareup/game_control/interfaces/action.dart';
-import 'package:youareup/models/game_state.dart';
+import 'package:barajando/game_control/game_engine/bs/bs_handlers.dart';
+import 'package:barajando/game_control/game_engine/game_engine.dart';
+import 'package:barajando/game_control/game_engine/general_handlers/event_handler.dart';
+import 'package:barajando/game_control/game_engine/general_handlers/game_action_handler.dart';
+import 'package:barajando/game_control/interfaces/action.dart';
+import 'package:barajando/models/game_state.dart';
 
 class BsGameEngine extends GameEngine {
   @override
