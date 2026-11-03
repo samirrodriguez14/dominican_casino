@@ -1,4 +1,4 @@
-package com.sr2.dominicanCasino
+package com.sr2.youareup
 
 import io.flutter.embedding.android.FlutterActivity
 

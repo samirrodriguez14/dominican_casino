@@ -1,4 +1,6 @@
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/player_match_stats.dart';
+import 'package:dominican_casino/models/tutorial_game_modes.dart';
 
 class Player {
   static const String defaultAvatarId = 'palm';
@@ -7,6 +9,7 @@ class Player {
   bool completedTutorial;
   bool completedJourneyTutorial;
   bool completedProfileTutorial;
+  Set<GameMode> completedGameTutorials;
   String? name;
   String? token;
   String? avatarId;
@@ -20,20 +23,30 @@ class Player {
     this.completedTutorial = false,
     this.completedJourneyTutorial = false,
     this.completedProfileTutorial = false,
+    Set<GameMode>? completedGameTutorials,
     this.xp = 0,
     this.matchStats = PlayerMatchStats.empty,
-  });
+  }) : completedGameTutorials = completedGameTutorials ?? {};
+
   factory Player.fromDto(Map<String, dynamic> playerDto) {
+    final legacyDone = playerDto['completedTutorial'] == true;
+    var tutorials = completedGameTutorialsFromJson(
+      playerDto['completedGameTutorials'],
+    );
+    if (legacyDone && tutorials.isEmpty) {
+      tutorials = {GameMode.casino};
+    }
     return Player(
       id: playerDto['id'],
       name: playerDto['name'] ?? '',
       token: playerDto['token'],
       avatarId: playerDto['avatarId'] as String? ?? defaultAvatarId,
-      completedTutorial: playerDto['completedTutorial'] ?? false,
+      completedTutorial: legacyDone || tutorials.isNotEmpty,
       completedJourneyTutorial:
           playerDto['completedJourneyTutorial'] ?? false,
       completedProfileTutorial:
           playerDto['completedProfileTutorial'] ?? false,
+      completedGameTutorials: tutorials,
       xp: (playerDto['xp'] as num?)?.toInt() ?? 0,
       matchStats: PlayerMatchStats.fromJson(playerDto['matchStats']),
     );
@@ -46,6 +59,9 @@ class Player {
     'completedTutorial': completedTutorial,
     'completedJourneyTutorial': completedJourneyTutorial,
     'completedProfileTutorial': completedProfileTutorial,
+    'completedGameTutorials': completedGameTutorialsToJson(
+      completedGameTutorials,
+    ),
     'xp': xp,
     'matchStats': matchStats.toJson(),
   };
@@ -64,6 +80,7 @@ class Player {
     bool? completedTutorial,
     bool? completedJourneyTutorial,
     bool? completedProfileTutorial,
+    Set<GameMode>? completedGameTutorials,
     String? name,
     String? token,
     String? avatarId,
@@ -80,6 +97,8 @@ class Player {
           completedJourneyTutorial ?? this.completedJourneyTutorial,
       completedProfileTutorial:
           completedProfileTutorial ?? this.completedProfileTutorial,
+      completedGameTutorials:
+          completedGameTutorials ?? this.completedGameTutorials,
       xp: xp ?? this.xp,
       matchStats: matchStats ?? this.matchStats,
     );

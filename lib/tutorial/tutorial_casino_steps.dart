@@ -1,6 +1,8 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/tutorial_action.dart';
 import 'package:dominican_casino/models/tutorial_step.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:flutter/cupertino.dart';
 
 List<TutorialStep> getCasinoTutorialSteps({
@@ -25,77 +27,88 @@ List<TutorialStep> getCasinoTutorialSteps({
   }
 
   return [
-    // 0
     TutorialStep(
       step: 0,
       section: 0,
-      title: "Welcome",
-      description: l10n.tutorialWelcome,
-      autoAdvance: false,
-      allowInteraction: false,
+      title: 'Sweep',
+      description: l10n.tutorialCasinoIntroTitle,
       blockGameInteraction: true,
-      allowedActions: [],
+      allowedActions: const [],
     ),
-
-    // 1
     TutorialStep(
       step: 1,
+      section: 0,
+      title: 'Objective',
+      description: l10n.tutorialCasinoObjective,
+      blockGameInteraction: true,
+      allowedActions: const [],
+    ),
+    TutorialStep(
+      step: 2,
+      section: 0,
+      title: 'Instructions',
+      description: l10n.readInstructions,
+      blockGameInteraction: true,
+      allowedActions: const [],
+      onShow: (ctx) => showGameModeHowTo(
+        ctx,
+        GameMode.casino,
+        cardWidth: 200,
+        showPlay: false,
+      ),
+    ),
+    TutorialStep(
+      step: 3,
       section: 1,
-      title: "Select your card",
+      title: 'Select your card',
       description: l10n.tutorialTapFive,
-      targetKey: handCardKey("tutorial_5"),
+      targetKey: handCardKey('tutorial_5'),
       expectedAction: TutorialAction.selectHandCard,
-      expectedCardId: "tutorial_5",
-      dragIds: const ["tutorial_5"],
+      expectedCardId: 'tutorial_5',
+      dragIds: const ['tutorial_5'],
       dropAction: TutorialAction.addStack,
-      dropToStep: 4,
+      dropToStep: 6,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
       allowedActions: [TutorialAction.selectHandCard],
     ),
-
-    // 2
     TutorialStep(
-      step: 2,
+      step: 4,
       section: 1,
-      title: "Choose a table card",
+      title: 'Choose a table card',
       description: l10n.tutorialTapThree,
-      targetKey: tableCardKey("table_3"),
-      resolveTargets: () => [tableCardKey("table_3")],
+      targetKey: tableCardKey('table_3'),
+      resolveTargets: () => [tableCardKey('table_3')],
       expectedAction: TutorialAction.selectTableCard,
-      expectedCardId: "table_3",
-      dragIds: const ["tutorial_5", "table_3"],
+      expectedCardId: 'table_3',
+      dragIds: const ['tutorial_5', 'table_3'],
       dropAction: TutorialAction.addStack,
-      dropToStep: 4,
+      dropToStep: 6,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
       promptAboveTable: true,
       allowedActions: [TutorialAction.selectTableCard],
     ),
-
-    // 3
     TutorialStep(
-      step: 3,
+      step: 5,
       section: 1,
-      title: "Create a stack",
+      title: 'Create a stack',
       description: l10n.tutorialPressAdd,
       targetKey: addButtonKey,
       expectedAction: TutorialAction.addStack,
-      dragIds: const ["tutorial_5", "table_3"],
+      dragIds: const ['tutorial_5', 'table_3'],
       dropAction: TutorialAction.addStack,
-      dropToStep: 4,
+      dropToStep: 6,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
       promptAboveTable: true,
       allowedActions: [TutorialAction.addStack],
     ),
-
-    // 4
     TutorialStep(
-      step: 4,
+      step: 6,
       section: 2,
       title: "Opponent's turn",
       description: l10n.tutorialPuliTookNine,
@@ -105,32 +118,30 @@ List<TutorialStep> getCasinoTutorialSteps({
       blockGameInteraction: true,
       playOpponent: true,
       promptAboveTable: true,
-      allowedActions: [],
+      allowedActions: const [],
     ),
-
-    // 5
     TutorialStep(
-      step: 5,
+      step: 7,
       section: 2,
-      title: "Select your 8",
-      description: l10n.tutorialTapEight,
-      targetKey: handCardKey("tutorial_8"),
-      expectedAction: TutorialAction.selectHandCard,
-      expectedCardId: "tutorial_8",
-      dragIds: const ["tutorial_8"],
+      title: 'Drag to capture',
+      description: l10n.tutorialDragTake,
+      targetKey: handCardKey('tutorial_8'),
+      dragIds: const ['tutorial_8'],
       dropAction: TutorialAction.takeStack,
-      dropToStep: 8,
+      dropToStep: 10,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
-      allowedActions: [TutorialAction.selectHandCard],
+      allowedActions: const [
+        TutorialAction.selectHandCard,
+        TutorialAction.selectStack,
+        TutorialAction.takeStack,
+      ],
     ),
-
-    // 6
     TutorialStep(
-      step: 6,
+      step: 8,
       section: 2,
-      title: "Select the stack",
+      title: 'Select the stack',
       description: l10n.tutorialTapStackEight,
       targetKey: tableContentKey,
       resolveTargets: () {
@@ -138,37 +149,33 @@ List<TutorialStep> getCasinoTutorialSteps({
         return [stack ?? tableContentKey];
       },
       expectedAction: TutorialAction.selectStack,
-      dragIds: const ["tutorial_8"],
+      dragIds: const ['tutorial_8'],
       dropAction: TutorialAction.takeStack,
-      dropToStep: 8,
+      dropToStep: 10,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
       promptAboveTable: true,
       allowedActions: [TutorialAction.selectStack],
     ),
-
-    // 7
     TutorialStep(
-      step: 7,
+      step: 9,
       section: 2,
-      title: "Take the stack",
+      title: 'Take the stack',
       description: l10n.tutorialPressTake,
       targetKey: takeStackButtonKey,
       expectedAction: TutorialAction.takeStack,
-      dragIds: const ["tutorial_8"],
+      dragIds: const ['tutorial_8'],
       dropAction: TutorialAction.takeStack,
-      dropToStep: 8,
+      dropToStep: 10,
       allowInteraction: true,
       blockGameInteraction: false,
       showNextButton: false,
       promptAboveTable: true,
       allowedActions: [TutorialAction.takeStack],
     ),
-
-    // 8
     TutorialStep(
-      step: 8,
+      step: 10,
       section: 3,
       title: "Opponent's turn",
       description: l10n.tutorialPuliPlayedTwo,
@@ -178,35 +185,37 @@ List<TutorialStep> getCasinoTutorialSteps({
       blockGameInteraction: true,
       playOpponent: true,
       promptAboveTable: true,
-      allowedActions: [],
+      allowedActions: const [],
     ),
-
-    // 9 — overlay hidden; Round Complete popup
     TutorialStep(
-      step: 9,
+      step: 11,
       section: 3,
-      title: "End of round",
-      description: "",
+      title: 'End of round',
+      description: '',
       awaitRoundStatus: true,
       showNextButton: false,
       showSkipButton: false,
       allowInteraction: false,
       blockGameInteraction: true,
-      allowedActions: [],
+      allowedActions: const [],
     ),
-
-    // 10
     TutorialStep(
-      step: 10,
+      step: 12,
+      section: 3,
+      title: 'Scoring',
+      description: l10n.tutorialEndRoundBody,
+      blockGameInteraction: true,
+      allowedActions: const [],
+    ),
+    TutorialStep(
+      step: 13,
       section: 3,
       title: "You're ready!",
       description: l10n.tutorialReady,
-      autoAdvance: false,
-      allowInteraction: false,
       blockGameInteraction: true,
       showSkipButton: false,
       showNextButton: false,
-      allowedActions: [],
+      allowedActions: const [],
     ),
   ];
 }

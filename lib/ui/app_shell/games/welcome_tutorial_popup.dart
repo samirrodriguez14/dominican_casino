@@ -1,12 +1,9 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/tutorial_flow.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
-import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
 
 /// First-run welcome on Games. Start tutorial or dismiss for this session.
 Future<void> showWelcomeTutorialPopup(BuildContext context) {
@@ -63,16 +60,9 @@ Future<void> showWelcomeTutorialPopup(BuildContext context) {
                     color: theme.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    onPressed: SoundService.wrapTap(() {
+                    onPressed: SoundService.wrapTap(() async {
                       Navigator.pop(dialogContext);
-                      final gid = Uuid().v4().substring(0, 6);
-                      context.go(
-                        GameRoutes.game(
-                          gameId: gid,
-                          gameMode: GameMode.casino.name,
-                          tutorial: true,
-                        ),
-                      );
+                      await runHomeQuickPlay(context);
                     }),
                     child: Text(
                       l10n.startTutorial,

@@ -3,22 +3,22 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "dominican-casino",
-          "appId": "1:932020449632:android:6541fabbce84c931c9ee05",
+          "projectId": "youareup",
+          "appId": "1:181795819212:android:09d7a3388cfd33e5bbfc69",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
-          "projectId": "dominican-casino",
-          "appId": "1:932020449632:ios:316853b7dc8a39fdc9ee05",
+          "projectId": "youareup",
+          "appId": "1:181795819212:ios:aa5ce674bc508ff6bbfc69",
           "uploadDebugSymbols": false,
-          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+          "fileOutput": "ios/GoogleService-Info.plist"
         },
         "buildConfigurations": {
           "Debug": {
-            "projectId": "dominican-casino",
-            "appId": "1:932020449632:ios:93523b9132363a72c9ee05",
+            "projectId": "youareup",
+            "appId": "1:181795819212:ios:aa5ce674bc508ff6bbfc69",
             "uploadDebugSymbols": false,
             "fileOutput": "ios/GoogleService-Info.plist"
           }
@@ -26,17 +26,19 @@
       },
       "dart": {
         "lib/services/firebase_options.dart": {
-          "projectId": "dominican-casino",
+          "projectId": "youareup",
           "configurations": {
-            "android": "1:932020449632:android:6541fabbce84c931c9ee05",
-            "ios": "1:932020449632:ios:93523b9132363a72c9ee05",
-            "web": "1:932020449632:web:7e9af9ddd03e2c60c9ee05"
+            "android": "1:181795819212:android:09d7a3388cfd33e5bbfc69",
+            "ios": "1:181795819212:ios:aa5ce674bc508ff6bbfc69",
+            "web": "1:181795819212:web:24768b6eb4209f64bbfc69"
           }
         }
       }
     }
   },
   "firestore": {
+    "database": "(default)",
+    "location": "nam5",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
@@ -112,5 +114,15 @@
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
-  ]
+  ],
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "emailPassword": false,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "You Are Up",
+        "supportEmail": "samirrodriguez14@gmail.com"
+      }
+    }
+  }
 }

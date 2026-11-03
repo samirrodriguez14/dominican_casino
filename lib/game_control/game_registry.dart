@@ -31,9 +31,9 @@ class GameRegistry {
   static String displayTitle(GameMode mode) {
     switch (mode) {
       case GameMode.casino:
-        return 'Casino: Classic';
+        return 'Sweep';
       case GameMode.casinoSpeed:
-        return 'Casino: Speed Mode';
+        return 'Sweep Speed';
       case GameMode.tresydos:
         return 'Tres y Dos';
       case GameMode.rummy:

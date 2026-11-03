@@ -12,11 +12,11 @@ import 'package:dominican_casino/models/playing_card_model.dart';
 import 'package:dominican_casino/local_player/casino_player.dart';
 import 'package:dominican_casino/local_player/tresdos_player.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/style/layouts/app_popup.dart';
 import 'package:dominican_casino/style/layouts/casino_board.dart';
 import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
+import 'package:dominican_casino/tutorial/tutorial_registry.dart';
+import 'package:dominican_casino/ui/app_shell/games/tutorial_flow.dart';
 import 'package:dominican_casino/ui/animations/card_flight_animator.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/ui/animations/currency_burst.dart';
@@ -45,7 +45,6 @@ import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
 import 'package:dominican_casino/ui/widgets/win_confetti_overlay.dart';
 import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
-import 'package:dominican_casino/view_models/games_view_model.dart';
 import 'package:dominican_casino/view_models/tutorial_view_model.dart';
 import 'package:dominican_casino/models/round.dart';
 import 'package:dominican_casino/services/haptics.dart';
@@ -118,7 +117,8 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       _bindFlightRunner(initvm);
 
       tutorialVm = TutorialViewModel(
-        getCasinoTutorialSteps(
+        buildTutorialSteps(
+          mode: initvm.gameMode,
           l10n: AppLocalizations.of(context),
           tableContentKey: initvm.tableContentKey,
           myDeckKey: initvm.myDeckKey,
@@ -170,8 +170,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
           initvm.listenToReactions();
         }
 
-        if (initvm.tutorialMode &&
-            initvm.gameState.gameMode == GameMode.casino) {
+        if (initvm.tutorialMode && tutorialVm.steps.isNotEmpty) {
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) {
               tutorialVm.start();
@@ -320,10 +319,14 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
     }
   }
 
+  Future<void> _markTutorialComplete() async {
+    await context.read<AppRepo>().completeGameTutorial(vm.gameMode);
+  }
+
   Future<void> _finishTutorialReturnHome() async {
     _leavingTutorial = true;
     tutorialVm.finish();
-    await context.read<AppRepo>().completeTutorial();
+    await _markTutorialComplete();
     if (!mounted) return;
     context.go('/landing');
   }
@@ -331,7 +334,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
   Future<void> _finishTutorialPlayGame() async {
     _leavingTutorial = true;
     tutorialVm.finish();
-    await context.read<AppRepo>().completeTutorial();
+    await _markTutorialComplete();
     if (!mounted) return;
 
     final player = context.read<AppRepo>().player;
@@ -340,20 +343,7 @@ class GeneralGameScreenState extends State<GeneralGameScreen>
       if (!mounted) return;
     }
 
-    try {
-      final gid = await context.read<GamesViewModel>().newGame(
-        GameMode.casino,
-        true,
-      );
-      if (!mounted) return;
-      if (gid == null) {
-        context.go('/landing');
-        return;
-      }
-      context.go(GameRoutes.game(gameId: gid, gameMode: GameMode.casino.name));
-    } catch (_) {
-      if (mounted) context.go('/landing');
-    }
+    await runTutorialPostCompletion(context);
   }
 
   void _onVmChanged() {
@@ -1006,10 +996,13 @@ class _SimpleControlBar extends StatelessWidget {
                 score: vm.gameState.scores[vm.me] ?? 0,
                 pendingCoins: vm.revealedPendingFor(vm.me),
                 isTurn: vm.tutorialMode ? scoreHint : vm.isSeatTurn(vm.me),
-                turnDeadline: vm.tutorialMode
+                turnDeadline: vm.tutorialMode &&
+                        vm.gameMode != GameMode.casinoSpeed
                     ? null
                     : vm.turnDeadlineFor(vm.me),
-                turnTotal: vm.tutorialMode ? null : vm.turnTotal,
+                turnTotal: vm.tutorialMode && vm.gameMode != GameMode.casinoSpeed
+                    ? null
+                    : vm.turnTotal,
                 onPressed: () {
                   AppHaptics.mediumImpact();
                   showGameStatusPopup(context, vm: vm);

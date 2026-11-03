@@ -1,11 +1,11 @@
 {
-    "name": "dominican_casino",
-    "short_name": "dominican_casino",
+    "name": "You Are Up",
+    "short_name": "You Are Up",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "You Are Up",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

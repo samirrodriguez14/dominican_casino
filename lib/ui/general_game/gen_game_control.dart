@@ -4,7 +4,9 @@ import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/services/share_invite.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
+import 'package:dominican_casino/ui/app_shell/games/tutorial_offer_dialog.dart';
 import 'package:dominican_casino/ui/general_game/leave_match_to_home.dart';
+import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -124,7 +126,16 @@ class _GenGameControlState extends State<GenGameControl> {
       case InGameAction.invite:
         return () => vm.sendPendingInvites();
       case InGameAction.exit:
-        return () => leaveMatchToHome(buttonContext, vm);
+        return () async {
+          if (vm.tutorialMode) {
+            final leave = await showTutorialLeaveConfirmDialog(buttonContext);
+            if (!leave || !buttonContext.mounted) return;
+            buttonContext.read<AppRepo>().clearTutorialPendingLaunch();
+          }
+          if (buttonContext.mounted) {
+            await leaveMatchToHome(buttonContext, vm);
+          }
+        };
       case InGameAction.waiting:
         return () => {};
       default:

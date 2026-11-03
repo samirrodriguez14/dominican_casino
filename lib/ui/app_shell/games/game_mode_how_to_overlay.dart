@@ -4,7 +4,8 @@ import 'dart:math' as math;
 import 'package:dominican_casino/l10n/app_localizations.dart';
 import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/models/instructions.dart';
-import 'package:dominican_casino/routing/game_routes.dart';
+import 'package:dominican_casino/models/tutorial_game_modes.dart';
+import 'package:dominican_casino/ui/app_shell/games/tutorial_flow.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
@@ -68,18 +69,12 @@ Future<void> showGameModeHowTo(
                   });
                 }
               : null,
-          onTutorial: showPlay && mode == GameMode.casino
+          onTutorial: isTutorialGameMode(mode)
               ? () {
                   Navigator.pop(dialogContext);
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (!context.mounted) return;
-                    context.go(
-                      GameRoutes.game(
-                        gameId: Uuid().v4().substring(0, 6),
-                        gameMode: GameMode.casino.name,
-                        tutorial: true,
-                      ),
-                    );
+                    launchTutorialMatch(context, mode);
                   });
                 }
               : null,

@@ -105,4 +105,25 @@ class QuickMatchPrefs {
   }
 
   String encode() => jsonEncode(toJson());
+
+  /// Restrict prefs to tutorial-completed modes eligible for online Quick Match.
+  QuickMatchPrefs sanitizedForMatchmaking(Set<GameMode> eligibleModes) {
+    if (eligibleModes.isEmpty) {
+      return copyWith(modes: const []);
+    }
+    final eligible = eligibleModes.toList()..sort((a, b) => a.name.compareTo(b.name));
+    if (anyMode || modes.isEmpty) {
+      return copyWith(modes: List<GameMode>.from(eligible));
+    }
+    final kept = modes.where(eligibleModes.contains).toList();
+    if (kept.isEmpty) {
+      return copyWith(modes: List<GameMode>.from(eligible));
+    }
+    return copyWith(modes: kept);
+  }
+
+  List<GameMode> effectiveModesFor(Set<GameMode> eligibleModes) {
+    final sanitized = sanitizedForMatchmaking(eligibleModes);
+    return sanitized.modes;
+  }
 }

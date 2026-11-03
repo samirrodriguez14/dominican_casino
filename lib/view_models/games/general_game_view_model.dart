@@ -29,7 +29,7 @@ import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/repositories/game_repo.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
+import 'package:dominican_casino/tutorial/tutorial_registry.dart';
 import 'package:dominican_casino/ui/animations/card_motion.dart';
 import 'package:dominican_casino/ui/widgets/player_avatar.dart';
 import 'package:dominican_casino/view_models/games/board_drag.dart';
@@ -67,6 +67,7 @@ class GeneralGameViewModel extends ChangeNotifier {
   final AppRepo appRepo;
   Player player;
   String gid;
+  final GameMode gameMode;
   late GameState gameState;
   bool isAnimating = false;
   bool _pendingRepoSync = false;
@@ -141,6 +142,7 @@ class GeneralGameViewModel extends ChangeNotifier {
     required this.appRepo,
     required this.player,
     required this.gid,
+    required this.gameMode,
     this.tutorialMode = false,
   }) {
     gameRepo.addListener(_onGameRepoChanged);
@@ -2890,10 +2892,16 @@ class GeneralGameViewModel extends ChangeNotifier {
   Future<bool> loadGame() async {
     try {
       if (tutorialMode) {
-        gameState = TutorialCasinoFactory.createBasicTakeTutorial(
+        final scripted = createTutorialGameState(
+          mode: gameMode,
           gid: gid,
           playerId: me,
         );
+        if (scripted != null) {
+          gameState = scripted;
+        } else {
+          return false;
+        }
       } else {
         gameState = await gameRepo.fs.loadGame(gid);
         gameState.ensureBotMetadata();

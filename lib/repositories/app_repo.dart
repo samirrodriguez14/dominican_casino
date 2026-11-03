@@ -14,9 +14,13 @@ import 'package:dominican_casino/models/level_rewards.dart';
 import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/opponent_match_stats.dart';
 import 'package:dominican_casino/models/player.dart';
+import 'package:dominican_casino/models/quick_match_prefs.dart';
 import 'package:dominican_casino/models/player_match_stats.dart';
 import 'package:dominican_casino/models/game_pill_data.dart';
-import 'package:dominican_casino/models/quick_match_prefs.dart';
+import 'package:dominican_casino/models/tutorial_pending_launch.dart';
+import 'package:dominican_casino/models/tutorial_post_action.dart';
+import 'package:dominican_casino/models/tutorial_game_modes.dart';
+import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
 import 'package:dominican_casino/models/theme_pack.dart';
 import 'package:dominican_casino/models/wallet.dart';
@@ -177,7 +181,14 @@ class AppRepo extends ChangeNotifier {
   Locale get locale => _locale;
 
   QuickMatchPrefs _quickMatchPrefs = QuickMatchPrefs.defaults;
-  QuickMatchPrefs get quickMatchPrefs => _quickMatchPrefs;
+  QuickMatchPrefs get quickMatchPrefs =>
+      _quickMatchPrefs.sanitizedForMatchmaking(matchmakingEligibleModes);
+
+  TutorialPendingLaunch? _tutorialPendingLaunch;
+  TutorialPendingLaunch? get tutorialPendingLaunch => _tutorialPendingLaunch;
+
+  TutorialPostAction _tutorialPostAction = TutorialPostAction.none;
+  TutorialPostAction get tutorialPostAction => _tutorialPostAction;
 
   static const _quickMatchPrefsKey = 'quick_match_prefs_v1';
   bool notificationsEnabled = false;
@@ -479,10 +490,45 @@ class AppRepo extends ChangeNotifier {
   }
 
   Future<void> setQuickMatchPrefs(QuickMatchPrefs prefs) async {
-    _quickMatchPrefs = prefs;
+    _quickMatchPrefs = prefs.sanitizedForMatchmaking(matchmakingEligibleModes);
     final sp = await SharedPreferences.getInstance();
-    await sp.setString(_quickMatchPrefsKey, prefs.encode());
+    await sp.setString(_quickMatchPrefsKey, _quickMatchPrefs.encode());
     notifyListeners();
+  }
+
+  bool isGameTutorialDone(GameMode mode) =>
+      player?.completedGameTutorials.contains(mode) ?? false;
+
+  bool get hasAnyTutorialDone =>
+      player?.completedTutorial == true ||
+      (player?.completedGameTutorials.isNotEmpty ?? false);
+
+  Set<GameMode> get matchmakingEligibleModes => gameModeCarouselModes
+      .where((m) => isGameTutorialDone(m))
+      .toSet();
+
+  void setTutorialPendingLaunch(TutorialPendingLaunch? launch) {
+    _tutorialPendingLaunch = launch;
+  }
+
+  TutorialPendingLaunch? takeTutorialPendingLaunch() {
+    final launch = _tutorialPendingLaunch;
+    _tutorialPendingLaunch = null;
+    return launch;
+  }
+
+  void clearTutorialPendingLaunch() {
+    _tutorialPendingLaunch = null;
+  }
+
+  void setTutorialPostAction(TutorialPostAction action) {
+    _tutorialPostAction = action;
+  }
+
+  TutorialPostAction takeTutorialPostAction() {
+    final action = _tutorialPostAction;
+    _tutorialPostAction = TutorialPostAction.none;
+    return action;
   }
 
   Future<void>? _loadFuture;
@@ -4231,10 +4277,26 @@ class AppRepo extends ChangeNotifier {
   }
 
   Future<void> completeTutorial() async {
-    if (player == null || player!.completedTutorial) return;
-    player = player!.copyWith(completedTutorial: true);
+    await completeGameTutorial(GameMode.casino);
+  }
+
+  Future<void> completeGameTutorial(GameMode mode) async {
+    if (player == null || !isTutorialGameMode(mode)) return;
+    final current = player!.completedGameTutorials;
+    if (current.contains(mode) && player!.completedTutorial) return;
+
+    final nextTutorials = {...current, mode};
+    final firstEver = !player!.completedTutorial && current.isEmpty;
+    player = player!.copyWith(
+      completedGameTutorials: nextTutorials,
+      completedTutorial: true,
+    );
     await _persistPlayer();
-    await noteLevelChallengeTutorialComplete();
+    if (firstEver || !current.contains(mode)) {
+      await noteLevelChallengeTutorialComplete();
+    }
+    _quickMatchPrefs =
+        _quickMatchPrefs.sanitizedForMatchmaking(matchmakingEligibleModes);
     notifyListeners();
   }
 
@@ -4629,6 +4691,9 @@ class AppRepo extends ChangeNotifier {
         name: current.name,
         avatarId: current.avatarId,
         completedTutorial: current.completedTutorial,
+        completedGameTutorials: completedGameTutorialsToJson(
+          current.completedGameTutorials,
+        ),
         completedJourneyTutorial: current.completedJourneyTutorial,
         completedProfileTutorial: current.completedProfileTutorial,
         xp: current.xp,
@@ -4662,6 +4727,7 @@ class AppRepo extends ChangeNotifier {
         'name': remote['name'] ?? remote['displayName'] ?? '',
         'avatarId': remote['avatarId'],
         'completedTutorial': remote['completedTutorial'] ?? false,
+        'completedGameTutorials': remote['completedGameTutorials'],
         'completedJourneyTutorial':
             remote['completedJourneyTutorial'] ?? false,
         'completedProfileTutorial':
@@ -4695,6 +4761,16 @@ class AppRepo extends ChangeNotifier {
             other: cloud?.matchStats ?? PlayerMatchStats.empty,
           );
 
+    final mergedTutorials = {
+      ...?local?.completedGameTutorials,
+      ...?cloud?.completedGameTutorials,
+    };
+    if (((cloud?.completedTutorial ?? false) ||
+            (local?.completedTutorial ?? false)) &&
+        mergedTutorials.isEmpty) {
+      mergedTutorials.add(GameMode.casino);
+    }
+
     return Player(
       id: uid,
       name: name,
@@ -4704,7 +4780,9 @@ class AppRepo extends ChangeNotifier {
           themePack(_appTheme).starterAvatarId,
       completedTutorial:
           (cloud?.completedTutorial ?? false) ||
-          (local?.completedTutorial ?? false),
+          (local?.completedTutorial ?? false) ||
+          mergedTutorials.isNotEmpty,
+      completedGameTutorials: mergedTutorials,
       completedJourneyTutorial:
           (cloud?.completedJourneyTutorial ?? false) ||
           (local?.completedJourneyTutorial ?? false),

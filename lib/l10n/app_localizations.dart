@@ -20,7 +20,7 @@ class AppLocalizations {
 
   bool get isEs => locale.languageCode == 'es';
 
-  String get appTitle => isEs ? 'Casino Dominicano' : 'Dominican Casino';
+  String get appTitle => 'You Are Up';
   String get joinById => isEs ? 'Unirse por #ID' : 'Join by #ID';
   String get quickPlay => isEs ? 'Partida rápida' : 'Quick Match';
   String get playPublicChip => isEs ? 'Público' : 'Public';
@@ -155,13 +155,13 @@ class AppLocalizations {
       isEs ? 'Vuelve en $minutes min' : 'Come back in $minutes min';
   String get dailyLoginCaption => isEs ? 'Entrar' : 'Login';
   String get dailyChallengeTydCaption => 'Tres y Dos';
-  String get dailyChallengeCasinoCaption => isEs ? 'Casino clásico' : 'Classic Casino';
+  String get dailyChallengeCasinoCaption => isEs ? 'Sweep clásico' : 'Classic Sweep';
   String get dailyChallengeTydHint => isEs
       ? 'Gana 3 rondas de Tres y Dos'
       : 'Win 3 Tres y Dos rounds';
   String get dailyChallengeCasinoHint => isEs
-      ? 'Gana una partida de Casino clásico'
-      : 'Win a classic Casino match';
+      ? 'Gana una partida de Sweep clásico'
+      : 'Win a classic Sweep match';
   String get googleRequiredForDailyTitle =>
       isEs ? 'Conecta tu cuenta' : 'Connect your account';
   String get googleRequiredForDailyBody => isEs
@@ -212,14 +212,14 @@ class AppLocalizations {
   String get clickToPlayQuickMatch =>
       isEs ? 'Toca para una partida rápida' : 'Click to play a quick match';
   String get appByline =>
-      isEs ? 'Casino Dominicano por SR2' : 'Dominican Casino by SR2';
+      isEs ? 'You Are Up por SR2' : 'You Are Up by SR2';
   String get theApp => isEs ? 'LA APP' : 'THE APP';
   String get aboutHeadline => isEs
       ? '¡Juega tus juegos de naipes favoritos!'
       : 'Play your favorite card games!';
   String get aboutFeatureGames => isEs
-      ? 'Único Casino Dominicano, Tres y Dos y más'
-      : 'Unique Dominican Casino, Tres y Dos, and more';
+      ? 'Sweep, Tres y Dos y más'
+      : 'Sweep, Tres y Dos, and more';
   String get aboutFeaturePlay => isEs
       ? 'Juega contra amigos o nuestros bots'
       : 'Play against friends or our AI bots';
@@ -242,7 +242,7 @@ class AppLocalizations {
   String get tryAgain => isEs ? 'Inténtalo de nuevo.' : 'Please try again.';
   String get retry => isEs ? 'Reintentar' : 'Retry';
   String get welcomeTitle =>
-      isEs ? 'Bienvenido a Casino Dominicano' : 'Welcome to Dominican Casino';
+      isEs ? 'Bienvenido a You Are Up' : 'Welcome to You Are Up';
   String get welcomeTutorialBody => isEs
       ? 'Aprende a jugar con un tutorial rápido contra Puli, nuestro bot.'
       : 'Learn how to play with a short tutorial against Puli, our AI opponent.';
@@ -336,8 +336,8 @@ class AppLocalizations {
 
   String gameModeName(GameMode mode) {
     return switch (mode) {
-      GameMode.casino => 'Casino',
-      GameMode.casinoSpeed => isEs ? 'Casino Rápido' : 'Casino Speed',
+      GameMode.casino => 'Sweep',
+      GameMode.casinoSpeed => 'Sweep Speed',
       GameMode.tresydos => 'Tres y Dos',
       GameMode.rummy => 'Rummy',
       GameMode.robaito => 'Robaito',
@@ -427,6 +427,84 @@ class AppLocalizations {
   String get tutorialReady => isEs
       ? '¡Listo! ¿Juegas una de verdad?'
       : 'You\'re ready. Play a real game?';
+  String get tutorialPickerTitle => isEs
+      ? '¿Qué juego quieres probar primero?'
+      : 'Which game do you want to try first?';
+  String get tutorialRulesInfo =>
+      isEs ? 'Ver reglas' : 'View rules';
+  String tutorialOfferTitle(String game) => isEs
+      ? '¿Tutorial rápido de $game?'
+      : 'Quick $game tutorial?';
+  String get tutorialOfferBody => isEs
+      ? 'Aprende lo básico en un minuto. También puedes saltarlo.'
+      : 'Learn the basics in a minute. You can skip it too.';
+  String get tutorialOfferPrimary =>
+      isEs ? 'Tutorial rápido' : 'Quick tutorial';
+  String get tutorialLeaveTitle =>
+      isEs ? '¿Salir del tutorial?' : 'Leave tutorial?';
+  String get tutorialLeaveBody => isEs
+      ? 'Tu progreso se reiniciará. Puedes volver a intentarlo cuando quieras.'
+      : 'Your progress will be reset. You can try again anytime.';
+  String get quickMatchTutorialLockHint => isEs
+      ? 'Completa el tutorial de cada juego para añadirlo al juego rápido en línea.'
+      : 'Complete each game\'s tutorial to add it to online Quick Match.';
+  String get quickMatchTutorialRequiredTitle => isEs
+      ? 'Completa un tutorial'
+      : 'Complete a tutorial';
+  String get quickMatchTutorialRequiredBody => isEs
+      ? 'Termina al menos un tutorial antes de buscar partida en línea.'
+      : 'Finish at least one tutorial before searching for an online match.';
+  String get tutorialCasinoIntroTitle =>
+      isEs ? 'Esto es Sweep' : 'This is Sweep';
+  String get tutorialCasinoObjective => isEs
+      ? 'Tu objetivo: llegar a 21 puntos antes que tu rival. Te enseñamos 3 jugadas básicas; el resto lo aprendes jugando.'
+      : 'Your objective is to reach 21 points before your opponent. We\'ll teach the 3 basic moves — learn the rest as you go.';
+  String get readInstructions =>
+      isEs ? 'Ver instrucciones' : 'Read instructions';
+  String get tutorialEndRoundBody => isEs
+      ? 'La ronda terminó: las cartas sin capturar van a quien capturó al final. Contamos puntos — esa es tu puntuación de la ronda.'
+      : 'Round ended: uncaptured cards go to whoever captured last. We count the points — that\'s your score for the round.';
+  String get tutorialSpeedTimer => isEs
+      ? 'Cada turno tiene un contador. Si se acaba el tiempo, se juega una carta por ti.'
+      : 'Each turn has a countdown. If time runs out, a card is played for you.';
+  String get tutorialDragTake => isEs
+      ? 'Arrastra tu 8♠ sobre el montón para capturarlo.'
+      : 'Drag your 8♠ onto the stack to capture it.';
+  String get tutorialRummyIntro =>
+      isEs ? 'Esto es Rummy.' : 'This is Rummy.';
+  String get tutorialRummyObjective => isEs
+      ? 'Forma 2 grupos según el contrato para ganar la partida.'
+      : 'Form 2 groups matching the contract requirements to win the match.';
+  String get tutorialRummyDraw => isEs
+      ? 'Roba del descarte o del mazo.'
+      : 'Draw from the discard pile or the deck.';
+  String get tutorialRummyBoxes => isEs
+      ? 'Arrastra cartas a las cajas de arriba para formar tus grupos.'
+      : 'Drag cards into the boxes above your hand to form your sets.';
+  String get tutorialRummyWin => isEs
+      ? 'Ganas cuando las dos cajas están completas y descartas tu última carta.'
+      : 'You win when both boxes are checked off and you discard your last unused card.';
+  String get tutorialTresydosIntro =>
+      isEs ? 'Esto es Tres y Dos.' : 'This is Tres y Dos.';
+  String get tutorialTresydosObjective => isEs
+      ? 'Forma un trío y una pareja antes que tus rivales.'
+      : 'Form a set of three and a pair before your opponents.';
+  String get tutorialTresydosDraw => isEs
+      ? 'Roba y descarta cada turno.'
+      : 'Draw and discard on each turn.';
+  String get tutorialTresydosForm => isEs
+      ? 'Junta 3 y 2 del mismo valor para ganar la ronda.'
+      : 'Collect 3 and 2 of matching ranks to win the round.';
+  String get tutorialBsIntro => isEs ? 'Esto es BS.' : 'This is BS.';
+  String get tutorialBsObjective => isEs
+      ? 'Descarta todas tus cartas antes que los demás.'
+      : 'Discard all of your cards before anyone else.';
+  String get tutorialBsCall => isEs
+      ? 'Si dudas de la jugada rival, toca BS. Si mintió, toma el montón.'
+      : 'If you doubt the claim, tap BS. If they lied, they take the pile.';
+  String get tutorialBsHonest => isEs
+      ? 'Juega cartas honestas. Si te llaman BS y dijiste la verdad, ellos toman el montón.'
+      : 'Play honestly. If someone calls BS and you were truthful, they take the pile.';
   String get stay => isEs ? 'Quedarse' : 'Stay';
   String get home => isEs ? 'Inicio' : 'Home';
   String get next => isEs ? 'Siguiente' : 'Next';
@@ -480,13 +558,13 @@ class AppLocalizations {
       case LevelChallengeId.playAnyMatch:
         return isEs ? 'Juega cualquier partida' : 'Play any match';
       case LevelChallengeId.playCasinoMatch:
-        return isEs ? 'Juega una partida de Casino' : 'Play a Casino match';
+        return isEs ? 'Juega una partida de Sweep' : 'Play a Sweep match';
       case LevelChallengeId.playOnlineMatch:
         return isEs
             ? 'Inicia o únete a una partida con un amigo'
             : 'Start or join an online match with a friend';
       case LevelChallengeId.winCasinoMatch:
-        return isEs ? 'Gana una partida de Casino' : 'Win a Casino match';
+        return isEs ? 'Gana una partida de Sweep' : 'Win a Sweep match';
       case LevelChallengeId.startJourney:
         return isEs ? 'Empieza Journey' : 'Start Journey';
       case LevelChallengeId.playTresYDos:
@@ -515,8 +593,8 @@ class AppLocalizations {
             : 'Play a match with stake ≥ 100';
       case LevelChallengeId.win200CasinoCoins:
         return isEs
-            ? 'Gana 200+ monedas en Casino'
-            : 'Win 200+ coins in a Casino match';
+            ? 'Gana 200+ monedas en Sweep'
+            : 'Win 200+ coins in a Sweep match';
       case LevelChallengeId.tydRoundsThree:
         return isEs
             ? 'Completa 3 rondas de Tres y Dos'

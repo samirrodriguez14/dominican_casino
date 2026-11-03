@@ -5,7 +5,7 @@ const gamesData = {
       "extra points. First player to reach the target "
       "score wins the game.",
   "casinoSpeed":
-      "Same Casino capture rules in a single round. "
+      "Same Sweep capture rules in a single round. "
       "Highest score wins; coins break ties; "
       "still tied means another round.",
   "tresydos":

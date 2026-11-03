@@ -8,6 +8,8 @@ class TutorialCasinoFactory {
   static GameState createBasicTakeTutorial({
     required String gid,
     required String playerId,
+    GameMode gameMode = GameMode.casino,
+    int? turnDurationSeconds,
   }) {
     final round = Round(
       id: 1,
@@ -39,9 +41,9 @@ class TutorialCasinoFactory {
     ];
 
     final remainingDeck = tutorialDeck.sublist(9);
-    return GameState(
+    final state = GameState(
       gameStatus: GameStatus.inProgress,
-      gameMode: GameMode.casino,
+      gameMode: gameMode,
       id: gid,
 
       started: true,
@@ -87,6 +89,11 @@ class TutorialCasinoFactory {
       lastTookCardId: '',
       cardMoveEvents: [],
       settlementEvents: [],
+      turnDurationSeconds: turnDurationSeconds,
     );
+    if (gameMode == GameMode.casinoSpeed) {
+      state.refreshTurnClock(restart: true);
+    }
+    return state;
   }
 }

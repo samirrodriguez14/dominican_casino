@@ -2,8 +2,8 @@ import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('GameRoutes.parseInvite parses dominicancasino://join deep links', () {
-    final uri = Uri.parse('dominicancasino://join/ABCD/casino');
+  test('GameRoutes.parseInvite parses youareup://join deep links', () {
+    final uri = Uri.parse('youareup://join/ABCD/casino');
     final result = GameRoutes.parseInvite(uri);
     expect(result, isNotNull);
     expect(result!.gameId, 'ABCD');

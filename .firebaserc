@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "dominican-casino"
-  }
+    "default": "youareup"
+  },
+  "targets": {},
+  "etags": {}
 }

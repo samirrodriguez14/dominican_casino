@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1A2220">
-  <meta name="description" content="Dominican card games with friends. Casino and Tres y Dos — chips are for the match, not for cash.">
+  <meta name="description" content="Card games with friends. Sweep and Tres y Dos — chips are for the match, not for cash.">
   <script>
     document.write(
       '<meta name="apple-itunes-app" content="app-id=6803220107, app-argument=' +
@@ -13,7 +13,7 @@
       '">'
     );
   </script>
-  <title>Dominican Casino</title>
+  <title>You Are Up</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="icon" href="/assets/images/logo_icon_sage.png">
 </head>
@@ -21,14 +21,14 @@
 <body>
   <main class="stage">
     <article class="invite">
-      <img class="logo" src="/assets/images/logo_icon_sage.png" alt="Dominican Casino">
-      <p class="eyebrow">Dominican Casino</p>
+      <img class="logo" src="/assets/images/logo_icon_sage.png" alt="You Are Up">
+      <p class="eyebrow">You Are Up</p>
 
       <div id="joinPanel" class="hidden">
         <p class="lede">You're invited to play</p>
         <div class="mode">
           <span class="suit" id="gameSuit">♠</span>
-          <span class="name" id="gameType">Casino</span>
+          <span class="name" id="gameType">Sweep</span>
         </div>
         <p class="muted">Table <span class="table-id" id="gameId">—</span></p>
         <div class="actions">
@@ -39,7 +39,7 @@
 
       <div id="homePanel" class="hidden">
         <h1>Play at the table</h1>
-        <p class="lede">Casino and Tres y Dos with friends. Chips and scores stay in the match.</p>
+        <p class="lede">Sweep and Tres y Dos with friends. Chips and scores stay in the match.</p>
         <div class="actions">
           <a class="btn primary" href="https://apps.apple.com/app/id6803220107">Download the app</a>
         </div>
@@ -58,10 +58,10 @@
   </main>
 
   <script>
-    const APP_SCHEME = 'dominicancasino';
+    const APP_SCHEME = 'youareup';
     const modes = {
-      casino: { name: 'Casino', suit: '♠', red: false },
-      casinospeed: { name: 'Casino Speed', suit: '♠', red: false },
+      casino: { name: 'Sweep', suit: '♠', red: false },
+      casinospeed: { name: 'Sweep Speed', suit: '♠', red: false },
       tresydos: { name: 'Tres y Dos', suit: '♦', red: true },
       robaito: { name: 'Robaito', suit: '♣', red: false },
     };

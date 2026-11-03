@@ -1,7 +1,7 @@
 /// Canonical paths for match navigation. Always include tutorialMode.
 class GameRoutes {
-  static const inviteHost = 'dominican-casino.web.app';
-  static const urlScheme = 'dominicancasino';
+  static const inviteHost = 'youareup.web.app';
+  static const urlScheme = 'youareup';
   static const _gameIdPattern = r'^[a-zA-Z0-9_-]{4,64}$';
   static final _gameIdRe = RegExp(_gameIdPattern);
   static const _webHosts = {
@@ -43,7 +43,7 @@ class GameRoutes {
   }
 
   /// Parse /join/{id}/{mode} or /game/{id}/{mode}/... from a universal
-  /// link or custom-scheme URL (`dominicancasino://join/{id}/{mode}`).
+  /// link or custom-scheme URL (`youareup://join/{id}/{mode}`).
   static ({String gameId, String gameMode})? parseInvite(Uri uri) {
     final segments = _inviteSegments(uri);
     if (segments.isEmpty) return null;
@@ -70,7 +70,7 @@ class GameRoutes {
     return null;
   }
 
-  /// `dominicancasino://join/id/mode` puts `join` in the host, not the path.
+  /// `youareup://join/id/mode` puts `join` in the host, not the path.
   static List<String> _inviteSegments(Uri uri) {
     final host = uri.host;
     if (host.isNotEmpty &&

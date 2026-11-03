@@ -1,3 +1,4 @@
+import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
 import 'package:dominican_casino/services/haptics.dart';
 import 'package:flutter/widgets.dart';
@@ -17,6 +18,17 @@ Rect sharePositionOriginOf(BuildContext context) {
   );
 }
 
+String _shareModeLabel(String gameMode) {
+  return switch (gameModeFrom(gameMode)) {
+    GameMode.casino => 'Sweep',
+    GameMode.casinoSpeed => 'Sweep Speed',
+    GameMode.tresydos => 'Tres y Dos',
+    GameMode.rummy => 'Rummy',
+    GameMode.robaito => 'Robaito',
+    GameMode.bs => 'BS',
+  };
+}
+
 Future<void> shareGameInvite({
   required BuildContext context,
   required String gameId,
@@ -25,9 +37,10 @@ Future<void> shareGameInvite({
   if (!context.mounted) return;
   AppHaptics.mediumImpact();
   final link = GameRoutes.inviteUrl(gameId: gameId, gameMode: gameMode);
+  final label = _shareModeLabel(gameMode);
   await SharePlus.instance.share(
     ShareParams(
-      text: 'Join my Dominican $gameMode game!\n$link',
+      text: 'Join my $label game!\n$link',
       sharePositionOrigin: sharePositionOriginOf(context),
     ),
   );

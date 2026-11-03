@@ -1,98 +1,18 @@
-rules_version = '2';
+rules_version='2'
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function isSelf(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
-
-    // FCM tokens and profile — never on game docs.
-    match /users/{uid} {
-      allow read: if isSelf(uid);
-      allow create, update: if isSelf(uid)
-        && request.resource.data.keys().hasOnly([
-          'fcmToken',
-          'fcmTokens',
-          'displayName',
-          'name',
-          'avatarId',
-          'completedTutorial',
-          'updatedAt',
-          'coins',
-          'energy',
-          'energyUpdatedAt',
-          'energyFullAt',
-          'locale',
-          'lastDailyClaimAt',
-          'dailyChallenges',
-          'ownedPacks',
-          'appTheme',
-          'cardBack',
-          'cardBackMark',
-          'cardBackTint',
-          'activeGameId',
-        ]);
-      allow delete: if isSelf(uid);
-
-      // Lightweight lobby rows — not full match state.
-      match /activeGames/{gid} {
-        allow read, write: if isSelf(uid);
-      }
-      match /archivedGames/{gid} {
-        allow read, write: if isSelf(uid);
-      }
-      match /opponentStats/{opponentUid} {
-        allow read, write: if isSelf(uid);
-      }
-    }
-
-    // Leaderboard-safe profile fields (no FCM / wallet secrets).
-    match /publicProfiles/{uid} {
-      allow read: if signedIn();
-      allow create, update: if isSelf(uid)
-        && request.resource.data.keys().hasOnly([
-          'name',
-          'avatarId',
-          'wins',
-          'league',
-          'leagueExitRanks',
-          'updatedAt',
-        ]);
-      allow delete: if isSelf(uid);
-    }
-
-    // Match documents. Authenticated clients may still write full state
-    // until server-side applyMove ships — but anonymous guests cannot.
-    match /games/{gid} {
-      allow create: if signedIn()
-        && request.resource.data.controllerId == request.auth.uid;
-      allow read: if signedIn();
-      allow update: if signedIn();
-      allow delete: if signedIn()
-        && resource.data.controllerId == request.auth.uid;
-
-      match /signals/{sid} {
-        allow read, write: if signedIn();
-      }
-    }
-
-    // Quick Match queue — clients enqueue/cancel; matcher CF claims matches.
-    match /matchmakingQueue/{uid} {
-      allow read: if isSelf(uid);
-      allow delete: if isSelf(uid);
-      allow create: if isSelf(uid)
-        && request.resource.data.uid == uid
-        && request.resource.data.status == 'waiting'
-        && !('matchedGameId' in request.resource.data);
-      allow update: if isSelf(uid)
-        && (
-          (request.resource.data.status == 'waiting'
-            && !('matchedGameId' in request.resource.data))
-          || request.resource.data.status == 'cancelled'
-        );
+    match /{document=**} {
+      // This rule allows anyone with your database reference to view, edit,
+      // and delete all data in your database. It is useful for getting
+      // started, but it is configured to expire after 30 days because it
+      // leaves your app open to attackers. At that time, all client
+      // requests to your database will be denied.
+      //
+      // Make sure to write security rules for your app before that time, or
+      // else all client requests to your database will be denied until you
+      // update your rules.
+      allow read, write: if request.time < timestamp.date(2026, 12, 3);
     }
   }
 }

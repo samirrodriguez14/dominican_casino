@@ -1,10 +1,10 @@
-# Dominican Casino
+# You Are Up
 
-A beautiful, cross-platform card game app featuring traditional Dominican card games. Experience the thrill of Casino, Tres y Dos, and Robaito with friends and family in real-time multiplayer matches.
+A beautiful, cross-platform card game app featuring traditional Dominican card games. Experience the thrill of Sweep, Tres y Dos, and Robaito with friends and family in real-time multiplayer matches.
 
 ## 🎮 Games
 
-### Casino
+### Sweep
 The classic Dominican card game where players capture cards from the table by matching values. Features include:
 - Strategic card capturing
 - Stack building and management
@@ -97,7 +97,7 @@ flutter build web --release
 ## 📱 Usage
 
 1. **Launch the app** and enter your player name
-2. **Choose a game mode** from the carousel (Casino, Tres y Dos, Robaito)
+2. **Choose a game mode** from the carousel (Sweep, Tres y Dos, Robaito)
 3. **Create a new game** or join an existing one by ID
 4. **Invite friends** by sharing the game link
 5. **Play your cards** strategically to capture and score points

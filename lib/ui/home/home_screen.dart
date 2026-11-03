@@ -1,7 +1,6 @@
 import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/game_state.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/routing/game_routes.dart';
+import 'package:dominican_casino/ui/app_shell/games/tutorial_flow.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/ui/home/home_about_card.dart';
@@ -16,7 +15,6 @@ import 'package:dominican_casino/view_models/home_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -159,15 +157,8 @@ class HomeScreenState extends State<HomeScreen> {
     if (_entering) return;
     setState(() => _entering = true);
     try {
-      if (context.read<HomeViewModel>().player == null) return;
       if (!mounted) return;
-      context.go(
-        GameRoutes.game(
-          gameId: Uuid().v4().substring(0, 6),
-          gameMode: GameMode.casino.name,
-          tutorial: true,
-        ),
-      );
+      await runHomeQuickPlay(context);
     } finally {
       if (mounted) setState(() => _entering = false);
     }

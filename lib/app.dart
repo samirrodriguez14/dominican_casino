@@ -105,6 +105,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
               key: ValueKey('$gameId-$tutorialMode'),
               create: (_) => GeneralGameViewModel(
                 gid: gameId,
+                gameMode: gameModeFrom(gameMode),
                 gameEngine: engine,
                 player: player,
                 gameRepo: context.read<GameRepo>(),
@@ -315,7 +316,7 @@ class _MyAppState extends State<App> with WidgetsBindingObserver {
       listenable: appRepo,
       builder: (context, _) {
         return CupertinoApp.router(
-          title: 'Dominican Casino',
+          title: 'You Are Up',
           routerConfig: _router,
           theme: buildCupertinoTheme(appRepo.selectedTheme),
           locale: appRepo.locale,

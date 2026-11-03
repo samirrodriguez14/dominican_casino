@@ -106,7 +106,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final player = repo.player;
     if (player == null) return;
     _offeredTutorial = true;
-    if (!player.completedTutorial) {
+    if (!repo.hasAnyTutorialDone) {
       showWelcomeTutorialPopup(context);
       return;
     }

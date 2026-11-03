@@ -2,8 +2,8 @@
   "games": [
     {
       "id": "casino",
-      "title": "Casino",
-      "subtitle": "Classic Dominican Casino",
+      "title": "Sweep",
+      "subtitle": "Classic Sweep",
       "description": "Capture cards from the table that match the value of the card you play. Special cards earn extra points. First player to 21 wins. About 10–12 minutes · 2 players.",
       "players": {
         "min": 2,
@@ -23,9 +23,9 @@
     },
     {
       "id": "casinoSpeed",
-      "title": "Casino Speed",
-      "subtitle": "One-round Casino",
-      "description": "Same Casino capture rules, decided in a single round. Highest score wins; coin awards break ties; still tied means another round. About 2–5 minutes · 2 players.",
+      "title": "Sweep Speed",
+      "subtitle": "One-round Sweep",
+      "description": "Same Sweep capture rules, decided in a single round. Highest score wins; coin awards break ties; still tied means another round. About 2–5 minutes · 2 players.",
       "players": {
         "min": 2,
         "max": 2,
@@ -36,7 +36,7 @@
       "enabled": true,
       "themeColor": "#D97706",
       "rules": [
-        "Same capture rules as Casino",
+        "Same capture rules as Sweep",
         "One round decides the match",
         "Most points wins",
         "Coins break ties; else replay"

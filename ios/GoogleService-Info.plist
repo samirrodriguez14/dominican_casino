@@ -2,22 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CLIENT_ID</key>
-	<string>932020449632-hkq967iebi5413bfr275l3es99n03oj8.apps.googleusercontent.com</string>
-	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.932020449632-hkq967iebi5413bfr275l3es99n03oj8</string>
 	<key>API_KEY</key>
-	<string>AIzaSyDYylFD_Vl8q60bRPO_6r0vAjX_EV02w8g</string>
+	<string>AIzaSyDhDNECfhjpCvZwk2S1u9EWdLIa2Gn-T4U</string>
 	<key>GCM_SENDER_ID</key>
-	<string>932020449632</string>
+	<string>181795819212</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.sr2.dominicanCasino</string>
+	<string>com.sr2.youareup</string>
 	<key>PROJECT_ID</key>
-	<string>dominican-casino</string>
+	<string>youareup</string>
 	<key>STORAGE_BUCKET</key>
-	<string>dominican-casino.firebasestorage.app</string>
+	<string>youareup.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:932020449632:ios:93523b9132363a72c9ee05</string>
+	<string>1:181795819212:ios:aa5ce674bc508ff6bbfc69</string>
 </dict>
 </plist>

@@ -89,7 +89,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "Welcome to Dominican Casino!",
+                "Welcome to You Are Up!",
                 textAlign: TextAlign.center,
                 style: AppStyle.theme.title.copyWith(
                   fontSize: 32,

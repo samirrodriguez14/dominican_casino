@@ -10,6 +10,10 @@ import 'package:dominican_casino/models/local_bot_roster.dart';
 import 'package:dominican_casino/models/wallet_config.dart';
 import 'package:dominican_casino/repositories/app_repo.dart';
 import 'package:dominican_casino/routing/game_routes.dart';
+import 'package:dominican_casino/models/tutorial_game_modes.dart';
+import 'package:dominican_casino/models/tutorial_pending_launch.dart';
+import 'package:dominican_casino/ui/app_shell/games/tutorial_flow.dart';
+import 'package:dominican_casino/ui/app_shell/games/tutorial_offer_dialog.dart';
 import 'package:dominican_casino/style/app_theme.dart';
 import 'package:dominican_casino/services/sound_service.dart';
 import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
@@ -125,7 +129,7 @@ void showEnterGameDialog(
           if (!await ensureGoogleForOnlinePlay(context)) return;
           if (!context.mounted) return;
           Navigator.pop(dialogContext);
-          gameEnter(
+          await gameEnterWithTutorialCheck(
             context,
             vm,
             mode,
@@ -141,9 +145,9 @@ void showEnterGameDialog(
               entryCost, {
               int playerCount = 2,
               int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
-            }) {
+            }) async {
           Navigator.pop(dialogContext);
-          gameEnter(
+          await gameEnterWithTutorialCheck(
             context,
             vm,
             mode,
@@ -182,8 +186,8 @@ String _modeTitle(GamesViewModel vm, GameMode mode) {
     if (game.id == mode.name) return game.title;
   }
   return switch (mode) {
-    GameMode.casino => 'Casino',
-    GameMode.casinoSpeed => 'Casino Speed',
+    GameMode.casino => 'Sweep',
+    GameMode.casinoSpeed => 'Sweep Speed',
     GameMode.tresydos => 'Tres y Dos',
     GameMode.rummy => 'Rummy',
     GameMode.robaito => 'Robaito',
@@ -797,6 +801,64 @@ class _EnterGamePopupState extends State<_EnterGamePopup> {
 }
 
 enum _PlayPath { friend, puli }
+
+Future<void> gameEnterWithTutorialCheck(
+  BuildContext context,
+  GamesViewModel vm,
+  GameMode mode,
+  bool local, {
+  int playerCount = 2,
+  int entryCost = WalletConfig.entryCost,
+  int turnDurationSeconds = WalletConfig.defaultSpeedTurnSeconds,
+  bool isPublic = false,
+}) async {
+  final repo = context.read<AppRepo>();
+  if (!isTutorialGameMode(mode) || repo.isGameTutorialDone(mode)) {
+    await gameEnter(
+      context,
+      vm,
+      mode,
+      local,
+      playerCount: playerCount,
+      entryCost: entryCost,
+      turnDurationSeconds: turnDurationSeconds,
+      isPublic: isPublic,
+    );
+    return;
+  }
+
+  final choice = await showTutorialOfferDialog(context, mode);
+  if (!context.mounted) return;
+  switch (choice) {
+    case TutorialOfferChoice.tutorial:
+      repo.setTutorialPendingLaunch(
+        TutorialPendingLaunch(
+          mode: mode,
+          local: local,
+          playerCount: playerCount,
+          entryCost: entryCost,
+          turnDurationSeconds: turnDurationSeconds,
+        ),
+      );
+      launchTutorialMatch(context, mode);
+    case TutorialOfferChoice.skip:
+      await repo.completeGameTutorial(mode);
+      if (!context.mounted) return;
+      await gameEnter(
+        context,
+        vm,
+        mode,
+        local,
+        playerCount: playerCount,
+        entryCost: entryCost,
+        turnDurationSeconds: turnDurationSeconds,
+        isPublic: isPublic,
+      );
+    case TutorialOfferChoice.cancel:
+    case null:
+      break;
+  }
+}
 
 Future<void> gameEnter(
   BuildContext context,

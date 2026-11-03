@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-const privacyPolicyUrl = 'https://dominican-casino.web.app/privacy';
+const privacyPolicyUrl = 'https://youareup.web.app/privacy';
 
 Future<void> openPrivacyPolicy(BuildContext context) async {
   final uri = Uri.parse(privacyPolicyUrl);

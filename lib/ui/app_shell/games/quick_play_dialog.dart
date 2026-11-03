@@ -24,8 +24,8 @@ String _modeLabel(GamesViewModel vm, GameMode mode) {
     if (game.id == mode.name) return game.title;
   }
   return switch (mode) {
-    GameMode.casino => 'Casino',
-    GameMode.casinoSpeed => 'Casino Speed',
+    GameMode.casino => 'Sweep',
+    GameMode.casinoSpeed => 'Sweep Speed',
     GameMode.tresydos => 'Tres y Dos',
     GameMode.rummy => 'Rummy',
     GameMode.robaito => 'Robaito',
@@ -57,8 +57,44 @@ String _prefsSummary(
 }
 
 Future<void> showQuickPlayDialog(BuildContext context) async {
+  await _showQuickPlayDialogInternal(context, restricted: false);
+}
+
+/// Home Quick Play after at least one tutorial — only completed modes, no "Any".
+Future<void> showRestrictedQuickPlayDialog(BuildContext context) async {
+  final repo = context.read<AppRepo>();
+  final eligible = repo.matchmakingEligibleModes;
+  if (eligible.isEmpty) {
+    final l10n = AppLocalizations.of(context);
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(l10n.quickMatchTutorialRequiredTitle),
+        content: Text(l10n.quickMatchTutorialRequiredBody),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: SoundService.wrapTap(() => Navigator.pop(ctx)),
+            child: Text(l10n.back),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
+  await _showQuickPlayDialogInternal(context, restricted: true);
+}
+
+Future<void> _showQuickPlayDialogInternal(
+  BuildContext context, {
+  required bool restricted,
+}) async {
   final repo = context.read<AppRepo>();
   final vm = context.read<GamesViewModel>();
+  final eligible = restricted ? repo.matchmakingEligibleModes : null;
+  final initial = restricted
+      ? repo.quickMatchPrefs.sanitizedForMatchmaking(eligible!)
+      : repo.quickMatchPrefs;
   await showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -67,13 +103,19 @@ Future<void> showQuickPlayDialog(BuildContext context) async {
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return _QuickPlayPopup(
-        initial: repo.quickMatchPrefs,
+        initial: initial,
+        restricted: restricted,
+        eligibleModes: eligible,
+        isTutorialDone: repo.isGameTutorialDone,
         modeTitle: (mode) => _modeLabel(vm, mode),
         summary: (prefs) => _prefsSummary(context, prefs, vm),
         onSavePrefs: repo.setQuickMatchPrefs,
         onSearch: (prefs) async {
           Navigator.pop(dialogContext);
-          await _runQuickMatchSearch(context, prefs);
+          final sanitized = restricted && eligible != null
+              ? prefs.sanitizedForMatchmaking(eligible)
+              : prefs;
+          await _runQuickMatchSearch(context, sanitized, eligible: eligible);
         },
       );
     },
@@ -91,8 +133,9 @@ Future<void> showQuickPlayDialog(BuildContext context) async {
 
 Future<void> _runQuickMatchSearch(
   BuildContext context,
-  QuickMatchPrefs prefs,
-) async {
+  QuickMatchPrefs prefs, {
+  Set<GameMode>? eligible,
+}) async {
   if (!await ensureGoogleForOnlinePlay(context)) return;
   if (!context.mounted) return;
 
@@ -102,7 +145,9 @@ Future<void> _runQuickMatchSearch(
 
   // Pre-check affordability for the cheapest energy among selected modes
   // and the max stake filter.
-  final modes = QuickMatchService.energyModesFor(prefs);
+  final modes = eligible != null
+      ? prefs.effectiveModesFor(eligible)
+      : QuickMatchService.energyModesFor(prefs);
   final needsEnergy = modes.any((m) => !repo.canAffordEnergy(m));
   if (needsEnergy) {
     await showInsufficientFundsDialog(context, energy: true);
@@ -289,6 +334,9 @@ class _QuickPlayPopup extends StatefulWidget {
     required this.summary,
     required this.onSavePrefs,
     required this.onSearch,
+    this.restricted = false,
+    this.eligibleModes,
+    this.isTutorialDone,
   });
 
   final QuickMatchPrefs initial;
@@ -296,6 +344,9 @@ class _QuickPlayPopup extends StatefulWidget {
   final String Function(QuickMatchPrefs prefs) summary;
   final Future<void> Function(QuickMatchPrefs prefs) onSavePrefs;
   final Future<void> Function(QuickMatchPrefs prefs) onSearch;
+  final bool restricted;
+  final Set<GameMode>? eligibleModes;
+  final bool Function(GameMode mode)? isTutorialDone;
 
   @override
   State<_QuickPlayPopup> createState() => _QuickPlayPopupState();
@@ -369,6 +420,9 @@ class _QuickPlayPopupState extends State<_QuickPlayPopup> {
                     prefs: _prefs,
                     modeTitle: widget.modeTitle,
                     onChanged: _persist,
+                    restricted: widget.restricted,
+                    eligibleModes: widget.eligibleModes,
+                    isTutorialDone: widget.isTutorialDone,
                   ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -412,50 +466,81 @@ class _PrefsEditor extends StatelessWidget {
     required this.prefs,
     required this.modeTitle,
     required this.onChanged,
+    this.restricted = false,
+    this.eligibleModes,
+    this.isTutorialDone,
   });
 
   final QuickMatchPrefs prefs;
   final String Function(GameMode mode) modeTitle;
   final Future<void> Function(QuickMatchPrefs prefs) onChanged;
+  final bool restricted;
+  final Set<GameMode>? eligibleModes;
+  final bool Function(GameMode mode)? isTutorialDone;
 
   @override
   Widget build(BuildContext context) {
     final theme = AppStyle.theme;
     final l10n = AppLocalizations.of(context);
     final stakes = WalletConfig.stakesFor(allowNoBet: true);
+    final lockedModes = restricted
+        ? gameModeCarouselModes
+            .where((m) => !(eligibleModes?.contains(m) ?? false))
+            .toList()
+        : const <GameMode>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(l10n.quickMatchGames, style: theme.title.copyWith(fontSize: 13)),
         const SizedBox(height: 8),
+        if (restricted && lockedModes.isNotEmpty) ...[
+          Text(
+            l10n.quickMatchTutorialLockHint,
+            style: theme.caption.copyWith(
+              color: theme.muted,
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         Wrap(
           spacing: 6,
           runSpacing: 6,
           children: [
-            _FilterChip(
-              label: l10n.quickMatchAnyGame,
-              selected: prefs.anyMode,
-              onTap: () => onChanged(prefs.copyWith(modes: const [])),
-            ),
+            if (!restricted)
+              _FilterChip(
+                label: l10n.quickMatchAnyGame,
+                selected: prefs.anyMode,
+                onTap: () => onChanged(prefs.copyWith(modes: const [])),
+              ),
             for (final mode in gameModeCarouselModes)
               _FilterChip(
                 label: modeTitle(mode),
                 selected: !prefs.anyMode && prefs.modes.contains(mode),
+                enabled: !restricted ||
+                    (eligibleModes?.contains(mode) ?? true),
                 onTap: () {
-                  final next = prefs.anyMode
+                  if (restricted && !(eligibleModes?.contains(mode) ?? false)) {
+                    return;
+                  }
+                  final next = prefs.anyMode && !restricted
                       ? <GameMode>[mode]
                       : List<GameMode>.from(prefs.modes);
-                  if (!prefs.anyMode) {
+                  if (!prefs.anyMode || restricted) {
                     if (next.contains(mode)) {
                       next.remove(mode);
                     } else {
                       next.add(mode);
                     }
                   }
-                  final normalized =
-                      next.isEmpty ||
-                          next.length >= gameModeCarouselModes.length
-                      ? const <GameMode>[]
+                  final cap = restricted
+                      ? (eligibleModes?.length ?? gameModeCarouselModes.length)
+                      : gameModeCarouselModes.length;
+                  final normalized = next.isEmpty || next.length >= cap
+                      ? (restricted && eligibleModes != null
+                            ? List<GameMode>.from(eligibleModes!)
+                            : const <GameMode>[])
                       : next;
                   onChanged(prefs.copyWith(modes: normalized));
                 },
@@ -513,12 +598,14 @@ class _FilterChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.icon,
+    this.enabled = true,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final IconData? icon;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -526,17 +613,19 @@ class _FilterChip extends StatelessWidget {
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
-      onPressed: SoundService.wrapTap(onTap),
+      onPressed: enabled ? SoundService.wrapTap(onTap) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? theme.surfaceRaised : theme.background,
+          color: selected
+              ? theme.surfaceRaised
+              : theme.background.withValues(alpha: enabled ? 1 : .5),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected
                 ? theme.turnHighlight.withValues(alpha: .7)
-                : theme.border.withValues(alpha: .55),
+                : theme.border.withValues(alpha: enabled ? .55 : .25),
           ),
         ),
         child: Row(
@@ -546,7 +635,9 @@ class _FilterChip extends StatelessWidget {
               Icon(
                 icon,
                 size: 12,
-                color: selected ? theme.turnHighlight : theme.muted,
+                color: selected
+                    ? theme.turnHighlight
+                    : theme.muted.withValues(alpha: enabled ? 1 : .45),
               ),
               const SizedBox(width: 3),
             ],
@@ -555,7 +646,9 @@ class _FilterChip extends StatelessWidget {
               style: theme.title.copyWith(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: selected ? theme.textPrimary : theme.muted,
+                color: selected
+                    ? theme.textPrimary
+                    : theme.muted.withValues(alpha: enabled ? 1 : .45),
               ),
             ),
           ],
