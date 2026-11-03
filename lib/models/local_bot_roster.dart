@@ -1,4 +1,4 @@
-import 'package:dominican_casino/models/avatar_catalog.dart';
+import 'package:youareup/models/avatar_catalog.dart';
 
 /// On-device AI seats for local matches. Distinct names/avatars so a
 /// multi-seat table is not copies of the same bot.

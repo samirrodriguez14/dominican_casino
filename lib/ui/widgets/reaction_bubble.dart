@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/game_reaction.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
+import 'package:youareup/models/game_reaction.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Where the bubble tip points (toward the speaker).

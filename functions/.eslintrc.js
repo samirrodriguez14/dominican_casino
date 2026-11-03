@@ -21,6 +21,7 @@ module.exports = {
     "/lib/**/*", // Ignore built files.
     "/generated/**/*", // Ignore generated files.
     "/test/**/*", // Node test files (not in tsconfig).
+    "/build/**/*", // Accidental Flutter/Xcode artifacts must never be linted.
   ],
   plugins: [
     "@typescript-eslint",

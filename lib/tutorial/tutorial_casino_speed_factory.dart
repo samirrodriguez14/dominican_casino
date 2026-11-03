@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/wallet_config.dart';
-import 'package:dominican_casino/tutorial/tutorial_casino_factory.dart';
-import 'package:dominican_casino/models/game_state.dart';
+import 'package:youareup/models/wallet_config.dart';
+import 'package:youareup/tutorial/tutorial_casino_factory.dart';
+import 'package:youareup/models/game_state.dart';
 
 class TutorialCasinoSpeedFactory {
   static GameState createBasicTakeTutorial({

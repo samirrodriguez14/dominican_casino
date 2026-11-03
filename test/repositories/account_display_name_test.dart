@@ -1,4 +1,4 @@
-import 'package:dominican_casino/repositories/account_display_name.dart';
+import 'package:youareup/repositories/account_display_name.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

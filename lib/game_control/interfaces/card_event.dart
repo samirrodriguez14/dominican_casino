@@ -1,5 +1,5 @@
-import 'package:dominican_casino/game_control/interfaces/zone.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:youareup/game_control/interfaces/zone.dart';
+import 'package:youareup/models/playing_card_model.dart';
 
 abstract class GameEvent {
   String id;

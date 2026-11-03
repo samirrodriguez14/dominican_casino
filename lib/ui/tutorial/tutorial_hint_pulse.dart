@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/view_models/tutorial_view_model.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/view_models/tutorial_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

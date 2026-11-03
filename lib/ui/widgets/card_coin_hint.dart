@@ -1,6 +1,6 @@
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/widgets/coin_hint_ticker.dart';
-import 'package:dominican_casino/ui/widgets/coin_icon.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/widgets/coin_hint_ticker.dart';
+import 'package:youareup/ui/widgets/coin_icon.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Coin stack in the bottom-left of a card / stack.

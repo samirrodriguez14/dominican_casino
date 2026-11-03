@@ -1,4 +1,4 @@
-import 'package:dominican_casino/models/level_challenge.dart';
+import 'package:youareup/models/level_challenge.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

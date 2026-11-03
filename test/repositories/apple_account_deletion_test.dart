@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:dominican_casino/repositories/apple_account_deletion.dart';
+import 'package:youareup/repositories/apple_account_deletion.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

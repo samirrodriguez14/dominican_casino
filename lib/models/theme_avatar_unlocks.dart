@@ -1,9 +1,9 @@
-import 'package:dominican_casino/models/avatar_catalog.dart';
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/models/avatar_catalog.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/style/journey_worlds.dart';
 
-export 'package:dominican_casino/models/avatar_catalog.dart'
+export 'package:youareup/models/avatar_catalog.dart'
     show
         AvatarCatalog,
         AvatarDef,

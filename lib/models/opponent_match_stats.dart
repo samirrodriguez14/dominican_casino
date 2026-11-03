@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dominican_casino/models/player_match_stats.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:youareup/models/player_match_stats.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
 
 /// Head-to-head career record against one human opponent.
 class OpponentMatchStats {

@@ -1,21 +1,21 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/theme_pack.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_progress_trail.dart';
-import 'package:dominican_casino/ui/app_shell/profile/avatar_picker_popup.dart';
-import 'package:dominican_casino/ui/app_shell/profile/profile_coach.dart';
-import 'package:dominican_casino/ui/app_shell/profile/profile_league_face.dart';
-import 'package:dominican_casino/ui/app_shell/profile/profile_wallet_cards.dart';
-import 'package:dominican_casino/ui/cards/playing_card_back.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
-import 'package:dominican_casino/view_models/app_theme_view_model.dart';
-import 'package:dominican_casino/view_models/profile_view_model.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/theme_pack.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/app_shell/journey/journey_progress_trail.dart';
+import 'package:youareup/ui/app_shell/profile/avatar_picker_popup.dart';
+import 'package:youareup/ui/app_shell/profile/profile_coach.dart';
+import 'package:youareup/ui/app_shell/profile/profile_league_face.dart';
+import 'package:youareup/ui/app_shell/profile/profile_wallet_cards.dart';
+import 'package:youareup/ui/cards/playing_card_back.dart';
+import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
+import 'package:youareup/view_models/app_theme_view_model.dart';
+import 'package:youareup/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

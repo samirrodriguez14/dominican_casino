@@ -1,13 +1,13 @@
-import 'package:dominican_casino/l10n/journey_l10n.dart';
-import 'package:dominican_casino/models/journey_instruction.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
+import 'package:youareup/l10n/journey_l10n.dart';
+import 'package:youareup/models/journey_instruction.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/app_shell/journey/journey_face_card.dart';
+import 'package:youareup/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
+import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:youareup/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Collapsed left-side guide deck + expanded non-wrapping fan carousel.

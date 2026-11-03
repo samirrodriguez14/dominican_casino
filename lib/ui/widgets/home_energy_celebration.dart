@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/animations/currency_burst.dart';
-import 'package:dominican_casino/ui/widgets/currency_bar.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/animations/currency_burst.dart';
+import 'package:youareup/ui/widgets/currency_bar.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Energy congrats card, then energy icon jumps into the top-right stack.

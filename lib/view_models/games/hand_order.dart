@@ -1,4 +1,4 @@
-import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:youareup/models/playing_card_model.dart';
 
 /// Local-only fan order. Hand order is not written to the match document,
 /// so remote replaces must re-apply it or the fan snaps back.

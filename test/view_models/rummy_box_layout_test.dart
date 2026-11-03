@@ -1,4 +1,4 @@
-import 'package:dominican_casino/view_models/games/rummy_box_layout.dart';
+import 'package:youareup/view_models/games/rummy_box_layout.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

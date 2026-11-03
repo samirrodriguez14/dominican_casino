@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/wallet_config.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/wallet_config.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
 
 class GamePillSeat {
   final String id;

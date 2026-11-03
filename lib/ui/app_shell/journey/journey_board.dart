@@ -1,39 +1,39 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/l10n/journey_l10n.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/models/journey_instruction.dart';
-import 'package:dominican_casino/models/journey_progress.dart';
-import 'package:dominican_casino/models/local_bot_roster.dart';
-import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/app_shell/games/game_mode_actions.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_active_stage.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_coach.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_defeated_carousel.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_defeated_row.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_enter_kingdom.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_instruction_deck.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_loss_taunt.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_progress_trail.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_story_convos.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_world_piles.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/ui/widgets/journey_theme_unlock_reward.dart';
-import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
-import 'package:dominican_casino/view_models/games_view_model.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/l10n/journey_l10n.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/models/journey_instruction.dart';
+import 'package:youareup/models/journey_progress.dart';
+import 'package:youareup/models/local_bot_roster.dart';
+import 'package:youareup/models/theme_avatar_unlocks.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/app_shell/games/game_mode_actions.dart';
+import 'package:youareup/ui/app_shell/journey/journey_active_stage.dart';
+import 'package:youareup/ui/app_shell/journey/journey_coach.dart';
+import 'package:youareup/ui/app_shell/journey/journey_defeated_carousel.dart';
+import 'package:youareup/ui/app_shell/journey/journey_defeated_row.dart';
+import 'package:youareup/ui/app_shell/journey/journey_enter_kingdom.dart';
+import 'package:youareup/ui/app_shell/journey/journey_face_card.dart';
+import 'package:youareup/ui/app_shell/journey/journey_instruction_deck.dart';
+import 'package:youareup/ui/app_shell/journey/journey_loss_taunt.dart';
+import 'package:youareup/ui/app_shell/journey/journey_motion.dart';
+import 'package:youareup/ui/app_shell/journey/journey_progress_trail.dart';
+import 'package:youareup/ui/app_shell/journey/journey_story_convos.dart';
+import 'package:youareup/ui/app_shell/journey/journey_theme_unlock_ceremony.dart';
+import 'package:youareup/ui/app_shell/journey/journey_world_piles.dart';
+import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:youareup/ui/widgets/journey_theme_unlock_reward.dart';
+import 'package:youareup/ui/widgets/stacked_card_carousel.dart';
+import 'package:youareup/view_models/games_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-export 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart'
+export 'package:youareup/ui/app_shell/journey/journey_motion.dart'
     show JourneyDealPlan, JourneyDealSlot, JourneyOpenProgress;
 
 /// Four-band Journey board: piles / progress trail / active stage / defeated.

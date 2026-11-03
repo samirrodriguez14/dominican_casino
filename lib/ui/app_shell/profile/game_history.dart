@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/style/app_theme.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class GameHistoryTile extends StatelessWidget {

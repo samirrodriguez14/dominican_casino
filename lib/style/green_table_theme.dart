@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/app_theme.dart';
+import 'package:youareup/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 

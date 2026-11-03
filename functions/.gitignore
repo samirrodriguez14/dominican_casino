@@ -7,4 +7,8 @@ typings/
 
 # Node.js dependency directory
 node_modules/
+
+# Accidental Flutter/Xcode copies (never deploy)
+build/
+
 *.local

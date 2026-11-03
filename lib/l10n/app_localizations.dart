@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/level_challenge.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/level_challenge.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Minimal bilingual strings (en / es). Default language is English.

@@ -1,9 +1,9 @@
-import 'package:dominican_casino/models/tutorial_action.dart';
-import 'package:dominican_casino/models/tutorial_step.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
-import 'package:dominican_casino/ui/tutorial/tutorial_hint_pulse.dart';
-import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
+import 'package:youareup/models/tutorial_action.dart';
+import 'package:youareup/models/tutorial_step.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/ui/app_shell/shell_insets.dart';
+import 'package:youareup/ui/tutorial/tutorial_hint_pulse.dart';
+import 'package:youareup/ui/tutorial/tutorial_overlay.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

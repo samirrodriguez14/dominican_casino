@@ -1,7 +1,7 @@
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Login face: welcome, logo, and a pulsing quick-play cue.

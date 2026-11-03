@@ -1,18 +1,18 @@
 import 'dart:developer' as developer;
 
-import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/game_registry.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/local_player/bs_player.dart';
-import 'package:dominican_casino/local_player/casino_player.dart';
-import 'package:dominican_casino/local_player/tresdos_player.dart';
-import 'package:dominican_casino/local_player/rummy_player.dart';
-import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/round.dart';
-import 'package:dominican_casino/repositories/game_repo.dart';
+import 'package:youareup/game_control/casino_coin_bonuses.dart';
+import 'package:youareup/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
+import 'package:youareup/game_control/game_engine/game_engine.dart';
+import 'package:youareup/game_control/game_registry.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/local_player/bs_player.dart';
+import 'package:youareup/local_player/casino_player.dart';
+import 'package:youareup/local_player/tresdos_player.dart';
+import 'package:youareup/local_player/rummy_player.dart';
+import 'package:youareup/game_control/game_engine/bs/bs_state.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/round.dart';
+import 'package:youareup/repositories/game_repo.dart';
 import 'package:flutter/cupertino.dart';
 
 class PossibleSelection {

@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/style/app_theme.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Subtle wave for a winning Tres y Dos hand, or a one-shot bounce nudge.

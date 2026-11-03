@@ -1,6 +1,6 @@
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/models/game_state.dart';
+import 'package:youareup/game_control/game_engine/game_engine.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/models/game_state.dart';
 
 class RummyPlayActionHandler {
   static GameState handleAction(

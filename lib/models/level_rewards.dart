@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/style/journey_worlds.dart';
 
 /// Per-level coin/energy rewards players claim from the rewards popup.
 enum LevelRewardKind { coins, energy }

@@ -1,12 +1,12 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/opponent_match_stats.dart';
-import 'package:dominican_casino/models/player_match_stats.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/opponent_match_stats.dart';
+import 'package:youareup/models/player_match_stats.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Colors for career W/L / opponent rows on card faces.

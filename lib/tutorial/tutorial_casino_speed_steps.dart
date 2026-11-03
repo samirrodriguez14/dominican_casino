@@ -1,8 +1,8 @@
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/tutorial_step.dart';
-import 'package:dominican_casino/tutorial/tutorial_casino_steps.dart';
-import 'package:dominican_casino/ui/app_shell/games/game_mode_how_to_overlay.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/tutorial_step.dart';
+import 'package:youareup/tutorial/tutorial_casino_steps.dart';
+import 'package:youareup/ui/app_shell/games/game_mode_how_to_overlay.dart';
 import 'package:flutter/cupertino.dart';
 
 List<TutorialStep> getCasinoSpeedTutorialSteps({

@@ -1,4 +1,4 @@
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_contract.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_contract.dart';
 
 /// Rummy-specific match state.
 ///

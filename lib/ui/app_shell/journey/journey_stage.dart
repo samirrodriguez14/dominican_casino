@@ -1,11 +1,11 @@
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_board.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_deck.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_motion.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/app_shell/games/game_mode_carousel.dart';
+import 'package:youareup/ui/app_shell/journey/journey_board.dart';
+import 'package:youareup/ui/app_shell/journey/journey_deck.dart';
+import 'package:youareup/ui/app_shell/journey/journey_motion.dart';
 import 'package:flutter/cupertino.dart';
 
 enum TableDeck { games, journey }

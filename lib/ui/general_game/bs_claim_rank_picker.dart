@@ -1,6 +1,6 @@
-import 'package:dominican_casino/game_control/game_engine/bs/bs_handlers.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/services/sound_service.dart';
+import 'package:youareup/game_control/game_engine/bs/bs_handlers.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Pick the rank the player is claiming for a BS play.

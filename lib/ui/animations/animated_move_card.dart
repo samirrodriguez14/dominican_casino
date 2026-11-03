@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/ui/cards/playing_card.dart';
-import 'package:dominican_casino/ui/cards/playing_card_back.dart';
+import 'package:youareup/models/playing_card_model.dart';
+import 'package:youareup/ui/cards/playing_card.dart';
+import 'package:youareup/ui/cards/playing_card_back.dart';
 import 'package:flutter/cupertino.dart';
 
 class AnimatedMoveCard extends StatelessWidget {

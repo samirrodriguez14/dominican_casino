@@ -1,4 +1,4 @@
-import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:youareup/models/playing_card_model.dart';
 
 class PlayingAreaStackModel {
   final String id; // useful for UI keys / Firestore diffing

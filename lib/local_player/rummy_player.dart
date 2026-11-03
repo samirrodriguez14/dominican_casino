@@ -1,15 +1,15 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_contract.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_matcher.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_requirement.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_state.dart';
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/game_control/interfaces/zone.dart';
-import 'package:dominican_casino/local_player/local_player.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_contract.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_matcher.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_requirement.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_state.dart';
+import 'package:youareup/game_control/game_engine/game_engine.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/game_control/interfaces/zone.dart';
+import 'package:youareup/local_player/local_player.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/playing_card_model.dart';
 
 /// Contract-aware bot for Rummy (Romir).
 class RummyPlayer {

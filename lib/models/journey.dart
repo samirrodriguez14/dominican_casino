@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/style/journey_worlds.dart';
 
 /// Royal ranks shown on the Journey table (v1: four cards per world).
 enum JourneyRank {

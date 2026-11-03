@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/models/experience.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:youareup/models/experience.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

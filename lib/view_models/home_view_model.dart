@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/player.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
+import 'package:youareup/models/player.dart';
+import 'package:youareup/repositories/app_repo.dart';
 import 'package:flutter/cupertino.dart';
 
 class HomeViewModel extends ChangeNotifier {

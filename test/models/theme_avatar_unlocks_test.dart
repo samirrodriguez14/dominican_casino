@@ -1,7 +1,7 @@
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/models/theme_avatar_unlocks.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/style/journey_worlds.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

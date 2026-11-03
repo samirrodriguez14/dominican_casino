@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_requirement.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_requirement.dart';
 
 /// A deal-time contract: one or two requirements that must be satisfied.
 ///

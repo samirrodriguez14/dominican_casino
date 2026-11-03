@@ -1,7 +1,7 @@
-import 'package:dominican_casino/models/deck.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/player.dart';
-import 'package:dominican_casino/models/round.dart';
+import 'package:youareup/models/deck.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/player.dart';
+import 'package:youareup/models/round.dart';
 import 'package:uuid/uuid.dart';
 
 class TutorialTresydosFactory {

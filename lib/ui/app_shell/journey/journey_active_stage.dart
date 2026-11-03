@@ -1,9 +1,9 @@
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/app_shell/journey/journey_face_card.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/app_shell/journey/journey_face_card.dart';
+import 'package:youareup/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Empty center hint when no challenger is focused.

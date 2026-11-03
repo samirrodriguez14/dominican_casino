@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/playing_area_stack_model.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/game_control/interfaces/zone.dart';
+import 'package:youareup/models/playing_area_stack_model.dart';
+import 'package:youareup/models/playing_card_model.dart';
+import 'package:youareup/game_control/interfaces/zone.dart';
 
 //Start (only at the begining of the game when everyone has joined)
 //people join as Ready.

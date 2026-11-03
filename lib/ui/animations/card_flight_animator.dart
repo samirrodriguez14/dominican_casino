@@ -1,12 +1,12 @@
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
-import 'package:dominican_casino/game_control/interfaces/zone.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/ui/animations/animated_move_card.dart';
-import 'package:dominican_casino/ui/animations/card_motion.dart';
-import 'package:dominican_casino/ui/animations/flight_layer.dart';
+import 'package:youareup/game_control/interfaces/zone.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/ui/animations/animated_move_card.dart';
+import 'package:youareup/ui/animations/card_motion.dart';
+import 'package:youareup/ui/animations/flight_layer.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Card flights in [FlightLayer] coordinates (same Stack as the board).

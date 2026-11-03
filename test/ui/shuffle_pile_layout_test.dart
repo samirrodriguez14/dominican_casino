@@ -1,4 +1,4 @@
-import 'package:dominican_casino/ui/animations/card_motion.dart';
+import 'package:youareup/ui/animations/card_motion.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

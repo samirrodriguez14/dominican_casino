@@ -1,7 +1,7 @@
-import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/round.dart';
+import 'package:youareup/game_control/game_engine/casino/casino_game_engine.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/round.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/game_state_fixtures.dart';

@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/ui/cards/playing_card.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/ui/cards/playing_card_back.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/services/sound_service.dart';
+import 'package:youareup/ui/cards/playing_card.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/models/playing_card_model.dart';
+import 'package:youareup/ui/cards/playing_card_back.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 
 class CardDeck extends StatefulWidget {

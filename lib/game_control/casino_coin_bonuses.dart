@@ -1,8 +1,8 @@
-import 'package:dominican_casino/game_control/game_registry.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/models/round.dart';
+import 'package:youareup/game_control/game_registry.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/playing_card_model.dart';
+import 'package:youareup/models/round.dart';
 
 /// Casino in-game coin bonuses. Accrued on the match and claimed at home.
 class CasinoCoinBonuses {

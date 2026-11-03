@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/theme_pack.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:youareup/models/theme_pack.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 
 class PlayingCardBack extends StatelessWidget {

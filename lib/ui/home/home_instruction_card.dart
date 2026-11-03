@@ -1,10 +1,10 @@
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/instructions.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/cards/playing_card.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/instructions.dart';
+import 'package:youareup/models/playing_card_model.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/cards/playing_card.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Game-picker face used on the home How to play stack.

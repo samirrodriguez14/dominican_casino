@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/models/journey_instruction.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/models/journey_instruction.dart';
+import 'package:youareup/style/journey_worlds.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

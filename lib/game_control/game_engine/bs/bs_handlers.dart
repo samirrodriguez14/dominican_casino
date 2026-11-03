@@ -1,13 +1,13 @@
-import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
-import 'package:dominican_casino/game_control/game_engine/general_handlers/game_action_handler.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/models/deck.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/models/round.dart';
-import 'package:dominican_casino/models/table_slot.dart';
+import 'package:youareup/game_control/game_engine/bs/bs_state.dart';
+import 'package:youareup/game_control/game_engine/game_engine.dart';
+import 'package:youareup/game_control/game_engine/general_handlers/event_handler.dart';
+import 'package:youareup/game_control/game_engine/general_handlers/game_action_handler.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/models/deck.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/playing_card_model.dart';
+import 'package:youareup/models/round.dart';
+import 'package:youareup/models/table_slot.dart';
 
 /// Valid claim ranks for BS (standard deck faces).
 const bsClaimRanks = [

@@ -1,4 +1,4 @@
-import 'package:dominican_casino/models/wallet_config.dart';
+import 'package:youareup/models/wallet_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

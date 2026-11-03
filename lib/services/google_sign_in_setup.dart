@@ -1,4 +1,4 @@
-import 'package:dominican_casino/services/firebase_options.dart';
+import 'package:youareup/services/firebase_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 

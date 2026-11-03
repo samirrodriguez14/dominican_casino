@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Mini identity card — the winning-card look (profile face, not game status).

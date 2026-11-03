@@ -1,11 +1,11 @@
-import 'package:dominican_casino/l10n/journey_l10n.dart';
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/models/avatar_catalog.dart';
-import 'package:dominican_casino/models/theme_avatar_unlocks.dart';
-import 'package:dominican_casino/models/tutorial_action.dart';
-import 'package:dominican_casino/models/tutorial_step.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/tutorial/tutorial_overlay.dart';
+import 'package:youareup/l10n/journey_l10n.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/models/avatar_catalog.dart';
+import 'package:youareup/models/theme_avatar_unlocks.dart';
+import 'package:youareup/models/tutorial_action.dart';
+import 'package:youareup/models/tutorial_step.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/tutorial/tutorial_overlay.dart';
 import 'package:flutter/cupertino.dart';
 
 TutorialStep _storyLine({

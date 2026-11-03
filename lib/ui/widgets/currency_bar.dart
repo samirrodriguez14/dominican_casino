@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:dominican_casino/models/wallet_config.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/widgets/coin_icon.dart';
-import 'package:dominican_casino/ui/widgets/currency_delta_label.dart';
+import 'package:youareup/models/wallet_config.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/widgets/coin_icon.dart';
+import 'package:youareup/ui/widgets/currency_delta_label.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

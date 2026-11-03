@@ -1,8 +1,8 @@
-import 'package:dominican_casino/models/theme_pack.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/ui/app_shell/profile/theme_pack_card.dart';
-import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
+import 'package:youareup/models/theme_pack.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/ui/app_shell/profile/theme_pack_card.dart';
+import 'package:youareup/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

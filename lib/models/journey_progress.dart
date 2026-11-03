@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/style/journey_worlds.dart';
 
 /// Jack + Queen + King + Ace across all four kingdoms.
 const journeyTrailStepCount = 16;

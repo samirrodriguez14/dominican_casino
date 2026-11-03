@@ -1,8 +1,8 @@
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
 import 'package:provider/provider.dart';

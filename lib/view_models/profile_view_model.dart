@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dominican_casino/models/league.dart';
-import 'package:dominican_casino/models/opponent_match_stats.dart';
-import 'package:dominican_casino/models/player.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/models/league.dart';
+import 'package:youareup/models/opponent_match_stats.dart';
+import 'package:youareup/models/player.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Friend row for league Friends tab (H2H + public career/league).

@@ -1,13 +1,13 @@
 import 'dart:ui';
 
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/league.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/app_shell/shared/match_stats_widgets.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
-import 'package:dominican_casino/view_models/profile_view_model.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/league.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/app_shell/shared/match_stats_widgets.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
+import 'package:youareup/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

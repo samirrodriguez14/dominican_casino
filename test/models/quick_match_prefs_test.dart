@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/quick_match_prefs.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/quick_match_prefs.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

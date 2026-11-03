@@ -1,13 +1,13 @@
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_contract.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_requirement.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_state.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_game_engine.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/game_control/interfaces/zone.dart';
-import 'package:dominican_casino/game_control/game_registry.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/round.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_contract.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_requirement.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_state.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_game_engine.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/game_control/interfaces/zone.dart';
+import 'package:youareup/game_control/game_registry.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/round.dart';
+import 'package:youareup/models/playing_card_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/game_state_fixtures.dart';

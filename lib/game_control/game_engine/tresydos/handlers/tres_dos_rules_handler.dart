@@ -1,7 +1,7 @@
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/game_control/interfaces/zone.dart';
-import 'package:dominican_casino/models/game_state.dart';
+import 'package:youareup/game_control/game_engine/game_engine.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/game_control/interfaces/zone.dart';
+import 'package:youareup/models/game_state.dart';
 
 class TresDosRulesHandler {
   ///GET ALL AVAILABLE ACTIONS BASED ON CARD SELECTION AND GAME STATE

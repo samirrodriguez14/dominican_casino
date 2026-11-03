@@ -1,4 +1,4 @@
-import 'package:dominican_casino/models/game_state.dart';
+import 'package:youareup/models/game_state.dart';
 
 enum DailyChallengeId { tydRounds, casinoClassic }
 

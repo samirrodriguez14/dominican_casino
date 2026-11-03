@@ -1,10 +1,10 @@
-import 'package:dominican_casino/l10n/journey_l10n.dart';
-import 'package:dominican_casino/models/journey_progress.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
+import 'package:youareup/l10n/journey_l10n.dart';
+import 'package:youareup/models/journey_progress.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Post-match unlock card: Journey avatar and/or newly unlocked theme.

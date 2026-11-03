@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/tutorial_action.dart';
-import 'package:dominican_casino/models/tutorial_step.dart';
+import 'package:youareup/models/tutorial_action.dart';
+import 'package:youareup/models/tutorial_step.dart';
 import 'package:flutter/material.dart';
 
 class TutorialViewModel extends ChangeNotifier {

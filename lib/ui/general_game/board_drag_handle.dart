@@ -1,14 +1,14 @@
 import 'dart:ui' show lerpDouble;
 
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/playing_area_stack_model.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/ui/animations/card_motion.dart';
-import 'package:dominican_casino/ui/animations/flight_layer.dart';
-import 'package:dominican_casino/ui/cards/playing_card.dart';
-import 'package:dominican_casino/ui/cards/playing_card_back.dart';
-import 'package:dominican_casino/view_models/games/board_drag.dart';
-import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/playing_area_stack_model.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/ui/animations/card_motion.dart';
+import 'package:youareup/ui/animations/flight_layer.dart';
+import 'package:youareup/ui/cards/playing_card.dart';
+import 'package:youareup/ui/cards/playing_card_back.dart';
+import 'package:youareup/view_models/games/board_drag.dart';
+import 'package:youareup/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';

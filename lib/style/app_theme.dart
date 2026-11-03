@@ -1,8 +1,8 @@
-import 'package:dominican_casino/style/casino_theme.dart';
-import 'package:dominican_casino/style/dune_theme.dart';
-import 'package:dominican_casino/style/fig_theme.dart';
-import 'package:dominican_casino/style/midnight_theme.dart';
-import 'package:dominican_casino/style/sage_theme.dart';
+import 'package:youareup/style/casino_theme.dart';
+import 'package:youareup/style/dune_theme.dart';
+import 'package:youareup/style/fig_theme.dart';
+import 'package:youareup/style/midnight_theme.dart';
+import 'package:youareup/style/sage_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 class AppStyle {

@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/models/avatar_catalog.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/models/avatar_catalog.dart';
+import 'package:youareup/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
 class AvatarOption {

@@ -1,7 +1,7 @@
-import 'package:dominican_casino/game_control/interfaces/card_event.dart';
-import 'package:dominican_casino/game_control/interfaces/zone.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/ui/animations/flight_layer.dart';
+import 'package:youareup/game_control/interfaces/card_event.dart';
+import 'package:youareup/game_control/interfaces/zone.dart';
+import 'package:youareup/models/playing_card_model.dart';
+import 'package:youareup/ui/animations/flight_layer.dart';
 import 'package:flutter/cupertino.dart';
 
 class CardFlightRequest {

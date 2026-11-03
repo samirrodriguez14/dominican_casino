@@ -1,9 +1,9 @@
-import 'package:dominican_casino/models/theme_pack.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/cards/playing_card_back.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
-import 'package:dominican_casino/ui/widgets/theme_lock_cover.dart';
+import 'package:youareup/models/theme_pack.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/cards/playing_card_back.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
+import 'package:youareup/ui/widgets/theme_lock_cover.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Coin-locked theme pack for sale, painted in that pack's table colors.

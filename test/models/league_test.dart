@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/league.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/models/league.dart';
+import 'package:youareup/style/journey_worlds.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,4 +1,4 @@
-import 'package:dominican_casino/game_control/casino_coin_bonuses.dart';
+import 'package:youareup/game_control/casino_coin_bonuses.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/game_state_fixtures.dart';

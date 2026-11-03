@@ -1,8 +1,8 @@
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/game_control/interfaces/zone.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:youareup/game_control/game_engine/game_engine.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/game_control/interfaces/zone.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/playing_card_model.dart';
 
 class RummyRulesHandler {
   /// Deal-time win check is performed by the game state handler after a

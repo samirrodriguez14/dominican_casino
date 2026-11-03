@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import 'package:dominican_casino/models/game_info.dart';
-import 'package:dominican_casino/models/game_pill_data.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/local_bot_roster.dart';
-import 'package:dominican_casino/models/wallet_config.dart';
+import 'package:youareup/models/game_info.dart';
+import 'package:youareup/models/game_pill_data.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/local_bot_roster.dart';
+import 'package:youareup/models/wallet_config.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/sound_service.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 
 class GamesViewModel extends ChangeNotifier {

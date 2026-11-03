@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/player_match_stats.dart';
-import 'package:dominican_casino/models/tutorial_game_modes.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/player_match_stats.dart';
+import 'package:youareup/models/tutorial_game_modes.dart';
 
 class Player {
   static const String defaultAvatarId = 'palm';

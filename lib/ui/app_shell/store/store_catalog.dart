@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/daily_challenge.dart';
-import 'package:dominican_casino/models/wallet_config.dart';
-import 'package:dominican_casino/ui/widgets/coin_icon.dart';
+import 'package:youareup/models/daily_challenge.dart';
+import 'package:youareup/models/wallet_config.dart';
+import 'package:youareup/ui/widgets/coin_icon.dart';
 import 'package:flutter/cupertino.dart';
 
 enum StoreBundleKind { energy, coins }

@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/player_match_stats.dart';
-import 'package:dominican_casino/services/haptics.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/games/current_games_list.dart';
-import 'package:dominican_casino/ui/app_shell/games/current_games_stats_face.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/view_models/games_view_model.dart';
-import 'package:dominican_casino/view_models/profile_view_model.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/player_match_stats.dart';
+import 'package:youareup/services/haptics.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/app_shell/games/current_games_list.dart';
+import 'package:youareup/ui/app_shell/games/current_games_stats_face.dart';
+import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:youareup/view_models/games_view_model.dart';
+import 'package:youareup/view_models/profile_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

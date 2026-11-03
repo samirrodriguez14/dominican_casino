@@ -1,7 +1,7 @@
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/tutorial_pending_launch.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/firestore_service.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/tutorial_pending_launch.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/firestore_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

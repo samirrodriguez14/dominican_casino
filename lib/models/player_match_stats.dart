@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/game_pill_data.dart';
-import 'package:dominican_casino/models/game_state.dart';
+import 'package:youareup/models/game_pill_data.dart';
+import 'package:youareup/models/game_state.dart';
 
 /// Per-mode career counters for a player.
 class ModeMatchStats {

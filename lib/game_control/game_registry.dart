@@ -1,9 +1,9 @@
-import 'package:dominican_casino/game_control/game_engine/bs/bs_game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
-import 'package:dominican_casino/models/game_state.dart';
+import 'package:youareup/game_control/game_engine/bs/bs_game_engine.dart';
+import 'package:youareup/game_control/game_engine/casino/casino_game_engine.dart';
+import 'package:youareup/game_control/game_engine/game_engine.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_game_engine.dart';
+import 'package:youareup/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
+import 'package:youareup/models/game_state.dart';
 
 /// Single factory for playable engines. Unknown / disabled modes return null.
 class GameRegistry {

@@ -1,6 +1,6 @@
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_contract.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_requirement.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_contract.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_requirement.dart';
+import 'package:youareup/models/playing_card_model.dart';
 
 /// Pure matching logic for Rummy (Romir).
 ///

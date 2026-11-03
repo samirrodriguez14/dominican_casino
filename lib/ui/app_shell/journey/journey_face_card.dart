@@ -1,6 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/style/journey_worlds.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Shared face-down Journey card — same object look for peek, deck, and flights.

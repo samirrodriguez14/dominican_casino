@@ -1,4 +1,4 @@
-import 'package:dominican_casino/services/sound_service.dart';
+import 'package:youareup/services/sound_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
 

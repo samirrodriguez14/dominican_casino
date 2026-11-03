@@ -1,4 +1,4 @@
-import 'package:dominican_casino/models/tutorial_action.dart';
+import 'package:youareup/models/tutorial_action.dart';
 import 'package:flutter/cupertino.dart';
 
 typedef TutorialStepCallback = void Function(BuildContext context);

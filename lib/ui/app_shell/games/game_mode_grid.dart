@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/ui/app_shell/games/game_mode_card.dart';
-import 'package:dominican_casino/ui/app_shell/games/game_mode_carousel.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/ui/app_shell/games/game_mode_card.dart';
+import 'package:youareup/ui/app_shell/games/game_mode_carousel.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Playable carousel modes only (Robaito and other enum values stay hidden).

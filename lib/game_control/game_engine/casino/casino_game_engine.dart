@@ -1,14 +1,14 @@
 import 'dart:developer' as developer;
 
-import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
-import 'package:dominican_casino/game_control/game_engine/general_handlers/game_action_handler.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_rules_handler.dart';
-import 'package:dominican_casino/game_control/game_engine/game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_play_action_handler.dart';
-import 'package:dominican_casino/game_control/game_registry.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/models/game_state.dart';
+import 'package:youareup/game_control/game_engine/general_handlers/event_handler.dart';
+import 'package:youareup/game_control/game_engine/general_handlers/game_action_handler.dart';
+import 'package:youareup/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
+import 'package:youareup/game_control/game_engine/casino/handlers/casino_rules_handler.dart';
+import 'package:youareup/game_control/game_engine/game_engine.dart';
+import 'package:youareup/game_control/game_engine/casino/handlers/casino_play_action_handler.dart';
+import 'package:youareup/game_control/game_registry.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/models/game_state.dart';
 
 class CasinoGameEngine extends GameEngine {
   @override

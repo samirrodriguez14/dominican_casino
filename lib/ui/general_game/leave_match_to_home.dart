@@ -1,6 +1,6 @@
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/view_models/games/general_game_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';

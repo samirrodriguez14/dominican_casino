@@ -1,15 +1,15 @@
 import 'dart:async';
 
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/ui/settings/legal_links.dart';
-import 'package:dominican_casino/ui/settings/settings_controls.dart';
-import 'package:dominican_casino/ui/widgets/account_dialogs.dart';
-import 'package:dominican_casino/ui/widgets/apple_mark.dart';
-import 'package:dominican_casino/ui/widgets/google_g_mark.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:youareup/ui/settings/legal_links.dart';
+import 'package:youareup/ui/settings/settings_controls.dart';
+import 'package:youareup/ui/widgets/account_dialogs.dart';
+import 'package:youareup/ui/widgets/apple_mark.dart';
+import 'package:youareup/ui/widgets/google_g_mark.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';

@@ -1,11 +1,11 @@
-import 'package:dominican_casino/game_control/game_engine/general_handlers/event_handler.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
-import 'package:dominican_casino/game_control/game_registry.dart';
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/models/deck.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/models/round.dart';
+import 'package:youareup/game_control/game_engine/general_handlers/event_handler.dart';
+import 'package:youareup/game_control/game_engine/casino/handlers/casino_game_state_handler.dart';
+import 'package:youareup/game_control/game_registry.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/models/deck.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/playing_card_model.dart';
+import 'package:youareup/models/round.dart';
 
 class GameActionHandler {
   /// Pure mutation — callers persist the returned state.

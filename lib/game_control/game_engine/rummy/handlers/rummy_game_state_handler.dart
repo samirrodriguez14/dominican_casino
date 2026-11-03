@@ -1,10 +1,10 @@
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_contract.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_matcher.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_state.dart';
-import 'package:dominican_casino/models/deck.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/models/round.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_contract.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_matcher.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_state.dart';
+import 'package:youareup/models/deck.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/models/round.dart';
+import 'package:youareup/models/playing_card_model.dart';
 
 class RummyGameStateHandler {
   static void assignContractForDeal(GameState gameState) {

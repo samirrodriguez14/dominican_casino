@@ -18,11 +18,8 @@ class DefaultFirebaseOptions {
   /// Web OAuth client id — required as [GoogleSignIn] `serverClientId` on Android
   /// so Firebase Auth receives an ID token. Also appears in `google-services.json`
   /// as an `oauth_client` entry with `client_type: 3`.
-  ///
-  /// Enable Google Sign-In in the Firebase Console (Authentication → Sign-in
-  /// method), then paste the Web client ID here and re-download
-  /// `google-services.json` / `GoogleService-Info.plist`.
-  static const String googleWebClientId = '';
+  static const String googleWebClientId =
+      '181795819212-o7ns8q6mssd8ujdaqcrje3ei7nssvq27.apps.googleusercontent.com';
 
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -78,6 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '181795819212',
     projectId: 'youareup',
     storageBucket: 'youareup.firebasestorage.app',
+    iosClientId:
+        '181795819212-e04g13o4btr65bd0i2b20pcou5ehj4gn.apps.googleusercontent.com',
     iosBundleId: 'com.sr2.youareup',
   );
 }

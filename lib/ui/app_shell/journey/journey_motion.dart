@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/style/journey_worlds.dart';
+import 'package:youareup/ui/home/home_card_layout.dart';
 import 'package:flutter/cupertino.dart';
 
 // ── Progress + deal plan ────────────────────────────────────────────────────

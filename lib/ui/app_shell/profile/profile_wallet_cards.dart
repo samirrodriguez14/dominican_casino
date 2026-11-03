@@ -1,17 +1,17 @@
 import 'dart:async';
 
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/experience.dart';
-import 'package:dominican_casino/models/wallet_config.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/profile/level_rewards_popup.dart';
-import 'package:dominican_casino/ui/widgets/coin_icon.dart';
-import 'package:dominican_casino/ui/widgets/currency_bar.dart';
-import 'package:dominican_casino/ui/widgets/exp_icon.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
-import 'package:dominican_casino/ui/widgets/wallet_dialogs.dart';
-import 'package:dominican_casino/services/haptics.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/experience.dart';
+import 'package:youareup/models/wallet_config.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/app_shell/profile/level_rewards_popup.dart';
+import 'package:youareup/ui/widgets/coin_icon.dart';
+import 'package:youareup/ui/widgets/currency_bar.dart';
+import 'package:youareup/ui/widgets/exp_icon.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
+import 'package:youareup/ui/widgets/wallet_dialogs.dart';
+import 'package:youareup/services/haptics.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

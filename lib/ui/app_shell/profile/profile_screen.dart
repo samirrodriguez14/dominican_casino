@@ -1,15 +1,15 @@
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/theme_pack.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/profile/profile_card.dart';
-import 'package:dominican_casino/ui/app_shell/profile/profile_coach.dart';
-import 'package:dominican_casino/ui/app_shell/profile/profile_settings_body.dart';
-import 'package:dominican_casino/ui/app_shell/profile/theme_pack_carousel.dart';
-import 'package:dominican_casino/ui/app_shell/shell_insets.dart';
-import 'package:dominican_casino/ui/home/home_card_layout.dart';
-import 'package:dominican_casino/ui/widgets/stacked_card_carousel.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/theme_pack.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/app_shell/profile/profile_card.dart';
+import 'package:youareup/ui/app_shell/profile/profile_coach.dart';
+import 'package:youareup/ui/app_shell/profile/profile_settings_body.dart';
+import 'package:youareup/ui/app_shell/profile/theme_pack_carousel.dart';
+import 'package:youareup/ui/app_shell/shell_insets.dart';
+import 'package:youareup/ui/home/home_card_layout.dart';
+import 'package:youareup/ui/widgets/stacked_card_carousel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

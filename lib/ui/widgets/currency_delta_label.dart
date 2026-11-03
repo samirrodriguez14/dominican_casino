@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/app_theme.dart';
+import 'package:youareup/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Readable +N / −N chip over felt or other busy backgrounds.

@@ -1,4 +1,4 @@
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/style/journey_worlds.dart';
 
 /// Public ranking snapshot stored at `publicProfiles/{uid}`.
 class PublicProfile {

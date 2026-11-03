@@ -1,9 +1,9 @@
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/experience.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/widgets/coin_icon.dart';
-import 'package:dominican_casino/ui/widgets/exp_icon.dart';
-import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/experience.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/widgets/coin_icon.dart';
+import 'package:youareup/ui/widgets/exp_icon.dart';
+import 'package:youareup/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Match bonus + pot + XP tally. Wallet / profile credit happens on home.

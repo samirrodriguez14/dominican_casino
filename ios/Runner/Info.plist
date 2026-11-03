@@ -39,7 +39,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.932020449632-hkq967iebi5413bfr275l3es99n03oj8</string>
+				<string>com.googleusercontent.apps.181795819212-e04g13o4btr65bd0i2b20pcou5ehj4gn</string>
 			</array>
 		</dict>
 	</array>
@@ -48,7 +48,7 @@
 	<key>FlutterDeepLinkingEnabled</key>
 	<false/>
 	<key>GIDClientID</key>
-	<string>932020449632-hkq967iebi5413bfr275l3es99n03oj8.apps.googleusercontent.com</string>
+	<string>181795819212-e04g13o4btr65bd0i2b20pcou5ehj4gn.apps.googleusercontent.com</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

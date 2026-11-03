@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/repositories/game_repo.dart';
-import 'package:dominican_casino/services/firestore_service.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/repositories/game_repo.dart';
+import 'package:youareup/services/firestore_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

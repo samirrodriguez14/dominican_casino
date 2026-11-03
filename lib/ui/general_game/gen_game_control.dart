@@ -1,13 +1,13 @@
-import 'package:dominican_casino/game_control/interfaces/action.dart';
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/services/share_invite.dart';
-import 'package:dominican_casino/services/sound_service.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/app_shell/games/tutorial_offer_dialog.dart';
-import 'package:dominican_casino/ui/general_game/leave_match_to_home.dart';
-import 'package:dominican_casino/repositories/app_repo.dart';
-import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:youareup/game_control/interfaces/action.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/services/share_invite.dart';
+import 'package:youareup/services/sound_service.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/app_shell/games/tutorial_offer_dialog.dart';
+import 'package:youareup/ui/general_game/leave_match_to_home.dart';
+import 'package:youareup/repositories/app_repo.dart';
+import 'package:youareup/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

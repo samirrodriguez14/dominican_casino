@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import 'package:dominican_casino/models/game_state.dart';
-import 'package:dominican_casino/services/firestore_service.dart';
+import 'package:youareup/models/game_state.dart';
+import 'package:youareup/services/firestore_service.dart';
 import 'package:flutter/cupertino.dart';
 
 class GameRepo extends ChangeNotifier {

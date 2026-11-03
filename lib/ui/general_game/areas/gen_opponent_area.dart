@@ -1,13 +1,13 @@
-import 'package:dominican_casino/l10n/app_localizations.dart';
-import 'package:dominican_casino/models/playing_card_model.dart';
-import 'package:dominican_casino/ui/animations/flight_aware_card.dart';
-import 'package:dominican_casino/ui/cards/playing_card.dart';
-import 'package:dominican_casino/ui/cards/playing_card_back.dart';
-import 'package:dominican_casino/style/app_theme.dart';
-import 'package:dominican_casino/ui/widgets/player_avatar.dart';
-import 'package:dominican_casino/ui/widgets/coin_gain_badge.dart';
-import 'package:dominican_casino/ui/widgets/reaction_bubble.dart';
-import 'package:dominican_casino/view_models/games/general_game_view_model.dart';
+import 'package:youareup/l10n/app_localizations.dart';
+import 'package:youareup/models/playing_card_model.dart';
+import 'package:youareup/ui/animations/flight_aware_card.dart';
+import 'package:youareup/ui/cards/playing_card.dart';
+import 'package:youareup/ui/cards/playing_card_back.dart';
+import 'package:youareup/style/app_theme.dart';
+import 'package:youareup/ui/widgets/player_avatar.dart';
+import 'package:youareup/ui/widgets/coin_gain_badge.dart';
+import 'package:youareup/ui/widgets/reaction_bubble.dart';
+import 'package:youareup/view_models/games/general_game_view_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 

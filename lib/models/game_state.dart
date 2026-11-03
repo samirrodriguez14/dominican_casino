@@ -1,14 +1,14 @@
-import 'package:dominican_casino/game_control/interfaces/card_event.dart';
-import 'package:dominican_casino/models/deck.dart';
-import 'package:dominican_casino/models/playing_area_stack_model.dart';
-import 'package:dominican_casino/models/round.dart';
-import 'package:dominican_casino/models/table_slot.dart';
+import 'package:youareup/game_control/interfaces/card_event.dart';
+import 'package:youareup/models/deck.dart';
+import 'package:youareup/models/playing_area_stack_model.dart';
+import 'package:youareup/models/round.dart';
+import 'package:youareup/models/table_slot.dart';
 
-import 'package:dominican_casino/models/local_bot_roster.dart';
-import 'package:dominican_casino/models/wallet_config.dart';
+import 'package:youareup/models/local_bot_roster.dart';
+import 'package:youareup/models/wallet_config.dart';
 
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_state.dart';
-import 'package:dominican_casino/game_control/game_engine/bs/bs_state.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_state.dart';
+import 'package:youareup/game_control/game_engine/bs/bs_state.dart';
 
 import 'playing_card_model.dart';
 

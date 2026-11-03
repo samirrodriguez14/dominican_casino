@@ -1,9 +1,9 @@
-import 'package:dominican_casino/game_control/game_engine/bs/bs_game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/casino/casino_game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/rummy/rummy_game_engine.dart';
-import 'package:dominican_casino/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
-import 'package:dominican_casino/game_control/game_registry.dart';
-import 'package:dominican_casino/models/game_state.dart';
+import 'package:youareup/game_control/game_engine/bs/bs_game_engine.dart';
+import 'package:youareup/game_control/game_engine/casino/casino_game_engine.dart';
+import 'package:youareup/game_control/game_engine/rummy/rummy_game_engine.dart';
+import 'package:youareup/game_control/game_engine/tresydos/tres_dos_game_engine.dart';
+import 'package:youareup/game_control/game_registry.dart';
+import 'package:youareup/models/game_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

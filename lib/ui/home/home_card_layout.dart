@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:dominican_casino/style/app_theme.dart';
+import 'package:youareup/style/app_theme.dart';
 import 'package:flutter/cupertino.dart';
 
 const homeCardWidthFactor = 0.90;

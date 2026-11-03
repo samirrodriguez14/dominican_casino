@@ -1,5 +1,5 @@
-import 'package:dominican_casino/models/journey.dart';
-import 'package:dominican_casino/style/journey_worlds.dart';
+import 'package:youareup/models/journey.dart';
+import 'package:youareup/style/journey_worlds.dart';
 
 /// How an avatar disc is drawn.
 enum AvatarKind { painted, journey }
